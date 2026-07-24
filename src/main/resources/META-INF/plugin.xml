@@ -1,0 +1,25 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>org.apache.solr.ide</id>
+    <name>Apache Solr</name>
+    <vendor>Apache Software Foundation</vendor>
+    <description><![CDATA[
+        <p>IDE tooling for Apache Solr development. Phase 1 provides static-analysis language
+        intelligence for Solr configsets (managed-schema/schema.xml, solrconfig.xml): completion,
+        cross-file navigation, rename refactoring, inspections, and match-capability hints —
+        with no Solr connection required.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <!-- Configset XML PSI: reference resolution, inspections, completion over schema.xml/solrconfig.xml -->
+    <depends>com.intellij.modules.xml</depends>
+    <!-- Phase 3 (SolrJ in Java/Kotlin): <depends>com.intellij.modules.java</depends> -->
+
+
+    <resource-bundle>messages.MyBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow factoryClass="org.jetbrains.plugins.template.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <postStartupActivity implementation="org.jetbrains.plugins.template.startup.MyProjectActivity" />
+    </extensions>
+</idea-plugin>
