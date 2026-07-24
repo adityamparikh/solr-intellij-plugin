@@ -15,11 +15,11 @@
     <depends>com.intellij.modules.xml</depends>
     <!-- Phase 3 (SolrJ in Java/Kotlin): <depends>com.intellij.modules.java</depends> -->
 
-
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <resource-bundle>messages.SolrBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="org.jetbrains.plugins.template.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="org.jetbrains.plugins.template.startup.MyProjectActivity" />
+        <!-- Associate the extensionless `managed-schema` (and newer `managed-schema.xml`) with the
+             XML file type so configsets are parsed as XML for later PSI-based features. -->
+        <fileType name="XML" fileNames="managed-schema;managed-schema.xml"/>
     </extensions>
 </idea-plugin>
