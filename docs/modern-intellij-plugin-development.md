@@ -2,6 +2,8 @@
 
 ### A hands-on introduction for Java and Kotlin engineers
 
+> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. It is being refined against that implementation as it lands.
+
 You already know how to make a JVM project do something useful. This tutorial is about making your *IDE* do something useful — and it turns out the distance between those two skills is much shorter than most engineers assume.
 
 By the end you'll have built a working plugin that adds code completion, a custom inspection with a quick-fix, and Ctrl-click navigation with rename refactoring to a file format the IDE has never heard of. Roughly 200 lines of Kotlin. No prior platform knowledge required.
@@ -327,9 +329,10 @@ flowchart TD
     AN --> TK["XmlTag: tokenizer"]
     S --> F1["XmlTag: field<br/>name = title, type = text_general"]
     S --> F2["XmlTag: field<br/>name = title_exact, type = string"]
+    F2 --> NV["XmlAttributeValue &quot;title_exact&quot;<br/><i>reference targets live here</i>"]
     S --> CF["XmlTag: copyField<br/>source = title, dest = title_exact"]
     F1 -.->|"Part 4: completion resolves here"| AV
-    CF -.->|"Part 6: reference resolves here"| F2
+    CF -.->|"Part 6: reference resolves here"| NV
 ```
 
 Solid arrows are the tree. The dotted arrows are the interesting part — those are the cross-references we talked about at the start, the ones that are just strings today. Making them real is what Parts 4 and 6 are about.
@@ -432,6 +435,7 @@ package dev.example.solrconfig.completion
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.components.service
+import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.XmlPatterns
 import com.intellij.psi.xml.XmlFile
 import com.intellij.util.ProcessingContext
@@ -442,12 +446,15 @@ class FieldTypeCompletionContributor : CompletionContributor() {
     init {
         extend(
             CompletionType.BASIC,
-            // "an attribute value, of an attribute named `type`, inside a `field` tag"
-            XmlPatterns.xmlAttributeValue()
-                .withParent(
-                    XmlPatterns.xmlAttribute().withLocalName("type")
-                        .withParent(XmlPatterns.xmlTag().withLocalName("field"))
-                ),
+            // "the token at the caret, inside an attribute value,
+            //  of an attribute named `type`, inside a `field` tag"
+            PlatformPatterns.psiElement().withParent(
+                XmlPatterns.xmlAttributeValue()
+                    .withParent(
+                        XmlPatterns.xmlAttribute().withLocalName("type")
+                            .withParent(XmlPatterns.xmlTag().withLocalName("field"))
+                    )
+            ),
             object : CompletionProvider<CompletionParameters>() {
                 override fun addCompletions(
                     parameters: CompletionParameters,
@@ -471,6 +478,12 @@ class FieldTypeCompletionContributor : CompletionContributor() {
 ```
 
 The interesting part is the middle argument. `XmlPatterns` is a declarative matcher DSL: instead of `if (element.parent is XmlAttribute && ...)`, you describe the *shape* of the location, and the platform decides whether you're relevant. Every position-sensitive extension point uses this DSL, so learning it once pays off repeatedly.
+
+The outer `PlatformPatterns.psiElement()` is not decoration, and getting it wrong is a silent failure. `extend()` matches your pattern against `parameters.position` — the **leaf** element at the caret. Inside `type="<caret>"` that leaf is an `XmlToken`, *not* the `XmlAttributeValue` containing it. Write `XmlPatterns.xmlAttributeValue()` as the outermost pattern and it simply never matches: no completion, no error, nothing in the log.
+
+So the shape to internalize for completion is **describe the leaf, then walk up**: `psiElement().withParent(...)` — or `.inside(...)` when you don't care how many levels up the interesting node sits.
+
+Worth flagging now because Part 6 looks almost identical but isn't: reference contributors match against the *host* element, so there `XmlPatterns.xmlAttributeValue()` on the outside is correct. Same DSL, different subject. Copying one shape into the other is a very easy afternoon to lose.
 
 ### Register it
 
@@ -654,6 +667,8 @@ class CopyFieldReference(element: XmlAttributeValue) :
         return element.project.service<SchemaModelService>()
             .findField(file, value)
             ?.tag
+            ?.getAttribute("name")          // resolve to the *name attribute value*,
+            ?.valueElement                  // not the <field> tag — see below
     }
 
     override fun getVariants(): Array<Any> {
@@ -689,6 +704,16 @@ class SchemaReferenceContributor : PsiReferenceContributor() {
 ```
 
 `withLocalName` takes varargs, which is why one pattern covers both `source` and `dest`.
+
+### Resolve to the name, not to the tag
+
+Those two lines at the end of `resolve()` are the difference between rename working and rename corrupting the file, so they're worth dwelling on.
+
+The obvious thing is to resolve to the `<field>` tag — it's the declaration, after all. Ctrl-click would even work. But `XmlTag` implements `PsiNamedElement`, and for a tag, "name" means the **tag name**: `field`. So Shift+F6 on that target offers to rename `<field>` itself, and accepting turns `<field name="title_exact"/>` into `<whatever name="title_exact"/>`. Find Usages has the same problem — it searches for the tag's name, not `title_exact`.
+
+Resolving to the `name` attribute's *value element* fixes both, because for an `XmlAttributeValue` the name genuinely is the string the user cares about. This is what the PSI diagram back in Part 3 meant by *"reference targets live here."*
+
+General rule, and it outlives this example: **resolve to the element whose `getName()` returns the identifier you want renamed.** When rename misbehaves, that question is almost always the answer.
 
 ```xml
 <psi.referenceContributor
@@ -812,7 +837,9 @@ Two commands separate a working sandbox plugin from a published one.
 ./gradlew buildPlugin    # → build/distributions/your-plugin-0.1.0.zip
 ```
 
-`verifyPlugin` deserves a moment of respect. It checks your compiled bytecode against every IDE build in your declared range and fails on APIs that don't exist there. Because plugins are distributed as bytecode into IDEs you never tested against, this is the difference between "works on my machine" and "works for the person on last year's release." Put it in CI on day one; it costs nothing and prevents your most embarrassing bug reports.
+`verifyPlugin` deserves a moment of respect. It checks your compiled bytecode against the IDEs you list under `pluginVerification { ides { ... } }` and fails on APIs that don't exist there. Because plugins are distributed as bytecode into IDEs you never tested against, this is the difference between "works on my machine" and "works for the person on last year's release." Put it in CI on day one; it costs nothing and prevents your most embarrassing bug reports.
+
+One precision worth having, though: `recommended()` resolves to a curated set of builds, not to every build from `sinceBuild` onward. That's a strong sample, not proof of range-wide compatibility. If you claim a long tail, widen the list deliberately.
 
 Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Install Plugin from Disk* to sanity-check it, then `publishPlugin` with a Marketplace token when you're ready. First-time submissions go through a review; subsequent updates publish immediately.
 
@@ -864,9 +891,11 @@ The gap this tutorial fills is narrower than "learn plugin development": it's th
 
 ### A note on verification
 
-The APIs used here were checked against IntelliJ Community source rather than assumed — in particular `XmlNamedElementPattern.withLocalName(String...)`, and the `com.intellij.fileType` pattern of extending an existing file type by name, which the bundled Maven plugin uses for `.pom`.
+The APIs used here were checked against IntelliJ Community source rather than assumed — in particular `XmlNamedElementPattern.withLocalName(String...)`, the `com.intellij.fileType` pattern of extending an existing file type by name (which the bundled Maven plugin uses for `.pom`), that `CompletionContributor.extend` matches against the leaf `parameters.position`, and that `XmlTag.getName()` returns the tag name rather than a `name` attribute.
 
 The code has **not** been compiled end to end as a single project. Treat the samples as correct-by-inspection, not verified-by-build, and open an issue if something doesn't compile against your platform version.
+
+Known gaps, stated plainly rather than left for you to discover: Part 9 does not cover plugin signing, which JetBrains Marketplace requires before `publishPlugin` will accept an upload, nor the `pluginIcon.svg` and `<description>` that Marketplace review expects. The samples also hardcode English strings where the platform convention is a message bundle, and the inspection re-walks the schema for each `copyField` where a production plugin would cache derived data via `CachedValuesManager`. Each of those is a deliberate simplification for a first plugin; none of them is advice.
 
 The through-line worth taking away: **the platform APIs are small and repetitive; your domain knowledge is the actual work.** You spent this tutorial learning maybe six types. Everything else was ordinary Kotlin over a tree. Whatever format, framework, or tool your team knows deeply, the gap between that knowledge and an IDE feature that encodes it is smaller than you thought this morning.
 
