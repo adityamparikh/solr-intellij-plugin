@@ -6,6 +6,7 @@ plugins {
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog")
     id("org.jetbrains.kotlinx.kover")
+    id("org.sonarqube")
 }
 
 dependencies {
@@ -19,6 +20,22 @@ dependencies {
         // bundledPlugin("com.intellij.java").
         intellijIdea("2026.2")
         testFramework(TestFrameworkType.Platform)
+    }
+}
+
+// SonarCloud analysis. Runs from CI rather than SonarCloud's Automatic Analysis, because
+// Automatic Analysis cannot ingest a coverage report — the two modes are mutually exclusive.
+sonar {
+    properties {
+        property("sonar.projectKey", "adityamparikh_solr-intellij-plugin")
+        property("sonar.organization", "adityamparikh")
+        property("sonar.host.url", "https://sonarcloud.io")
+        // Kover writes a JaCoCo-format XML report; this is the property that makes coverage
+        // visible in SonarCloud at all.
+        property(
+            "sonar.coverage.jacoco.xmlReportPaths",
+            layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path,
+        )
     }
 }
 
