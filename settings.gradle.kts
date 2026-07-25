@@ -8,6 +8,7 @@ pluginManagement {
         id("org.jetbrains.changelog") version "2.5.0"
         id("org.jetbrains.kotlinx.kover") version "0.9.9"
         id("org.sonarqube") version "7.3.1.8318"
+        id("org.jetbrains.dokka") version "2.2.0"
     }
 }
 
