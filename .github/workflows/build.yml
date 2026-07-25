@@ -77,9 +77,13 @@ jobs:
           tool-cache: false
           large-packages: false
 
-      # Check out the current repository
+      # Check out the current repository.
+      # fetch-depth: 0 — SonarCloud needs full history to attribute new code correctly;
+      # a shallow clone makes every line look new.
       - name: Fetch Sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       # Set up the Java environment for the next steps
       - name: Setup Java
@@ -94,9 +98,13 @@ jobs:
         with:
           cache-read-only: true
 
-      # Run tests
+      # Run tests and produce the Kover coverage report.
+      # Deliberately does NOT invoke `check` here: koverVerify is bound to `check`, and running
+      # the gate in the same invocation would leave the report's existence dependent on Gradle's
+      # scheduling after a task failure. Generating it first makes the artifact upload and the
+      # SonarCloud scan below independent of whether the gate passes.
       - name: Run Tests
-        run: ./gradlew check
+        run: ./gradlew test koverXmlReport
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -105,6 +113,40 @@ jobs:
         with:
           name: tests-result
           path: ${{ github.workspace }}/build/reports/tests
+
+      # Coverage report, also consumed by the SonarCloud scan below.
+      # always() so the report is still available when a later step fails.
+      - name: Collect Coverage Report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-report
+          path: ${{ github.workspace }}/build/reports/kover/report.xml
+          if-no-files-found: warn
+
+      # SonarCloud analysis, including coverage. Replaces Automatic Analysis, which is
+      # disabled for this project because it cannot ingest a coverage report.
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonar
+
+      # Enforce the local gates last, so a failure still leaves the report uploaded and the
+      # SonarCloud analysis published. `check` runs both: the Kover coverage floor, and
+      # dokkaGenerate, which fails when a public declaration in the main source set has no KDoc.
+      - name: Verify Gates
+        run: ./gradlew check
+
+      # Publish the rendered KDoc so it can be browsed from the pull request without a local build.
+      # After the gate rather than before it, because dokkaGenerate is what produces this directory.
+      # always() so partial output survives a gate failure, which is when it is most worth reading.
+      - name: Upload API Documentation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: api-documentation
+          path: ${{ github.workspace }}/build/dokka/html
+          if-no-files-found: warn
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:
