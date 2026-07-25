@@ -43,11 +43,21 @@ collection explorer, MCP). Non-P1 docs (D5, D7, D9). No network/credential surfa
 
 - [x] JDK configured for the IntelliJ Platform Gradle plugin (see `build.gradle.kts`).
 - [x] `./gradlew build` succeeds (baseline green build, CI-verified).
-- [x] JDK 21 or later available: Solr 10 requires Java 21, which sets the generator's toolchain floor. Enforced by `jvmToolchain(21)` in `build.gradle.kts`.
+- [x] JDK 21 or later available: Solr 10 requires Java 21, which sets the toolchain floor. Enforced by `jvmToolchain(21)` in `build.gradle.kts`.
 - [ ] Local copies of `_default` and `sample_techproducts_configs` configsets available for golden-file test data (from a Solr distribution). Needed by Step 8; not a blocker before then.
 - [x] Solr/Lucene artifacts resolvable from Maven Central for both supported lines — verified: Solr 10.0.0 (Lucene 10.3.2) and 9.10.1 (Lucene 9.12.3). Needed only to build the bundled catalog (Step 2, v0.2).
 
 ## Implementation Steps
+
+Steps are numbered by dependency, not by release. Because Phase 1 ships as v0.1 then v0.2 (spec
+§ "Phase 1 — Release sequencing"), the numeric order is not the build order — Step 2 is numbered
+early because everything downstream of it depends on it, but it is v0.2 work. Build in this order:
+
+| Release | Steps |
+|---|---|
+| **shipped** | Step 1 |
+| **v0.1** | Step 1b → Step 3 → Step 6 → Step 5 → Step 7 → the v0.1 slice of Steps 8 and 9 |
+| **v0.2** | Step 2 → Step 4 → Step 7b → Step 7c → the remainder of Steps 8 and 9 |
 
 ### Step 1: Replace template scaffolding & establish configset detection — **DONE**
 
@@ -75,7 +85,7 @@ bundled here, are now Step 1b — they have their own caching design and five cl
 
 **Dependencies:** none
 
-### Step 1b: Schema provenance (S8)
+### Step 1b: Schema provenance (S8) — **v0.1**
 
 Classify each configset as hand-authored or Solr-managed by reading `<schemaFactory>` from the
 sibling `solrconfig.xml`, and expose that classification to the write-side features. This is split
@@ -133,7 +143,7 @@ which are v0.2 — so this step comes *after* the v0.1 release, not before it.
 
 **Dependencies:** Step 1
 
-### Step 3: Configset reference model (PSI references + reference graph)
+### Step 3: Configset reference model (PSI references + reference graph) — **v0.1**
 
 Implement the custom `PsiReference` layer over XML PSI that resolves the S2 cross-file links —
 `copyField` source/dest → field, `field type=` → `fieldType`, and `solrconfig.xml` request-handler
@@ -159,7 +169,7 @@ all consume, so it is built and unit-tested before them.
 
 **Dependencies:** Step 1
 
-### Step 4: Schema completion & structural validation (S1)
+### Step 4: Schema completion & structural validation (S1) — **v0.2**
 
 Add completion contributors and XML structure validation driven by the Step 2 dataset: field types,
 factory classes and their valid attributes, field attributes, and `dynamicField` patterns.
@@ -182,7 +192,7 @@ factory classes and their valid attributes, field attributes, and `dynamicField`
 
 **Dependencies:** Step 2, Step 3
 
-### Step 5: Rename refactoring (S3)
+### Step 5: Rename refactoring (S3) — **v0.1**, with an S9 addendum in v0.2
 
 Implement rename for fields and `fieldType`s that updates all references via the Step 3 reference graph,
 leaving no dangling references.
@@ -193,20 +203,23 @@ leaving no dangling references.
 **Actions:**
 1. Add a `RenamePsiElementProcessor` (or reference-based rename) for field/fieldType elements reusing the Step 3 graph.
 2. Ensure `copyField` refs, `field type=` refs, and request-handler param refs are all updated.
-3. Consult Step 1b provenance (S9): against a Solr-managed schema, offer "Copy as Schema API request" as the default action — rendering the rename as a `replace-field` / `replace-field-type` payload plus `curl` with a placeholder collection URL — and direct file edit as a warned secondary. Against a hand-authored schema, edit the file with no warning or redirect.
-4. Extend the existing `rename` testData with before/after fixtures asserting completeness, plus a managed-schema fixture asserting the API payload is offered first and a hand-authored fixture asserting it is not.
-5. Run: `./gradlew build`
+3. **(v0.1)** Consult Step 1b provenance: against a hand-authored schema, and always for `solrconfig.xml`, edit the file with no warning or redirect. Against a mutable managed schema, **withhold** the rename and explain that Solr owns the file — do not silently edit, and do not yet offer an alternative.
+4. **(v0.2 — S9)** Replace that refusal with "Copy as Schema API request" as the default action, rendering the rename as a `replace-field` / `replace-field-type` payload plus `curl` with a placeholder collection URL, and direct file edit as a warned secondary.
+5. Extend the existing `rename` testData with before/after fixtures asserting completeness, plus a managed-schema fixture (v0.1: asserts the rename is withheld with an explanation; v0.2: asserts the API payload is offered first) and a hand-authored fixture asserting neither warning nor redirect appears.
+6. Run: `./gradlew build`
 
 **Success Criteria:**
 - [ ] Renaming a field updates every resolved reference (copyField, request-handler params).
 - [ ] Renaming a `fieldType` updates all `field type=` references.
 - [ ] No dangling references remain after rename (asserted by before/after fixtures).
-- [ ] Rename against a managed schema offers a valid Schema API payload as the default action; against a hand-authored schema it edits the file with no prompt.
+- [ ] Rename against a hand-authored schema edits the file with no prompt.
+- [ ] v0.1: rename against a mutable managed schema is withheld with an explanation.
+- [ ] v0.2: the same case offers a valid Schema API payload as the default action.
 - [ ] `./gradlew build` passes.
 
 **Dependencies:** Step 1b, Step 3
 
-### Step 6: Configset inspections (S4) with description.html
+### Step 6: Configset inspections (S4) with description.html — **v0.1**
 
 Add local inspection tools for configset errors, each with a Platform `description.html` (which doubles
 as the D4 catalog entry). This is where the zero-false-positive requirement gets its teeth.
@@ -230,34 +243,76 @@ as the D4 catalog entry). This is where the zero-false-positive requirement gets
 
 **Dependencies:** Step 3
 
-### Step 7: Match-capability hints (S5), quick-fixes (S6), and inline docs (S7)
+### Step 7: Match-capability hints (S5) and quick-fixes (S6) — **v0.1**
 
 Model each field's index-time analyzer chain to classify effective match semantics, surface them as
-annotator hints (S5), apply the standard multi-field patterns as intention actions (S6), and provide
-quick documentation from the reference dataset (S7).
+annotator hints (S5), and apply the standard multi-field patterns as intention actions (S6).
+
+Needs no reference dataset: the ~15 factories that determine match semantics are named in code (see
+spec § "Phase 1 — Release sequencing", which records why that hand-maintained set is a deliberate
+exception rather than an oversight).
 
 **Context:**
-- See requirements S5, S6, S7 and S9, and spec § "Architecture approach" ("Match-capability analysis" bullet).
-- Depends on the Step 2 dataset for the doc provider (S7).
+- See requirements S5 and S6, and spec § "Architecture approach" ("Match-capability analysis" bullet).
 
 **Actions:**
 1. Build a match-capability model classifying exact / tokenized / prefix-substring / case-sensitivity by walking the field's index-time analyzer chain.
 2. Add an annotator (S5) surfacing derived match semantics per field.
 3. Add intention actions (S6) that create exact-match/prefix companions (`<name>_exact` string + copyField; EdgeNGram fieldType + `<name>_prefix` + copyField), phrased as efficient index-time support.
-4. Have the S6 intentions consult Step 1b provenance and, on a managed schema, offer the edit as a Schema API payload (`add-field`, `add-copy-field`, `add-field-type`) ahead of the direct file edit — same rule as Step 5. S5 hints and the S7 doc provider must not consult provenance at all.
-5. Add a `DocumentationProvider` (S7) keyed by factory/attribute, sourced from the reference dataset.
-6. Add tests asserting derived semantics for canonical types (string, tokenized text, EdgeNGram) and valid, reindex-free-where-possible quick-fix output.
-7. Run: `./gradlew build`
+4. Have the S6 intentions consult Step 1b provenance, applying the same v0.1 rule as Step 5: edit hand-authored files directly; against a mutable managed schema, withhold and explain. S5 hints must not consult provenance at all.
+5. Add tests asserting derived semantics for canonical types (string, tokenized text, EdgeNGram) and valid, reindex-free-where-possible quick-fix output.
+6. Run: `./gradlew build`
 
 **Success Criteria:**
 - [ ] Fields are annotated with correct match semantics for canonical field types.
-- [ ] S6 intentions produce valid configset edits (companion field + copyField), and on a managed schema offer an equivalent Schema API payload as the default action.
-- [ ] Ctrl-Q shows documentation for factories and field attributes.
+- [ ] S6 intentions produce valid configset edits (companion field + copyField) on a hand-authored schema, and are withheld with an explanation on a mutable managed one.
 - [ ] Tests pass; `./gradlew build` passes.
 
-**Dependencies:** Step 1b, Step 2, Step 3
+**Dependencies:** Step 1b, Step 3
 
-### Step 8: Golden-file CI gate & cross-version test matrix
+### Step 7b: Inline component documentation (S7) — **v0.2**
+
+Provide quick documentation (Ctrl-Q) on analysis factories and field attributes from the reference
+dataset. Split from Step 7 because it is the only part of that work needing Step 2, and Step 2 is v0.2.
+
+**Context:**
+- See requirement S7 and spec § "Reference data from the project's own Solr artifacts".
+
+**Actions:**
+1. Add a `DocumentationProvider` keyed by factory/attribute, sourced from the reference dataset.
+2. Surface which resolution rung supplied the data, so documentation from the bundled fallback is distinguishable from documentation read out of the project's own jars.
+3. The doc provider must not consult provenance — it is a read-side feature.
+4. Run: `./gradlew build`
+
+**Success Criteria:**
+- [ ] Ctrl-Q shows documentation for factories and field attributes.
+- [ ] The source of the data (project jars vs bundled catalog) is discoverable by the user.
+- [ ] `./gradlew build` passes.
+
+**Dependencies:** Step 2, Step 7
+
+### Step 7c: Schema API payload rendering (S9) — **v0.2**
+
+Replace the v0.1 refusals in Steps 5 and 7 with the API-first write path: model the intended edit as a
+rendering-independent schema change, then emit it either as a PSI edit or as a Schema API payload.
+
+**Context:**
+- See requirement S9 and spec § "Architecture approach" ("Schema API payload rendering" bullet).
+
+**Actions:**
+1. Introduce the schema-change value type (add-field, add-copy-field, add-field-type, replace-field, …) that both renderings consume, so one intention drives both paths without duplicated logic.
+2. Rewire Step 5 rename and the Step 7 quick-fixes: against a mutable managed schema, offer "Copy as Schema API request" as the default action and a warned direct file edit as the secondary.
+3. Emit the collection URL as a placeholder (`http://localhost:8983/solr/<collection>/schema`) — Phase 1 has no connection.
+4. Run: `./gradlew build`
+
+**Success Criteria:**
+- [ ] Every v0.1 refusal is replaced by a Schema API payload offer.
+- [ ] Payload generation requires no network, preserving the offline guarantee.
+- [ ] `./gradlew build` passes.
+
+**Dependencies:** Step 5, Step 7
+
+### Step 8: Golden-file CI gate & cross-version test matrix — **spans both releases**
 
 Add the CI-gating test suite that runs all inspections against the `_default` and
 `sample_techproducts_configs` configsets asserting zero false positives, plus reference-data tests and
@@ -271,7 +326,7 @@ a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 2. Add a golden-file test running every registered inspection over them, asserting zero highlights.
 3. Add reference-data tests covering each rung of the resolution order (module classpath, `<luceneMatchVersion>` + bundled catalog, bundled default) and asserting bundled and project-derived data agree.
 4. Extend the Step 1b schema-provenance tests (S8) to the integration level: assert the write-side warning fires only for mutable-managed configsets and that read-side results are identical across all five classification cases.
-5. Add Schema API payload tests (S9): each rename and quick-fix on a managed schema emits a valid payload with the correct command and attributes, round-tripping to the same schema state the direct PSI edit produces; no payload or warning is offered on a hand-authored schema.
+5. Add write-gating tests. v0.1: rename and each quick-fix are withheld with an explanation on a mutable managed schema, and applied without prompt on a hand-authored one. v0.2 (after Step 7c): the same cases emit a valid Schema API payload with the correct command and attributes, round-tripping to the same schema state the direct PSI edit produces; still nothing is offered on a hand-authored schema.
 6. Parameterize the suite across the schema versions of every supported (non-EOL) Solr line, so adding or dropping a line is a matrix row change.
 7. Add a GitHub Actions workflow (see `.github/`) running `./gradlew build` on push/PR.
 8. Run: `./gradlew build`
@@ -280,11 +335,11 @@ a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 - [ ] Golden-file test passes with zero false positives on both shipped configsets.
 - [ ] Reference-data tests pass for each supported Solr line and each resolution rung.
 - [ ] Schema-provenance tests pass for all five classification cases.
-- [ ] Schema API payload tests pass: each rename and quick-fix emits a valid payload that round-trips to the same schema state as the direct edit.
+- [ ] Write-gating tests pass for the v0.1 rule (withhold on managed, edit on hand-authored) and, after Step 7c, for the v0.2 payload rule.
 - [ ] CI workflow runs the full build and gates merges.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 4, Step 5, Step 6, Step 7
+**Dependencies:** Step 5, Step 6, Step 7 for the v0.1 slice; Step 2, Step 4, Step 7b, Step 7c for the rest
 
 ### Step 9: P1 documentation deliverables & docs CI check
 
@@ -330,7 +385,6 @@ Publish the release-blocking `[P1]` docs and the CI check that keeps them consis
 - **Bytecode extraction breaks when Lucene changes its accessor shape.** Mitigation: reference-data tests (Step 8) assert known attribute sets per line and catch drift; reading the project's own jars means a new Solr line works before the plugin bundles it.
 - **False positives on real configsets block release.** Mitigation: golden-file gate (Step 8) built before docs; inspections tuned against shipped configsets.
 - **Reference resolution edge cases (dynamicFields, param aliases) cause dangling renames.** Mitigation: reference graph unit-tested in Step 3 before rename (Step 5) consumes it.
-- **Hosting/ownership open question affects vendor identity & repo URL.** Mitigation: `gradle.properties` already uses placeholder values; does not block Phase 1 implementation.
 - **Reference Guide doc-string sourcing (S7) is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the reference dataset.
 
 ## References

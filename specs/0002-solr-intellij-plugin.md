@@ -277,7 +277,7 @@ first release on it would delay every feature that does not need it.
 
 | Release | Requirements | Rationale |
 |---|---|---|
-| **v0.1** | S2, S3, S4, S5, S6, S8 | The reference graph and everything built on it. Reads only the open configset; needs no factory catalog beyond the ~15 factories that determine match semantics (S5), which are named directly. |
+| **v0.1** | S2, S3, S4, S5, S6, S8 | The reference graph and everything built on it. Reads only the open configset; needs no factory catalog beyond the ~15 factories that determine match semantics (S5). |
 | **v0.2** | S1, S7, S9 | Completion (S1) and quick documentation (S7) are what require the derived factory/attribute dataset. S9 renders Schema API payloads. |
 
 **Writes in v0.1 are allowed exactly where no API displaces them.** S3 rename and
@@ -290,6 +290,16 @@ action in v0.2, at which point the write-side story is complete.
 
 This is why S8 is a v0.1 requirement despite provenance existing only to gate
 writes: without it the plugin cannot tell which files it is allowed to edit.
+
+**v0.1 names its ~15 match-semantics factories in code**, which is a
+hand-maintained table and therefore an exception to the derive-don't-author
+principle above. It is a deliberate one: the set is small, it is the set that
+*defines* match semantics rather than an enumeration of what exists
+(`KeywordTokenizer`, `EdgeNGramFilter`, `NGramFilter`, `LowerCaseFilter` and
+their kin), and it has been stable across Solr majors. Pulling in the whole
+derivation pipeline to avoid fifteen constants would invert the cost. The full
+catalog arrives with completion in v0.2, at which point these constants become a
+classification over derived data rather than a substitute for it.
 
 ### Phase 1 — Non-functional requirements
 
@@ -446,28 +456,51 @@ repository with one module on SolrJ 9.10 and another on 10.0 therefore gets each
 configset described against the artifacts its own module builds against, which a
 project-wide union could not do.
 
-**The project states its own version even when it has no jars.** Every
-`solrconfig.xml` carries `<luceneMatchVersion>`, so a bare configset directory —
-XML files, no module, no build file, which is the common shape for a
-version-controlled configset repository — still declares the line it targets.
-That is a stronger signal than any heuristic the plugin could apply, and it is
-read from the configset the user already has open.
+**The project usually states its own version even when it has no jars.** A
+`solrconfig.xml` conventionally carries `<luceneMatchVersion>`, and every
+configset Solr ships does, so a bare configset directory — XML files, no module,
+no build file, which is the common shape for a version-controlled configset
+repository — normally still declares what it targets. Solr defaults the value
+when it is absent, so the plugin must tolerate its absence rather than rely on
+it.
+
+**`<luceneMatchVersion>` is a Lucene version, not a Solr one.** Solr 10.0.0's
+`_default` configset declares `<luceneMatchVersion>10.3</luceneMatchVersion>` —
+Lucene 10.3, against Solr line 10.0.0. Solr 9.10.1 pairs with Lucene 9.12.3. The
+two version spaces diverged when Solr and Lucene stopped releasing in lockstep,
+and conflating them would send rung 2 below to the wrong dataset.
+
+This settles how the bundled catalog is keyed:
+
+- **Analysis factories are keyed by Lucene version.** They are Lucene's classes,
+  `<luceneMatchVersion>` names a Lucene version, and the jars read at rung 1 are
+  Lucene jars. Keying by anything else would require a translation at every
+  lookup.
+- **Removed-element knowledge is keyed by Solr line.** `<lib>`,
+  `CurrencyField`, the `python`/`ruby`/`php` writers and the rest are Solr's, not
+  Lucene's, and they feed S4. Reaching them from a configset that declares only a
+  Lucene version needs a small Lucene→Solr line table (10.3 → 10.x, 9.12 →
+  9.10.x). That table is hand-maintained, which is a deliberate exception to the
+  derive-don't-author principle: it has one row per supported line, changes only
+  when a line is added or dropped, and no artifact publishes the mapping.
 
 Resolution order, most specific first:
 
 1. **Module classpath.** The owning module resolves Solr/Lucene: read those jars.
    Both the version and the factory data come from the artifacts themselves.
 2. **`<luceneMatchVersion>` plus the bundled catalog.** No module or no Solr on
-   its classpath, but the sibling `solrconfig.xml` declares a version: use the
-   bundled catalog entry for that line. The project supplies the version; the
-   plugin supplies the data.
-3. **Bundled catalog, newest supported line.** Nothing declares a version.
+   its classpath, but the sibling `solrconfig.xml` declares a Lucene version: use
+   the bundled catalog entry for it, and the Lucene→Solr table above for the
+   Solr-side knowledge. The project supplies the version; the plugin supplies the
+   data.
+3. **Bundled catalog, newest supported line.** Nothing declares a version, or
+   the declared version matches no supported line.
 
-The bundled catalog therefore exists to answer *what factories a given Solr line
-has*, never *which line this project is on* — that question belongs to the
-project in every case but the last. Which rung answered is surfaced rather than
-hidden, so a user seeing unexpected completions can tell whether the plugin read
-their jars, believed their `<luceneMatchVersion>`, or fell back.
+The bundled catalog therefore exists to answer *what a given version contains*,
+never *which version this project is on* — that question belongs to the project
+in every case but the last. Which rung answered is surfaced rather than hidden,
+so a user seeing unexpected completions can tell whether the plugin read their
+jars, believed their `<luceneMatchVersion>`, or fell back.
 
 Two constraints shape the implementation:
 
@@ -576,7 +609,12 @@ relevant only in Phase 3.
   bundled entry answers), a configset declaring nothing (newest line), and a
   module on a Solr newer than any bundled entry (jars answer, catalog unused).
   Assert that a multi-module project resolves each configset against its own
-  module rather than a project-wide union.
+  module rather than a project-wide union, and that a `<luceneMatchVersion>` is
+  resolved as a *Lucene* version — a configset declaring `10.3` must select the
+  Lucene 10.3 factory set and the Solr 10.x removed-element set, not a
+  Solr 10.3 that does not exist. Rung 1 requires real Solr/Lucene jars on a test
+  module's classpath, which `BasePlatformTestCase` does not provide by default;
+  the fixture work to add them is part of this requirement, not incidental to it.
 - **Schema-provenance tests (S8):** classify configsets declaring
   `ClassicIndexSchemaFactory`, `ManagedIndexSchemaFactory` with `mutable="true"`
   and with `mutable="false"`, plus the absent-`<schemaFactory>` case (must
