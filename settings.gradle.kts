@@ -6,6 +6,8 @@ pluginManagement {
     plugins {
         id("org.jetbrains.kotlin.jvm") version "2.4.10"
         id("org.jetbrains.changelog") version "2.5.0"
+        id("org.jetbrains.kotlinx.kover") version "0.9.9"
+        id("org.sonarqube") version "7.3.1.8318"
     }
 }
 
