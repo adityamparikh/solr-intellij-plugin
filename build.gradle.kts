@@ -28,7 +28,9 @@ kover {
     reports {
         total {
             xml {
-                // Path referenced by CI / sonar-project.properties.
+                // Uploaded as an artifact by the Test job in .github/workflows/build.yml. Once
+                // CI-based Sonar analysis replaces Automatic Analysis, this is the path
+                // `sonar.coverage.jacoco.xmlReportPaths` will point at.
                 xmlFile = layout.buildDirectory.file("reports/kover/report.xml")
             }
             html {
