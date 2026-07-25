@@ -61,6 +61,18 @@ Substitute your own domain and the same three patterns cover an enormous range o
 
 That's it. No SDK download, no special IDE edition. The Gradle plugin fetches the platform artifacts for you.
 
+**Versions this tutorial targets**
+
+| Component | Version |
+|---|---|
+| IntelliJ Platform (compile/test target) | 2026.2 |
+| IntelliJ Platform Gradle Plugin | 2.16.0 |
+| Kotlin | 2.1.0 |
+| JDK / bytecode target | 21 |
+| Minimum supported IDE (`sinceBuild`) | 253 (2025.3) |
+
+Plugin development moves; when something below doesn't match what you see, the [SDK docs](https://plugins.jetbrains.com/docs/intellij/) are the source of truth.
+
 ---
 
 ## Part 1 — Scaffold and run (ten minutes)
@@ -86,6 +98,8 @@ Either way you end up with a normal Gradle project whose build file looks roughl
 
 ```kotlin
 // build.gradle.kts
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     kotlin("jvm") version "2.1.0"
     id("org.jetbrains.intellij.platform") version "2.16.0"
@@ -114,7 +128,7 @@ intellijPlatform {
         id = "dev.example.solrconfig"
         name = "Solr Configset Support"
         ideaVersion {
-            sinceBuild = "252"
+            sinceBuild = "253"
             // untilBuild intentionally unset — forward compatible by default
         }
     }
@@ -125,7 +139,7 @@ intellijPlatform {
 Three lines deserve a second look:
 
 - `intellijIdea("2026.2")` is a *compile and test* target, not a minimum — users on older builds are governed by `sinceBuild`. If you find older tutorials using `intellijIdeaCommunity(...)`, that predates the unified distribution.
-- `testFramework(TestFrameworkType.Platform)` is easy to forget and produces baffling test-compilation errors when missing.
+- `testFramework(TestFrameworkType.Platform)` is easy to forget and produces baffling test-compilation errors when missing. It also needs that `import` at the top of the file — another easy miss.
 - `id` is permanent. Once published, changing it means publishing a different plugin. Choose deliberately.
 
 > **Why JUnit 4 in 2026?**
@@ -382,7 +396,6 @@ Domain logic goes in a service — a lazily instantiated singleton scoped to a p
 package dev.example.solrconfig
 
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.project.Project
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
 
@@ -390,19 +403,19 @@ data class SchemaField(val name: String, val type: String, val tag: XmlTag)
 data class SchemaFieldType(val name: String, val className: String, val tag: XmlTag)
 
 @Service(Service.Level.PROJECT)
-class SchemaModelService(private val project: Project) {
+class SchemaModelService {
 
     fun fields(file: XmlFile): List<SchemaField> =
-        file.rootTag?.findSubTags("field").orEmpty().mapNotNull { tag ->
+        file.rootTag?.findSubTags("field")?.mapNotNull { tag ->
             val name = tag.getAttributeValue("name") ?: return@mapNotNull null
             SchemaField(name, tag.getAttributeValue("type").orEmpty(), tag)
-        }
+        }.orEmpty()
 
     fun fieldTypes(file: XmlFile): List<SchemaFieldType> =
-        file.rootTag?.findSubTags("fieldType").orEmpty().mapNotNull { tag ->
+        file.rootTag?.findSubTags("fieldType")?.mapNotNull { tag ->
             val name = tag.getAttributeValue("name") ?: return@mapNotNull null
             SchemaFieldType(name, tag.getAttributeValue("class").orEmpty(), tag)
-        }
+        }.orEmpty()
 
     fun findField(file: XmlFile, name: String): SchemaField? =
         fields(file).firstOrNull { it.name == name }
@@ -478,6 +491,32 @@ The interesting part is the middle argument. `XmlPatterns` is a declarative matc
     </extensions>
 </idea-plugin>
 ```
+
+### The step that will bite you: extensionless files
+
+Try that checkpoint on a file literally named `managed-schema`, with no extension, and nothing happens. No completion, no error, no clue.
+
+Here's why. We registered our contributor for `language="XML"`, so the platform only offers us files it has *parsed as XML*. File type detection is driven mainly by extension, and `managed-schema` doesn't have one — so as far as the IDE is concerned it's a plain text file. There's no XML PSI, so there's nothing for us to be asked about.
+
+This isn't a Solr quirk. Any format with extensionless or unusual filenames hits it: `Dockerfile`, `.gitconfig`, `Jenkinsfile`.
+
+The fix is to associate the filename with the existing XML file type:
+
+```xml
+<extensions defaultExtensionNs="com.intellij">
+    <fileType name="XML" fileNames="managed-schema"/>
+</extensions>
+```
+
+Note what this is *not* doing: no `implementationClass`, no new language. Naming an existing file type and supplying extra matchers just adds those matchers to it. The bundled Maven plugin does exactly this to make `.pom` files XML:
+
+```xml
+<fileType name="XML" extensions="pom"/>
+```
+
+Available matchers are `extensions`, `fileNames` (exact names), and `patterns` (wildcards). Now the file parses as XML, our contributor gets called, and the checkpoint works.
+
+Worth internalizing as a general rule: **before asking why your contributor isn't firing, confirm the IDE thinks the file is the language you registered for.** It's the second-most-common cause after a missing `plugin.xml` entry.
 
 > **Checkpoint.** `./gradlew runIde`, open a `managed-schema`, type `<field name="x" type="` and hit Ctrl+Space. Your field types appear, with their class names alongside. That's a real IDE feature, in about forty lines.
 
@@ -649,13 +688,15 @@ class SchemaReferenceContributor : PsiReferenceContributor() {
 }
 ```
 
+`withLocalName` takes varargs, which is why one pattern covers both `source` and `dest`.
+
 ```xml
 <psi.referenceContributor
     language="XML"
     implementation="dev.example.solrconfig.reference.SchemaReferenceContributor"/>
 ```
 
-> **Checkpoint.** Ctrl-click `dest="title"` → jumps to the field. Alt+F7 on a field name → Find Usages lists the copyField. Shift+F6 on a field → rename updates every reference. And `getVariants()` gave you completion inside those attributes for free.
+> **Checkpoint.** Ctrl-click `dest="title_exact"` → jumps to that field's definition. Alt+F7 on a field name → Find Usages lists the copyField. Shift+F6 on a field → rename updates every reference. And `getVariants()` gave you completion inside those attributes for free.
 
 Roughly thirty lines, four user-visible features. This is the moment most people stop thinking of plugin development as expensive.
 
@@ -677,25 +718,27 @@ class DanglingCopyFieldInspectionTest : BasePlatformTestCase() {
 
     fun `test dangling dest is reported`() {
         myFixture.enableInspections(DanglingCopyFieldInspection::class.java)
-        myFixture.configureByFile("dangling/managed-schema")
+        myFixture.configureByFile("dangling/managed-schema.xml")
         myFixture.checkHighlighting()
     }
 
     fun `test quick fix creates the field`() {
         myFixture.enableInspections(DanglingCopyFieldInspection::class.java)
-        myFixture.configureByFile("dangling/managed-schema")
+        myFixture.configureByFile("dangling/managed-schema.xml")
         val fix = myFixture.getAllQuickFixes().first { it.text.startsWith("Create string field") }
         myFixture.launchAction(fix)
-        myFixture.checkResultByFile("dangling/managed-schema.after")
+        myFixture.checkResultByFile("dangling/managed-schema.after.xml")
     }
 
     fun `test completion offers field types`() {
-        myFixture.configureByFile("completion/managed-schema")
+        myFixture.configureByFile("completion/managed-schema.xml")
         myFixture.completeBasic()
         assertContainsElements(myFixture.lookupElementStrings!!, "string", "text_general")
     }
 }
 ```
+
+Note the `.xml` extensions on the test data files. The fixture picks a language by extension just like the editor does, so an extensionless `managed-schema` in test data would be parsed as plain text and every assertion would fail confusingly. Same trap as the previous section, different place.
 
 Expected warnings are expressed inline in the test data itself, which keeps assertions readable:
 
@@ -778,12 +821,14 @@ Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Insta
 ## Part 10 — The seven things that will trip you up
 
 1. **Nothing is auto-registered.** No `plugin.xml` entry, no feature, no warning. Check the manifest first, always.
-2. **Your code sees every file of that language.** Guard on identity or you'll pollute completion in unrelated files.
-3. **PSI elements are invalidated by edits.** Don't cache them across operations; use `SmartPsiElementPointer` if you must hold one.
-4. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
-5. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
-6. **The plugin ID is permanent.** Decide before your first publish.
-7. **The sandbox has its own configuration.** Settings you change there don't affect your real IDE — occasionally confusing when a feature "only works on my machine."
+2. **The IDE has to agree about the file's language.** If it isn't parsed as what you registered for, you're never called. Extensionless filenames are the usual culprit.
+3. **Your code sees every file of that language.** Guard on identity or you'll pollute completion in unrelated files.
+4. **PSI elements are invalidated by edits.** Don't cache them across operations; use `SmartPsiElementPointer` if you must hold one.
+5. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
+6. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
+7. **The plugin ID is permanent.** Decide before your first publish.
+
+And one bonus, because it wastes an afternoon the first time: **the sandbox has its own configuration.** Settings you change there don't affect your real IDE — occasionally confusing when a feature "only works on my machine."
 
 ---
 
@@ -798,10 +843,30 @@ You've now used the four patterns that most plugins are made of — services, po
 - **A custom language** if your format isn't XML/JSON — a bigger commitment: lexer, parser, PSI element hierarchy.
 - **MCP tools**, if you want AI agents to reach your plugin's knowledge. IntelliJ IDEs have shipped a built-in MCP server since 2025.2, and plugins can contribute tools to it — a genuinely new frontier, and a small adapter over services you've already written.
 
-Two resources worth more than any tutorial, including this one:
+### What this tutorial deliberately doesn't cover
 
-- **The IntelliJ Community source.** Every bundled feature is a working example of the API you're using. Searching the repo for an extension point name surfaces a dozen real implementations, which beats documentation for learning idiom.
-- **The IntelliJ Platform Explorer**, which indexes extension points across open-source plugins — the fastest way to answer "is there a hook for this, and who else uses it?"
+Worth being explicit, so you know when to stop reading me and go elsewhere.
+
+We layered intelligence onto a format the IDE *already parses* — XML. If your format is genuinely new, you need a lexer, a parser, and your own PSI element hierarchy, and none of that is here. The official [Custom Language Support Tutorial](https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html) covers that path end to end, with a complete working sample. It's excellent and considerably more thorough than this on that specific subject.
+
+Also absent: tool windows and Swing UI, settings and persistence, run configurations, indexing and stubs, localization, and the paid-plugin/licensing story. Each has SDK documentation.
+
+The gap this tutorial fills is narrower than "learn plugin development": it's the on-ramp for someone who wants to add intelligence to a format that already has a parser, and who thinks in Spring idioms. If that's not you, the official docs are the better starting point.
+
+### Further reading
+
+- [IntelliJ Platform SDK](https://plugins.jetbrains.com/docs/intellij/) — canonical reference; the [Quick Start Guide](https://plugins.jetbrains.com/docs/intellij/plugins-quick-start.html) is the entry point
+- [Custom Language Support Tutorial](https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html) — the full lexer-and-parser path
+- [intellij-sdk-code-samples](https://github.com/JetBrains/intellij-sdk-code-samples) — runnable examples, CI-tested; the highest-value companion to any tutorial
+- [IntelliJ Community source](https://github.com/JetBrains/intellij-community) — every bundled feature is a working example. Searching for an extension point name surfaces a dozen real implementations, which beats documentation for learning idiom
+- [IntelliJ Platform Explorer](https://plugins.jetbrains.com/intellij-platform-explorer) — indexes extension points across open-source plugins; the fastest way to answer "is there a hook for this, and who else uses it?"
+- [plugin-dev.com](https://www.plugin-dev.com/intellij/) — independent articles on topics the official docs skim
+
+### A note on verification
+
+The APIs used here were checked against IntelliJ Community source rather than assumed — in particular `XmlNamedElementPattern.withLocalName(String...)`, and the `com.intellij.fileType` pattern of extending an existing file type by name, which the bundled Maven plugin uses for `.pom`.
+
+The code has **not** been compiled end to end as a single project. Treat the samples as correct-by-inspection, not verified-by-build, and open an issue if something doesn't compile against your platform version.
 
 The through-line worth taking away: **the platform APIs are small and repetitive; your domain knowledge is the actual work.** You spent this tutorial learning maybe six types. Everything else was ordinary Kotlin over a tree. Whatever format, framework, or tool your team knows deeply, the gap between that knowledge and an IDE feature that encodes it is smaller than you thought this morning.
 
