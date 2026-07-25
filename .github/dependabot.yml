@@ -1,5 +1,13 @@
 # Dependabot configuration:
 # https://docs.github.com/en/free-pro-team@latest/github/administering-a-repository/configuration-options-for-dependency-updates
+#
+# Interval is weekly rather than daily because gradle/verification-metadata.xml pins a SHA-256
+# for every resolved artifact. Any dependency change invalidates it, and the build then fails
+# verification until it is regenerated with:
+#
+#     ./gradlew --write-verification-metadata sha256 help
+#
+# Regeneration is manual, so a daily cadence produces a steady stream of red update PRs.
 
 version: 2
 updates:
@@ -7,9 +15,9 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
