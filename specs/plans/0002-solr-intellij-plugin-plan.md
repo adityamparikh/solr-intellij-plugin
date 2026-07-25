@@ -26,7 +26,7 @@ will again.
 
 - Implement S1–S9 for the schema versions of every non-EOL Solr line (currently 10.x and 9.10.x).
 - Make the plugin API-first: where the schema is Solr-managed, render writes as Schema API requests rather than file edits.
-- Build the reference graph foundation that powers navigation (S2), rename (S3), and inspections (S4).
+- Build the reference graph foundation that powers navigation, rename and the inspections.
 - Generate factory/attribute/documentation reference data from Solr & Lucene artifacts rather than hand-maintaining it.
 - Achieve zero false positives on the `_default` and `sample_techproducts_configs` configsets, enforced by CI.
 - Ship all `[P1]` documentation items with the release.
@@ -93,15 +93,16 @@ from Step 1 because it is not a detection *signal* — it is a separate, more ex
 a different lifetime, and conflating the two would put an XML parse on the per-file path.
 
 **Context:**
-- See spec § "S8 — Schema provenance detection" (requirements) and § "Configset detection"
-  (technical design); the provenance data model is in § "Data Models".
+- The rule this step implements: a schema is *hand-authored* if `ClassicIndexSchemaFactory`,
+  or `ManagedIndexSchemaFactory` with `mutable="false"`; *Solr-managed* if managed and mutable.
+  Provenance is consulted before writing a file and never when reading one.
 - Extends `src/main/kotlin/org/apache/solr/ide/configset/` alongside `SolrConfigsetDetector`.
 
 **Actions:**
 1. Implement provenance resolution: read `<schemaFactory>` (class + `mutable`) from the sibling `solrconfig.xml` and classify as hand-authored (`ClassicIndexSchemaFactory`, or managed with `mutable="false"`) or Solr-managed (managed and mutable).
 2. Handle both fallbacks: **an absent `<schemaFactory>` classifies as managed** — that is Solr's own default — and only a missing `solrconfig.xml` falls back to the schema filename, erring toward managed.
 3. **Cache the classification once per configset directory**, off `SolrConfigsetDetector`'s per-file path. Detection runs on every file the user opens and its signals are deliberately cheap and local; parsing a sibling XML file is neither. Invalidate on modification of the owning `solrconfig.xml`.
-4. Expose it as a query the write-side features (Steps 5, 7) consult. Read-side features (S1, S2, S5, S7) and inspections (S4) must never consult it — provenance gates writes only, so it can never suppress a hint, a reference or an inspection.
+4. Expose it as a query that rename and the quick-fixes (Steps 5 and 7) consult. Nothing that only reads — completion, navigation, match hints, documentation, the inspections — may consult it, so provenance can never suppress a hint, a reference or an inspection.
 5. Add the pending-conversion inspection: a `schema.xml` in a managed-factory configset with no managed schema file beside it will be renamed to `schema.xml.bak` and rewritten as `managed-schema.xml` by Solr on first load, so the file being edited is about to be replaced. Ship it with a `description.html` (same requirement as Step 6).
 6. Test via `SolrConfigsetTestCase` (not `BasePlatformTestCase`) if it touches `SolrConfigsetSettings` — that base class resets project-level persistent state between methods.
 7. Run: `./gradlew build`
@@ -118,12 +119,12 @@ a different lifetime, and conflating the two would put an XML parse on the per-f
 ### Step 2: Reference data from the project's own artifacts — **v0.2**
 
 Resolve the factory/attribute/documentation dataset at runtime from the artifacts the open project
-resolves, falling back to a bundled catalog. This feeds S1 completion/validation and S7 docs, both of
-which are v0.2 — so this step comes *after* the v0.1 release, not before it.
+resolves, falling back to a bundled catalog. This feeds completion/validation and quick documentation,
+both of which are v0.2 — so this step comes *after* the v0.1 release, not before it.
 
 **Context:**
-- See spec § "Reference data from the project's own Solr artifacts (critical design decision)" and § "Data Models".
 - Read jars as bytecode. The IDE bundles its own Lucene (`intellij.libraries.lucene.common`, plus a `lucene-core-2.4.1` inside the Maven plugin), so loading a project's Lucene into the IDE JVM risks class conflicts; instantiating arbitrary factory constructors in-process is not acceptable regardless.
+- `<luceneMatchVersion>` names a *Lucene* version, not a Solr one — Solr 10.0.0 declares `10.3`, Solr 9.10.1 pairs with Lucene 9.12.3. Analysis factories are keyed by Lucene version; the removed-element knowledge the inspections need is keyed by Solr line, reached through a small hand-maintained Lucene→Solr table.
 
 **Actions:**
 1. Implement the resolution order from the spec: (a) the owning module's classpath, (b) `<luceneMatchVersion>` from the sibling `solrconfig.xml` plus the bundled catalog entry for that line, (c) the bundled catalog at the newest supported line. Resolve per *file* via its module, never as a project-wide union.
@@ -145,13 +146,13 @@ which are v0.2 — so this step comes *after* the v0.1 release, not before it.
 
 ### Step 3: Configset reference model (PSI references + reference graph) — **v0.1**
 
-Implement the custom `PsiReference` layer over XML PSI that resolves the S2 cross-file links —
+Implement the custom `PsiReference` layer over XML PSI that resolves the cross-file links —
 `copyField` source/dest → field, `field type=` → `fieldType`, and `solrconfig.xml` request-handler
-params (`df`, `qf`, spellcheck/highlight/facet fields) → schema fields. This is the foundation S2/S3/S4
-all consume, so it is built and unit-tested before them.
+params (`df`, `qf`, spellcheck/highlight/facet fields) → schema fields. Navigation, rename and the
+inspections all consume this, so it is built and unit-tested before them.
 
 **Context:**
-- See spec § "Architecture approach" ("PSI & reference model" bullet) and requirement S2.
+- Three reference kinds to resolve: `copyField` source/dest → field, `field type=` → `fieldType`, and `solrconfig.xml` request-handler params (`df`, `qf`, spellcheck/highlight/facet fields) → schema fields.
 - The existing `src/test/testData/rename/` fixtures indicate the testData convention to follow.
 
 **Actions:**
@@ -175,7 +176,7 @@ Add completion contributors and XML structure validation driven by the Step 2 da
 factory classes and their valid attributes, field attributes, and `dynamicField` patterns.
 
 **Context:**
-- See requirement S1 and spec § "Architecture approach" ("Completion & validation" bullet).
+- What to complete and validate: field types, tokenizer/filter/charFilter factory classes and their valid attributes, field attributes (`indexed`, `stored`, `docValues`, `multiValued`), and `dynamicField` patterns.
 
 **Actions:**
 1. Register a `CompletionContributor` offering field types, factory classes, and valid attributes from the reference dataset.
@@ -198,7 +199,7 @@ Implement rename for fields and `fieldType`s that updates all references via the
 leaving no dangling references.
 
 **Context:**
-- See requirements S3 and S9, and existing `src/test/testData/rename/foo.xml` + `foo_after.xml`.
+- Existing fixtures to extend: `src/test/testData/rename/foo.xml` and `foo_after.xml`.
 
 **Actions:**
 1. Add a `RenamePsiElementProcessor` (or reference-based rename) for field/fieldType elements reusing the Step 3 graph.
@@ -225,7 +226,7 @@ Add local inspection tools for configset errors, each with a Platform `descripti
 as the D4 catalog entry). This is where the zero-false-positive requirement gets its teeth.
 
 **Context:**
-- See requirement S4 and spec § "Architecture approach" ("Inspections" bullet).
+- Each inspection needs a Platform `description.html`; that file doubles as the published inspection-catalog entry, so write it as user-facing prose, not a note to yourself.
 - Consider the `hibernate-jpa-validator` and `code-review` skills only if relevant; primary guidance is the IntelliJ inspection API.
 
 **Actions:**
@@ -246,26 +247,26 @@ as the D4 catalog entry). This is where the zero-false-positive requirement gets
 ### Step 7: Match-capability hints (S5) and quick-fixes (S6) — **v0.1**
 
 Model each field's index-time analyzer chain to classify effective match semantics, surface them as
-annotator hints (S5), and apply the standard multi-field patterns as intention actions (S6).
+annotator hints, and apply the standard multi-field patterns as intention actions.
 
 Needs no reference dataset: the ~15 factories that determine match semantics are named in code (see
 spec § "Phase 1 — Release sequencing", which records why that hand-maintained set is a deliberate
 exception rather than an oversight).
 
 **Context:**
-- See requirements S5 and S6, and spec § "Architecture approach" ("Match-capability analysis" bullet).
+- Hints and fixes must be phrased as *efficient index-time* support: wildcard and regex queries already give slow partial matching on any indexed field, so the claim being made is about performance, not possibility.
 
 **Actions:**
 1. Build a match-capability model classifying exact / tokenized / prefix-substring / case-sensitivity by walking the field's index-time analyzer chain.
-2. Add an annotator (S5) surfacing derived match semantics per field.
-3. Add intention actions (S6) that create exact-match/prefix companions (`<name>_exact` string + copyField; EdgeNGram fieldType + `<name>_prefix` + copyField), phrased as efficient index-time support.
-4. Have the S6 intentions consult Step 1b provenance, applying the same v0.1 rule as Step 5: edit hand-authored files directly; against a mutable managed schema, withhold and explain. S5 hints must not consult provenance at all.
+2. Add an annotator surfacing derived match semantics per field.
+3. Add intention actions that create exact-match/prefix companions (`<name>_exact` string + copyField; EdgeNGram fieldType + `<name>_prefix` + copyField), phrased as efficient index-time support.
+4. Have those intentions consult Step 1b provenance, applying the same v0.1 rule as Step 5: edit hand-authored files directly; against a mutable managed schema, withhold and explain. The hints must not consult provenance at all.
 5. Add tests asserting derived semantics for canonical types (string, tokenized text, EdgeNGram) and valid, reindex-free-where-possible quick-fix output.
 6. Run: `./gradlew build`
 
 **Success Criteria:**
 - [ ] Fields are annotated with correct match semantics for canonical field types.
-- [ ] S6 intentions produce valid configset edits (companion field + copyField) on a hand-authored schema, and are withheld with an explanation on a mutable managed one.
+- [ ] The intentions produce valid configset edits (companion field + copyField) on a hand-authored schema, and are withheld with an explanation on a mutable managed one.
 - [ ] Tests pass; `./gradlew build` passes.
 
 **Dependencies:** Step 1b, Step 3
@@ -276,7 +277,7 @@ Provide quick documentation (Ctrl-Q) on analysis factories and field attributes 
 dataset. Split from Step 7 because it is the only part of that work needing Step 2, and Step 2 is v0.2.
 
 **Context:**
-- See requirement S7 and spec § "Reference data from the project's own Solr artifacts".
+- Documentation strings are sourced from the Solr Reference Guide, so only ALv2-compatible content may be embedded.
 
 **Actions:**
 1. Add a `DocumentationProvider` keyed by factory/attribute, sourced from the reference dataset.
@@ -297,7 +298,7 @@ Replace the v0.1 refusals in Steps 5 and 7 with the API-first write path: model 
 rendering-independent schema change, then emit it either as a PSI edit or as a Schema API payload.
 
 **Context:**
-- See requirement S9 and spec § "Architecture approach" ("Schema API payload rendering" bullet).
+- Model the edit independently of how it is rendered. That is what lets one intention drive both a PSI modification and a JSON payload without duplicating the logic.
 
 **Actions:**
 1. Introduce the schema-change value type (add-field, add-copy-field, add-field-type, replace-field, …) that both renderings consume, so one intention drives both paths without duplicated logic.
@@ -319,13 +320,13 @@ Add the CI-gating test suite that runs all inspections against the `_default` an
 a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 
 **Context:**
-- See spec § "Testing Strategy", § "Version-support policy", and the "Zero false positives" non-functional requirement.
+- The bar: zero false positives on the `_default` and `sample_techproducts_configs` configsets Solr ships. Supported lines are those Apache Solr has not declared EOL — currently 10.x and 9.10.x.
 
 **Actions:**
 1. Add the shipped `_default` and `sample_techproducts_configs` configsets as test data.
 2. Add a golden-file test running every registered inspection over them, asserting zero highlights.
 3. Add reference-data tests covering each rung of the resolution order (module classpath, `<luceneMatchVersion>` + bundled catalog, bundled default) and asserting bundled and project-derived data agree.
-4. Extend the Step 1b schema-provenance tests (S8) to the integration level: assert the write-side warning fires only for mutable-managed configsets and that read-side results are identical across all five classification cases.
+4. Extend the Step 1b provenance tests to the integration level: assert the write-side warning fires only for mutable-managed configsets and that read-side results are identical across all five classification cases.
 5. Add write-gating tests. v0.1: rename and each quick-fix are withheld with an explanation on a mutable managed schema, and applied without prompt on a hand-authored one. v0.2 (after Step 7c): the same cases emit a valid Schema API payload with the correct command and attributes, round-tripping to the same schema state the direct PSI edit produces; still nothing is offered on a hand-authored schema.
 6. Parameterize the suite across the schema versions of every supported (non-EOL) Solr line, so adding or dropping a line is a matrix row change.
 7. Add a GitHub Actions workflow (see `.github/`) running `./gradlew build` on push/PR.
@@ -348,7 +349,7 @@ Publish the release-blocking `[P1]` docs and the CI check that keeps them consis
 `description.html`), contributor guide (D6), and compatibility matrix + changelog (D8).
 
 **Context:**
-- See spec § "Documentation requirements" and the "Docs CI check" item in § "Testing Strategy".
+- Release-blocking docs: README and quick start, Marketplace listing, feature reference, inspection catalog, contributor guide, compatibility matrix and changelog.
 - `CHANGELOG.md` and the `org.jetbrains.changelog` plugin are already present.
 
 **Actions:**
@@ -374,7 +375,7 @@ Publish the release-blocking `[P1]` docs and the CI check that keeps them consis
 - [x] Configset detection activates features on recognized files with a manual override (Step 1).
 - [ ] Schema provenance resolves all five classification cases, cached per configset directory.
 - [ ] S1–S9 implemented for every supported (non-EOL) Solr line.
-- [ ] Write-side features (S3, S6) offer a Schema API request as the default action on a managed schema, and edit files unprompted on a hand-authored one; read-side features unaffected by provenance.
+- [ ] Rename and the quick-fixes edit hand-authored files unprompted; against a mutable managed schema they are withheld in v0.1 and offer a Schema API request in v0.2. Nothing that only reads is affected by provenance.
 - [ ] Zero false positives on `_default` and `sample_techproducts_configs` (CI-enforced).
 - [ ] Reference data derived from Solr artifacts, preferring the project's own (not hand-maintained).
 - [ ] All `[P1]` docs published; docs CI checks green.
@@ -385,7 +386,7 @@ Publish the release-blocking `[P1]` docs and the CI check that keeps them consis
 - **Bytecode extraction breaks when Lucene changes its accessor shape.** Mitigation: reference-data tests (Step 8) assert known attribute sets per line and catch drift; reading the project's own jars means a new Solr line works before the plugin bundles it.
 - **False positives on real configsets block release.** Mitigation: golden-file gate (Step 8) built before docs; inspections tuned against shipped configsets.
 - **Reference resolution edge cases (dynamicFields, param aliases) cause dangling renames.** Mitigation: reference graph unit-tested in Step 3 before rename (Step 5) consumes it.
-- **Reference Guide doc-string sourcing (S7) is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the reference dataset.
+- **Reference Guide doc-string sourcing is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the reference dataset.
 
 ## References
 

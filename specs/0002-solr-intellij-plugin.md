@@ -114,15 +114,16 @@ four* rows:
   the parts that matter most. Request-handler `defaults`/`appends`/`invariants`,
   dismax `qf`/`pf`/`bf`/`mm` tuning, update-processor chains, cache sizing and
   `autoCommit` are hand-edited XML in every topology above, including the managed
-  ones. S2's request-handler-param resolution and S4's `qf`/`df` inspections live
+  ones. Request-handler-param resolution and the `qf`/`df` inspections live
   entirely here and are unaffected by how the schema was authored.
 - **Analyzer chains are not designed through an API.** A `fieldType` carrying a
   tokenizer chain *can* be POSTed, but chain design is holistic work — comparing
   an index chain against its query chain, deciding whether
   `WordDelimiterGraphFilter` precedes `LowerCaseFilter`, keeping an EdgeNGram on
-  the index side only. That is editing, and it is precisely what S1, S5, S6 and
-  S7 target. The highest-value part of Phase 1 is the part the Schema API least
-  displaces.
+  the index side only. That is editing, and it is precisely what schema
+  completion, the match-capability hints and quick-fixes, and inline
+  documentation target. The highest-value part of Phase 1 is the part the Schema
+  API least displaces.
 - **Comprehension is workflow-independent.** Even when every field arrived via
   the API, the resulting file is what sits in ZooKeeper, what appears in the
   diff, and what gets opened during debugging. Ctrl-click from a `copyField`
@@ -135,9 +136,9 @@ The one place the workflows genuinely diverge is *writing*, and the plugin takes
 a position rather than staying neutral. Against a mutable managed schema Solr
 owns the file, so the plugin's default answer to a write is *use the Schema API*
 — it renders the intended edit as an API request instead of applying it to the
-file (S9). Against a hand-authored schema no API is available, editing the file
-is correct, and nothing is warned or redirected. S8 classifies which case a
-configset is in; S9 defines the resulting behavior.
+file. Against a hand-authored schema no API is available, editing the file is
+correct, and nothing is warned or redirected. Provenance detection classifies
+which case a configset is in; the API-first write rule defines what follows.
 
 This is deliberately not a blanket "never edit XML" stance. The version-
 controlled workflows in the first two rows have chosen file-as-source-of-truth
@@ -202,6 +203,22 @@ All Phase 1 features are **pure static analysis** of configset files
 (`managed-schema` / `schema.xml`, `solrconfig.xml`) in the open project; no Solr
 connection is required.
 
+The nine requirements below carry short IDs so commits and code comments can cite
+them precisely. **The IDs are labels, not names** — this document refers to
+features by what they do. If you meet one elsewhere, decode it here:
+
+| ID | Feature |
+|----|---------|
+| S1 | Schema editing support — highlighting, completion, structural validation |
+| S2 | Cross-file reference resolution — Ctrl-click and Find Usages |
+| S3 | Rename refactoring |
+| S4 | Configset inspections |
+| S5 | Match-capability hints |
+| S6 | Match-capability quick-fixes |
+| S7 | Inline component documentation (Ctrl-Q) |
+| S8 | Schema provenance detection |
+| S9 | API-first writes against a managed schema |
+
 - **S1 — Schema editing support.** Syntax highlighting, code completion, and
   structural validation for `managed-schema`/`schema.xml`: field types,
   tokenizer/filter/charFilter factory classes and their valid attributes, field
@@ -233,9 +250,9 @@ connection is required.
 - **S8 — Schema provenance detection.** Detection reads the configset's
   `<schemaFactory>` declaration and its `mutable` setting, and classifies the
   schema as *hand-authored* (classic, or managed with `mutable="false"`) or
-  *Solr-managed* (managed and mutable). Read-side features (S1, S2, S5, S7) and
-  inspections (S4) behave identically in both cases — provenance gates writes
-  only, never reads. Where **no `<schemaFactory>` is declared, the configset is
+  *Solr-managed* (managed and mutable). Everything that only reads — completion,
+  navigation, match-capability hints, documentation and the inspections —
+  behaves identically in both cases; provenance gates writes only, never reads. Where **no `<schemaFactory>` is declared, the configset is
   classified as managed** — Solr's own default is `ManagedIndexSchemaFactory`, so
   an absent declaration means managed, not classic. Where `solrconfig.xml` is not
   part of the project at all, classification falls back to the schema filename and
@@ -246,8 +263,8 @@ connection is required.
   replaced.
 - **S9 — API-first writes against a managed schema.** Where S8 classifies a
   schema as Solr-managed, the plugin's default answer to a write is *use the
-  Schema API*, not *edit the file*. The write-side features — S3 rename and the
-  S6 quick-fixes — offer two actions, with the API path first:
+  Schema API*, not *edit the file*. The two features that write — rename and the
+  match-capability quick-fixes — offer two actions, with the API path first:
   - **Copy as Schema API request** (default) — the intended edit is rendered as a
     Schema API JSON payload and a ready-to-run `curl` command placed on the
     clipboard, rather than applied to the file. The collection URL is emitted as
@@ -262,7 +279,7 @@ connection is required.
   Payload generation is pure text generation and requires no network, preserving
   the Phase 1 offline guarantee.
 
-  **Scope limit:** S9 covers the Schema API only. It deliberately does not extend
+  **Scope limit:** this covers the Schema API only. It deliberately does not extend
   to `solrconfig.xml` and the Config API, whose coverage is partial and whose
   writes land in `configoverlay.json` rather than the XML — a trade-off rather
   than a clear improvement. Hand editing remains the expected workflow for
@@ -275,20 +292,33 @@ everything that needs nothing but the user's own configset files.** Reference
 data derived from artifacts is the single largest piece of Phase 1, and gating a
 first release on it would delay every feature that does not need it.
 
-| Release | Requirements | Rationale |
-|---|---|---|
-| **v0.1** | S2, S3, S4, S5, S6, S8 | The reference graph and everything built on it. Reads only the open configset; needs no factory catalog beyond the ~15 factories that determine match semantics (S5). |
-| **v0.2** | S1, S7, S9 | Completion (S1) and quick documentation (S7) are what require the derived factory/attribute dataset. S9 renders Schema API payloads. |
+**v0.1 — everything that reads the configset and edits it in place:**
 
-**Writes in v0.1 are allowed exactly where no API displaces them.** S3 rename and
-the S6 quick-fixes edit the file when S8 classifies the schema as hand-authored,
-and always for `solrconfig.xml`, which has no API alternative. Against a mutable
-managed schema v0.1 **withholds** the write and explains that Solr owns the file
-— it does not silently edit, and it does not yet offer the Schema API
-alternative. S9 replaces that refusal with the "Copy as Schema API request"
-action in v0.2, at which point the write-side story is complete.
+- Ctrl-click and Find Usages across the configset (S2)
+- Rename a field or field type, updating every reference (S3)
+- Inspections for dangling `copyField`s, unused field types, handlers naming
+  fields that do not exist, and `qf`/`df` pointing at non-indexed fields (S4)
+- Per-field hints for what the field can actually match — exact, tokenized,
+  prefix, case-sensitive (S5)
+- Quick-fixes that add a missing match capability, such as an `_exact` companion
+  field plus its `copyField` (S6)
+- Detection of whether a schema is hand-edited or Solr-managed (S8)
 
-This is why S8 is a v0.1 requirement despite provenance existing only to gate
+**v0.2 — everything needing the derived factory catalog, plus the API write path:**
+
+- Code completion and structural validation in schema files (S1)
+- Quick documentation on analysis factories and field attributes (S7)
+- Rendering an edit as a Schema API request instead of a file edit (S9)
+
+**Writes in v0.1 are allowed exactly where no API displaces them.** Rename and
+the quick-fixes edit the file when the schema is hand-authored, and always for
+`solrconfig.xml`, which has no API alternative. Against a mutable managed schema
+v0.1 **withholds** the write and explains that Solr owns the file — it does not
+silently edit, and it does not yet offer the Schema API alternative. v0.2
+replaces that refusal with the "Copy as Schema API request" action, at which
+point the write-side story is complete.
+
+This is why provenance detection ships in v0.1 even though it exists only to gate
 writes: without it the plugin cannot tell which files it is allowed to edit.
 
 **v0.1 names its ~15 match-semantics factories in code**, which is a
@@ -409,12 +439,12 @@ extension points:
 
 - **PSI & reference model** — Solr configset XML is modeled through the
   platform's XML PSI, with custom `PsiReference` implementations wiring the
-  cross-file references in S2 (`copyField`↔field, `field type=`↔`fieldType`,
+  cross-file references (`copyField`↔field, `field type=`↔`fieldType`,
   request-handler params↔schema fields). Reference resolution is the foundation
-  that S2 navigation, S3 rename, and S4 inspections all build on.
+  that navigation, rename and the inspections all build on.
 - **Completion & validation (S1)** — completion contributors and XML structure
   validation driven by the generated reference data (see below).
-- **Rename refactoring (S3)** — reuses the S2 reference graph so a rename updates
+- **Rename refactoring (S3)** — reuses that reference graph so a rename updates
   all resolved references.
 - **Inspections (S4)** — local inspection tools, each with an
   IntelliJ-Platform inspection `description.html` (this doubles as the D4
@@ -430,8 +460,8 @@ extension points:
   features, which consult it before modifying a file. Read-side features ignore
   it entirely, so the classification can never suppress a hint, a reference or an
   inspection.
-- **Schema API payload rendering (S9)** — the intended edit behind an S3 rename
-  or S6 quick-fix is expressed as an intermediate *schema change* value
+- **Schema API payload rendering (S9)** — the intended edit behind a rename
+  or quick-fix is expressed as an intermediate *schema change* value
   (add-field, add-copy-field, add-field-type, replace-field, …) which is then
   rendered either as a PSI edit or as a Schema API JSON payload. Modelling the
   change independently of its rendering is what lets one intention drive both
@@ -478,7 +508,7 @@ This settles how the bundled catalog is keyed:
   lookup.
 - **Removed-element knowledge is keyed by Solr line.** `<lib>`,
   `CurrencyField`, the `python`/`ruby`/`php` writers and the rest are Solr's, not
-  Lucene's, and they feed S4. Reaching them from a configset that declares only a
+  Lucene's, and they feed the inspections. Reaching them from a configset that declares only a
   Lucene version needs a small Lucene→Solr line table (10.3 → 10.x, 9.12 →
   9.10.x). That table is hand-maintained, which is a deliberate exception to the
   derive-don't-author principle: it has one row per supported line, changes only
@@ -520,7 +550,7 @@ Two constraints shape the implementation:
   lines and uses it whenever the project cannot answer, surfacing which source
   is in effect rather than silently guessing.
 
-The resulting dataset feeds S1 completion/validation and S7 documentation. This
+The resulting dataset feeds completion/validation and quick documentation. This
 design is documented in D7 and referenced by Phase 1 non-functional requirements.
 
 Empirically the two supported lines barely differ here: Lucene 9.12.3 (Solr
@@ -532,7 +562,7 @@ sensitivity that matters for this plugin is not the analyzer vocabulary but the
 `<lib>`, `CurrencyField`/`EnumField`/`ExternalFileField`, the `python`/`ruby`/
 `php` and XLSX response writers, `BlobHandler`, the legacy
 `CircuitBreakerManager` form and `addHttpRequestToContext`. Those belong to the
-S4 inspections, which is where per-version knowledge actually earns its keep.
+the inspections, which is where per-version knowledge actually earns its keep.
 
 ### Configset detection
 
@@ -545,7 +575,7 @@ Detection also resolves **schema provenance** (S8) for the configset by reading
 the `<schemaFactory>` element from the sibling `solrconfig.xml` — its class and,
 for `ManagedIndexSchemaFactory`, its `mutable` setting — falling back to the
 schema file's name when that element is absent or `solrconfig.xml` is not part of
-the project. Provenance gates only the write-side features (S3, S6); it never
+the project. Provenance gates only rename and the quick-fixes; it never
 affects which files activate.
 
 ## Data Models
@@ -596,10 +626,10 @@ relevant only in Phase 3.
 - **Golden-file configset tests (Phase 1, CI-gating):** run all inspections
   against the `_default` and `sample_techproducts_configs` configsets shipped
   with Solr and assert **zero false positives**.
-- **Reference-resolution and rename tests:** verify S2 navigation targets and S3
+- **Reference-resolution and rename tests:** verify navigation targets and
   rename completeness (no dangling references) on representative configsets.
 - **Match-capability tests:** assert derived semantics (S5) for canonical field
-  types (string, tokenized text, EdgeNGram) and verify S6 quick-fixes produce
+  types (string, tokenized text, EdgeNGram) and verify the quick-fixes produce
   valid, reindex-free-where-possible configset edits.
 - **Reference-data tests:** verify the expected factories/attributes are produced
   for each supported Solr line, from a project classpath carrying those artifacts
