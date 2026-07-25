@@ -182,6 +182,20 @@ class SolrConfigsetSettingsTest : SolrConfigsetTestCase() {
         assertTrue(settings.manualRoots.isEmpty())
     }
 
+    /**
+     * A root written by the previous version is stored as a raw absolute path. If it happens to
+     * live inside the project, removal must still find it — otherwise the collapsed lookup misses
+     * the legacy entry and the remove silently does nothing.
+     */
+    fun testLegacyAbsoluteRootInsideProjectIsRemovableByPath() {
+        val dir = File(project.basePath!!, "legacy-conf").apply { mkdirs() }
+        settings.state.manualConfigsetRoots.add(dir.path)
+        assertEquals(listOf(dir.path), settings.manualRoots)
+
+        settings.removeManualRoot(dir.path)
+        assertTrue("legacy absolute root was not removed", settings.manualRoots.isEmpty())
+    }
+
     /** Removing something that was never added must be a no-op, not an error. */
     fun testRemovingUnknownRootIsANoOp() {
         val root = myFixture.addFileToProject("marked/keep.txt", "x").virtualFile.parent
