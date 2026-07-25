@@ -5,9 +5,19 @@
 # for every resolved artifact. Any dependency change invalidates it, and the build then fails
 # verification until it is regenerated with:
 #
-#     ./gradlew --write-verification-metadata sha256 help
+#     ./gradlew --write-verification-metadata sha256 help --refresh-dependencies
 #
 # Regeneration is manual, so a daily cadence produces a steady stream of red update PRs.
+#
+# --refresh-dependencies is not optional: without it, artifacts already in the local Gradle
+# cache are not re-resolved and so never get recorded, producing metadata that passes locally
+# and fails on a clean CI runner.
+#
+# The file also declares `idea` and `bundledModule` as trusted rather than checksummed. The IDE
+# distribution is platform-specific — macOS resolves idea-<v>-aarch64.dmg, Linux CI resolves
+# idea-<v>.tar.gz — so no single committed checksum can satisfy every machine. Those artifacts
+# come from JetBrains over HTTPS; the rest of the graph stays verified. Gradle strips XML
+# comments when rewriting the metadata, which is why this note lives here instead.
 
 version: 2
 updates:
