@@ -46,9 +46,15 @@ plugin against the unified `intellijIdea("2026.2")` artifact (Community and Ulti
 2025.3).
 
 **The spec is the source of truth for intent**: `specs/0002-solr-intellij-plugin.md` defines a
-five-phase program and details Phase 1 (S1–S7) and the documentation deliverables (D1–D9) to
+five-phase program and details Phase 1 (S1–S9) and the documentation deliverables (D1–D9) to
 implementation depth. Read it before designing a feature — requirements are referenced by these IDs
 in commits and KDoc.
+
+`docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
+hand-edited, which are written by an API, and what the plugin covers. Consult it before adding a
+feature that *writes* to a configset — S9 makes the plugin API-first, so a write against a mutable
+managed schema renders a Schema API request rather than editing the file. Provenance (S8) gates
+writes only; read-side features must never consult it.
 
 **What is actually implemented is a small fraction of that.** Today the codebase contains only the
 Phase 1 *activation gate*:
@@ -61,6 +67,12 @@ Phase 1 *activation gate*:
 
 Phase 1 proper (schema completion, cross-file references, rename, inspections, match-capability
 hints, quick documentation) is unbuilt. Do not infer status from the API reference; check the spec.
+
+Detection today is name-plus-directory only. S8 adds *schema provenance* — reading `<schemaFactory>`
+from the sibling `solrconfig.xml` to tell a hand-authored schema from a Solr-managed one. Keep that
+off the per-file detection path: `SolrConfigsetDetector` runs on every file the user opens and its
+signals are deliberately cheap and local, whereas parsing a sibling XML file is neither. Resolve
+provenance once per configset directory and cache it.
 
 Detection is deliberately heuristic and therefore fallible in both directions, which is why
 `SolrConfigsetSettings` exists as an escape hatch — manual configset roots and a master off switch.
@@ -98,6 +110,12 @@ still propose upgrades. Gradle dependency verification was tried and deliberatel
 manual regeneration on every bump was not worth it for a pre-release plugin), so do not read its
 absence as an oversight.
 
-The `README.md` is still largely unmodified IntelliJ Platform Plugin Template boilerplate, including
-a template TODO list and `MARKETPLACE_ID` placeholders. Do not treat it as a description of this
-plugin.
+`README.md` describes the plugin and states its status honestly — the Marketplace badges and
+template TODO list are gone, because the plugin is unpublished and the placeholders rendered as
+broken links. Its Status section is the authority on what is actually built; keep it truthful when
+landing features, since the spec describes intent rather than state.
+
+The build pins `jvmToolchain(21)`. The floor comes from the version-support policy: Solr 10 requires
+Java 21, and the reference-data generator reflects over Solr artifacts from every supported line.
+Supported lines are those Apache Solr has not declared EOL — currently 10.x and 9.10.x — so a Solr
+EOL announcement is a maintenance trigger, not a background event.
