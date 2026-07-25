@@ -79,9 +79,16 @@ class SolrConfigsetSettings(private val project: Project) :
         }
     }
 
-    /** Removes a previously marked root. [path] may be absolute or already collapsed. */
+    /**
+     * Removes a previously marked root. [path] may be absolute or already collapsed.
+     *
+     * Both forms are removed because the stored form is not knowable from the caller's side: a
+     * root written by an earlier version is a raw absolute path, while anything written since is
+     * collapsed. Matching only one form would silently no-op on the other.
+     */
     fun removeManualRoot(path: String) {
-        state.manualConfigsetRoots.remove(macros.collapsePath(path) ?: path)
+        val equivalentForms = setOfNotNull(path, macros.collapsePath(path), macros.expandPath(path))
+        state.manualConfigsetRoots.removeAll(equivalentForms)
     }
 
     companion object {
