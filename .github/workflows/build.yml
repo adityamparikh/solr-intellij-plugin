@@ -98,9 +98,13 @@ jobs:
         with:
           cache-read-only: true
 
-      # Run tests and produce the Kover coverage report
+      # Run tests and produce the Kover coverage report.
+      # Deliberately does NOT invoke `check` here: koverVerify is bound to `check`, and running
+      # the gate in the same invocation would leave the report's existence dependent on Gradle's
+      # scheduling after a task failure. Generating it first makes the artifact upload and the
+      # SonarCloud scan below independent of whether the gate passes.
       - name: Run Tests
-        run: ./gradlew check koverXmlReport
+        run: ./gradlew test koverXmlReport
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -111,8 +115,7 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       # Coverage report, also consumed by the SonarCloud scan below.
-      # always() so the report is still available when the coverage gate fails — which is
-      # precisely when it is worth looking at.
+      # always() so the report is still available when a later step fails.
       - name: Collect Coverage Report
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -127,6 +130,11 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew sonar
+
+      # Enforce the local coverage floor last, so a gate failure still leaves the report
+      # uploaded and the SonarCloud analysis published.
+      - name: Verify Coverage Gate
+        run: ./gradlew check
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:
