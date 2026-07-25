@@ -1,3 +1,4 @@
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -42,19 +43,19 @@ kover {
                 }
             }
 
-            // TODO(decide): enforce a coverage floor so `check` fails when coverage regresses.
-            //  Current state: 100% line / 91% branch (20 of 22 branches; the 2 misses are
-            //  unreachable null-guards in SolrConfigsetDetector).
-            //  Uncomment and pick a bound — see the note in the PR description on the trade-off.
-            //
-            // verify {
-            //     rule {
-            //         bound {
-            //             minValue = 90
-            //             coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
-            //         }
-            //     }
-            // }
+            // Coverage floor, enforced as part of `check`. Set at 80% against 100% actual: the
+            // headroom is deliberate, so that adding UI and PSI code — which is awkward to unit
+            // test — does not block a PR the moment it lands. Sonar's new-code gate is what
+            // catches gradual erosion; this rule is the backstop against a sharp drop.
+            verify {
+                onCheck = true
+                rule {
+                    bound {
+                        minValue = 80
+                        coverageUnits = CoverageUnit.LINE
+                    }
+                }
+            }
         }
     }
 }
