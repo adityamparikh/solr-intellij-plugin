@@ -50,6 +50,12 @@ five-phase program and details Phase 1 (S1–S9) and the documentation deliverab
 implementation depth. Read it before designing a feature — requirements are referenced by these IDs
 in commits and KDoc.
 
+`specs/plans/0002-solr-intellij-plugin-plan.md` is the ordered path to that intent, and it owns
+which steps are done. Read it before starting feature work: it records why steps are split the way
+they are — S8 provenance is its own step precisely to keep an XML parse off the per-file detection
+path — and which steps block which. Do not mirror its step status into this file. Position changes
+every step and orientation does not, so a copy here goes stale while the plan stays correct.
+
 `docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
 hand-edited, which are written by an API, and what the plugin covers. Consult it before adding a
 feature that *writes* to a configset — S9 makes the plugin API-first, so a write against a mutable
@@ -102,13 +108,15 @@ class resets in `setUp`, which holds even when a preceding test fails partway th
 ## Conventions
 
 Commits use conventional-commit subjects (`docs:`, `fix:`, `build:`, `ci:`) and must carry
-`Signed-off-by` (`git commit -s`). Commit bodies here carry real weight — they record *why* a
-constraint exists, and several (`19a0e0f`, `e675f26`) are the only documentation of build pitfalls.
+`Signed-off-by` (`git commit -s`). Commit bodies here carry real weight — for several changes they
+are the only record of *why* a constraint exists.
 GitHub Actions are pinned to full commit SHAs with a trailing version comment — keep it that way.
 Tags are mutable, and CI has `SONAR_TOKEN` in scope; the trailing comment is what lets Dependabot
 still propose upgrades. Gradle dependency verification was tried and deliberately removed (the
 manual regeneration on every bump was not worth it for a pre-release plugin), so do not read its
-absence as an oversight.
+absence as an oversight — `19a0e0f` and `e675f26` are what that regeneration actually cost, and are
+the only place the reasoning is written down. Both touch a `gradle/verification-metadata.xml` that
+no longer exists: read them as the history behind the removal, not as live build guidance.
 
 `README.md` describes the plugin and states its status honestly — the Marketplace badges and
 template TODO list are gone, because the plugin is unpublished and the placeholders rendered as
