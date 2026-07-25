@@ -33,7 +33,7 @@ will again.
 
 ## Scope
 
-**In scope:** Phase 1 functional requirements S1–S9, configset detection (including schema provenance), Schema API payload rendering, generated reference data,
+**In scope:** Phase 1 functional requirements S1–S9, configset detection (including schema provenance), Schema API payload rendering, project-derived reference data,
 golden-file CI, and P1 docs (D1, D2, D3, D4, D6, D8).
 
 **Out of scope:** All Phase 2–5 work (connections, query console, indexing, SolrJ code integration,
@@ -45,7 +45,7 @@ collection explorer, MCP). Non-P1 docs (D5, D7, D9). No network/credential surfa
 - [x] `./gradlew build` succeeds (baseline green build, CI-verified).
 - [x] JDK 21 or later available: Solr 10 requires Java 21, which sets the generator's toolchain floor. Enforced by `jvmToolchain(21)` in `build.gradle.kts`.
 - [ ] Local copies of `_default` and `sample_techproducts_configs` configsets available for golden-file test data (from a Solr distribution). Needed by Step 8; not a blocker before then.
-- [ ] Solr/Lucene artifacts resolvable from Maven Central for each supported (non-EOL) Solr line — currently 10.x and 9.10.x — for the reference-data generator. Blocks Step 2; verify before starting it.
+- [x] Solr/Lucene artifacts resolvable from Maven Central for both supported lines — verified: Solr 10.0.0 (Lucene 10.3.2) and 9.10.1 (Lucene 9.12.3). Needed only to build the bundled catalog (Step 2, v0.2).
 
 ## Implementation Steps
 
@@ -105,29 +105,31 @@ a different lifetime, and conflating the two would put an XML parse on the per-f
 
 **Dependencies:** Step 1
 
-### Step 2: Generated reference data pipeline
+### Step 2: Reference data from the project's own artifacts — **v0.2**
 
-Add a build-time generator that produces the factory/attribute/documentation dataset by reflecting over
-`org.apache.solr.*` analysis factory classes and the Lucene analysis SPI, plus Reference Guide-sourced
-doc strings. This dataset is the single source feeding S1 completion/validation and S7 docs, and is the
-mechanism that makes the version-support policy sustainable.
+Resolve the factory/attribute/documentation dataset at runtime from the artifacts the open project
+resolves, falling back to a bundled catalog. This feeds S1 completion/validation and S7 docs, both of
+which are v0.2 — so this step comes *after* the v0.1 release, not before it.
 
 **Context:**
-- See spec § "Generated reference data (critical design decision)" and § "Data Models".
-- See `build.gradle.kts` and `settings.gradle.kts` for where to add the generator task and Solr/Lucene dependency resolution.
+- See spec § "Reference data from the project's own Solr artifacts (critical design decision)" and § "Data Models".
+- Read jars as bytecode. The IDE bundles its own Lucene (`intellij.libraries.lucene.common`, plus a `lucene-core-2.4.1` inside the Maven plugin), so loading a project's Lucene into the IDE JVM risks class conflicts; instantiating arbitrary factory constructors in-process is not acceptable regardless.
 
 **Actions:**
-1. Add a Gradle task (own source set or `buildSrc`) that resolves Solr/Lucene artifacts **for each supported (non-EOL) Solr line** and reflects over analysis factories (tokenizer/filter/charFilter) + field-attribute metadata, emitting a structured resource (JSON) per line into generated resources. Declare the supported lines in one place (a version catalog entry or Gradle property) so adding or dropping a line is a single edit.
-2. Model the emitted dataset: factory class → valid attributes; field attributes (`indexed`/`stored`/`docValues`/`multiValued`); doc string per factory/attribute.
-3. Wire the task into `processResources` so `./gradlew build` regenerates it; commit a snapshot for offline builds if needed.
-4. Add a loader in plugin code exposing the dataset to completion/validation/docs consumers.
-5. Run: `./gradlew build`
+1. Implement the resolution order from the spec: (a) the owning module's classpath, (b) `<luceneMatchVersion>` from the sibling `solrconfig.xml` plus the bundled catalog entry for that line, (c) the bundled catalog at the newest supported line. Resolve per *file* via its module, never as a project-wide union.
+2. Extract SPI registrations (`TokenizerFactory.availableTokenizers()` and peers — 131 entries on Lucene 10.3.2) and attribute names. Attribute names come from the constructor bytecode: the `AbstractAnalysisFactory` accessors (`get`, `requireInt`, `getBoolean`, …) take the attribute name as a string literal. Do **not** derive them from field names — `WordDelimiterGraphFilterFactory` packs twelve attributes into one `int flags` field and names another `wordFiles` when the attribute is `protected`.
+3. Build the bundled catalog for each supported line as a build-time artifact, using the same extractor, so bundled and project-derived data cannot drift.
+4. Model the dataset: factory class → valid attributes; field attributes (`indexed`/`stored`/`docValues`/`multiValued`); doc string per factory/attribute; plus the provenance of the answer (which rung resolved it) so the UI can surface it.
+5. Add a loader exposing the dataset to completion/validation/docs consumers, caching per module.
+6. Run: `./gradlew build`
 
 **Success Criteria:**
-- [ ] A Gradle task generates the dataset from Solr/Lucene artifacts (no hand-authored factory tables).
-- [ ] Generated resource is present on the plugin classpath after build.
-- [ ] A loader class exposes factories, valid attributes, and doc strings by key.
-- [ ] `./gradlew build` passes and regenerates the dataset.
+- [ ] Factory and attribute data is read from the owning module's Solr/Lucene jars when present.
+- [ ] A configset with no module resolves via `<luceneMatchVersion>` to the right bundled entry.
+- [ ] A multi-module project describes each configset against its own module.
+- [ ] Attributes for `wordDelimiterGraph` include all twelve options (the field-reflection failure case).
+- [ ] No project class is loaded into the IDE JVM.
+- [ ] `./gradlew build` passes.
 
 **Dependencies:** Step 1
 
@@ -166,7 +168,7 @@ factory classes and their valid attributes, field attributes, and `dynamicField`
 - See requirement S1 and spec § "Architecture approach" ("Completion & validation" bullet).
 
 **Actions:**
-1. Register a `CompletionContributor` offering field types, factory classes, and valid attributes from the generated dataset.
+1. Register a `CompletionContributor` offering field types, factory classes, and valid attributes from the reference dataset.
 2. Add structural validation (annotator) flagging unknown factory classes / invalid attributes for a given factory.
 3. Support `dynamicField` pattern awareness in completion/validation.
 4. Add completion + highlighting tests on fixture configsets.
@@ -232,7 +234,7 @@ as the D4 catalog entry). This is where the zero-false-positive requirement gets
 
 Model each field's index-time analyzer chain to classify effective match semantics, surface them as
 annotator hints (S5), apply the standard multi-field patterns as intention actions (S6), and provide
-quick documentation from the generated dataset (S7).
+quick documentation from the reference dataset (S7).
 
 **Context:**
 - See requirements S5, S6, S7 and S9, and spec § "Architecture approach" ("Match-capability analysis" bullet).
@@ -243,7 +245,7 @@ quick documentation from the generated dataset (S7).
 2. Add an annotator (S5) surfacing derived match semantics per field.
 3. Add intention actions (S6) that create exact-match/prefix companions (`<name>_exact` string + copyField; EdgeNGram fieldType + `<name>_prefix` + copyField), phrased as efficient index-time support.
 4. Have the S6 intentions consult Step 1b provenance and, on a managed schema, offer the edit as a Schema API payload (`add-field`, `add-copy-field`, `add-field-type`) ahead of the direct file edit — same rule as Step 5. S5 hints and the S7 doc provider must not consult provenance at all.
-5. Add a `DocumentationProvider` (S7) keyed by factory/attribute, sourced from the generated dataset.
+5. Add a `DocumentationProvider` (S7) keyed by factory/attribute, sourced from the reference dataset.
 6. Add tests asserting derived semantics for canonical types (string, tokenized text, EdgeNGram) and valid, reindex-free-where-possible quick-fix output.
 7. Run: `./gradlew build`
 
@@ -258,7 +260,7 @@ quick documentation from the generated dataset (S7).
 ### Step 8: Golden-file CI gate & cross-version test matrix
 
 Add the CI-gating test suite that runs all inspections against the `_default` and
-`sample_techproducts_configs` configsets asserting zero false positives, plus generated-data tests and
+`sample_techproducts_configs` configsets asserting zero false positives, plus reference-data tests and
 a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 
 **Context:**
@@ -267,7 +269,7 @@ a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 **Actions:**
 1. Add the shipped `_default` and `sample_techproducts_configs` configsets as test data.
 2. Add a golden-file test running every registered inspection over them, asserting zero highlights.
-3. Add generated-data tests verifying expected factories/attributes per supported Solr line.
+3. Add reference-data tests covering each rung of the resolution order (module classpath, `<luceneMatchVersion>` + bundled catalog, bundled default) and asserting bundled and project-derived data agree.
 4. Extend the Step 1b schema-provenance tests (S8) to the integration level: assert the write-side warning fires only for mutable-managed configsets and that read-side results are identical across all five classification cases.
 5. Add Schema API payload tests (S9): each rename and quick-fix on a managed schema emits a valid payload with the correct command and attributes, round-tripping to the same schema state the direct PSI edit produces; no payload or warning is offered on a hand-authored schema.
 6. Parameterize the suite across the schema versions of every supported (non-EOL) Solr line, so adding or dropping a line is a matrix row change.
@@ -276,7 +278,7 @@ a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
 
 **Success Criteria:**
 - [ ] Golden-file test passes with zero false positives on both shipped configsets.
-- [ ] Generated-data tests pass for each supported Solr line.
+- [ ] Reference-data tests pass for each supported Solr line and each resolution rung.
 - [ ] Schema-provenance tests pass for all five classification cases.
 - [ ] Schema API payload tests pass: each rename and quick-fix emits a valid payload that round-trips to the same schema state as the direct edit.
 - [ ] CI workflow runs the full build and gates merges.
@@ -319,17 +321,17 @@ Publish the release-blocking `[P1]` docs and the CI check that keeps them consis
 - [ ] S1–S9 implemented for every supported (non-EOL) Solr line.
 - [ ] Write-side features (S3, S6) offer a Schema API request as the default action on a managed schema, and edit files unprompted on a hand-authored one; read-side features unaffected by provenance.
 - [ ] Zero false positives on `_default` and `sample_techproducts_configs` (CI-enforced).
-- [ ] Reference data generated from Solr artifacts (not hand-maintained).
+- [ ] Reference data derived from Solr artifacts, preferring the project's own (not hand-maintained).
 - [ ] All `[P1]` docs published; docs CI checks green.
 - [ ] `./gradlew build` passes end-to-end.
 
 ## Risks and Mitigations
 
-- **Reflection-based generation breaks across Solr versions.** Mitigation: supported lines are pinned by the non-EOL policy (spec "Version-support policy"); generated-data tests (Step 8) catch drift; regeneration is a build step, not re-authoring.
+- **Bytecode extraction breaks when Lucene changes its accessor shape.** Mitigation: reference-data tests (Step 8) assert known attribute sets per line and catch drift; reading the project's own jars means a new Solr line works before the plugin bundles it.
 - **False positives on real configsets block release.** Mitigation: golden-file gate (Step 8) built before docs; inspections tuned against shipped configsets.
 - **Reference resolution edge cases (dynamicFields, param aliases) cause dangling renames.** Mitigation: reference graph unit-tested in Step 3 before rename (Step 5) consumes it.
 - **Hosting/ownership open question affects vendor identity & repo URL.** Mitigation: `gradle.properties` already uses placeholder values; does not block Phase 1 implementation.
-- **Reference Guide doc-string sourcing (S7) is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the generated dataset.
+- **Reference Guide doc-string sourcing (S7) is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the reference dataset.
 
 ## References
 

@@ -34,9 +34,10 @@ specs as Phase 1 validates the approach.
 - **Steer writes toward the Schema API where it applies**, rather than
   encouraging hand edits that Solr will overwrite — so the plugin reinforces
   Solr's own guidance instead of working around it.
-- Keep the plugin maintainable across Solr releases by **generating** reference
-  data (analysis factories, field attributes) from Solr/Lucene artifacts rather
-  than hand-maintaining tables.
+- Keep the plugin maintainable across Solr releases by **deriving** reference
+  data (analysis factories, field attributes) from Solr/Lucene artifacts —
+  preferring the ones the open project itself resolves — rather than
+  hand-maintaining tables.
 - Target IntelliJ IDEA (Community and Ultimate) first and SolrJ as the client
   integration surface.
 
@@ -267,6 +268,29 @@ connection is required.
   than a clear improvement. Hand editing remains the expected workflow for
   `solrconfig.xml` and for every supporting configset file.
 
+### Phase 1 — Release sequencing (v0.1 / v0.2)
+
+Phase 1 ships in two releases. The split is drawn along one line: **v0.1 contains
+everything that needs nothing but the user's own configset files.** Reference
+data derived from artifacts is the single largest piece of Phase 1, and gating a
+first release on it would delay every feature that does not need it.
+
+| Release | Requirements | Rationale |
+|---|---|---|
+| **v0.1** | S2, S3, S4, S5, S6, S8 | The reference graph and everything built on it. Reads only the open configset; needs no factory catalog beyond the ~15 factories that determine match semantics (S5), which are named directly. |
+| **v0.2** | S1, S7, S9 | Completion (S1) and quick documentation (S7) are what require the derived factory/attribute dataset. S9 renders Schema API payloads. |
+
+**Writes in v0.1 are allowed exactly where no API displaces them.** S3 rename and
+the S6 quick-fixes edit the file when S8 classifies the schema as hand-authored,
+and always for `solrconfig.xml`, which has no API alternative. Against a mutable
+managed schema v0.1 **withholds** the write and explains that Solr owns the file
+— it does not silently edit, and it does not yet offer the Schema API
+alternative. S9 replaces that refusal with the "Copy as Schema API request"
+action in v0.2, at which point the write-side story is complete.
+
+This is why S8 is a v0.1 requirement despite provenance existing only to gate
+writes: without it the plugin cannot tell which files it is allowed to edit.
+
 ### Phase 1 — Non-functional requirements
 
 - **Platform support:** installs on IntelliJ IDEA Community and Ultimate
@@ -279,10 +303,11 @@ connection is required.
   configsets shipped with Solr — enforced by CI golden-file tests.
 - **Offline:** no Solr connection or network access required for any Phase 1
   feature.
-- **Generated reference data:** completion/annotation data for factories and
-  attributes is generated from Solr artifacts (reflection over
-  `org.apache.solr.*` factory classes + Lucene analysis SPI), not hand-maintained
-  — so a new Solr release requires regeneration, not re-authoring.
+- **Reference data derived, not hand-maintained:** completion/annotation data for
+  factories and attributes is read from Solr/Lucene artifacts — the project's own
+  where the project resolves them, a bundled catalog otherwise — so a new Solr
+  release requires no re-authoring, and a project on a newer Solr than the plugin
+  knows about is described correctly rather than approximately.
 - **Licensing/distribution:** published to JetBrains Marketplace under ALv2 with
   source linked.
 
@@ -312,15 +337,17 @@ Consequences that follow from adopting it:
 - **Lines are dropped, not deprecated.** When Solr declares a line EOL, the
   plugin drops it in its next release, and the drop is recorded in the
   compatibility matrix and changelog (D8). Dropping a line means removing its
-  generated reference dataset and its row from the cross-version test matrix.
-- **A new Solr major is a regeneration, not a re-authoring.** This is the
-  property the generated-reference-data decision exists to protect: adding
-  Solr 11 means resolving new artifacts and regenerating, then adding a matrix
-  row.
-- **Toolchain floor.** Solr 10 requires Java 21, so the reference-data generator
-  builds on JDK 21 or later — which also covers the lower baseline of the
-  previous major. This floor is set by the oldest JDK that can load the *newest*
-  supported line's classes, and rises when Solr's does.
+  entry from the bundled catalog and its row from the cross-version test matrix.
+- **A new Solr major costs little.** This is the property the
+  reference-data decision exists to protect: a project already on Solr 11 is
+  described from its own jars before the plugin has heard of Solr 11. Adding it
+  to the *bundled* catalog — the fallback for projects with no dependencies — is
+  then a version bump and a matrix row, not a re-authoring.
+- **Toolchain floor.** Solr 10 requires Java 21, so the build targets JDK 21 or
+  later — which also covers the lower baseline of the previous major. This floor
+  is set by the newest supported line's class-file version, and rises when
+  Solr's does. Reading class files rather than loading them softens this, but the
+  bundled catalog is still produced against the newest line.
 
 ### Documentation requirements
 
@@ -400,16 +427,79 @@ extension points:
   change independently of its rendering is what lets one intention drive both
   paths without duplicating the logic.
 
-### Generated reference data (critical design decision)
+### Reference data from the project's own Solr artifacts (critical design decision)
 
 Rather than hand-maintaining tables of factory classes, valid attributes, and
-their documentation, Phase 1 **generates** this data from Solr and Lucene
-artifacts — reflection over `org.apache.solr.*` factory classes and the Lucene
-analysis SPI. This is the mechanism that makes the version-support policy (two
-non-EOL Solr lines) sustainable: supporting a new release is a
-regeneration step in the build, not a re-authoring effort. The generator's output
-feeds S1 completion/validation and S7 documentation. This design is documented in
-D7 and referenced by Phase 1 non-functional requirements.
+their documentation, the plugin **derives** them from Solr and Lucene artifacts —
+the analysis SPI registrations plus the attribute names each factory reads.
+
+The artifacts are preferentially **the project's own**: where the open project
+resolves Solr or Lucene on a module classpath, the plugin reads those jars, so
+completion and validation describe the version the project actually builds
+against rather than a version the plugin guessed. This is what removes the
+version matrix as a build-time concern — there is no per-line dataset to
+regenerate when a new Solr ships, because the answer comes from the project.
+
+**Which jars: the module that owns the configset file.** Resolution is per-file,
+not per-project — the file's containing module supplies the classpath to read. A
+repository with one module on SolrJ 9.10 and another on 10.0 therefore gets each
+configset described against the artifacts its own module builds against, which a
+project-wide union could not do.
+
+**The project states its own version even when it has no jars.** Every
+`solrconfig.xml` carries `<luceneMatchVersion>`, so a bare configset directory —
+XML files, no module, no build file, which is the common shape for a
+version-controlled configset repository — still declares the line it targets.
+That is a stronger signal than any heuristic the plugin could apply, and it is
+read from the configset the user already has open.
+
+Resolution order, most specific first:
+
+1. **Module classpath.** The owning module resolves Solr/Lucene: read those jars.
+   Both the version and the factory data come from the artifacts themselves.
+2. **`<luceneMatchVersion>` plus the bundled catalog.** No module or no Solr on
+   its classpath, but the sibling `solrconfig.xml` declares a version: use the
+   bundled catalog entry for that line. The project supplies the version; the
+   plugin supplies the data.
+3. **Bundled catalog, newest supported line.** Nothing declares a version.
+
+The bundled catalog therefore exists to answer *what factories a given Solr line
+has*, never *which line this project is on* — that question belongs to the
+project in every case but the last. Which rung answered is surfaced rather than
+hidden, so a user seeing unexpected completions can tell whether the plugin read
+their jars, believed their `<luceneMatchVersion>`, or fell back.
+
+Two constraints shape the implementation:
+
+- **Read bytecode; do not load classes.** The IDE ships its own Lucene
+  (`intellij.libraries.lucene.common`, and an ancient `lucene-core` inside the
+  Maven plugin). Loading a project's Lucene into the IDE JVM invites class
+  conflicts, and instantiating arbitrary factory constructors inside the IDE
+  process is not acceptable regardless. Attribute names are recovered by reading
+  the constructor bytecode, which is also more complete than execution — it sees
+  attributes behind conditional branches and past the point where a missing
+  required argument would have thrown.
+- **A bundled fallback is required, not optional.** The workflow this plugin
+  serves best — a version-controlled configset repository — frequently has no
+  Java module and no dependencies at all, just XML. SolrJ on the classpath is
+  also the *client* version, which need not match the server the configset is
+  deployed to. So the plugin ships a small catalog for the current supported
+  lines and uses it whenever the project cannot answer, surfacing which source
+  is in effect rather than silently guessing.
+
+The resulting dataset feeds S1 completion/validation and S7 documentation. This
+design is documented in D7 and referenced by Phase 1 non-functional requirements.
+
+Empirically the two supported lines barely differ here: Lucene 9.12.3 (Solr
+9.10.1) and Lucene 10.3.2 (Solr 10.0.0) expose 130 identical analysis factories,
+with one addition in 10.x (`romanianNormalization`) and no removals. The version
+sensitivity that matters for this plugin is not the analyzer vocabulary but the
+*removed configuration elements* catalogued in
+[`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md) —
+`<lib>`, `CurrencyField`/`EnumField`/`ExternalFileField`, the `python`/`ruby`/
+`php` and XLSX response writers, `BlobHandler`, the legacy
+`CircuitBreakerManager` form and `addHttpRequestToContext`. Those belong to the
+S4 inspections, which is where per-version knowledge actually earns its keep.
 
 ### Configset detection
 
@@ -435,8 +525,10 @@ model. The primary internal models are:
 - **Match-capability model** — a per-field classification (exact / tokenized /
   prefix-substring / case-sensitivity) derived by walking the field's index-time
   analyzer chain.
-- **Generated reference dataset** — the build-time artifact enumerating factory
-  classes, valid attributes, and documentation strings.
+- **Reference dataset** — factory classes, valid attributes and documentation
+  strings, read from the project's Solr/Lucene jars where available and from the
+  bundled catalog otherwise. Carries its own provenance, so the UI can say which
+  source answered.
 - **Schema provenance** — a per-configset hand-authored / Solr-managed
   classification derived from `<schemaFactory>` (S8), consulted by write-side
   features only.
@@ -476,8 +568,15 @@ relevant only in Phase 3.
 - **Match-capability tests:** assert derived semantics (S5) for canonical field
   types (string, tokenized text, EdgeNGram) and verify S6 quick-fixes produce
   valid, reindex-free-where-possible configset edits.
-- **Generated-data tests:** verify the reference-data generator produces expected
-  factories/attributes for each supported Solr line.
+- **Reference-data tests:** verify the expected factories/attributes are produced
+  for each supported Solr line, from a project classpath carrying those artifacts
+  and from the bundled catalog, asserting the two agree. Cover each rung of the
+  resolution order: a module resolving Solr (jars answer), a bare configset
+  directory whose `solrconfig.xml` declares `<luceneMatchVersion>` (that line's
+  bundled entry answers), a configset declaring nothing (newest line), and a
+  module on a Solr newer than any bundled entry (jars answer, catalog unused).
+  Assert that a multi-module project resolves each configset against its own
+  module rather than a project-wide union.
 - **Schema-provenance tests (S8):** classify configsets declaring
   `ClassicIndexSchemaFactory`, `ManagedIndexSchemaFactory` with `mutable="true"`
   and with `mutable="false"`, plus the absent-`<schemaFactory>` case (must
@@ -518,21 +617,29 @@ follow-up tickets once Phase 1 validates the approach.
   unaffected by provenance in both cases.
 - Inspections produce zero false positives on `_default` and
   `sample_techproducts_configs`, enforced by CI golden-file tests.
-- Reference data is generated from Solr artifacts (not hand-maintained).
+- Reference data is derived from Solr artifacts, preferring the project's own
+  (not hand-maintained).
 - Published to JetBrains Marketplace under ALv2 with source linked.
 - All **[P1]** documentation items are published before/with the release.
 
+## Resolved decisions
+
+- **Hosting and ownership — settled.** The code lives in an external repository
+  under the author's namespace (`adityamparikh/solr-intellij-plugin`), licensed
+  ALv2, to be linked from the Solr Reference Guide as community tooling (D9).
+  ASF donation is **not** being pursued until the plugin is built and released
+  and has demonstrated it is useful. Nothing here precludes a later donation —
+  the license is already the one an ASF repository would require — and deferring
+  removes a governance dependency from the critical path of a pre-release plugin.
+- **Marketplace vendor identity — moot for now.** It follows from the hosting
+  decision: publication is under the author's own vendor account. An ASF vendor
+  account and the PMC coordination it needs become relevant only if donation is
+  revisited after release.
+
 ## Open Questions
 
-- **Hosting and ownership.** Options: (a) code lives in an ASF repo under the
-  Solr project (like `solr-operator`); (b) an external repo under a contributor's
-  namespace, ALv2, linked from the Solr Reference Guide as community tooling.
-  Option (b) has lower governance overhead to start and does not preclude later
-  donation.
-- **Marketplace vendor identity if (a):** publishing under an ASF vendor account
-  requires PMC coordination.
 - **Marketplace compatibility cadence:** how quickly the plugin must follow a new
-  IntelliJ Platform release, given the version-support policy below is pinned to
+  IntelliJ Platform release, given the version-support policy above is pinned to
   Solr's lifecycle rather than JetBrains'.
 - **Evidence for the authoring split.** "Where configset XML is authored" argues
   qualitatively that version-controlled configsets remain a large population. That
