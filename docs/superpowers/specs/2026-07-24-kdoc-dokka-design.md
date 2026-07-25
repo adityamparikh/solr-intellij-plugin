@@ -87,28 +87,24 @@ workflow, no new tooling.
 on GitHub. This is most of Dokka's practical value over reading the source
 directly.
 
-### 2. Dependency verification
+### 2. Dependency verification (superseded)
 
-`gradle/verification-metadata.xml` pins a SHA-256 for all 308 resolved
-components with `verify-metadata: true`. Dokka introduces a new dependency
-subtree with no recorded checksums, so **the build fails verification the moment
-the plugin is applied** until the metadata is regenerated.
+This section originally planned for `gradle/verification-metadata.xml`, which
+pinned a SHA-256 for every resolved component. Adding Dokka introduced a new
+dependency subtree with no recorded checksums, so the metadata had to be
+regenerated — with `--refresh-dependencies`, because a write pass against a warm
+Gradle cache never re-resolves already-cached artifacts and so records no
+checksum for them, producing metadata that passes locally and fails on a clean
+runner (commit `19a0e0f`).
 
-Regeneration must use `--refresh-dependencies`. Commit `19a0e0f` records why: a
-write pass against a warm Gradle cache never re-resolves already-cached artifacts
-and therefore never records their checksums, so the local build passes and a
-clean CI runner then fails on the missing entries. `clean` does not help — it
-empties `build/`, not `~/.gradle/caches/`.
+That regeneration was done and verified green on a cold CI runner. It has since
+been dropped: dependency verification was removed from the project entirely,
+because the manual regeneration required on every dependency change outweighed
+its value for a pre-release plugin. See the commit removing
+`gradle/verification-metadata.xml`.
 
-The command documented in `.github/dependabot.yml` line 8 is the one that caused
-that failure — it omits `--refresh-dependencies` and runs `help`, which resolves
-neither the compile nor the test classpath. This PR corrects that comment, since
-it is a tripwire for the next person to add a dependency.
-
-Cold-cache proof is delegated to CI rather than reproduced locally. `build.yml`
-runs `check` on every PR from a clean runner, which is exactly a cold-cache
-verification, and reproducing it locally against an isolated `GRADLE_USER_HOME`
-costs a ~6 GB download for the same signal.
+GitHub Actions SHA pinning is unaffected and remains in place — a separate
+mechanism with no recurring maintenance cost.
 
 ### 3. Module and package documentation
 
@@ -172,7 +168,7 @@ Two pull requests:
 
 | PR | Branch | Contents |
 |---|---|---|
-| 1 | `docs/kdoc-dokka` | Dokka wiring, doc gate, KDoc, `docs/Module.md`, regenerated verification metadata, `dependabot.yml` comment fix, CI artifact step |
+| 1 | `docs/kdoc-dokka` | Dokka wiring, doc gate, KDoc, `docs/Module.md`, CI artifact step |
 | 2 | branched from PR 1 head | `/init`-generated `CLAUDE.md` |
 
 PR 2 branches from PR 1 rather than `main` so `/init` observes the Dokka setup
