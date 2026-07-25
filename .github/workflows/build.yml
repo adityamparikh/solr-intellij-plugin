@@ -94,9 +94,9 @@ jobs:
         with:
           cache-read-only: true
 
-      # Run tests
+      # Run tests and produce the Kover coverage report
       - name: Run Tests
-        run: ./gradlew check
+        run: ./gradlew check koverXmlReport
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -105,6 +105,14 @@ jobs:
         with:
           name: tests-result
           path: ${{ github.workspace }}/build/reports/tests
+
+      # Coverage report, consumed by SonarCloud via sonar.coverage.jacoco.xmlReportPaths
+      # once CI-based analysis replaces Automatic Analysis (see README).
+      - name: Collect Coverage Report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: ${{ github.workspace }}/build/reports/kover/report.xml
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:
