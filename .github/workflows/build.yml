@@ -131,10 +131,22 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew sonar
 
-      # Enforce the local coverage floor last, so a gate failure still leaves the report
-      # uploaded and the SonarCloud analysis published.
-      - name: Verify Coverage Gate
+      # Enforce the local gates last, so a failure still leaves the report uploaded and the
+      # SonarCloud analysis published. `check` runs both: the Kover coverage floor, and
+      # dokkaGenerate, which fails when a public declaration in the main source set has no KDoc.
+      - name: Verify Gates
         run: ./gradlew check
+
+      # Publish the rendered KDoc so it can be browsed from the pull request without a local build.
+      # After the gate rather than before it, because dokkaGenerate is what produces this directory.
+      # always() so partial output survives a gate failure, which is when it is most worth reading.
+      - name: Upload API Documentation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: api-documentation
+          path: ${{ github.workspace }}/build/dokka/html
+          if-no-files-found: warn
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:

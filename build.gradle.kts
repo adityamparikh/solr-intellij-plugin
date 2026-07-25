@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.changelog")
     id("org.jetbrains.kotlinx.kover")
     id("org.sonarqube")
+    id("org.jetbrains.dokka")
 }
 
 dependencies {
@@ -77,4 +78,35 @@ kover {
             }
         }
     }
+}
+// API documentation. `reportUndocumented` emits a warning for every public declaration without
+// KDoc and `failOnWarning` turns those warnings into a build failure, so undocumented public API
+// cannot merge. Only the `main` source set is gated — tests are exempt by design.
+dokka {
+    moduleName = "Solr IntelliJ Plugin"
+
+    dokkaPublications.html {
+        failOnWarning = true
+    }
+
+    dokkaSourceSets.main {
+        reportUndocumented = true
+
+        // Module and package overviews (the landing page and per-package headers).
+        includes.from("docs/Module.md")
+
+        // Deep-link every documented symbol to its exact line on GitHub.
+        sourceLink {
+            localDirectory = file("src/main/kotlin")
+            remoteUrl("${providers.gradleProperty("pluginRepositoryUrl").get()}/tree/main/src/main/kotlin")
+            remoteLineSuffix = "#L"
+        }
+    }
+}
+
+// Documentation coverage joins the coverage floor as part of `check`, so both gates fire together
+// on `./gradlew build` locally and in the CI step that runs `check` — no separate workflow to
+// keep in sync.
+tasks.check {
+    dependsOn(tasks.dokkaGenerate)
 }

@@ -30,6 +30,10 @@ import com.intellij.openapi.vfs.VirtualFile
 class SolrConfigsetSettings(private val project: Project) :
     SimplePersistentStateComponent<SolrConfigsetSettings.State>(State()) {
 
+    /**
+     * The persisted form of these settings, serialized to `solr.xml` and therefore shareable
+     * across a team through version control.
+     */
     class State : BaseState() {
         /** When false, no file is ever treated as a Solr configset file. */
         var detectionEnabled: Boolean by property(true)
@@ -43,9 +47,21 @@ class SolrConfigsetSettings(private val project: Project) :
 
     private val macros: PathMacroManager get() = PathMacroManager.getInstance(project)
 
+    /**
+     * Whether configset detection is active for this project.
+     *
+     * When false, [SolrConfigsetDetector] rejects every file regardless of name, location or
+     * manual roots — the master switch for users who want the plugin installed but silent on a
+     * particular project.
+     */
     val isDetectionEnabled: Boolean
         get() = state.detectionEnabled
 
+    /**
+     * Turns configset detection on or off for this project.
+     *
+     * @param enabled false to suppress all configset features in this project
+     */
     fun setDetectionEnabled(enabled: Boolean) {
         state.detectionEnabled = enabled
     }
@@ -59,17 +75,32 @@ class SolrConfigsetSettings(private val project: Project) :
     val manualRoots: List<String>
         get() = state.manualConfigsetRoots.map { macros.expandPath(it) ?: it }
 
-    /** True if [file] lives under a directory the user manually marked as a configset root. */
+    /**
+     * True if [file] lives under a directory the user manually marked as a configset root.
+     *
+     * The root itself counts as being under itself, so marking a directory also covers a
+     * configset file sitting directly in it.
+     *
+     * @param file the file to test
+     * @return true if any manual root is an ancestor of [file], or is [file] itself
+     */
     fun isUnderManualRoot(file: VirtualFile): Boolean {
         val path = file.path
         return manualRoots.any { FileUtil.isAncestor(it, path, false) }
     }
 
     /**
-     * Marks [dir] as a configset root.
+     * Marks [dir] as a configset root, so recognized files beneath it activate features even when
+     * the directory heuristics find no evidence. This is the user-facing remedy when features fail
+     * to activate on a real configset whose layout the heuristics do not match.
      *
      * Marking a file rather than a directory would make that single file its own root, since
-     * [FileUtil.isAncestor] is non-strict, so it is rejected outright.
+     * [FileUtil.isAncestor] is non-strict, so it is rejected outright. Adding the same directory
+     * twice is a no-op.
+     *
+     * @param dir the directory to treat as a configset root
+     * @throws IllegalArgumentException if [dir] is not a directory
+     * @see SolrConfigsetDetector.isConfigsetFile
      */
     fun addManualRoot(dir: VirtualFile) {
         require(dir.isDirectory) { "configset root must be a directory: ${dir.path}" }
@@ -85,13 +116,25 @@ class SolrConfigsetSettings(private val project: Project) :
      * Both forms are removed because the stored form is not knowable from the caller's side: a
      * root written by an earlier version is a raw absolute path, while anything written since is
      * collapsed. Matching only one form would silently no-op on the other.
+     *
+     * Takes a path rather than a [VirtualFile] so that roots which no longer exist on disk — a
+     * deleted or renamed directory — can still be cleared.
+     *
+     * @param path an absolute or collapsed path; one that matches no stored root is ignored
      */
     fun removeManualRoot(path: String) {
         val equivalentForms = setOfNotNull(path, macros.collapsePath(path), macros.expandPath(path))
         state.manualConfigsetRoots.removeAll(equivalentForms)
     }
 
+    /** Service lookup for these settings. */
     companion object {
+        /**
+         * The settings instance for [project].
+         *
+         * @param project the project whose configset settings are wanted
+         * @return the project-level service holding the persisted state
+         */
         fun getInstance(project: Project): SolrConfigsetSettings = project.service()
     }
 }
