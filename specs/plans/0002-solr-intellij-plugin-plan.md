@@ -26,36 +26,89 @@ Line anchors go stale on the first revision.
 
 ## Build order
 
-Step 2 unblocks everything. After Step 3 the work splits into three tracks that do not
-depend on each other and can be built in any order or in parallel.
+[Step 2](#step-2-overhaul-the-activation-gate) unblocks everything. After
+[Step 3](#step-3-repository-reader-and-field-model) the work splits into three tracks
+that do not depend on each other and can be built in any order or in parallel.
 
-| Track | Steps |
-|---|---|
-| **Foundation** | 2 → 3 → 4 |
-| **Editor** | 5 → 6 → 7 → 8, then 9 → 10 |
-| **Server** | 11 → 12 → 13 → 14 → 15 |
-| **Code** | 16 → 17 → 18 → 19 |
-| **Cross-cutting** | 20, 21 — continuous, completed last |
+### Foundation — build first
 
-The drift view (Step 14) is the only place the Editor and Server tracks meet, and it is
-the feature that most justifies building both.
+- [Step 1 — Activation gate](#step-1-activation-gate-done) — **done**
+- [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
+- [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model)
+- [Step 4 — Match analysis](#step-4-match-analysis)
+
+### Editor track
+
+- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages)
+- [Step 6 — Inspections](#step-6-inspections)
+- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
+- [Step 8 — Rename](#step-8-rename)
+- [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
+- [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
+
+### Server track
+
+- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader)
+- [Step 12 — Collections tool window](#step-12-collections-tool-window)
+- [Step 13 — Query console](#step-13-query-console)
+- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload)
+- [Step 15 — Indexing test documents](#step-15-indexing-test-documents)
+
+### Code track
+
+- [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+- [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge)
+- [Step 18 — Framework configuration](#step-18-framework-configuration)
+- [Step 19 — Apache Camel](#step-19-apache-camel)
+
+### Cross-cutting — continuous, finished last
+
+- [Step 20 — CI gates](#step-20-ci-gates)
+- [Step 21 — Documentation](#step-21-documentation)
+
+Within a track the order is the dependency order. Across tracks, the only meeting point
+is [Step 14](#step-14-drift-view-upload-and-reload), the drift view — which is also the
+feature that most justifies building both halves.
 
 ## Prerequisites
 
 - [x] JDK 21 toolchain, green build, CI verified.
 - [x] Solr and Lucene artifacts resolvable from Maven Central for both supported lines —
       verified: Solr 10.0.0 with Lucene 10.3.2, Solr 9.10.1 with Lucene 9.12.3. Needed
-      by Step 9.
+      by [Step 9](#step-9-factory-catalog-generator).
 - [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
-      ships, for test fixtures. Needed by Step 20.
+      ships, for test fixtures. Needed by [Step 20](#step-20-ci-gates).
 - [ ] A local Solr for manual verification. Not needed by any automated test — every
-      test uses the fake HTTP layer from Step 11.
-- [ ] **Decision required before Step 2:** the `org.apache.solr` package namespace. See
-      spec, "What changes in the existing code".
+      test uses the fake HTTP layer from
+      [Step 11](#step-11-http-client-connections-and-the-server-reader).
+- [ ] **Decision required before [Step 2](#step-2-overhaul-the-activation-gate):** the
+      `org.apache.solr` package namespace. See spec, "What changes in the existing code".
 
 ---
 
 ## Foundation
+
+### Step 1: Activation gate (done)
+
+Stripped the IntelliJ plugin template, re-rooted the code under `org.apache.solr.ide`,
+and implemented configset detection so features activate only on recognized files.
+
+**What shipped:**
+- `SolrConfigsetDetector` — file-name matching corroborated by directory heuristics.
+- `SolrConfigsetFileKind` — the schema names and `solrconfig.xml`.
+- `SolrConfigsetSettings` — manual configset roots and a detection switch, persisted to
+  the shared project file with paths collapsed through `PathMacroManager`.
+- `SolrBundle`, and `plugin.xml` registering `managed-schema` as XML.
+
+**Success criteria:**
+- [x] No template references remain in `src/`.
+- [x] Detection identifies configset files and exposes a manual override.
+- [x] `./gradlew build` passes.
+
+[Step 2](#step-2-overhaul-the-activation-gate) reworks this for the model the spec
+describes; it is extended, not replaced.
+
+**Dependencies:** none
 
 ### Step 2: Overhaul the activation gate
 
@@ -90,7 +143,7 @@ insufficient for this one. Fix it before building on it.
 - [ ] Connection settings persist per-user; configset roots stay shared.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** none
+**Dependencies:** [Step 1](#step-1-activation-gate-done)
 
 ### Step 3: Repository reader and field model
 
@@ -101,7 +154,7 @@ The spine. Everything else reads this.
    copy fields, and the request-handler parameters that name fields.
 2. Build the field model: merge sources, record the origin of every fact, expose the
    four agreement states — repository only, server only, agreeing, disagreeing. The
-   server half stays empty until Step 11; build the seam now so it does not have to be
+   server half stays empty until [Step 11](#step-11-http-client-connections-and-the-server-reader); build the seam now so it does not have to be
    retrofitted.
 3. Cache per configset, invalidate on file change.
 4. Test the model directly, with no IDE fixtures where possible. This is the component
@@ -114,12 +167,12 @@ The spine. Everything else reads this.
 - [ ] Model rebuilds on file change and not otherwise.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 2
+**Dependencies:** [Step 2](#step-2-overhaul-the-activation-gate)
 
 ### Step 4: Match analysis
 
 A pure function from analyzer chain to match capability. Independent of everything;
-buildable in parallel with Step 3.
+buildable in parallel with [Step 3](#step-3-repository-reader-and-field-model).
 
 **Actions:**
 1. Classify a field's index-time chain: whole value or tokenized, prefix-capable or not,
@@ -156,7 +209,7 @@ buildable in parallel with Step 3.
 - [ ] All four reference kinds resolve; Find Usages returns every reference.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 3
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 6: Inspections
 
@@ -175,12 +228,12 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Every registered inspection has a description file.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 5
+**Dependencies:** [Step 5](#step-5-references-navigation-and-find-usages)
 
 ### Step 7: Match hints and quick-fixes
 
 **Actions:**
-1. Annotator surfacing each field's match capability from Step 4.
+1. Annotator surfacing each field's match capability from [Step 4](#step-4-match-analysis).
 2. Intentions adding a missing capability: an `_exact` companion plus `copyField`, an
    EdgeNGram-backed `_prefix` field. Phrased as efficient index-time support, since
    wildcards already provide slow partial matching.
@@ -191,12 +244,11 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Quick-fixes produce valid configset edits.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Steps 3, 4
-
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 4](#step-4-match-analysis)
 ### Step 8: Rename
 
 **Actions:**
-1. Rename fields and field types, updating every reference through the Step 5 graph.
+1. Rename fields and field types, updating every reference through the [Step 5](#step-5-references-navigation-and-find-usages) graph.
 2. Extend the existing `src/test/testData/rename/` fixtures with before/after pairs
    asserting no dangling references remain.
 
@@ -204,7 +256,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Every resolved reference updates; no dangling references after rename.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 5
+**Dependencies:** [Step 5](#step-5-references-navigation-and-find-usages)
 
 ### Step 9: Factory catalog generator
 
@@ -226,7 +278,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Selection order is correct and the answering source is recorded.
 - [ ] `./gradlew build` passes and regenerates.
 
-**Dependencies:** Step 2
+**Dependencies:** [Step 2](#step-2-overhaul-the-activation-gate)
 
 ### Step 10: Completion, validation and quick documentation
 
@@ -242,8 +294,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Quick documentation resolves for factories and attributes.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Steps 3, 9
-
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 9](#step-9-factory-catalog-generator)
 ---
 
 ## Server track
@@ -271,7 +322,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Server state refreshes only on request or connection change — never on a timer.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 3
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 12: Collections tool window
 
@@ -285,7 +336,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] An unreachable server degrades to an inline message, not a popup.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 11
+**Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
 ### Step 13: Query console
 
@@ -299,7 +350,7 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Saved queries round-trip through the project.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 11
+**Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
 ### Step 14: Drift view, upload and reload
 
@@ -319,8 +370,7 @@ The feature that justifies both halves.
 - [ ] No write occurs without explicit invocation.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Steps 11, 3
-
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 11](#step-11-http-client-connections-and-the-server-reader)
 ### Step 15: Indexing test documents
 
 **Actions:**
@@ -332,7 +382,7 @@ The feature that justifies both halves.
 - [ ] Documents can be authored with completion and indexed on explicit invocation.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 11
+**Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
 ---
 
@@ -356,7 +406,7 @@ The feature that justifies both halves.
 - [ ] Unresolvable constructs produce no warning.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 3
+**Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 17: Query syntax and the console bridge
 
@@ -371,8 +421,7 @@ The feature that justifies both halves.
 - [ ] The gutter action runs the query; navigation resolves when a configset is present.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Steps 16, 13
-
+**Dependencies:** [Step 13](#step-13-query-console), [Step 16](#step-16-recognizer-interface-and-solrj)
 ### Step 18: Framework configuration
 
 **Actions:**
@@ -392,7 +441,7 @@ The feature that justifies both halves.
 - [ ] Discovered endpoints are offered, never adopted silently.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 16
+**Dependencies:** [Step 16](#step-16-recognizer-interface-and-solrj)
 
 ### Step 19: Apache Camel
 
@@ -407,7 +456,7 @@ The feature that justifies both halves.
 - [ ] Endpoints recognized from Java and XML routes; options validated.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 16
+**Dependencies:** [Step 16](#step-16-recognizer-interface-and-solrj)
 
 ---
 
@@ -428,7 +477,7 @@ The feature that justifies both halves.
 - [ ] Missing description files and version drift both fail the build.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Step 6 for the golden-file gate; Step 9 for catalog tests
+**Dependencies:** [Step 6](#step-6-inspections) for the golden-file gate; [Step 9](#step-9-factory-catalog-generator) for catalog tests
 
 ### Step 21: Documentation
 
@@ -445,8 +494,7 @@ The feature that justifies both halves.
 - [ ] All release-blocking documentation exists and CI checks pass.
 - [ ] `./gradlew build` passes.
 
-**Dependencies:** Steps 6, 20
-
+**Dependencies:** [Step 6](#step-6-inspections), [Step 20](#step-20-ci-gates)
 ---
 
 ## Validation checklist
@@ -468,19 +516,19 @@ The feature that justifies both halves.
 ## Risks
 
 - **Code analysis produces false positives.** The most likely cause of bad reviews.
-  Mitigation: silence is the default where resolution fails, asserted in tests (Step 16).
+  Mitigation: silence is the default where resolution fails, asserted in tests ([Step 16](#step-16-recognizer-interface-and-solrj)).
 - **Framework configuration works only on the author's machine.** Real projects nest
   configuration in unexpected places. Mitigation: real project fixtures per framework,
-  and prefer the platform's model over our own parsing (Step 18).
+  and prefer the platform's model over our own parsing ([Step 18](#step-18-framework-configuration)).
 - **Scope exceeds what can be polished.** This plan is large and the quality bar is
   explicit. Mitigation: the track structure means Editor, Server and Code can each reach
   a shippable state independently — if something must be cut, cut a whole track rather
   than leaving three half-built.
 - **A server version the plugin has never seen.** Mitigation: ignore unknown response
   fields, report rather than refuse unrecognized versions, and cover it in the fake HTTP
-  layer (Step 11).
+  layer ([Step 11](#step-11-http-client-connections-and-the-server-reader)).
 - **Reference resolution edge cases cause dangling renames.** Mitigation: the reference
-  graph is unit-tested in Step 5 before rename consumes it in Step 8.
+  graph is unit-tested in [Step 5](#step-5-references-navigation-and-find-usages) before rename consumes it in [Step 8](#step-8-rename).
 
 ## References
 
