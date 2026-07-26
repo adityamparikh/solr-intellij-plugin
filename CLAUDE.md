@@ -62,29 +62,23 @@ goes stale while the plan stays correct.
 `docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
 hand-edited, which are written by an API, and what the plugin covers.
 
-**The plugin edits configuration files directly and never refuses a write.** An earlier design
-classified each schema as Solr-managed or hand-authored and withheld edits to the former, because
-without a server connection the only alternative it could offer was a `curl` command with a
-placeholder URL. That whole apparatus is deleted. The spec's position is that drift between
-repository and server is the real problem, and a connection makes drift observable — which beats
-refusing to type. If you find code or docs asking whether a write is *allowed*, it predates this.
+**The plugin edits configuration files directly and never refuses a write.** The spec argues this
+out under "What this replaces". The operative consequence here: if you find code or docs asking
+whether a write is *allowed*, it predates this and should go.
 
-**What is actually implemented is a small fraction of the spec.** Today the codebase contains only
-the activation gate:
+**Where the code lives.** `org.apache.solr.ide.configset` decides whether a file belongs to a Solr
+configset — `SolrConfigsetDetector` gates every feature, on a recognized file name
+(`SolrConfigsetFileKind`) plus corroboration from directory heuristics or a user-marked root in
+`SolrConfigsetSettings`. `org.apache.solr.ide` holds `SolrBundle`, the localization bundle. The
+repository reader, field model, server client, recognizers and UI get sibling packages as they land.
 
-- `org.apache.solr.ide.configset` — deciding whether a file belongs to a Solr configset.
-  `SolrConfigsetDetector` gates every future feature: a recognized file name
-  (`SolrConfigsetFileKind`) plus corroboration, either directory heuristics or a user-marked root
-  persisted in `SolrConfigsetSettings`.
-- `org.apache.solr.ide` — `SolrBundle`, the localization bundle.
+Do not infer what is built from the API reference, and do not look for it here — the plan owns
+status.
 
-Everything else is unbuilt. Do not infer status from the API reference; check the plan.
-
-The spec's "What changes in the existing code" section lists the overhaul this gate needs before
-features land on it — configset identity rather than per-file recognition, caching on the detection
-path, more file kinds, and a separate per-user store for connections. Two constraints hold whatever
-else changes: detection runs on every file the user opens, so its signals stay cheap and local; and
-nothing on the editor path may contact a server.
+The spec's "What changes in the existing code" section sets the constraints the gate has to satisfy
+before features land on it. Two hold whatever else changes: detection runs on every file the user
+opens, so its signals stay cheap, local and cached; and nothing on the editor path may contact a
+server.
 
 Detection is deliberately heuristic and therefore fallible in both directions, which is why
 `SolrConfigsetSettings` exists as an escape hatch — manual configset roots and a master off switch.
@@ -129,7 +123,8 @@ template TODO list are gone, because the plugin is unpublished and the placehold
 broken links. Its Status section is the authority on what is actually built; keep it truthful when
 landing features, since the spec describes intent rather than state.
 
-The build pins `jvmToolchain(21)`. The floor comes from the version-support policy: Solr 10 requires
-Java 21, and the reference-data generator reflects over Solr artifacts from every supported line.
-Supported lines are those Apache Solr has not declared EOL — currently 10.x and 9.10.x — so a Solr
-EOL announcement is a maintenance trigger, not a background event.
+The build pins `jvmToolchain(21)`. The floor comes from the version-support policy: the newest
+supported Solr requires Java 21, and the reference-data generator reads Solr artifacts from every
+supported line. Supported lines are whichever Apache Solr has not declared EOL — the spec's "Version
+support" section names them, deliberately in one place. The rule worth carrying: a Solr EOL
+announcement is a maintenance trigger, not a background event.

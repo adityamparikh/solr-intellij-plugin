@@ -13,12 +13,10 @@ routinely miss.
 
 Three consequences worth knowing before you read further:
 
-- **The fixtures in Step 2 are the test fixtures.** The plan needs inspection fixtures,
-  code fixtures for the SolrJ recogniser, and configsets for the golden-file gate. This
-  is all of them. Build once; demo the thing CI checks.
-- **The demo order is a good build order.** Steps 22 to 34 are the first group to build,
-  sequenced so each is demonstrable as it lands, which dependency order alone does not
-  give you.
+- **The fixtures in Step 2 are also the test fixtures.** The demo project doubles as the
+  inspection fixtures and the code fixtures for the SolrJ recogniser. It is not quite all
+  of them — the golden-file gate runs against the two configsets Solr ships, which come
+  from the distribution rather than from here. Build once; demo the thing CI checks.
 - **A green test suite is not this.** A reference contributor can pass its unit tests and
   still never fire in the editor. The demo step catches that.
 
@@ -31,21 +29,21 @@ somewhere else.
 
 ## Step 1. Decide which demos you can actually give
 
-The repository today contains the activation gate only: it recognises a Solr
-configuration file and registers the extensionless `managed-schema` as XML. Nothing is
-visible to a user. Every demo below needs code that does not exist yet.
+Every demo below needs code that does not exist yet. The implementation plan is the
+authority on what is built and in what order — check its step status before you promise
+anyone a date.
 
-Build in this order, and stop wherever you run out of time:
+What this section decides is different: given what happens to be ready, which demos add up
+to a talk. Cut from the bottom.
 
 **Essential — the talk does not exist without this.** Navigation between configuration
-files, inspections, and the match-capability hints. In plan terms this is the overhaul of
-the activation gate, the repository reader and field model, match analysis, references,
-inspections, and hints with quick-fixes. Runs entirely offline, so nothing on stage can
-break it.
+files, inspections, and the match-capability hints. Runs entirely offline, so nothing on
+stage can break it.
 
-**Second priority — it gives the talk an ending.** Field names checked inside Java, and
-the gutter action that runs a query. This closes the story the talk opens with. Needs the
-recogniser interface, the SolrJ recogniser, and the query console.
+**Second — it gives the talk an ending.** Field names checked inside Java, and the gutter
+action that runs a query. This closes the story the talk opens with. The gutter action
+needs the query console, so it arrives with the server work even though the rest of this
+group does not.
 
 **Third — the most impressive and the most fragile.** The server connection, collections
 browser, query console and the repository-versus-server comparison.
@@ -543,11 +541,13 @@ missed one.
 
 ### Step 48. Show that all four demos asked one question
 
-Navigation asked whether a field exists. The inspection asked whether a field exists.
-Completion asked which fields exist. The Java check asked whether a field exists. The
-comparison asked whether two sources agree about which fields exist.
+The editor asked whether a field exists — that is what navigation, the inspection and
+completion all are. The query console asked which fields exist. The Java check asked
+whether a field exists. The comparison asked whether two sources agree about which fields
+exist.
 
-One question, five askers.
+One question, four askers. That is the spec's architecture, and you just demonstrated it
+without naming it.
 
 ### Step 49. Draw the architecture
 

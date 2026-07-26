@@ -49,8 +49,9 @@ right, it chooses right.
 - **Replacing the Solr Admin UI.** The Admin UI is good at what it does. The plugin
   wins where it can see things the Admin UI cannot — most of all, your repository.
 - **Guarding against production access.** Network reachability is the control that
-  matters, and it belongs to the firewall, not to a checkbox in a plugin. See
-  "Which server am I talking to" below for what the plugin does instead.
+  matters, and it belongs to the firewall, not to a checkbox in a plugin. What the plugin
+  does instead is clarity: the selected connection is always visible, and a destructive
+  action names its target in the confirmation.
 - **Spring Data Solr.** Unmaintained upstream. Its configuration properties may be
   read for connection detection; nothing else.
 - **Other JetBrains IDEs at launch.** IntelliJ IDEA first. Others are possible later
@@ -227,10 +228,22 @@ tokenizers, filters and character filters — and the attributes each one accept
 list is too large to hand-maintain and changes with Solr versions.
 
 **It is generated at build time and shipped with the plugin**, one entry per supported
-Solr line, produced by reflecting over the Solr and Lucene artifacts for that line. The
-generator runs in the build, not in the IDE, which is what keeps it simple: loading Solr
-classes in a Gradle task is ordinary, whereas loading them inside the IDE's classloader
-is not. A new Solr line is a version bump and a regenerated catalog, not re-authoring.
+Solr line, derived from the Solr and Lucene artifacts for that line. The generator runs in
+the build, not in the IDE, which is what keeps it simple: loading Solr classes in a Gradle
+task is ordinary, whereas loading them inside the IDE's classloader is not. A new Solr
+line is a version bump and a regenerated catalog, not re-authoring.
+
+A compiled jar does not volunteer all of this, and the plan says how each piece is
+recovered. The part worth knowing at this level is that **attribute names are not
+reflectable**: a factory takes a `Map<String, String>` and reads its attributes out of it
+by string literal, so the names exist only inside the constructor body. Anything that
+enumerates fields or annotations produces a plausible short list rather than an error,
+which is the failure mode to test for.
+
+**Match analysis is a deliberate exception to all of this.** The roughly fifteen factories
+that determine whether a field matches whole values or tokens are named in code, not read
+from the catalog, because that set *defines* the semantics rather than enumerating what
+exists — and it has been stable across Solr majors while the surrounding list has not.
 
 Which entry applies is decided in this order:
 
@@ -446,53 +459,44 @@ The build, CI and documentation tooling are sound and stay: the Kover coverage f
 wired into SonarCloud, the Dokka documentation gate, SHA-pinned workflows, the JDK 21
 toolchain, the changelog plugin, and `docs/modern-intellij-plugin-development.md`.
 
-The Solr code is four files and needs the following work.
+The Solr code today is the activation gate and nothing else. The plan owns which files
+change and in what order; what follows is only the constraints that outlive the current
+code, because those are what the plan is not free to trade away.
 
-**`SolrConfigsetDetector` — extend from file recognition to configset identity.** It
-currently answers "is this file a configset file." The model needs "which configset does
-this file belong to," because fields, types and analyzer chains are properties of a
-configset directory, not of a single file, and one project may contain several. The
-existing per-file answer stays as the activation gate.
+**Identity is per-configset, not per-file.** Detection currently answers "is this file a
+configset file." Fields, types and analyzer chains are properties of a configset
+directory, and one project may contain several, so the model needs "which configset does
+this file belong to." The per-file answer stays, as the activation gate.
 
-**Add caching on the detection path.** `hasDirectoryEvidence` lists a directory's
-children on every call, and the object holds no cache. That is affordable for the
-current feature set and not affordable once detection gates editor-path work that runs
-per keystroke. Results must be cached per directory and invalidated on file-system
-change.
+**Detection sits on the editor path, so it must be cheap and cached.** It runs on every
+file the user opens. Its signals stay local — file names and their surroundings — and its
+results are cached and invalidated on file-system change. Nothing on this path may contact
+a server.
 
-**`SolrConfigsetFileKind` — widen beyond two kinds.** It recognizes the schema and
-`solrconfig.xml`. A configset also contains `params.json`, `elevate.xml`,
-`currency.xml`, `enumsConfig.xml`, and the resource files analyzer chains reference by
-name — `stopwords.txt`, `synonyms.txt`, `protwords.txt`, and the `lang/` directory.
-Navigating from a filter's `words=` attribute to the file it names is a feature this
-enum currently cannot express.
+**Recognizing a configset and recognizing its resources are different jobs.** Beyond the
+schema and `solrconfig.xml`, a configset contains `params.json`, `elevate.xml`,
+`currency.xml` and `enumsConfig.xml`, which are evidence a configset exists. It also
+contains the files analyzer chains name — `stopwords.txt`, `synonyms.txt`,
+`protwords.txt`, `lang/` — which are not: those names are common enough outside Solr that
+treating them as evidence would activate the plugin on projects that have none. They are
+recognized only from inside a configset already identified, which is what makes navigating
+a filter's `words=` attribute to the file it names possible.
 
-**`SolrConfigsetSettings` — split by audience.** It persists manual configset roots and
-a detection switch to the shared project file, which is right: a marked root is a fact
-about the project. Connections are not. Connection definitions belong in per-user
-storage with credentials in PasswordSafe, and must never land in a shared file. This is
-a new settings surface beside the existing one, not a change to it.
+**Connection definitions must never reach a shared project file.** A marked configset root
+is a fact about the project and belongs in shared settings, where it already lives. A
+connection is a fact about one developer's machine; its definition belongs in per-user
+storage and its credentials in PasswordSafe. This is a second settings surface, not a
+change to the existing one.
 
-**`plugin.xml` — everything beyond file-type registration is new.** Reference
-contributors, inspections, annotators, intentions, documentation providers, rename
-processors, tool windows, and the optional dependencies that gate framework integration.
+**Persistent settings leak between tests.** `SolrConfigsetTestCase` exists because the
+platform's test base class shares one project across test classes; the same hazard applies
+to every new persistent setting.
 
-**Package layout — the new components need homes.** `org.apache.solr.ide.configset`
-holds the repository reader appropriately. The model, server client, code recognizers
-and UI need sibling packages, established before code lands in the wrong place.
-
-**Test infrastructure — two gaps.** `SolrConfigsetTestCase` exists because
-`BasePlatformTestCase` leaks project-level persistent state between tests; the same
-hazard applies to any new persistent settings. Separately, testing the server reader
-requires a fake HTTP layer so the suite never depends on a running Solr — that fixture
-is part of the work, not incidental to it.
-
-**One thing to decide before more code is written: the `org.apache.solr` package
-namespace.** The plugin lives in a personal repository, is published under a personal
-vendor account, and is not an Apache Software Foundation project — donation is
-explicitly not being pursued. Occupying the `org.apache.solr.*` namespace implies ASF
-ownership the project does not have, and carries a trademark question for a Marketplace
-listing. Renaming is cheap now and expensive after the code grows.
+**The `org.apache.solr` package namespace has to be decided.** The plugin lives in a
+personal repository, is published under a personal vendor account, and is not an Apache
+Software Foundation project — donation is explicitly not being pursued. Occupying
+`org.apache.solr.*` implies ASF ownership the project does not have, and carries a
+trademark question for a Marketplace listing.
 
 ## Version support
 
@@ -521,8 +525,13 @@ when Solr's does.
 - **Reference resolution and rename** verified on representative configsets, asserting
   no dangling references remain.
 - **The server reader against a fake HTTP layer**, covering success, timeout,
-  authentication failure, malformed responses, and an unrecognized server version. No
-  test requires a running Solr.
+  authentication failure, malformed responses, and an unrecognized server version — the
+  states a real server will not produce on demand.
+- **A contract test per supported line against a real Solr in a container**, pinned to an
+  exact image tag. A fake can only replay responses somebody imagined, which is the wrong
+  instrument for the risk that a server returns a shape nobody anticipated; this is what
+  keeps the fake honest as Solr's wire format moves. No test requires a Solr that a
+  developer started by hand.
 - **The field model's agreement states** — repository-only, server-only, agreeing,
   disagreeing — tested directly, since drift correctness reduces to these.
 - **Recognizers against real project fixtures**, not synthetic strings: a Spring Boot
@@ -560,16 +569,18 @@ The plugin is ready to publish when:
 
 - It installs on IntelliJ IDEA and activates on recognized configsets, with a manual
   override for layouts the heuristics miss.
-- Editing features work with no connection; server features work with no configuration
-  files in the project; each of the three project shapes is usable.
+- Editing features work with no connection, and server features work with no
+  configuration files in the project — each demonstrated on a fixture project of that
+  shape: a bare configset repository, an application with its configset in-repo, and an
+  application whose configset lives elsewhere.
 - Inspections produce zero false positives on both configsets Solr ships, enforced in
   CI.
 - A connection can be created from a discovered candidate or entered by hand, with
   credentials in PasswordSafe.
-- Queries run from the console and from a gutter icon in Java or Kotlin, with results
-  and scoring rendered structurally.
-- Field names in SolrJ usage are checked against the model, with no false positives on a
-  real project.
+- Queries run from the console and from the Java or Kotlin code that contains them, with
+  results and scoring rendered structurally.
+- Field names in SolrJ usage are checked against the model, and the Spring, Quarkus and
+  multi-module fixture projects produce no warning the plugin cannot justify.
 - Repository and server can be compared, and a configset uploaded and a collection
   reloaded from the IDE.
 - No write happens without a human invoking it and confirming its target.
@@ -580,13 +591,19 @@ The plugin is ready to publish when:
 - **Marketplace compatibility cadence.** How quickly the plugin must follow a new
   IntelliJ Platform release, given the Solr-derived support policy is pinned to a
   different upstream than JetBrains'.
-- **Package namespace.** See the overhaul section. Needs deciding before the code grows.
+- **Package namespace.** `org.apache.solr.*` implies ASF ownership the project does not
+  have. Renaming is cheap now and expensive after the code grows, so this is the one open
+  question with a deadline — see "What changes in the existing code".
 - **Which platform framework-configuration APIs are available to plugins, and in which
   IDE editions.** Determines how much of the framework-configuration recognizer the
   plugin implements itself. Verify before committing to specifics.
 
 ## References
 
+- Implementation plan — the ordered path to this intent, and the authority on which steps
+  are done: [`specs/plans/0002-solr-intellij-plugin-plan.md`](plans/0002-solr-intellij-plugin-plan.md)
+- Demo runbook — these features as acceptance criteria in the user's own terms:
+  [`docs/demo/README.md`](../docs/demo/README.md)
 - Solr configuration file survey — which files are hand-edited, which are API-written,
   and what the plugin covers: [`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md)
 - Plugin development tutorial, using this project as the worked example:

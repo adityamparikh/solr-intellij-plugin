@@ -34,7 +34,8 @@ authority on intent, and this section as the authority on status.
 
 ## Planned scope
 
-Three surfaces, connected by one shared model of what fields exist and what they can do.
+Three surfaces, connected by one shared model of what fields exist and what they can do —
+and the comparison that only exists because two of them are connected.
 
 | Surface | What it does | Needs a running Solr |
 |---|---|---|
@@ -64,9 +65,10 @@ covers.
 
 ## Supported Solr versions
 
-The plugin supports the Solr release lines that Apache Solr has **not** declared end-of-life —
-currently **10.x** and **9.10.x**. When Solr declares a line EOL, the plugin drops it in its next
-release. See the version-support policy in the specification.
+The plugin supports the Solr release lines that Apache Solr has **not** declared end-of-life; when
+Solr declares a line EOL, the plugin drops it in its next release. The
+[specification](specs/0002-solr-intellij-plugin.md) names the current lines, and is the one place
+they are written down — a compatibility matrix ships with the first release.
 
 ## Documentation
 
