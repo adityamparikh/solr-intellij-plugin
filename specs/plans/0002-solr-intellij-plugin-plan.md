@@ -108,6 +108,8 @@ and implemented configset detection so features activate only on recognized file
 [Step 2](#step-2-overhaul-the-activation-gate) reworks this for the model the spec
 describes; it is extended, not replaced.
 
+**Acceptance:** Enables [demo runbook](../../docs/demo/README.md) step 21 — the plugin activates on the demo configset at all. No demo step of its own.
+
 **Dependencies:** none
 
 ### Step 2: Overhaul the activation gate
@@ -143,6 +145,8 @@ insufficient for this one. Fix it before building on it.
 - [ ] Connection settings persist per-user; configset roots stay shared.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 21 — opening the demo schema activates the plugin, and a project holding two configsets keeps them apart.
+
 **Dependencies:** [Step 1](#step-1-activation-gate-done)
 
 ### Step 3: Repository reader and field model
@@ -167,6 +171,8 @@ The spine. Everything else reads this.
 - [ ] Model rebuilds on file change and not otherwise.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** No demo step of its own; every step from 22 onward fails without it. Verify through the steps that consume it.
+
 **Dependencies:** [Step 2](#step-2-overhaul-the-activation-gate)
 
 ### Step 4: Match analysis
@@ -189,6 +195,8 @@ buildable in parallel with [Step 3](#step-3-repository-reader-and-field-model).
 - [ ] Filter ordering that changes the result is covered by tests.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** Correctness behind [demo runbook](../../docs/demo/README.md) steps 28 to 31 — the hints those steps show are only as good as this. Test it directly, not through the annotator.
+
 **Dependencies:** none
 
 ---
@@ -209,6 +217,8 @@ buildable in parallel with [Step 3](#step-3-repository-reader-and-field-model).
 - [ ] All four reference kinds resolve; Find Usages returns every reference.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 22, 23, 24 and 27 — Ctrl-click a field's type, a copy rule's destination, and a `qf` name in `solrconfig.xml`; then Find Usages on a field type.
+
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 6: Inspections
@@ -228,6 +238,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Every registered inspection has a description file.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 25 and 26 — the planted dangling copy rule is underlined, and deleting a referenced field flags its rule immediately.
+
 **Dependencies:** [Step 5](#step-5-references-navigation-and-find-usages)
 
 ### Step 7: Match hints and quick-fixes
@@ -244,7 +256,10 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Quick-fixes produce valid configset edits.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 28 to 33 — a `string` field reads as whole-value and case-sensitive, a tokenised field does not offer prefix matching, an edge-n-gram field does, and Alt-Enter generates the companion field with its copy rule.
+
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 4](#step-4-match-analysis)
+
 ### Step 8: Rename
 
 **Actions:**
@@ -255,6 +270,8 @@ Where the zero-false-positive requirement gets teeth.
 **Success criteria:**
 - [ ] Every resolved reference updates; no dangling references after rename.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 34 — renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 
 **Dependencies:** [Step 5](#step-5-references-navigation-and-find-usages)
 
@@ -278,6 +295,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Selection order is correct and the answering source is recorded.
 - [ ] `./gradlew build` passes and regenerates.
 
+**Acceptance:** Feeds [demo runbook](../../docs/demo/README.md) steps 68 to 70. Step 69 is the one to run by hand: `WordDelimiterGraphFilterFactory` must offer all twelve attributes, because an implementation reading field names produces a plausible short list instead.
+
 **Dependencies:** [Step 2](#step-2-overhaul-the-activation-gate)
 
 ### Step 10: Completion, validation and quick documentation
@@ -293,6 +312,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Completion and validation work against the catalog.
 - [ ] Quick documentation resolves for factories and attributes.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 68 to 70 — factories complete inside an analyser chain, attributes complete on a factory that has many, and Ctrl-Q resolves.
 
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 9](#step-9-factory-catalog-generator)
 ---
@@ -322,6 +343,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Server state refreshes only on request or connection change — never on a timer.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 35 — a connection can be created and used. Also: no automated test anywhere in the suite may require a running Solr.
+
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 12: Collections tool window
@@ -336,6 +359,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] An unreachable server degrades to an inline message, not a popup.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 36 — collections, cores and the server's actual fields render, and the selected connection stays visible.
+
 **Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
 ### Step 13: Query console
@@ -349,6 +374,8 @@ Where the zero-false-positive requirement gets teeth.
 - [ ] Queries run and render structurally; completion works with no configset present.
 - [ ] Saved queries round-trip through the project.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 37 and 38 — a query runs with completion from the live schema, results render as a table, and the scoring explanation expands as a tree.
 
 **Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
@@ -370,7 +397,10 @@ The feature that justifies both halves.
 - [ ] No write occurs without explicit invocation.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 39 and 40 — a field added to the repository and not deployed shows as a difference; upload and reload clear it, naming the target server first.
+
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model), [Step 11](#step-11-http-client-connections-and-the-server-reader)
+
 ### Step 15: Indexing test documents
 
 **Actions:**
@@ -381,6 +411,8 @@ The feature that justifies both halves.
 **Success criteria:**
 - [ ] Documents can be authored with completion and indexed on explicit invocation.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 71 — a document authored with completion indexes into the local collection and is then findable.
 
 **Dependencies:** [Step 11](#step-11-http-client-connections-and-the-server-reader)
 
@@ -406,6 +438,8 @@ The feature that justifies both halves.
 - [ ] Unresolvable constructs produce no warning.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 41 to 44 and 47 — the planted typo in a filter query is flagged, so is a field that never existed, so is the misspelled `@Field` annotation. Step 47 matters most: constructs the plugin cannot resolve produce no warning at all.
+
 **Dependencies:** [Step 3](#step-3-repository-reader-and-field-model)
 
 ### Step 17: Query syntax and the console bridge
@@ -421,7 +455,10 @@ The feature that justifies both halves.
 - [ ] The gutter action runs the query; navigation resolves when a configset is present.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) steps 45 and 46 — the query string renders as a query rather than a grey blob, and the gutter icon runs it in the console.
+
 **Dependencies:** [Step 13](#step-13-query-console), [Step 16](#step-16-recognizer-interface-and-solrj)
+
 ### Step 18: Framework configuration
 
 **Actions:**
@@ -441,6 +478,8 @@ The feature that justifies both halves.
 - [ ] Discovered endpoints are offered, never adopted silently.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** [demo runbook](../../docs/demo/README.md) step 35 for Spring — the URL is offered by following `${app.solr.url}` from the SolrJ client bean into the active profile, and is never connected to automatically. Quarkus, Micronaut and MicroProfile have no demo step by decision; their acceptance is fixture tests here. Quarkus is the one to get right: its profiles are inline key prefixes in one file, so a Spring-shaped implementation finds nothing in a Quarkus project and finds it silently.
+
 **Dependencies:** [Step 16](#step-16-recognizer-interface-and-solrj)
 
 ### Step 19: Apache Camel
@@ -455,6 +494,8 @@ The feature that justifies both halves.
 **Success criteria:**
 - [ ] Endpoints recognized from Java and XML routes; options validated.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** No demo step, by decision — see the demo runbook's "Frameworks that are specified but deliberately not demoed". Acceptance is fixture tests here: a Solr endpoint in a Java and in an XML route is offered as a connection candidate, and a misspelled URI option is flagged.
 
 **Dependencies:** [Step 16](#step-16-recognizer-interface-and-solrj)
 
@@ -477,6 +518,8 @@ The feature that justifies both halves.
 - [ ] Missing description files and version drift both fail the build.
 - [ ] `./gradlew build` passes.
 
+**Acceptance:** This step *is* the automated gate, so it has no demo step. It is what stops the demo passing while the suite quietly rots.
+
 **Dependencies:** [Step 6](#step-6-inspections) for the golden-file gate; [Step 9](#step-9-factory-catalog-generator) for catalog tests
 
 ### Step 21: Documentation
@@ -493,6 +536,8 @@ The feature that justifies both halves.
 **Success criteria:**
 - [ ] All release-blocking documentation exists and CI checks pass.
 - [ ] `./gradlew build` passes.
+
+**Acceptance:** No demo step. The documentation check in this step asserts that every inspection shipped in step 6 has a description file.
 
 **Dependencies:** [Step 6](#step-6-inspections), [Step 20](#step-20-ci-gates)
 ---

@@ -129,9 +129,31 @@ Create `demo/solr/conf/solrconfig.xml` with at least this:
 The `qf` line is what proves cross-file navigation: those three names live in a different
 file from the schema that defines them, and nothing in either file connects them.
 
+Create `demo/src/main/java/SolrConfig.java`. This is the Spring half, and it matters:
+plain SolrJ, wired by Spring, **not** Spring Data Solr — which is unmaintained upstream
+and out of scope.
+
+```java
+@Configuration
+public class SolrConfig {
+
+    @Bean
+    SolrClient solrClient(@Value("${app.solr.url}") String url) {
+        return new Http2SolrClient.Builder(url).build();
+    }
+}
+```
+
+This is the shape almost every Spring Boot service using Solr actually has, and it is
+what makes connection discovery a real feature rather than a parlour trick: the URL is
+not a literal in the builder, it is a property reference resolved against whichever
+profile is active. Finding it means following `${app.solr.url}` back into the profile
+that supplies it.
+
 Create `demo/src/main/java/ProductSearch.java`:
 
 ```java
+@Service
 public class ProductSearch {
 
     private final SolrClient solr;
@@ -148,7 +170,9 @@ public class ProductSearch {
 ```
 
 Two deliberate bugs. `categry` is a typo for `category`. `price` is a field that has
-never existed in this schema. Both compile.
+never existed in this schema. Both compile. Note the client arrives by injection, so
+nothing in this file names a server — which is the normal case, and the reason endpoint
+discovery cannot just scan for URL literals.
 
 Create `demo/src/main/java/Product.java`:
 
@@ -432,10 +456,21 @@ configuration files now behave like a language rather than like text.
 ### Step 35. Connect to a server
 
 Open the connections list. Point out that `http://localhost:8983/solr` is already
-offered — it was read out of the Spring configuration, from the active profile, not typed
-in.
+offered, and that nobody typed it.
 
-Say the plugin offers it and never connects on its own.
+Show where it came from, because the chain is the interesting part. The bean in
+`SolrConfig.java` does not contain a URL — it contains `${app.solr.url}`. That property
+is defined in the `dev` profile, and `dev` is the active one. The plugin followed the
+property reference from the SolrJ client construction back into the profile that supplies
+it.
+
+Say two things. First: this is plain SolrJ wired by Spring, which is what real services
+look like — the plugin does not require, and does not support, Spring Data Solr, which is
+unmaintained upstream. Second: the plugin **offers** this and never connects on its own.
+An endpoint found in a configuration file is a suggestion, not an instruction.
+
+Worth adding if the room is a Spring room: change the active profile and the offered
+connection changes with it.
 
 ### Step 36. Browse what is actually there
 
@@ -673,3 +708,63 @@ Java section is a better ending anyway.
 Cut Steps 35 to 40 — the server block. Never cut Steps 41 to 47, because they close the
 story you opened with, and never cut the walkthrough, because it is what people take
 home.
+
+---
+
+# Part five — acceptance steps that are not in the talk
+
+These are not in the forty-five minutes. Completion is expected rather than surprising,
+indexing is hard to show meaningfully to an audience, and Camel is a smaller population
+than plain SolrJ. They are still user-visible behaviour, so they still need a step that
+says what "done" looks like.
+
+Run these the same way as the rest: in a sandbox IDE, against the fixtures from Step 2.
+
+### Step 68. Completion inside an analyser chain
+
+Put the cursor inside an `<analyzer>` block, start a new `<filter class="solr.` and
+invoke completion. Filter factories appear, from the catalogue for the version this
+configset targets.
+
+### Step 69. Attribute completion on a factory with many options
+
+Complete attributes on `solr.WordDelimiterGraphFilterFactory`. All twelve appear.
+
+This one is worth checking by hand rather than trusting a green test: that factory packs
+its options into a single integer field internally, so any implementation that derives
+attribute names from field names silently produces a short list that looks plausible.
+
+### Step 70. Quick documentation on a factory
+
+Ctrl-Q on `solr.ASCIIFoldingFilterFactory`. Documentation appears inline, and it is
+discoverable which source answered — the connected server, the configset's declared
+version, or the bundled default.
+
+### Step 71. Author and index a test document
+
+Write a document against the demo schema with completion offering real field names,
+index it into the local collection, and find it with a query. The action names the target
+server and asks before writing.
+
+---
+
+# Frameworks that are specified but deliberately not demoed
+
+Spring is the only framework with demo coverage, and that is a decision rather than an
+oversight. It is the common case, and its fixture already exercises the hard part —
+following a property reference from a SolrJ client construction into the active profile.
+
+**Quarkus, Micronaut, MicroProfile and Apache Camel are specified and will be built, but
+have no demo step.** Each would need its own fixture project, its own runtime, and its
+own slice of stage time to show something the Spring demo already showed. The cost is in
+building and maintaining four more fixture projects, not in the features themselves.
+
+What that means in practice:
+
+- Their acceptance is the unit and fixture tests in their plan steps, not a step here.
+- Quarkus is the one to write fixture tests for most carefully, because its profiles are
+  inline key prefixes in a single file rather than separate profile files. An
+  implementation that works for Spring finds nothing at all in a Quarkus project, and
+  finds it silently.
+- If a demo step is ever added, add it here rather than inline in the talk. The
+  forty-five minutes are full.
