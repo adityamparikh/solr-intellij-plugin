@@ -1,3 +1,4 @@
+import java.io.File
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
@@ -43,15 +44,17 @@ dependencies {
 //   ./gradlew runIde -PrunIdeProject=/path/to/project    open something else
 //   ./gradlew runIde -PrunIdeProject=                    open nothing; sandbox restores its own state
 tasks.runIde {
-    val requested = providers.gradleProperty("runIdeProject").orElse(
-        layout.projectDirectory.dir("demo").asFile.absolutePath,
-    )
-    argumentProviders.add {
-        val path = requested.get()
-        // A blank value is the documented opt-out, and an absent directory must not become a
-        // stray argument the IDE would try to interpret as a file to create.
-        if (path.isNotBlank() && file(path).isDirectory) listOf(path) else emptyList()
-    }
+    // Resolved through providers only. An earlier version called `file(path)` inside the argument
+    // provider, which captures the Gradle `Project` — a script object reference the configuration
+    // cache cannot serialize, so `runIde` failed the moment the cache had to be rebuilt.
+    val requested = providers.gradleProperty("runIdeProject")
+        .orElse(layout.projectDirectory.dir("demo").asFile.absolutePath)
+        .map { path ->
+            // A blank value is the documented opt-out, and a path to a directory that does not
+            // exist must not become an argument the IDE tries to interpret as a file to create.
+            if (path.isNotBlank() && File(path).isDirectory) listOf(path) else emptyList()
+        }
+    argumentProviders.add(CommandLineArgumentProvider { requested.get() })
 }
 
 // SonarCloud analysis. Runs from CI rather than SonarCloud's Automatic Analysis, because
