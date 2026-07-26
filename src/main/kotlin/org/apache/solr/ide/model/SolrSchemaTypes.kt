@@ -85,6 +85,9 @@ data class SolrFieldType(
  * @property multiValued whether the field is multi-valued, or null if unset
  * @property required whether the field is required, or null if unset
  * @property defaultValue the `default` attribute, or null if unset
+ * @property attributes every attribute except `name` and `type`, as written. Kept alongside the
+ *   typed accessors because a field may carry any of the twenty-odd properties Solr defines, and
+ *   documentation has to answer for all of them rather than the handful with accessors here
  */
 data class SolrField(
     val name: String,
@@ -95,6 +98,7 @@ data class SolrField(
     val multiValued: Boolean? = null,
     val required: Boolean? = null,
     val defaultValue: String? = null,
+    val attributes: Map<String, String> = emptyMap(),
 )
 
 /**

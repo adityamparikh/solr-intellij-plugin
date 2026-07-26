@@ -70,6 +70,8 @@ inventing one:
   the field model. **Exists.**
 - `org.apache.solr.ide.model` — the field model itself: fields, dynamic fields,
   field types, analyzer chains, and what each can do. **Exists.**
+- `org.apache.solr.ide.editor` — what the user sees in the editor: inlay hints,
+  quick documentation, and the inspections and quick-fixes to come. **Exists.**
 - `org.apache.solr.ide.recognizer` — spotting field names and queries in Java and
   Kotlin code, per client library.
 - `org.apache.solr.ide.ui` — tool windows, the query console and the drift view.
@@ -203,3 +205,29 @@ exists, so a field added in the editor is in the model before the file is saved.
 configsets does this *project* contain. It walks the content roots and is
 therefore not an editor-path operation; it prunes build output and dependency
 trees so that staying off that path remains affordable.
+
+# Package org.apache.solr.ide.editor
+
+What the user actually sees.
+
+[SolrMatchInlayHintsProvider] shows what each field matches inline beside its
+declaration — an inlay rather than a tooltip because a user who does not already
+suspect their field cannot match a prefix will never hover over it to find out.
+[SolrConfigsetDocumentationProvider] answers the follow-up question on the type
+and on the field itself.
+
+Both render through [SolrFieldPresentation], which exists so the two cannot
+disagree about what a field matches: the surest way to keep a hint and a popup
+consistent is for both to render the same computed value rather than each
+phrasing it independently.
+
+Two rules govern what is said. **Nothing is claimed that was not determined** —
+where match analysis is not confident, or a field's type is undeclared, the hint
+is absent rather than approximate. And **the match claim states that it is about
+efficient matching**, because a wildcard query works against any indexed field
+and a reader who knows that would otherwise conclude the hint is simply wrong.
+
+Documentation resolves each property through field, then field type, then Solr's
+default, and says which of the three answered. That resolution is the half no
+external documentation can supply; the Reference Guide is linked for the prose,
+at the version the configset declares.

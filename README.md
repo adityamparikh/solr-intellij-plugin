@@ -19,9 +19,7 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 **Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
 purpose.**
 
-What exists today is the foundation every feature is built on — the *activation gate*, which decides
-whether a file belongs to a Solr configset, and the *field model*, which is what the plugin knows
-about a configset once it has one. No user-facing feature reads either yet:
+The foundation is complete and the first two user-facing features sit on top of it:
 
 - Activation gated on the project depending on a Solr client (`solr-solrj` or a wrapper that carries
   it — Spring Data Solr, Camel, the Quarkus extensions). Matched by artifact id, so any version
@@ -46,6 +44,12 @@ about a configset once it has one. No user-facing feature reads either yet:
 - Match analysis — from a field's index-time analyzer chain to what it can actually match: whole
   value or tokens, case-sensitive or not, and whether prefix matching is supported efficiently and
   by what mechanism
+- **Inline hints** on every field in a configset, saying what it can actually match — whole value
+  or tokens, case-sensitive or not, and whether prefix matching is supported efficiently. Silent
+  where the analyser chain contains something it does not recognise
+- **Quick documentation** on a field or its type: the analyser chains, what fields of that type
+  match, and every property's effective value with whether it came from the field, its type, or
+  Solr's default — plus a Reference Guide link for the version the configset declares
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
