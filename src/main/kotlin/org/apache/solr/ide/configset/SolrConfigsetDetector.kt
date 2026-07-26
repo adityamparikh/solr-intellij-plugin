@@ -5,16 +5,27 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 
 /**
- * Decides whether a file is a Solr configset file, gating all Phase 1 feature activation.
+ * Decides whether a file is a Solr configset file, gating all feature activation.
  *
- * A file is recognized when its name matches a known configset file name AND at least one
- * confidence signal holds:
- *  - it sits under a directory the user manually marked (see [SolrConfigsetSettings]); or
- *  - directory heuristics indicate a real configset — a sibling `solrconfig.xml`/schema file,
- *    or a conventional `conf/` parent directory.
+ * Two questions are answered here, and they are not the same one:
  *
- * The heuristics keep a stray `schema.xml` from an unrelated framework from activating features,
- * while the manual override covers layouts the heuristics miss.
+ *  - **Should features activate for this file?** — [isConfigsetFile]. A file qualifies when its name
+ *    is one of the *identifying* names (see [SolrConfigsetFileRole]) and it resolves to a configset.
+ *  - **Which configset does this file belong to?** — [configsetFor], delegated to
+ *    [SolrConfigsetLocator]. Fields and analyzer chains are properties of a configset directory, and
+ *    a project may hold several, so every model lookup starts from this answer rather than from the
+ *    file.
+ *
+ * Both rest on [SolrProjectDetector]: features activate only in a project that depends on a Solr
+ * client. That is what keeps a stray `schema.xml` from an unrelated framework silent, and it is a
+ * fact about the project rather than an inference from a directory listing. The manual override in
+ * [SolrConfigsetSettings] covers the case the dependency cannot — a repository of configsets with no
+ * build file, and so no dependencies to find.
+ *
+ * Resource files such as `stopwords.txt` are recognized by [kindOf] but never activate anything on
+ * their own; their names are far too common outside Solr to be evidence. They are recognized only
+ * from inside a configset already identified, which is what makes navigating a filter's `words=`
+ * attribute to the file it names possible.
  */
 object SolrConfigsetDetector {
 
@@ -22,8 +33,8 @@ object SolrConfigsetDetector {
      * Whether [file] should be treated as part of a Solr configset in [project].
      *
      * Directories never qualify, and nothing qualifies while detection is switched off in
-     * [SolrConfigsetSettings]. A recognized file name is necessary but not sufficient: it must be
-     * corroborated either by a manually marked root or by directory evidence.
+     * [SolrConfigsetSettings]. A recognized file name is necessary but not sufficient: the name must
+     * be an identifying one, and the file must resolve to a configset.
      *
      * @param project the project whose [SolrConfigsetSettings] supply the manual overrides
      * @param file the file to classify
@@ -32,11 +43,9 @@ object SolrConfigsetDetector {
      */
     fun isConfigsetFile(project: Project, file: VirtualFile): Boolean {
         if (file.isDirectory) return false
-        val settings = SolrConfigsetSettings.getInstance(project)
-        if (!settings.isDetectionEnabled) return false
-        if (SolrConfigsetFileKind.forFileName(file.name) == null) return false
-
-        return settings.isUnderManualRoot(file) || hasDirectoryEvidence(file)
+        val kind = SolrConfigsetFileKind.forFileName(file.name) ?: return false
+        if (kind.role != SolrConfigsetFileRole.IDENTIFYING) return false
+        return configsetFor(project, file) != null
     }
 
     /**
@@ -57,36 +66,41 @@ object SolrConfigsetDetector {
     }
 
     /**
-     * The configset kind for [file], or null if [file] is not a recognized configset file.
+     * The configset owning [file], or null if it belongs to none.
      *
-     * Narrower than [SolrConfigsetFileKind.forFileName], which classifies a name in isolation:
-     * this returns a kind only for files that pass full detection, so a `schema.xml` belonging to
-     * some unrelated framework yields null.
+     * Broader than [isConfigsetFile] on purpose: a resource file, or the configset directory itself,
+     * resolves to its configset without being something that activates features.
      *
-     * @param project the project whose [SolrConfigsetSettings] supply the manual overrides
-     * @param file the file to classify
-     * @return the kind of configset file, or null if [file] is not one
+     * @param project the project to resolve within
+     * @param file the file or directory whose owning configset is wanted
+     * @return the owning configset, or null
      */
-    fun kindOf(project: Project, file: VirtualFile): SolrConfigsetFileKind? =
-        if (isConfigsetFile(project, file)) SolrConfigsetFileKind.forFileName(file.name) else null
+    fun configsetFor(project: Project, file: VirtualFile): SolrConfigset? =
+        SolrConfigsetLocator.getInstance(project).configsetFor(file)
 
     /**
-     * Whether [file]'s directory looks like a Solr configset.
+     * The configset owning [psiFile], or null if it belongs to none.
      *
-     * Two signals count as evidence: a `conf/` parent, the conventional location inside a core or
-     * collection, and a sibling that is itself a recognized configset file — a `schema.xml` next to
-     * a `solrconfig.xml` is far more likely to be Solr's than either would be alone.
-     *
-     * Both signals are deliberately cheap and local. Walking further up the tree looking for
-     * `core.properties` or a ZooKeeper layout would catch more configsets, but detection runs on
-     * every file the user opens, so the cost has to stay proportional to the benefit. The manual
-     * override in [SolrConfigsetSettings] covers what this misses.
+     * @param psiFile the PSI file whose owning configset is wanted
+     * @return the owning configset, or null — including when [psiFile] has no backing file on disk
      */
-    private fun hasDirectoryEvidence(file: VirtualFile): Boolean {
-        val parent = file.parent ?: return false
-        if (parent.name == "conf") return true
-        return parent.children.orEmpty().any { sibling ->
-            sibling != file && SolrConfigsetFileKind.forFileName(sibling.name) != null
-        }
+    fun configsetFor(psiFile: PsiFile): SolrConfigset? =
+        psiFile.virtualFile?.let { configsetFor(psiFile.project, it) }
+
+    /**
+     * The configset kind for [file], or null if [file] is not a recognized configset entry.
+     *
+     * Narrower than [SolrConfigsetFileKind.forFile], which classifies a name in isolation: this
+     * returns a kind only for entries that actually resolve to a configset, so a `schema.xml`
+     * belonging to some unrelated framework yields null — and so does a `stopwords.txt` that is not
+     * inside a configset, which is the whole point of the resource/identifying split.
+     *
+     * @param project the project whose [SolrConfigsetSettings] supply the manual overrides
+     * @param file the file or directory to classify
+     * @return the kind of configset entry, or null if it is not one
+     */
+    fun kindOf(project: Project, file: VirtualFile): SolrConfigsetFileKind? {
+        val kind = SolrConfigsetFileKind.forFile(file) ?: return null
+        return if (configsetFor(project, file) != null) kind else null
     }
 }
