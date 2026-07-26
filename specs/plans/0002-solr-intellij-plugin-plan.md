@@ -3,339 +3,695 @@ specbuddy-type: plan
 spec-file: specs/0002-solr-intellij-plugin.md
 ---
 
-# Implementation Plan: Solr IntelliJ Plugin — Phase 1
+# Implementation Plan: Solr IntelliJ Plugin
 
 ## Overview
 
-Phase 1 delivers pure static-analysis language intelligence for Apache Solr configsets
-(`managed-schema`/`schema.xml`, `solrconfig.xml`) inside IntelliJ IDEA — completion, cross-file
-navigation, rename, inspections, match-capability hints/quick-fixes, and inline docs, with no Solr
-connection required.
+Deliver the plugin described in the spec: configuration intelligence, a live Solr
+connection, and Java/Kotlin code support, unified by one field model.
 
-**Current state.** The template scaffolding is gone and the codebase is re-rooted under
-`org.apache.solr.ide`. What exists is the Phase 1 *activation gate* — `SolrConfigsetDetector`,
-`SolrConfigsetFileKind`, and the `SolrConfigsetSettings` manual override — plus `SolrBundle`. Every
-Phase 1 feature (S1–S9) is still unbuilt. Step 1 below is therefore closed as done; the plan resumes
-at Step 1b.
+**Current state.** The build, CI and documentation tooling are complete and stay as they
+are. Everything else is
+[the activation gate](#step-1-activation-gate-done) and nothing more. Everything the spec
+describes is unbuilt.
 
-**Cross-reference convention.** Spec references name the section (`spec § "Configset detection"`)
-rather than citing line numbers. Line anchors went stale the first time the spec was revised, and
-will again.
+**What this plan dropped.** The provenance classification, the API-first write gating,
+and the runtime derivation of reference data from project jars are gone. The spec records
+why, in "What this replaces" and "The factory catalog"; roughly a third of the previous
+plan existed to serve those decisions.
 
-## Goals
+**Cross-reference convention.** Reference a step or a section by its name, never by a
+number or a line alone. This holds in both directions — a reference to the demo runbook
+carries the demo step's title too, because the runbook has its own numbering and a bare
+number silently means the wrong thing.
 
-- Implement S1–S9 for the schema versions of every non-EOL Solr line (currently 10.x and 9.10.x).
-- Make the plugin API-first: where the schema is Solr-managed, render writes as Schema API requests rather than file edits.
-- Build the reference graph foundation that powers navigation (S2), rename (S3), and inspections (S4).
-- Generate factory/attribute/documentation reference data from Solr & Lucene artifacts rather than hand-maintaining it.
-- Achieve zero false positives on the `_default` and `sample_techproducts_configs` configsets, enforced by CI.
-- Ship all `[P1]` documentation items with the release.
+## Build order
 
-## Scope
+The activation gate overhaul unblocks everything except match analysis, which depends on
+nothing and can start immediately. After the repository reader and field model, the work
+splits into three tracks. Within a track the order is the dependency order.
 
-**In scope:** Phase 1 functional requirements S1–S9, configset detection (including schema provenance), Schema API payload rendering, generated reference data,
-golden-file CI, and P1 docs (D1, D2, D3, D4, D6, D8).
+The tracks meet twice. The drift view needs both the field model and the server reader —
+it is the feature that most justifies building both halves. The gutter action inside
+*query syntax and the console bridge* needs the query console, so the Code track cannot
+finish without the Server track; the rest of that step can. If a track has to be cut, cut
+it whole, and the gutter action goes with the Server track.
 
-**Out of scope:** All Phase 2–5 work (connections, query console, indexing, SolrJ code integration,
-collection explorer, MCP). Non-P1 docs (D5, D7, D9). No network/credential surface.
+### Foundation — build first
+
+- [Step 1 — Activation gate](#step-1-activation-gate-done) — **done**
+- [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
+- [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model)
+- [Step 4 — Match analysis](#step-4-match-analysis)
+
+### Editor track
+
+- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages)
+- [Step 6 — Inspections](#step-6-inspections)
+- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
+- [Step 8 — Rename](#step-8-rename)
+- [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
+- [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
+
+### Server track
+
+- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader)
+- [Step 12 — Collections tool window](#step-12-collections-tool-window)
+- [Step 13 — Query console](#step-13-query-console)
+- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload)
+- [Step 15 — Indexing test documents](#step-15-indexing-test-documents)
+
+### Code track
+
+- [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+- [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge)
+- [Step 18 — Framework configuration](#step-18-framework-configuration)
+- [Step 19 — Apache Camel](#step-19-apache-camel)
+
+### Cross-cutting — continuous, finished last
+
+- [Step 20 — CI gates](#step-20-ci-gates)
+- [Step 21 — Documentation](#step-21-documentation)
 
 ## Prerequisites
 
-- [x] JDK configured for the IntelliJ Platform Gradle plugin (see `build.gradle.kts`).
-- [x] `./gradlew build` succeeds (baseline green build, CI-verified).
-- [x] JDK 21 or later available: Solr 10 requires Java 21, which sets the generator's toolchain floor. Enforced by `jvmToolchain(21)` in `build.gradle.kts`.
-- [ ] Local copies of `_default` and `sample_techproducts_configs` configsets available for golden-file test data (from a Solr distribution). Needed by Step 8; not a blocker before then.
-- [ ] Solr/Lucene artifacts resolvable from Maven Central for each supported (non-EOL) Solr line — currently 10.x and 9.10.x — for the reference-data generator. Blocks Step 2; verify before starting it.
+- [x] JDK 21 toolchain, green build, CI verified.
+- [x] Solr and Lucene artifacts resolvable from Maven Central for both supported lines —
+      verified: Solr 10.0.0 with Lucene 10.3.2, Solr 9.10.1 with Lucene 9.12.3. Needed by
+      [the factory catalog generator](#step-9-factory-catalog-generator).
+- [ ] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
+      catalog without documentation text. Needed by
+      [the factory catalog generator](#step-9-factory-catalog-generator), which cannot
+      recover documentation from a compiled jar.
+- [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
+      ships. They are the clean fixtures for [inspections](#step-6-inspections) and the
+      subject of the golden-file gate in [CI gates](#step-20-ci-gates).
+- [ ] A local Solr, for manual verification only.
+- [ ] **Decision required before
+      [the activation gate overhaul](#step-2-overhaul-the-activation-gate):** the
+      `org.apache.solr` package namespace. See spec, "What changes in the existing code".
 
-## Implementation Steps
+---
 
-### Step 1: Replace template scaffolding & establish configset detection — **DONE**
+## Standing rules for every step
 
-Stripped the template's demo tool window / startup activity / services, re-rooted the codebase under
-`org.apache.solr.ide`, and implemented configset detection so downstream features activate only on
-recognized files. The plugin builds and its only user-visible behavior is correct file recognition.
+These apply to all steps and are not repeated in each one.
+
+- `./gradlew build` passes, which runs the tests, the coverage floor and the
+  documentation gate. Any new public declaration needs KDoc in the same change.
+- Nothing on the editor path may contact a server or block the UI thread.
+- No automated test may require a Solr that a developer started by hand. Tests use the
+  fake HTTP layer, or a container the test starts and stops itself.
+- Anything touching persistent project settings extends `SolrConfigsetTestCase`, because
+  the platform's test base class shares one project across test classes and leaks state.
+
+---
+
+## Foundation
+
+### Step 1: Activation gate (done)
+
+Stripped the IntelliJ plugin template, re-rooted the code under `org.apache.solr.ide`,
+and implemented configset detection so features activate only on recognized files.
 
 **What shipped:**
-- `SolrConfigsetDetector` — filename matching (`SolrConfigsetFileKind`: `schema.xml`,
-  `managed-schema`, `managed-schema.xml`, `solrconfig.xml`) corroborated by directory heuristics.
-- `SolrConfigsetSettings` — per-project manual configset roots and a master off switch, persisted to
-  the shared `solr.xml` with paths collapsed through `PathMacroManager`.
-- `SolrBundle` + `SolrBundle.properties` replacing the template bundle.
-- `plugin.xml` registers `managed-schema` / `managed-schema.xml` with the XML file type; no template
-  registrations remain.
+- `SolrConfigsetDetector` — file-name matching corroborated by directory heuristics.
+- `SolrConfigsetFileKind` — the schema names and `solrconfig.xml`.
+- `SolrConfigsetSettings` — manual configset roots and a detection switch, persisted to
+  the shared project file with paths collapsed through `PathMacroManager`.
+- `SolrBundle`, and `plugin.xml` registering `managed-schema` as XML.
 
-**Success Criteria:**
-- [x] No remaining references to `org.jetbrains.plugins.template` in `src/`.
-- [x] `plugin.xml` no longer registers the template tool window or startup activity.
-- [x] A detection component identifies the configset filenames and exposes a manual-override toggle.
-- [x] `./gradlew build` passes.
+**Success criteria:**
+- [x] No template code remains in `src/main`.
+- [x] Detection identifies configset files and exposes a manual override.
 
-**Deferred out of this step:** schema provenance and the pending-conversion inspection, originally
-bundled here, are now Step 1b — they have their own caching design and five classification cases.
+Two template artefacts survive and are not covered by that criterion:
+`src/test/testData/rename/` still holds the scaffold's `foo.xml` / `foo_after.xml`, which
+no test reads. [Rename](#step-8-rename) replaces them.
+
+[The activation gate overhaul](#step-2-overhaul-the-activation-gate) reworks this for the
+model the spec describes; it is extended, not replaced.
+
+**Acceptance:** No demo step of its own. It is what makes
+[demo step 21 — *enable the plugin and reopen*](../../docs/demo/README.md#step-21-enable-the-plugin-and-reopen)
+possible at all.
 
 **Dependencies:** none
 
-### Step 1b: Schema provenance (S8)
+### Step 2: Overhaul the activation gate
 
-Classify each configset as hand-authored or Solr-managed by reading `<schemaFactory>` from the
-sibling `solrconfig.xml`, and expose that classification to the write-side features. This is split
-from Step 1 because it is not a detection *signal* — it is a separate, more expensive resolution with
-a different lifetime, and conflating the two would put an XML parse on the per-file path.
-
-**Context:**
-- See spec § "S8 — Schema provenance detection" (requirements) and § "Configset detection"
-  (technical design); the provenance data model is in § "Data Models".
-- Extends `src/main/kotlin/org/apache/solr/ide/configset/` alongside `SolrConfigsetDetector`.
+The existing detection code is correct for the feature set it was written for and
+insufficient for this one. Fix it before building on it.
 
 **Actions:**
-1. Implement provenance resolution: read `<schemaFactory>` (class + `mutable`) from the sibling `solrconfig.xml` and classify as hand-authored (`ClassicIndexSchemaFactory`, or managed with `mutable="false"`) or Solr-managed (managed and mutable).
-2. Handle both fallbacks: **an absent `<schemaFactory>` classifies as managed** — that is Solr's own default — and only a missing `solrconfig.xml` falls back to the schema filename, erring toward managed.
-3. **Cache the classification once per configset directory**, off `SolrConfigsetDetector`'s per-file path. Detection runs on every file the user opens and its signals are deliberately cheap and local; parsing a sibling XML file is neither. Invalidate on modification of the owning `solrconfig.xml`.
-4. Expose it as a query the write-side features (Steps 5, 7) consult. Read-side features (S1, S2, S5, S7) and inspections (S4) must never consult it — provenance gates writes only, so it can never suppress a hint, a reference or an inspection.
-5. Add the pending-conversion inspection: a `schema.xml` in a managed-factory configset with no managed schema file beside it will be renamed to `schema.xml.bak` and rewritten as `managed-schema.xml` by Solr on first load, so the file being edited is about to be replaced. Ship it with a `description.html` (same requirement as Step 6).
-6. Test via `SolrConfigsetTestCase` (not `BasePlatformTestCase`) if it touches `SolrConfigsetSettings` — that base class resets project-level persistent state between methods.
-7. Run: `./gradlew build`
+1. Resolve the package namespace question and, if renaming, do it now while the code is
+   four files.
+2. Establish package layout for the components the spec names: repository reader, field
+   model, server client, recognizers, UI. Empty packages with a package-level doc
+   comment each, so later work has an obvious home.
+3. Extend detection from *is this a configset file* to *which configset does this file
+   belong to*. A configset is a directory; the model is per-configset; a project may
+   contain several. Keep the per-file check as the activation gate.
+4. Cache detection per directory and invalidate on file-system change. `hasDirectoryEvidence`
+   currently lists directory children on every call with no cache, which is affordable
+   now and not once editor-path features depend on it.
+5. Widen `SolrConfigsetFileKind` to the rest of a configset, in two classes that are not
+   interchangeable. *Identifying files* — `params.json`, `elevate.xml`, `currency.xml`,
+   `enumsConfig.xml` — corroborate a configset and may gate activation. *Resource files*
+   — `stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/` — are recognized only when
+   reached from a filter's resource attribute inside an already-identified configset.
+   Their names are far too common outside Solr to be activation evidence on their own,
+   and the enum needs to express a directory as well as a file name.
+6. Add a per-user settings surface for connections, separate from the existing shared
+   project settings. Connection credentials go to PasswordSafe and must never reach a
+   shared file. Extend `SolrConfigsetTestCase` to reset it, for the same reason it
+   resets the existing settings.
 
-**Success Criteria:**
-- [ ] Provenance classification resolves all five cases: `ClassicIndexSchemaFactory`, `ManagedIndexSchemaFactory` with `mutable="true"` and with `mutable="false"`, absent `<schemaFactory>` (→ managed), and missing `solrconfig.xml` (→ filename fallback).
-- [ ] Classification is resolved once per configset directory and cached; `SolrConfigsetDetector`'s per-file path does not parse `solrconfig.xml`.
-- [ ] The pending-conversion inspection fires on a `schema.xml` in a managed-factory configset, and has a `description.html`.
-- [ ] No read-side code path consults provenance.
-- [ ] `./gradlew build` passes.
+**Success criteria:**
+- [ ] A file resolves to its owning configset; a project with two configsets keeps them
+      distinct.
+- [ ] Detection results are cached and invalidate correctly on file change.
+- [ ] The widened file kinds are recognized.
+- [ ] Connection settings persist per-user; configset roots stay shared.
 
-**Dependencies:** Step 1
+**Acceptance:**
+[demo step 21 — *enable the plugin and reopen*](../../docs/demo/README.md#step-21-enable-the-plugin-and-reopen).
+Opening the demo schema activates the plugin, and a project holding two configsets keeps
+them apart.
 
-### Step 2: Generated reference data pipeline
+**Dependencies:** [the activation gate](#step-1-activation-gate-done)
 
-Add a build-time generator that produces the factory/attribute/documentation dataset by reflecting over
-`org.apache.solr.*` analysis factory classes and the Lucene analysis SPI, plus Reference Guide-sourced
-doc strings. This dataset is the single source feeding S1 completion/validation and S7 docs, and is the
-mechanism that makes the version-support policy sustainable.
+### Step 3: Repository reader and field model
 
-**Context:**
-- See spec § "Generated reference data (critical design decision)" and § "Data Models".
-- See `build.gradle.kts` and `settings.gradle.kts` for where to add the generator task and Solr/Lucene dependency resolution.
-
-**Actions:**
-1. Add a Gradle task (own source set or `buildSrc`) that resolves Solr/Lucene artifacts **for each supported (non-EOL) Solr line** and reflects over analysis factories (tokenizer/filter/charFilter) + field-attribute metadata, emitting a structured resource (JSON) per line into generated resources. Declare the supported lines in one place (a version catalog entry or Gradle property) so adding or dropping a line is a single edit.
-2. Model the emitted dataset: factory class → valid attributes; field attributes (`indexed`/`stored`/`docValues`/`multiValued`); doc string per factory/attribute.
-3. Wire the task into `processResources` so `./gradlew build` regenerates it; commit a snapshot for offline builds if needed.
-4. Add a loader in plugin code exposing the dataset to completion/validation/docs consumers.
-5. Run: `./gradlew build`
-
-**Success Criteria:**
-- [ ] A Gradle task generates the dataset from Solr/Lucene artifacts (no hand-authored factory tables).
-- [ ] Generated resource is present on the plugin classpath after build.
-- [ ] A loader class exposes factories, valid attributes, and doc strings by key.
-- [ ] `./gradlew build` passes and regenerates the dataset.
-
-**Dependencies:** Step 1
-
-### Step 3: Configset reference model (PSI references + reference graph)
-
-Implement the custom `PsiReference` layer over XML PSI that resolves the S2 cross-file links —
-`copyField` source/dest → field, `field type=` → `fieldType`, and `solrconfig.xml` request-handler
-params (`df`, `qf`, spellcheck/highlight/facet fields) → schema fields. This is the foundation S2/S3/S4
-all consume, so it is built and unit-tested before them.
-
-**Context:**
-- See spec § "Architecture approach" ("PSI & reference model" bullet) and requirement S2.
-- The existing `src/test/testData/rename/` fixtures indicate the testData convention to follow.
+The spine. Everything else reads this.
 
 **Actions:**
-1. Add `PsiReferenceContributor`/`PsiReferenceProvider` implementations for each reference kind, scoped to configset files via Step 1 detection.
-2. Resolve field/fieldType definitions within `schema.xml`; resolve request-handler params in `solrconfig.xml` across to schema fields.
-3. Expose a reusable reference-graph query surface (find definition, find usages) that Steps 4–6 reuse.
-4. Add unit/reference tests (`ReferenceTestCase`-style) on representative configsets asserting resolve targets.
-5. Run: `./gradlew build`
+1. Parse a configset into declared fields, dynamic fields, field types, analyzer chains,
+   copy fields, and the request-handler parameters that name fields.
+2. Build the field model: merge sources, record the origin of every fact, expose the
+   four agreement states — repository only, server only, agreeing, disagreeing. The
+   server half stays empty until
+   [the server reader](#step-11-http-client-connections-and-the-server-reader) lands;
+   build the seam now so it does not have to be retrofitted.
+3. Cache per configset, invalidate on file change.
+4. Test the model directly, with no IDE fixtures where possible. This is the component
+   that must be exhaustively correct.
 
-**Success Criteria:**
-- [ ] Ctrl-click resolves `copyField` source/dest and `field type=` to their definitions.
-- [ ] Request-handler params in `solrconfig.xml` resolve to schema fields.
-- [ ] Find Usages returns all references to a given field/fieldType.
-- [ ] Reference tests pass; `./gradlew build` passes.
+**Success criteria:**
+- [ ] A configset parses to a complete field model, including dynamic fields.
+- [ ] The four agreement states are representable and tested with a synthetic server
+      half.
+- [ ] Model rebuilds on file change and not otherwise.
 
-**Dependencies:** Step 1
+**Acceptance:** No demo step of its own. Nothing from the navigation demos onward works
+without it, so it is verified through the steps that consume it.
 
-### Step 4: Schema completion & structural validation (S1)
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate)
 
-Add completion contributors and XML structure validation driven by the Step 2 dataset: field types,
-factory classes and their valid attributes, field attributes, and `dynamicField` patterns.
+### Step 4: Match analysis
 
-**Context:**
-- See requirement S1 and spec § "Architecture approach" ("Completion & validation" bullet).
-
-**Actions:**
-1. Register a `CompletionContributor` offering field types, factory classes, and valid attributes from the generated dataset.
-2. Add structural validation (annotator) flagging unknown factory classes / invalid attributes for a given factory.
-3. Support `dynamicField` pattern awareness in completion/validation.
-4. Add completion + highlighting tests on fixture configsets.
-5. Run: `./gradlew build`
-
-**Success Criteria:**
-- [ ] Completion suggests valid factories and their attributes in schema files.
-- [ ] Invalid factory/attribute combinations are highlighted.
-- [ ] Tests cover completion and validation on representative fixtures.
-- [ ] `./gradlew build` passes.
-
-**Dependencies:** Step 2, Step 3
-
-### Step 5: Rename refactoring (S3)
-
-Implement rename for fields and `fieldType`s that updates all references via the Step 3 reference graph,
-leaving no dangling references.
-
-**Context:**
-- See requirements S3 and S9, and existing `src/test/testData/rename/foo.xml` + `foo_after.xml`.
+A pure function from analyzer chain to match capability. Independent of everything;
+buildable in parallel with
+[the repository reader](#step-3-repository-reader-and-field-model).
 
 **Actions:**
-1. Add a `RenamePsiElementProcessor` (or reference-based rename) for field/fieldType elements reusing the Step 3 graph.
-2. Ensure `copyField` refs, `field type=` refs, and request-handler param refs are all updated.
-3. Consult Step 1b provenance (S9): against a Solr-managed schema, offer "Copy as Schema API request" as the default action — rendering the rename as a `replace-field` / `replace-field-type` payload plus `curl` with a placeholder collection URL — and direct file edit as a warned secondary. Against a hand-authored schema, edit the file with no warning or redirect.
-4. Extend the existing `rename` testData with before/after fixtures asserting completeness, plus a managed-schema fixture asserting the API payload is offered first and a hand-authored fixture asserting it is not.
-5. Run: `./gradlew build`
+1. Classify a field's index-time chain: whole value or tokenized, prefix-capable or not,
+   case-sensitive or not.
+2. Name the roughly fifteen factories that determine this in code, rather than reading
+   them from the generated catalog. The spec's "The factory catalog" says why.
+3. Test exhaustively against canonical types and against the orderings that change the
+   answer.
 
-**Success Criteria:**
-- [ ] Renaming a field updates every resolved reference (copyField, request-handler params).
-- [ ] Renaming a `fieldType` updates all `field type=` references.
-- [ ] No dangling references remain after rename (asserted by before/after fixtures).
-- [ ] Rename against a managed schema offers a valid Schema API payload as the default action; against a hand-authored schema it edits the file with no prompt.
-- [ ] `./gradlew build` passes.
+**Success criteria:**
+- [ ] Correct classification for string, tokenized text, EdgeNGram and lowercased
+      variants.
+- [ ] Filter ordering that changes the result is covered by tests.
+- [ ] Tested directly as a function, not through the annotator that displays it.
 
-**Dependencies:** Step 1b, Step 3
+**Acceptance:** No demo step of its own. It is the correctness behind
+[demo steps 28 to 31 — the match-capability hints](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field),
+which are only ever as good as this.
 
-### Step 6: Configset inspections (S4) with description.html
+**Dependencies:** none
 
-Add local inspection tools for configset errors, each with a Platform `description.html` (which doubles
-as the D4 catalog entry). This is where the zero-false-positive requirement gets its teeth.
+---
 
-**Context:**
-- See requirement S4 and spec § "Architecture approach" ("Inspections" bullet).
-- Consider the `hibernate-jpa-validator` and `code-review` skills only if relevant; primary guidance is the IntelliJ inspection API.
+## Editor track
 
-**Actions:**
-1. Implement inspections: dangling `copyField` source/target, unused `fieldType`, request handlers referencing nonexistent fields, `qf`/`df` on non-indexed fields, known-problematic analyzer-chain orderings.
-2. Author a `description.html` per inspection (rationale + flagged example + fix) under the inspection description resources.
-3. Register inspections in `plugin.xml` with categories/keys.
-4. Add tests per inspection on positive (flagged) and negative fixtures.
-5. Run: `./gradlew build`
-
-**Success Criteria:**
-- [ ] All listed inspections are registered and fire on crafted-bad fixtures.
-- [ ] Every registered inspection has a `description.html`.
-- [ ] No inspection fires on clean fixtures (precursor to Step 8 golden-file gate).
-- [ ] `./gradlew build` passes.
-
-**Dependencies:** Step 3
-
-### Step 7: Match-capability hints (S5), quick-fixes (S6), and inline docs (S7)
-
-Model each field's index-time analyzer chain to classify effective match semantics, surface them as
-annotator hints (S5), apply the standard multi-field patterns as intention actions (S6), and provide
-quick documentation from the generated dataset (S7).
-
-**Context:**
-- See requirements S5, S6, S7 and S9, and spec § "Architecture approach" ("Match-capability analysis" bullet).
-- Depends on the Step 2 dataset for the doc provider (S7).
+### Step 5: References, navigation and Find Usages
 
 **Actions:**
-1. Build a match-capability model classifying exact / tokenized / prefix-substring / case-sensitivity by walking the field's index-time analyzer chain.
-2. Add an annotator (S5) surfacing derived match semantics per field.
-3. Add intention actions (S6) that create exact-match/prefix companions (`<name>_exact` string + copyField; EdgeNGram fieldType + `<name>_prefix` + copyField), phrased as efficient index-time support.
-4. Have the S6 intentions consult Step 1b provenance and, on a managed schema, offer the edit as a Schema API payload (`add-field`, `add-copy-field`, `add-field-type`) ahead of the direct file edit — same rule as Step 5. S5 hints and the S7 doc provider must not consult provenance at all.
-5. Add a `DocumentationProvider` (S7) keyed by factory/attribute, sourced from the generated dataset.
-6. Add tests asserting derived semantics for canonical types (string, tokenized text, EdgeNGram) and valid, reindex-free-where-possible quick-fix output.
-7. Run: `./gradlew build`
+1. Reference providers for: a field's `type` to its field type; `copyField` source and
+   destination to fields; request-handler parameters in `solrconfig.xml` to schema
+   fields; a filter's resource attribute to the `stopwords.txt` or `synonyms.txt` it
+   names.
+2. Expose a reference-graph query surface that [inspections](#step-6-inspections) and
+   [rename](#step-8-rename) reuse.
+3. Reference tests asserting resolve targets on representative configsets.
 
-**Success Criteria:**
-- [ ] Fields are annotated with correct match semantics for canonical field types.
-- [ ] S6 intentions produce valid configset edits (companion field + copyField), and on a managed schema offer an equivalent Schema API payload as the default action.
-- [ ] Ctrl-Q shows documentation for factories and field attributes.
-- [ ] Tests pass; `./gradlew build` passes.
+**Success criteria:**
+- [ ] All four reference kinds resolve; Find Usages returns every reference.
 
-**Dependencies:** Step 1b, Step 2, Step 3
+**Acceptance:** demo steps
+[22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
+[23 — *navigate along a copyField*](../../docs/demo/README.md#step-23-navigate-along-a-copyfield),
+[24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary)
+and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type).
 
-### Step 8: Golden-file CI gate & cross-version test matrix
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
 
-Add the CI-gating test suite that runs all inspections against the `_default` and
-`sample_techproducts_configs` configsets asserting zero false positives, plus generated-data tests and
-a matrix over every non-EOL Solr line (currently 10.x and 9.10.x).
+### Step 6: Inspections
 
-**Context:**
-- See spec § "Testing Strategy", § "Version-support policy", and the "Zero false positives" non-functional requirement.
+Where the zero-false-positive requirement gets teeth.
 
 **Actions:**
-1. Add the shipped `_default` and `sample_techproducts_configs` configsets as test data.
-2. Add a golden-file test running every registered inspection over them, asserting zero highlights.
-3. Add generated-data tests verifying expected factories/attributes per supported Solr line.
-4. Extend the Step 1b schema-provenance tests (S8) to the integration level: assert the write-side warning fires only for mutable-managed configsets and that read-side results are identical across all five classification cases.
-5. Add Schema API payload tests (S9): each rename and quick-fix on a managed schema emits a valid payload with the correct command and attributes, round-tripping to the same schema state the direct PSI edit produces; no payload or warning is offered on a hand-authored schema.
-6. Parameterize the suite across the schema versions of every supported (non-EOL) Solr line, so adding or dropping a line is a matrix row change.
-7. Add a GitHub Actions workflow (see `.github/`) running `./gradlew build` on push/PR.
-8. Run: `./gradlew build`
+1. Implement: dangling `copyField` source or target; handler naming a nonexistent field;
+   relevance parameters on non-indexed fields; unused field types; known-bad analyzer
+   chain orderings; configuration elements removed in the targeted Solr line.
+2. A description file per inspection, written as user-facing prose — it is also the
+   published catalog entry.
+3. Test each on both flagged and clean fixtures.
 
-**Success Criteria:**
-- [ ] Golden-file test passes with zero false positives on both shipped configsets.
-- [ ] Generated-data tests pass for each supported Solr line.
-- [ ] Schema-provenance tests pass for all five classification cases.
-- [ ] Schema API payload tests pass: each rename and quick-fix emits a valid payload that round-trips to the same schema state as the direct edit.
-- [ ] CI workflow runs the full build and gates merges.
-- [ ] `./gradlew build` passes.
+**Success criteria:**
+- [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
 
-**Dependencies:** Step 4, Step 5, Step 6, Step 7
+**Acceptance:** demo steps
+[25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
+and [26 — *break something live*](../../docs/demo/README.md#step-26-break-something-live).
+The planted dangling copy rule is underlined, and deleting a referenced field flags its
+rule immediately.
 
-### Step 9: P1 documentation deliverables & docs CI check
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages)
 
-Publish the release-blocking `[P1]` docs and the CI check that keeps them consistent: README/quick start
-(D1), Marketplace listing (D2), feature reference (D3), inspection catalog (D4, reusing Step 6
-`description.html`), contributor guide (D6), and compatibility matrix + changelog (D8).
-
-**Context:**
-- See spec § "Documentation requirements" and the "Docs CI check" item in § "Testing Strategy".
-- `CHANGELOG.md` and the `org.jetbrains.changelog` plugin are already present.
+### Step 7: Match hints and quick-fixes
 
 **Actions:**
-1. Write `README.md` quick start (D1) and `docs/` feature reference (D3) incl. the match-capability semantics + wildcard-query caveat page.
-2. Generate/curate the D4 inspection catalog from the Step 6 `description.html` files; add a docs CI check asserting every registered inspection has a `description.html`.
-3. Write the D6 contributor guide (JDK/Gradle setup, sandbox IDE, running tests incl. golden-file).
-4. Maintain the D8 compatibility matrix (plugin × IntelliJ × Solr) as the single source of truth, keep `CHANGELOG.md` in keep-a-changelog format, and prepare the D2 Marketplace listing (summary, screenshots, GIF, tags "Big Data"/"Data tools", compatibility statement).
-5. Add a docs CI check asserting supported versions in docs match the compatibility matrix.
-6. Run: `./gradlew build`
+1. Annotator surfacing each field's match capability from
+   [match analysis](#step-4-match-analysis).
+2. Intentions adding a missing capability: an `_exact` companion plus `copyField`, an
+   EdgeNGram-backed `_prefix` field. Phrased as efficient index-time support — the spec
+   explains the wildcard caveat behind that wording.
+3. Edit the file directly. No provenance check, no warning, no redirect.
 
-**Success Criteria:**
-- [ ] D1, D3, D4, D6, D8 exist in-repo; D2 listing content prepared.
-- [ ] CI fails if any inspection lacks a `description.html` or if doc versions diverge from the matrix.
-- [ ] Changelog is in keep-a-changelog format and wired to the Marketplace what's-new.
-- [ ] `./gradlew build` passes.
+**Success criteria:**
+- [ ] Fields annotated correctly for canonical types.
+- [ ] Quick-fixes produce valid configset edits.
 
-**Dependencies:** Step 6, Step 8
+**Acceptance:** demo steps
+[28 to 33 — the hints and the generated fix](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field).
+A `string` field reads as whole-value and case-sensitive, a tokenised field does not offer
+prefix matching, an edge-n-gram field does, and Alt-Enter generates the companion field
+with its copy rule.
 
-## Validation Checklist
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
+[match analysis](#step-4-match-analysis)
 
-- [ ] Plugin installs on IntelliJ IDEA (current + previous major).
-- [x] Template scaffolding fully removed (Step 1).
-- [x] Configset detection activates features on recognized files with a manual override (Step 1).
-- [ ] Schema provenance resolves all five classification cases, cached per configset directory.
-- [ ] S1–S9 implemented for every supported (non-EOL) Solr line.
-- [ ] Write-side features (S3, S6) offer a Schema API request as the default action on a managed schema, and edit files unprompted on a hand-authored one; read-side features unaffected by provenance.
-- [ ] Zero false positives on `_default` and `sample_techproducts_configs` (CI-enforced).
-- [ ] Reference data generated from Solr artifacts (not hand-maintained).
-- [ ] All `[P1]` docs published; docs CI checks green.
-- [ ] `./gradlew build` passes end-to-end.
+### Step 8: Rename
 
-## Risks and Mitigations
+**Actions:**
+1. Rename fields and field types, updating every reference through the graph built by
+   [references and navigation](#step-5-references-navigation-and-find-usages).
+2. Replace the plugin scaffold's leftover `src/test/testData/rename/` placeholders —
+   `foo.xml` and `foo_after.xml`, which no test reads — with configset before/after pairs
+   asserting no dangling references remain.
 
-- **Reflection-based generation breaks across Solr versions.** Mitigation: supported lines are pinned by the non-EOL policy (spec "Version-support policy"); generated-data tests (Step 8) catch drift; regeneration is a build step, not re-authoring.
-- **False positives on real configsets block release.** Mitigation: golden-file gate (Step 8) built before docs; inspections tuned against shipped configsets.
-- **Reference resolution edge cases (dynamicFields, param aliases) cause dangling renames.** Mitigation: reference graph unit-tested in Step 3 before rename (Step 5) consumes it.
-- **Hosting/ownership open question affects vendor identity & repo URL.** Mitigation: `gradle.properties` already uses placeholder values; does not block Phase 1 implementation.
-- **Reference Guide doc-string sourcing (S7) is licensing-sensitive.** Mitigation: source only ALv2-compatible content; key docs by factory/attribute in the generated dataset.
+**Success criteria:**
+- [ ] Every resolved reference updates; no dangling references after rename.
+- [ ] No scaffold fixtures remain under `src/test/testData/`.
+
+**Acceptance:**
+[demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files).
+Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
+
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages)
+
+### Step 9: Factory catalog generator
+
+**Actions:**
+1. A Gradle task that reads the Solr and Lucene artifacts per supported line and emits a
+   catalog of factories, their attributes and their documentation. Runs in the build,
+   where loading Solr classes is ordinary. It needs three sources, because no single one
+   carries all three pieces:
+   - **Factories** — reflection over the artifact jars, via the SPI service files Solr
+     already ships to name them.
+   - **Attributes** — bytecode analysis of each factory's constructor, collecting the
+     string constants passed to `get`, `getInt`, `getBoolean` and friends. Reflection
+     cannot see these: a factory reads its attributes out of a `Map<String, String>`, so
+     the names are literals in the constructor body and appear as neither fields nor
+     annotations.
+   - **Documentation** — the `-sources` artifacts. Javadoc is not retained in bytecode,
+     so a compiled jar cannot supply it at all.
+2. Declare supported lines in one place so adding or dropping one is a single edit.
+3. A loader selecting the entry by: connected server, then `<luceneMatchVersion>`
+   translated through the Lucene-to-Solr table, then newest supported line. Record which
+   source answered.
+4. Only ALv2-compatible documentation content may be embedded. If the `-sources`
+   artifacts turn out not to be resolvable for a line, ship that line's catalog without
+   documentation rather than hand-writing it — the spec's reason for generating this at
+   all is that the list is too large to maintain by hand.
+
+**Success criteria:**
+- [ ] Catalog generated at build time for both supported lines and present on the plugin
+      classpath.
+- [ ] `wordDelimiterGraph` exposes all twelve of its attributes. This is the criterion
+      that proves the constructor-bytecode pass works, because reflection over fields
+      produces a plausible short list instead of failing outright.
+- [ ] Selection order is correct and the answering source is recorded.
+- [ ] The catalog regenerates from a clean build.
+
+**Acceptance:**
+[demo step 69 — *attribute completion on a factory with many options*](../../docs/demo/README.md#step-69-attribute-completion-on-a-factory-with-many-options)
+is the one to run by hand, for the reason in the criterion above.
+
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate)
+
+### Step 10: Completion, validation and quick documentation
+
+**Actions:**
+1. Completion for field types, factories, their attributes, and field attributes.
+2. Structural validation flagging unknown factories and invalid attributes.
+3. Dynamic field pattern awareness.
+4. Documentation provider keyed by factory and attribute, surfacing which catalog source
+   answered.
+
+**Success criteria:**
+- [ ] Completion and validation work against the catalog.
+- [ ] Quick documentation resolves for factories and attributes.
+
+**Acceptance:** demo steps
+[68 — *completion inside an analyser chain*](../../docs/demo/README.md#step-68-completion-inside-an-analyser-chain),
+[69 — *attribute completion on a factory with many options*](../../docs/demo/README.md#step-69-attribute-completion-on-a-factory-with-many-options)
+and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-70-quick-documentation-on-a-factory).
+
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
+[the factory catalog generator](#step-9-factory-catalog-generator)
+
+---
+
+## Server track
+
+### Step 11: HTTP client, connections and the server reader
+
+**Actions:**
+1. A minimal HTTP and JSON client for the endpoints the plugin needs. No SolrJ
+   dependency — see the spec.
+2. Connection definitions in per-user settings, credentials in PasswordSafe. Basic auth
+   and TLS.
+3. Server reader: schema, collections, cores, and the fields actually present in the
+   index.
+4. Populate the server half of the field model.
+5. **A fake HTTP layer for tests**, covering success, timeout, auth failure, malformed
+   response, and unrecognized server version. This fixture is part of the step.
+6. **A contract test per supported line against Testcontainers** — `solr:10.0.0` and
+   `solr:9.10.1`, pinned by tag, never `latest`. The fake layer can only replay responses
+   somebody imagined, which is the wrong instrument for the risk that a real server
+   returns a shape nobody anticipated. This keeps the fake honest as Solr's wire format
+   moves, and it still satisfies the standing rule: the container is started by the test,
+   not by a developer.
+7. Every call asynchronous and timeout-bounded; nothing on the editor path.
+
+**Success criteria:**
+- [ ] A connection can be created, stored and used; credentials never reach project
+      files.
+- [ ] The server half of the model populates.
+- [ ] All five failure modes tested against the fake layer.
+- [ ] The reader parses what a real Solr of each supported line actually returns.
+- [ ] Server state refreshes only on request or connection change — never on a timer.
+
+**Acceptance:**
+[demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server).
+
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
+
+### Step 12: Collections tool window
+
+**Actions:**
+1. Browse collections, cores, shards, replicas, aliases, and the server's actual fields.
+2. Show the selected connection persistently.
+3. Report failure inline, once, showing Solr's own message.
+
+**Success criteria:**
+- [ ] The topology renders; the selected connection is always visible.
+- [ ] An unreachable server degrades to an inline message, not a popup.
+
+**Acceptance:**
+[demo step 36 — *browse what is actually there*](../../docs/demo/README.md#step-36-browse-what-is-actually-there).
+Collections, cores and the server's actual fields render, and the selected connection
+stays visible.
+
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+
+### Step 13: Query console
+
+**Actions:**
+1. Field completion from the model.
+2. Results as a table; scoring explanation as an expandable tree.
+3. History, and queries saveable into the project so they are version-controllable.
+
+**Success criteria:**
+- [ ] Queries run and render structurally; completion works with no configset present.
+- [ ] Saved queries round-trip through the project.
+
+**Acceptance:** demo steps
+[37 — *run a query*](../../docs/demo/README.md#step-37-run-a-query) and
+[38 — *show why a document scored*](../../docs/demo/README.md#step-38-show-why-a-document-scored).
+Completion comes from the live schema, results render as a table, and the scoring
+explanation expands as a tree.
+
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+
+### Step 14: Drift view, upload and reload
+
+**Actions:**
+1. Render the model's disagreement states: repository-only fields, server-only fields,
+   differing definitions.
+2. Upload a configset and reload a collection, each invoked by name and confirming its
+   target.
+3. Where a change maps onto the Schema API, offer to apply it — as an action from this
+   view, not from the editor.
+
+**Success criteria:**
+- [ ] All three disagreement categories render correctly.
+- [ ] Upload and reload confirm and name their target server.
+- [ ] No write occurs without explicit invocation.
+
+**Acceptance:** demo steps
+[39 — *the drift demo*](../../docs/demo/README.md#step-39-the-drift-demo) and
+[40 — *resolve it*](../../docs/demo/README.md#step-40-resolve-it). A field added to the
+repository and not deployed shows as a difference; upload and reload clear it, naming the
+target server first.
+
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
+[the server reader](#step-11-http-client-connections-and-the-server-reader)
+
+### Step 15: Indexing test documents
+
+**Actions:**
+1. A document editor with schema-aware completion and validation.
+2. Sample document generation from the schema.
+3. Index into a selected collection with explicit commit behavior and confirmation.
+
+**Success criteria:**
+- [ ] Documents can be authored with completion and indexed on explicit invocation.
+
+**Acceptance:**
+[demo step 71 — *author and index a test document*](../../docs/demo/README.md#step-71-author-and-index-a-test-document).
+The document indexes into the local collection and is then findable.
+
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+
+---
+
+## Code track
+
+### Step 16: Recognizer interface and SolrJ
+
+**Actions:**
+1. Define the recognizer interface: reports endpoints and field references. Keep it
+   minimal — [framework configuration](#step-18-framework-configuration) and
+   [Apache Camel](#step-19-apache-camel) depend on it being right.
+2. SolrJ recognizer: client construction supplies endpoints; `SolrQuery` builder calls,
+   raw parameter strings, `SolrInputDocument` field names and `@Field` annotations
+   supply field references.
+3. Inspection flagging field references absent from the model, and completion for them.
+4. **Silence where resolution fails.** Assert this in tests explicitly — precision
+   matters more than recall.
+
+**Success criteria:**
+- [ ] Field references resolve in builder calls, raw strings, document building and bean
+      annotations.
+- [ ] Unresolvable constructs produce no warning.
+
+**Acceptance:** demo steps
+[41 to 44 — the field-name checks in Java](../../docs/demo/README.md#step-41-return-to-the-opening-bug),
+and [47 — *volunteer the limitation*](../../docs/demo/README.md#step-47-volunteer-the-limitation).
+The planted typo in a filter query is flagged, so is a field that never existed, so is the
+misspelled `@Field` annotation. Step 47 matters most: constructs the plugin cannot resolve
+produce no warning at all.
+
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
+
+### Step 17: Query syntax and the console bridge
+
+**Actions:**
+1. Treat the query string inside a literal as its own language, so it gets structure and
+   highlighting.
+2. Gutter action running that query in the console against a selected connection.
+3. Navigation from a field name in code to its schema definition.
+
+**Success criteria:**
+- [ ] Query strings render structurally inside Java and Kotlin literals.
+- [ ] The gutter action runs the query; navigation resolves when a configset is present.
+
+**Acceptance:** demo steps
+[45 — *show the query as a language*](../../docs/demo/README.md#step-45-show-the-query-as-a-language)
+and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-it-from-where-it-lives).
+
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj);
+the gutter action additionally needs [the query console](#step-13-query-console), which is
+the Code track's one dependency on the Server track. The language and navigation work does
+not.
+
+### Step 18: Framework configuration
+
+**Actions:**
+1. Verify which platform framework-configuration APIs are available to plugins and in
+   which editions. Prefer the platform's model over parsing configuration directly.
+2. Declare optional dependencies so these features appear when the supporting
+   functionality is present and the plugin loads normally when it is not.
+3. Resolve a Solr URL per profile with each framework's own precedence: Spring Boot
+   profile files, **Quarkus inline `%profile.` prefixes in a single file**, Micronaut
+   environments, MicroProfile ordinals.
+4. Offer discovered endpoints as connection candidates. Never connect automatically.
+5. **Real project fixtures per framework**, not synthetic strings.
+
+**Success criteria:**
+- [ ] Boot profile files and Quarkus inline prefixes both resolve correctly.
+- [ ] The plugin loads and functions with no framework support present.
+- [ ] Discovered endpoints are offered, never adopted silently.
+
+**Scope of the demo.** Only Spring gets a demo step. Each additional framework would need
+its own fixture project and its own runtime on stage to show what the Spring fixture
+already shows, and the recognizer is the same code either way. Quarkus, Micronaut and
+MicroProfile are accepted by fixture tests in this step instead. Quarkus is the one to get
+right, for the reason the spec gives under "Recognizing Solr usage".
+
+**Acceptance:**
+[demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server),
+Spring only. The URL is offered by following `${app.solr.url}` from the SolrJ client bean
+into the active profile, and is never connected to automatically. The other three
+frameworks are accepted by their fixture tests here.
+
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+
+### Step 19: Apache Camel
+
+**Actions:**
+1. Recognize Solr endpoint URIs in Camel routes as connection candidates.
+2. Validate the URI's component options against the known set.
+3. Check field references in route parameters and document construction.
+4. Java and XML route definitions first. Where the IDE or an installed plugin models
+   routes, read that model rather than writing another URI parser.
+
+**Success criteria:**
+- [ ] Endpoints recognized from Java and XML routes; options validated.
+
+**Acceptance:** No demo step, for the same reason the other frameworks have none — a Camel
+demo needs its own fixture project and a running route to show what a fixture test shows
+in a second. Accepted here by fixture tests: a Solr endpoint in a Java route and in an XML
+route is offered as a connection candidate, and a misspelled URI option is flagged.
+
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+
+---
+
+## Cross-cutting
+
+### Step 20: CI gates
+
+**Actions:**
+1. Add `_default` and `sample_techproducts_configs` as fixtures.
+2. Golden-file test running every inspection over both, asserting zero highlights. This
+   gate must be in place before the release, not after.
+3. Assert every registered inspection has a description file.
+4. Assert documented versions match the compatibility matrix. This one only has teeth once
+   [documentation](#step-21-documentation) has written the matrix; land the check here and
+   expect it to pass vacuously until then.
+5. Catalog tests per supported line.
+
+**Success criteria:**
+- [ ] Zero false positives on both shipped configsets, enforced in CI.
+- [ ] Missing description files and version drift both fail the build.
+
+**Acceptance:** No demo step — this step *is* the automated gate. It is what stops the
+demo passing while the suite quietly rots.
+
+**Dependencies:** [inspections](#step-6-inspections) for the golden-file gate;
+[the factory catalog generator](#step-9-factory-catalog-generator) for catalog tests
+
+### Step 21: Documentation
+
+**Actions:**
+1. README and quick start; feature reference with screenshots and stated limits,
+   including how match capability is derived and the wildcard caveat.
+2. Inspection catalog assembled from the description files.
+3. Contributor guide.
+4. Compatibility matrix and changelog in keep-a-changelog format.
+5. Marketplace listing: summary, screenshots, a recording of the headline features,
+   tags, compatibility statement.
+
+**Success criteria:**
+- [ ] All release-blocking documentation exists and CI checks pass.
+
+**Acceptance:** No demo step. The compatibility matrix written here is what makes the
+version-drift check in [CI gates](#step-20-ci-gates) meaningful rather than vacuous.
+
+**Dependencies:** [inspections](#step-6-inspections) for the catalog content,
+[CI gates](#step-20-ci-gates) for the checks that police it
+
+---
+
+## Validation checklist
+
+The cross-track invariants no single step owns. Each step's own success criteria cover the
+rest.
+
+- [x] Build, CI, coverage and documentation gates in place.
+- [ ] Package namespace decided.
+- [ ] Editor features work with no connection.
+- [ ] Server features work with no configset in the project.
+- [ ] Code features stay silent where they cannot resolve.
+- [ ] Zero false positives on both shipped configsets, CI-enforced.
+- [ ] No write occurs without explicit human invocation naming its target.
+- [ ] Release documentation published.
+
+## Risks
+
+Mitigations live in the steps; only the first entry states one, because it belongs to no
+step.
+
+- **Scope exceeds what can be polished.** This plan is large and the quality bar is
+  explicit. The track structure is the mitigation: Editor, Server and Code can each reach
+  a shippable state independently, so if something must be cut, cut a whole track rather
+  than leaving three half-built.
+- **Coverage floor blocks UI work.** Six of the remaining steps land tool windows,
+  annotators and PSI code that is awkward to unit-test, against an 80% Kover floor bound
+  to `check`. Decide the response before it bites — package-level exclusions, or moving
+  the floor to changed lines and letting SonarCloud's new-code gate be the real defence.
+- **Code analysis produces false positives** —
+  [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj).
+- **Framework configuration works only on the author's machine** —
+  [framework configuration](#step-18-framework-configuration).
+- **A server version the plugin has never seen** —
+  [the server reader](#step-11-http-client-connections-and-the-server-reader).
+- **Reference resolution edge cases cause dangling renames** —
+  [references and navigation](#step-5-references-navigation-and-find-usages), which is
+  unit-tested before [rename](#step-8-rename) consumes it.
 
 ## References
 
 - Spec: `specs/0002-solr-intellij-plugin.md`
-- Current build: `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`
-- Current plugin descriptor: `src/main/resources/META-INF/plugin.xml`
-- Existing rename fixtures: `src/test/testData/rename/`
+- Demo runbook and acceptance harness: `docs/demo/README.md`
+- Configuration file survey: `docs/solr-configuration-files.md`
+- Plugin development tutorial: `docs/modern-intellij-plugin-development.md`
 - IntelliJ Platform SDK: https://plugins.jetbrains.com/docs/intellij/
-

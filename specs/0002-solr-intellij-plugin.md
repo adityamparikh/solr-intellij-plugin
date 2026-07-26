@@ -7,548 +7,606 @@ plan-file: specs/plans/0002-solr-intellij-plugin-plan.md
 
 ## Overview
 
-This specification defines an Apache-licensed (ALv2) IDE plugin for the IntelliJ
-Platform that brings first-class Apache Solr development tooling into IntelliJ
-IDEA. The plugin closes the gap between the three disconnected surfaces Solr
-developers work across today — configset XML, ad-hoc queries, and SolrJ client
-code — by providing language intelligence, cross-file navigation, inspections,
-and (in later phases) live query and dev-loop operations.
+An Apache-licensed (ALv2) IntelliJ Platform plugin that gives JVM developers working
+with Apache Solr the tooling that Elasticsearch and Kafka developers already have, and
+that Solr developers do not.
 
-The work is structured as an **umbrella effort** delivered in phases. This
-document specifies the whole program at a high level and details **Phase 1**
-(schema/config language intelligence) and the **documentation deliverables** to
-implementation-ready depth, since those are the committed first releases.
-Phases 2–5 are specified at scope level and will be broken out into their own
-specs as Phase 1 validates the approach.
+The plugin covers three surfaces that are disconnected today — the configuration files
+in your repository, the running Solr you deploy to, and the Java or Kotlin code that
+queries it — and connects them through a single shared model of what fields exist and
+what they can do.
+
+The comparable products are Big Data Tools, the Confluent plugin for Kafka, and JPA
+Buddy. This plugin takes the config-and-code intelligence of JPA Buddy and the live
+server tooling of the other two, because Solr development genuinely needs both: you
+change a schema, you try a query, you look at what came back, you change it again.
+
+**Quality bar.** This is specified as a product, not a proof of concept. A feature that
+works on the maintainer's machine and produces false positives on a real project is
+worse than an absent feature, because false positives are what get a plugin uninstalled.
+Where this document has to choose between more features and fewer features that are
+right, it chooses right.
 
 ## Goals
 
-- Deliver a maintained, ALv2-licensed Solr plugin on the JetBrains Marketplace —
-  a category in which Solr currently has no maintained tooling, unlike
-  Elasticsearch and Kafka.
-- Eliminate the classes of silent runtime failure that arise at the boundaries
-  between configset, query, and client code (typo'd field names, dangling
-  `copyField` references, params targeting non-indexed fields).
-- Ship a Phase 1 MVP that is **useful offline** — pure static analysis of
-  configset files with no Solr connection required.
-- **Steer writes toward the Schema API where it applies**, rather than
-  encouraging hand edits that Solr will overwrite — so the plugin reinforces
-  Solr's own guidance instead of working around it.
-- Keep the plugin maintainable across Solr releases by **generating** reference
-  data (analysis factories, field attributes) from Solr/Lucene artifacts rather
-  than hand-maintaining tables.
-- Target IntelliJ IDEA (Community and Ultimate) first and SolrJ as the client
-  integration surface.
+- Make Solr configuration files first-class in the IDE: navigable, validated, explained.
+  Today IntelliJ treats a Solr schema as anonymous XML.
+- Eliminate the silent failures that live at the boundaries between config, server and
+  code — a typo'd field name that returns zero results instead of an error, a
+  `copyField` pointing at a field that was deleted, a repository that quietly stopped
+  matching the server it deploys to.
+- Give the developer the whole loop in one place: edit config, run a query, read the
+  results, see what the server actually has.
+- Work for every shape of Solr project — a bare folder of XML, a Java service with no
+  config in it, or both together — without requiring any of them.
+- Ship on the JetBrains Marketplace as a maintained plugin under ALv2 with source
+  linked.
 
 ## Non-Goals
 
-- **Bulk / production ingestion and transformation pipelines** — indexing
-  support (Phase 2) is deliberately scoped to development workflows only.
-- **Spring Data Solr integration** — the project is unmaintained; only Spring
-  Boot autoconfiguration properties may be read for connection detection.
-- **Other JetBrains IDEs** (PyCharm, GoLand, etc.) at launch — a later,
-  exploratory goal (Phase 5).
-- **Localized documentation, video tutorials, and blog posts** — an author's
-  independent blog series may cover the plugin but is not an ASF deliverable.
-- **A committed Solr MCP server dependency** — routing queries through an MCP
-  server (SOLR-17944) is exploratory (Phase 5), not part of the committed scope.
+- **Production operations.** This is a development tool. It is not a monitoring
+  console, a cluster manager, or a bulk ingestion pipeline.
+- **Replacing the Solr Admin UI.** The Admin UI is good at what it does. The plugin
+  wins where it can see things the Admin UI cannot — most of all, your repository.
+- **Guarding against production access.** Network reachability is the control that
+  matters, and it belongs to the firewall, not to a checkbox in a plugin. What the plugin
+  does instead is clarity: the selected connection is always visible, and a destructive
+  action names its target in the confirmation.
+- **Spring Data Solr.** Unmaintained upstream. Its configuration properties may be
+  read for connection detection; nothing else.
+- **Other JetBrains IDEs at launch.** IntelliJ IDEA first. Others are possible later
+  and nothing here precludes them.
 
 ## Background
 
-### Motivation
+### Why Solr development is worse than it needs to be
 
-Any case for Solr schema tooling has to begin with the banner at the top of the
-default configset: *this file is managed by the Schema API, do not edit it by
-hand*. Solr has offered a Schema API for over a decade, and the default
-configset's `managed-schema.xml` is generated rather than authored. Tooling that
-assumes hand-edited XML has to say why that assumption survives.
+Solr work spans three surfaces that share a vocabulary — field names — and share
+nothing else.
 
-It survives because the API displaces a narrower slice of the work than the
-banner implies. It does not cover `solrconfig.xml`, which is where request
-handlers and relevance parameters live. It is not how analyzer chains get
-designed. And it does nothing for the far more frequent act of *reading* a
-configset — the XML is still what sits in ZooKeeper, what appears in the pull
-request, and what an engineer opens when a query returns nothing. The section
-below breaks the workflows down and states plainly where this plugin helps and
-where it does not.
+The configuration files are XML with no language support. Nothing tells you that a
+`copyField` names a field that no longer exists, or that the `qf` parameter in a
+request handler references a field that is never indexed, or that the field you are
+about to search is tokenized and will never match a whole-value lookup.
 
-Within that scope, developers building on Solr work across three disconnected
-surfaces: configset XML edited with no language support, queries iterated in the
-Admin UI or curl, and client code that references field names as unchecked string
-literals. Every boundary between these surfaces produces a class of silent
-runtime failure:
+Queries are iterated in the Admin UI or with `curl`, in a different window, against a
+schema you have to hold in your head.
 
-- A typo'd field name in a query returns empty results rather than an error.
-- A `copyField` pointing at a removed field fails only at core reload.
-- A `qf` param referencing an unindexed field degrades relevance with no warning.
+Client code passes field names as bare strings. The compiler cannot check them and
+Solr will not complain: a query naming a field that does not exist returns zero results,
+not an error. That is the worst failure mode a system can have — silent, plausible, and
+discovered in production.
 
-Comparable ecosystems have closed this gap with IDE tooling — Elasticsearch has
-multiple actively maintained JetBrains plugins (including an official
-Elastic-authored one), and Kafka has the Confluent Plugin for JetBrains IDEs.
-Solr has none on the JetBrains Marketplace.
+Elasticsearch has several maintained JetBrains plugins including an official one. Kafka
+has Confluent's. Solr has none.
 
-### Where configset XML is authored
+### What the Schema API does and does not displace
 
-Configsets reach a running Solr through four workflows, and this plugin's value
-differs sharply across them:
+Solr's default configset opens with a banner: *this file is managed by the Schema API,
+do not edit it by hand.* Any tooling for Solr configuration has to answer that.
 
-| Workflow | How the XML is produced | Phase 1 value |
-|---|---|---|
-| **Version-controlled configset** — `ClassicIndexSchemaFactory`, or `ManagedIndexSchemaFactory` with `mutable="false"`; configset in Git, uploaded to ZooKeeper by CI | Hand-edited, code-reviewed | Full — read and write |
-| **Container-mounted configset** — Solr Operator / ConfigMap / Helm; a Git-tracked directory mounted into the pod | Hand-edited, code-reviewed | Full — read and write |
-| **Mutable managed schema** — fields added by POST to `/solr/<collection>/schema`; Solr rewrites the file | Generated, then read | Read-side in full; write-side redirects to the Schema API (S9) |
-| **Schemaless** — the `add-unknown-fields-to-the-schema` update chain guesses types at ingest | Generated | Minimal — but schemaless projects pin their types before production and become one of the rows above |
-
-The first two rows are the plugin's home ground and are not a marginal
-population: keeping the configset in version control is what makes a Solr
-deployment reproducible, and it is the reason `mutable="false"` and
-`ClassicIndexSchemaFactory` remain in wide use.
-
-More importantly, three properties of the Phase 1 feature set hold across *all
-four* rows:
+The answer is that the API displaces a narrower slice of the work than the banner
+implies:
 
 - **`solrconfig.xml` has no real API alternative.** The Config API covers common
-  properties, component registration and user properties, writing them to
-  `configoverlay.json` — a format that is awkward to review and does not reach
-  the parts that matter most. Request-handler `defaults`/`appends`/`invariants`,
-  dismax `qf`/`pf`/`bf`/`mm` tuning, update-processor chains, cache sizing and
-  `autoCommit` are hand-edited XML in every topology above, including the managed
-  ones. S2's request-handler-param resolution and S4's `qf`/`df` inspections live
-  entirely here and are unaffected by how the schema was authored.
-- **Analyzer chains are not designed through an API.** A `fieldType` carrying a
-  tokenizer chain *can* be POSTed, but chain design is holistic work — comparing
-  an index chain against its query chain, deciding whether
-  `WordDelimiterGraphFilter` precedes `LowerCaseFilter`, keeping an EdgeNGram on
-  the index side only. That is editing, and it is precisely what S1, S5, S6 and
-  S7 target. The highest-value part of Phase 1 is the part the Schema API least
-  displaces.
-- **Comprehension is workflow-independent.** Even when every field arrived via
-  the API, the resulting file is what sits in ZooKeeper, what appears in the
-  diff, and what gets opened during debugging. Ctrl-click from a `copyField`
-  destination to its field, Find Usages on a `fieldType`, Ctrl-Q on
-  `ASCIIFoldingFilterFactory` — none of these require having written the line.
-  Phase 1 is comprehension tooling as much as authoring tooling, which is why the
-  reference graph (see Technical Design) is the foundation both halves build on.
+  properties and component registration, writing them into `configoverlay.json` — a
+  format that is awkward to review and does not reach the parts that matter. Request
+  handler defaults, dismax relevance tuning, update processor chains, cache sizing and
+  commit behavior are hand-edited XML in every deployment topology.
+- **Analyzer chains are not designed through an API.** A field type carrying a
+  tokenizer chain *can* be posted, but designing one is holistic work: comparing the
+  index chain against the query chain, deciding filter order, keeping an EdgeNGram on
+  the index side only. That is editing.
+- **Reading is workflow-independent.** Even when every field arrived through the API,
+  the resulting file is what sits in ZooKeeper, what shows up in the pull request, and
+  what someone opens when a search returns nothing.
 
-The one place the workflows genuinely diverge is *writing*, and the plugin takes
-a position rather than staying neutral. Against a mutable managed schema Solr
-owns the file, so the plugin's default answer to a write is *use the Schema API*
-— it renders the intended edit as an API request instead of applying it to the
-file (S9). Against a hand-authored schema no API is available, editing the file
-is correct, and nothing is warned or redirected. S8 classifies which case a
-configset is in; S9 defines the resulting behavior.
+### What this replaces
 
-This is deliberately not a blanket "never edit XML" stance. The version-
-controlled workflows in the first two rows have chosen file-as-source-of-truth
-so the configset stays reviewable in Git and deployable by CI; steering those
-users to the API would bypass their review process and create drift between
-Git and ZooKeeper. The redirect is conditional on provenance for that reason,
-and it stops at the Schema API — `solrconfig.xml` and every supporting configset
-file remain hand-edited by design.
+An earlier version of this specification answered the banner by refusing to edit files
+Solr owns. It classified each schema by parsing a second configuration file, cached the
+result, handled five fallback cases, and where Solr owned the file put a `curl` command
+carrying a placeholder URL on the clipboard instead of applying the edit.
 
-A file-by-file survey of the whole Solr configuration surface — what each file
-holds, which APIs write which files, and what this plugin does and does not
-cover — is in
-[`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md).
+That existed because the plugin was offline — a fake URL was the only alternative it
+could offer. A live connection dissolves it. **Files are edited, always.** Disagreement
+between repository and server is shown rather than prevented, because that disagreement
+was the actual risk. And applying a change through the API becomes a real button rather
+than an apology.
 
-### Persona
+So the plugin does not classify schema files at all. That model, its cache, its five
+cases and the write gating built on them are deleted. They answered "am I allowed to
+write here", which is no longer a question worth asking.
 
-All user stories share one persona unless noted: **a software engineer building
-applications on Apache Solr using IntelliJ IDEA**, editing configsets and SolrJ
-code in the same project. The documentation deliverables additionally address a
-**contributor** persona (a developer extending the plugin itself).
+## Users and project shapes
 
-### Phased scope (program-level)
+One persona: **a JVM developer building on Solr in IntelliJ IDEA.** Their project is
+one of three shapes, and the plugin does not get to choose which:
 
-| Phase | Theme | Server connection | Status |
-|-------|-------|-------------------|--------|
-| **1** | Schema & config intelligence (static analysis) | None | **Committed — this spec** |
-| **2** | Connections & query console; dev-oriented indexing | Live | Scoped; follow-up spec |
-| **3** | SolrJ code integration | Live | Scoped; follow-up spec |
-| **4** | Collection explorer & dev-loop operations | Live | Scoped; follow-up spec |
-| **5** | Ecosystem (MCP routing, more IDEs) | Optional | Exploratory, not committed |
-
-**Phase 2 scope:** named connections (standalone and SolrCloud, basic auth/TLS,
-credentials in IDE PasswordSafe); auto-detection of connection details from
-SolrJ configuration in the project; a query console with schema-derived field
-completion, structured result rendering, `debugQuery` explain output as a
-navigable score tree, query history, and version-controllable saved queries.
-Dev-oriented indexing: an ad-hoc document editor with schema-aware
-completion/validation, indexing JSON/CSV/XML files from the project with
-explicit commit behavior, sample-document generation from the schema, and
-round-trip edit/re-index of documents from query results. Indexing/delete
-actions are gated behind a per-connection "protected" flag (default on for
-non-localhost connections).
-
-**Phase 3 scope:** field-name completion and validation inside query strings in
-Java/Kotlin (SolrQuery parameters, string constants passed to SolrJ APIs)
-validated against the project's schema; a "run in query console" gutter action
-on query strings; inspections for schema-incompatible queries (e.g., sort/facet
-on non-docValues fields).
-
-**Phase 4 scope:** a tool window for collections/cores/shards/replicas/aliases;
-upload configset to ZooKeeper + reload collection as IDE actions;
-deployed-vs-repo config diff; classification of schema edits as
-safe-live / requires-reload / requires-reindex; a run configuration launching
-local Solr (Docker or binary) with the project configset; an analysis-chain
-debugger (per-stage token output, equivalent to the Admin UI Analysis screen).
-
-## Requirements
-
-### Phase 1 — Functional requirements (schema & configset intelligence)
-
-All Phase 1 features are **pure static analysis** of configset files
-(`managed-schema` / `schema.xml`, `solrconfig.xml`) in the open project; no Solr
-connection is required.
-
-- **S1 — Schema editing support.** Syntax highlighting, code completion, and
-  structural validation for `managed-schema`/`schema.xml`: field types,
-  tokenizer/filter/charFilter factory classes and their valid attributes, field
-  attributes (`indexed`, `stored`, `docValues`, `multiValued`), and
-  `dynamicField` patterns.
-- **S2 — Cross-file reference resolution.** Ctrl-click navigation and Find Usages
-  across configset references: `copyField` source/dest → field definitions,
-  `field type=` → `fieldType`, and `solrconfig.xml` request-handler params
-  (`df`, `qf`, spellcheck/highlight/facet field params) → schema fields.
-- **S3 — Rename refactoring.** Rename a field or `fieldType` and update all
-  references across the configset, leaving no dangling references.
-- **S4 — Configset inspections.** Editor-time inspections for configset errors:
-  dangling `copyField` sources/targets, unused `fieldType`s, request handlers
-  referencing nonexistent fields, `qf`/`df` on non-indexed fields, and
-  known-problematic analyzer chain orderings.
-- **S5 — Match-capability hints.** Annotate each field with its effective match
-  semantics derived from its analyzer chain: exact whole-value match
-  (`StrField` / `KeywordTokenizer`-based), tokenized term match, prefix/substring
-  match (`EdgeNGramFilter` / `NGramFilter` in the index chain), and case
-  sensitivity (`LowerCaseFilter` presence).
-- **S6 — Match-capability quick-fixes.** Intention actions that add a missing
-  match capability — e.g., "Add exact-match companion: create `<name>_exact` as
-  string plus a copyField"; "Add prefix matching: create/reuse an EdgeNGram
-  fieldType and a `<name>_prefix` field with copyField." Hints and fixes must be
-  phrased as **efficient index-time** support, since wildcard/regex queries
-  provide slow partial matching on any indexed field at query time.
-- **S7 — Inline component documentation.** Quick documentation (Ctrl-Q) on
-  analysis factories and field attributes, sourced from the Solr Reference Guide.
-- **S8 — Schema provenance detection.** Detection reads the configset's
-  `<schemaFactory>` declaration and its `mutable` setting, and classifies the
-  schema as *hand-authored* (classic, or managed with `mutable="false"`) or
-  *Solr-managed* (managed and mutable). Read-side features (S1, S2, S5, S7) and
-  inspections (S4) behave identically in both cases — provenance gates writes
-  only, never reads. Where **no `<schemaFactory>` is declared, the configset is
-  classified as managed** — Solr's own default is `ManagedIndexSchemaFactory`, so
-  an absent declaration means managed, not classic. Where `solrconfig.xml` is not
-  part of the project at all, classification falls back to the schema filename and
-  errs toward managed. Detection also raises a **pending-conversion** inspection
-  for a `schema.xml` in a managed-factory configset with no managed schema file
-  beside it: on first load Solr renames that file to `schema.xml.bak` and rewrites
-  its content as `managed-schema.xml`, so the file being edited is about to be
-  replaced.
-- **S9 — API-first writes against a managed schema.** Where S8 classifies a
-  schema as Solr-managed, the plugin's default answer to a write is *use the
-  Schema API*, not *edit the file*. The write-side features — S3 rename and the
-  S6 quick-fixes — offer two actions, with the API path first:
-  - **Copy as Schema API request** (default) — the intended edit is rendered as a
-    Schema API JSON payload and a ready-to-run `curl` command placed on the
-    clipboard, rather than applied to the file. The collection URL is emitted as
-    a placeholder (`http://localhost:8983/solr/<collection>/schema`) since Phase 1
-    has no connection; Phase 2 substitutes a configured connection and Phase 4 may
-    execute the request directly.
-  - **Edit the file directly** (secondary) — proceeds, after a warning that Solr
-    owns this file and may overwrite the edit on the next API call.
-
-  Against a hand-authored schema this behavior does **not** apply: no Schema API
-  is available, file editing is correct, and no warning or redirect is shown.
-  Payload generation is pure text generation and requires no network, preserving
-  the Phase 1 offline guarantee.
-
-  **Scope limit:** S9 covers the Schema API only. It deliberately does not extend
-  to `solrconfig.xml` and the Config API, whose coverage is partial and whose
-  writes land in `configoverlay.json` rather than the XML — a trade-off rather
-  than a clear improvement. Hand editing remains the expected workflow for
-  `solrconfig.xml` and for every supporting configset file.
-
-### Phase 1 — Non-functional requirements
-
-- **Platform support:** installs on IntelliJ IDEA Community and Ultimate
-  (current release and previous major).
-- **Version coverage:** S1–S9 implemented for the schema versions of every Solr
-  release line that Apache Solr has **not** declared end-of-life — see the
-  version-support policy below. At time of writing that is **Solr 10.x** and
-  **Solr 9.10.x**.
-- **Zero false positives** on the `_default` and `sample_techproducts_configs`
-  configsets shipped with Solr — enforced by CI golden-file tests.
-- **Offline:** no Solr connection or network access required for any Phase 1
-  feature.
-- **Generated reference data:** completion/annotation data for factories and
-  attributes is generated from Solr artifacts (reflection over
-  `org.apache.solr.*` factory classes + Lucene analysis SPI), not hand-maintained
-  — so a new Solr release requires regeneration, not re-authoring.
-- **Licensing/distribution:** published to JetBrains Marketplace under ALv2 with
-  source linked.
-
-### Version-support policy
-
-**The plugin supports the Solr release lines that Apache Solr itself has not
-declared end-of-life.** The policy is derived from upstream rather than invented
-for the plugin, so it needs no separate sign-off and cannot drift from what the
-project actually maintains.
-
-Solr's stated lifecycle is that the current major line receives feature releases,
-the previous major line receives occasional critical security and bug fixes, and
-everything older is EOL and will not be updated. Applied at time of writing:
-
-| Solr line | Upstream status | Plugin support |
+| Shape | What the plugin sees | What it can offer |
 |---|---|---|
-| **10.x** | Current major — active feature releases | **Supported** |
-| **9.10.x** | Previous major — critical fixes only | **Supported** |
-| 9.9 and earlier, 8.x and below | EOL | Not supported |
+| Configset repository — XML only, deployed by CI | Config files, no code, usually no build file | Full config intelligence; connection if the developer adds one |
+| Application with configset in-repo | Config, code, build file | Everything, including the links between code and schema |
+| Application only — config owned elsewhere | Code and a connection | Server tooling and code checking against the live schema |
 
-Consequences that follow from adopting it:
+**This is the central architectural constraint.** No feature may require an input it
+might not have. Each surface has to be useful alone and better when the others are
+present. A user with only XML gets the editor. A user with only a connection gets the
+console and the browser. A user with both gets everything, plus the comparison neither
+half could produce on its own.
 
-- **Support is by line, not by count.** The previous policy — "the two most recent
-  minor lines" — became ambiguous the moment Solr 10.0 shipped, since 10.0.0 and
-  9.10.1 are the current and previous *majors*, not two minors of one line. Only
-  the final minor of the previous major is non-EOL, which the table reflects.
-- **Lines are dropped, not deprecated.** When Solr declares a line EOL, the
-  plugin drops it in its next release, and the drop is recorded in the
-  compatibility matrix and changelog (D8). Dropping a line means removing its
-  generated reference dataset and its row from the cross-version test matrix.
-- **A new Solr major is a regeneration, not a re-authoring.** This is the
-  property the generated-reference-data decision exists to protect: adding
-  Solr 11 means resolving new artifacts and regenerating, then adding a matrix
-  row.
-- **Toolchain floor.** Solr 10 requires Java 21, so the reference-data generator
-  builds on JDK 21 or later — which also covers the lower baseline of the
-  previous major. This floor is set by the oldest JDK that can load the *newest*
-  supported line's classes, and rises when Solr's does.
+A secondary persona — the **contributor** extending the plugin — is addressed by the
+documentation requirements.
 
-### Documentation requirements
+## Architecture
 
-Docs ship incrementally. Items marked **[P1]** are required for the Phase 1
-Marketplace release and block it; the rest land with their corresponding phases.
-`D1, D3–D7` live in the plugin repo (`docs/` + `README`) so docs are versioned
-with the code.
+### The spine: one model, two sources, four views
 
-- **D1 — README & quick start [P1].** One-paragraph statement of what the plugin
-  does, plus a quick start from install to first working feature (schema
-  completion) in under five minutes.
-- **D2 — Marketplace listing [P1].** Feature summary, annotated screenshots, a
-  short GIF of headline features (schema completion, match-capability hints and
-  quick-fixes), correct tags/categories ("Big Data", "Data tools"), and a
-  compatibility statement.
-- **D3 — Feature reference [P1, then per phase].** Each feature documented with a
-  screenshot, what it does, and its limits — including an explicit page on
-  match-capability semantics (how exact/tokenized/prefix support is derived from
-  analyzer chains, and the wildcard-query caveat).
-- **D4 — Inspection catalog [P1, then per phase].** Every inspection listed with
-  rationale, an example of flagged config, and the fix; linking to the relevant
-  Solr Reference Guide section where feasible.
-- **D5 — Troubleshooting & FAQ.** Covers configset detection (why features didn't
-  activate, and the manual override), version-compatibility questions, and how to
-  report bugs with logs.
-- **D6 — Contributor guide [P1].** Dev-environment setup (JDK, Gradle IntelliJ
-  Platform plugin, running the sandbox IDE, running tests including the
-  golden-file configset tests), project layout, and contribution workflow.
-- **D7 — Architecture doc.** Key design decisions: how schema PSI/reference
-  resolution is structured, how completion data is generated from Solr artifacts,
-  and how match-capability analysis models analyzer chains. Decision records for
-  non-obvious trade-offs.
-- **D8 — Compatibility matrix & changelog [P1].** Maintained matrix of plugin
-  version × IntelliJ version × Solr line, plus a keep-a-changelog changelog (also
-  surfaced in the Marketplace what's-new). The matrix states support in terms of
-  the version-support policy, and every EOL-driven drop of a Solr line is a
-  changelog entry so users on that line are not surprised by it.
-- **D9 — Solr Reference Guide cross-link.** The community-tools section of the
-  Solr Reference Guide mentions the plugin with a link (a small follow-up PR to
-  the Solr docs; requires PMC review).
+Everything the plugin does is a question about fields. *Does this `copyField` name a
+real field? What can I type after `fq=`? Is `"categry"` a field? Does my repository
+agree with the server?* One question, four askers.
 
-## Technical Design
+So the plugin is built as **one model of the fields, fed by two sources, read by four
+views.**
 
-### Architecture approach
+**Two sources.**
 
-The plugin is an IntelliJ Platform plugin built with the Gradle IntelliJ
-Platform plugin. Phase 1 is layered on standard IntelliJ language-support
-extension points:
+*The repository* — configuration files parsed into fields, field types, analyzer chains,
+and the request handlers that reference them. Available whenever config files are in the
+project. Describes what is **declared**.
 
-- **PSI & reference model** — Solr configset XML is modeled through the
-  platform's XML PSI, with custom `PsiReference` implementations wiring the
-  cross-file references in S2 (`copyField`↔field, `field type=`↔`fieldType`,
-  request-handler params↔schema fields). Reference resolution is the foundation
-  that S2 navigation, S3 rename, and S4 inspections all build on.
-- **Completion & validation (S1)** — completion contributors and XML structure
-  validation driven by the generated reference data (see below).
-- **Rename refactoring (S3)** — reuses the S2 reference graph so a rename updates
-  all resolved references.
-- **Inspections (S4)** — local inspection tools, each with an
-  IntelliJ-Platform inspection `description.html` (this doubles as the D4
-  catalog's per-inspection description and satisfies the CI "every inspection has
-  a description" check).
-- **Match-capability analysis (S5/S6)** — a model of a field's analyzer chain
-  that classifies effective match semantics; annotators surface hints (S5) and
-  intention actions apply the standard multi-field patterns (S6).
-- **Quick documentation (S7)** — a documentation provider sourced from Reference
-  Guide content keyed by factory/attribute.
-- **Schema provenance (S8)** — configset detection resolves a hand-authored /
-  Solr-managed classification once per configset and exposes it to the write-side
-  features, which consult it before modifying a file. Read-side features ignore
-  it entirely, so the classification can never suppress a hint, a reference or an
-  inspection.
-- **Schema API payload rendering (S9)** — the intended edit behind an S3 rename
-  or S6 quick-fix is expressed as an intermediate *schema change* value
-  (add-field, add-copy-field, add-field-type, replace-field, …) which is then
-  rendered either as a PSI edit or as a Schema API JSON payload. Modelling the
-  change independently of its rendering is what lets one intention drive both
-  paths without duplicating the logic.
+*The server* — a live Solr, asked for its schema, its collections, and what is actually
+in the index. Available only when connected. Describes what is **deployed**.
 
-### Generated reference data (critical design decision)
+**One model.** It merges both and — critically — records where every fact came from. A
+field known only from the repository, known only from the server, agreed by both, or
+described differently by each are four distinct states. The fourth is drift. Drift
+detection is therefore not a feature built later; it is what a source-tracking model
+produces for free. The same tracking answers "why is the plugin telling me this," which
+the quality bar requires.
 
-Rather than hand-maintaining tables of factory classes, valid attributes, and
-their documentation, Phase 1 **generates** this data from Solr and Lucene
-artifacts — reflection over `org.apache.solr.*` factory classes and the Lucene
-analysis SPI. This is the mechanism that makes the version-support policy (two
-non-EOL Solr lines) sustainable: supporting a new release is a
-regeneration step in the build, not a re-authoring effort. The generator's output
-feeds S1 completion/validation and S7 documentation. This design is documented in
-D7 and referenced by Phase 1 non-functional requirements.
+**Four views**, each degrading independently:
 
-### Configset detection
+| View | Needs | Without the other sources |
+|---|---|---|
+| Editor | Repository | Fully functional offline |
+| Tool windows — collections, query console, drift | Server; drift needs both | Console works with no repository, completing from the live schema |
+| Code inspection | Either source | Checks against whichever is available |
+| Integration recognizers | Project code and config | Contribute endpoints and field references |
 
-Features activate for files recognized as Solr configsets using directory
-heuristics plus file-name matching (`managed-schema`, `schema.xml`,
-`solrconfig.xml`), with a **manual override** for projects whose layout the
-heuristics miss. Detection behavior and the override are documented in D5.
+The payoff is that the hard correctness problems — what does this analyzer chain do,
+does this field exist, what does the server really have — are solved once, in the model,
+under tests that need neither an IDE nor a server. The views stay thin. That is the only
+version of this scope in which "polished" is achievable, because the same question is
+not being answered in four places with four sets of bugs.
 
-Detection also resolves **schema provenance** (S8) for the configset by reading
-the `<schemaFactory>` element from the sibling `solrconfig.xml` — its class and,
-for `ManagedIndexSchemaFactory`, its `mutable` setting — falling back to the
-schema file's name when that element is absent or `solrconfig.xml` is not part of
-the project. Provenance gates only the write-side features (S3, S6); it never
-affects which files activate.
+### Components
 
-## Data Models
+Seven. The first four have no user interface, which is what makes them fast to test.
 
-Phase 1 introduces no persisted data model beyond IntelliJ's own project/PSI
-model. The primary internal models are:
+1. **Repository reader.** Configuration files to declared fields. Reads through the
+   platform's XML PSI. Knows nothing of servers or UI.
+2. **Server reader.** A live Solr to actual fields, collections and cores. Knows nothing
+   of files or UI.
+3. **Match analysis.** An analyzer chain to what a field can actually match: whole value
+   or tokens, prefix or not, case-sensitive or not. A pure function, exhaustively
+   testable, and the source of the plugin's most surprising output.
+4. **Field model.** Merges 1 and 2, records the origin of every fact, exposes the four
+   agreement states.
+5. **Editor features.** Navigation, validation, hints, rename, documentation.
+6. **Tool windows.** Collections browser, query console, drift view.
+7. **Integration recognizers.** Spot Solr usage in code and framework configuration.
 
-- **Reference graph** — resolved links between configset elements (fields,
-  fieldTypes, copyFields, request-handler params), derived from PSI.
-- **Match-capability model** — a per-field classification (exact / tokenized /
-  prefix-substring / case-sensitivity) derived by walking the field's index-time
-  analyzer chain.
-- **Generated reference dataset** — the build-time artifact enumerating factory
-  classes, valid attributes, and documentation strings.
-- **Schema provenance** — a per-configset hand-authored / Solr-managed
-  classification derived from `<schemaFactory>` (S8), consulted by write-side
-  features only.
-- **Schema change** — a rendering-independent description of an intended schema
-  edit (S9), emitted either as a PSI modification or as a Schema API payload.
+**Data flow.** Opening a file triggers configset detection, which fills the model from
+the repository. Adding a connection fills the other half. Views observe the model.
 
-Later phases (2+) introduce connection profiles (stored in IDE settings with
-credentials in PasswordSafe) and saved queries (version-controllable, stored in
-the project) — specified in their own follow-up specs.
+**Server data refreshes on request and on connection change — never on a timer.** A
+plugin that silently polls someone's Solr every thirty seconds shows up in their
+monitoring and gets uninstalled.
 
-## API / Interfaces
+### Talking to Solr: plain HTTP, not SolrJ
 
-Phase 1 exposes no external API. Its "interfaces" are IntelliJ Platform
-extension points (completion contributors, reference providers, inspections,
-intention actions, documentation providers, rename processors) and the
-user-facing editor affordances they produce. The SolrJ client API becomes
-relevant only in Phase 3.
+The plugin's own calls to Solr use plain HTTP and JSON. It does **not** embed SolrJ.
 
-## Security Considerations
+SolrJ brings a substantial dependency tree into a plugin that shares a classloader
+environment with the IDE and everything else installed in it; the IDE already ships its
+own Lucene, and this is a known source of conflict. It also couples the plugin to a
+client version when the entire point is talking to whichever server the user has. Solr's
+wire format is stable JSON over HTTP, and the plugin needs fewer than a dozen endpoints.
 
-- **Phase 1 has no network or credential surface** — it reads project files
-  only, which is the primary security benefit of the static-analysis-first
-  sequencing.
-- **Phase 2+ credentials** must be stored in IntelliJ's PasswordSafe, never in
-  project files or plain settings.
-- **Destructive-action guard (Phase 2+):** indexing and delete actions are gated
-  behind a per-connection "protected" flag, defaulting **on** for non-localhost
-  connections, to prevent accidental writes against shared or production Solr.
+The trade is hand-written request and response handling instead of typed objects. At
+this endpoint count that is the better side of the trade, and it degrades more gracefully
+against a server version the plugin has never seen.
 
-## Testing Strategy
+**This is unrelated to supporting the user's SolrJ code**, which is a first-class
+feature. The rule is: *the plugin reads SolrJ, it does not call SolrJ.*
 
-- **Golden-file configset tests (Phase 1, CI-gating):** run all inspections
-  against the `_default` and `sample_techproducts_configs` configsets shipped
-  with Solr and assert **zero false positives**.
-- **Reference-resolution and rename tests:** verify S2 navigation targets and S3
-  rename completeness (no dangling references) on representative configsets.
-- **Match-capability tests:** assert derived semantics (S5) for canonical field
-  types (string, tokenized text, EdgeNGram) and verify S6 quick-fixes produce
-  valid, reindex-free-where-possible configset edits.
-- **Generated-data tests:** verify the reference-data generator produces expected
-  factories/attributes for each supported Solr line.
-- **Schema-provenance tests (S8):** classify configsets declaring
-  `ClassicIndexSchemaFactory`, `ManagedIndexSchemaFactory` with `mutable="true"`
-  and with `mutable="false"`, plus the absent-`<schemaFactory>` case (must
-  classify as managed) and the no-`solrconfig.xml` filename fallback; assert the
-  write-side warning fires for every case resolving to a mutable managed schema
-  and for no other, and that read-side features produce identical results across
-  all of them. Cover the pending-conversion inspection with a
-  `schema.xml`-in-managed-configset fixture.
-- **Schema API payload tests (S9):** assert that each S3 rename and S6 quick-fix
-  emits a valid Schema API payload for the managed case — correct command
-  (`add-field`, `add-copy-field`, `add-field-type`, `replace-field`), correct
-  attributes, and a payload that round-trips to the same schema state the direct
-  PSI edit would produce. Assert no redirect or warning is offered for
-  hand-authored schemas.
-- **Docs CI check:** every registered inspection has a `description.html`
-  (satisfies D4 completeness); docs state supported versions identically to the
-  compatibility matrix (single source of truth).
-- **Cross-version matrix:** validate against the schema versions of every
-  supported (non-EOL) Solr line.
+### The factory catalog
 
-## Acceptance Criteria
+Completion and documentation need to know Solr's analysis factories — roughly 130
+tokenizers, filters and character filters — and the attributes each one accepts. That
+list is too large to hand-maintain and changes with Solr versions.
 
-**Umbrella is Done when:** (a) the community reaches consensus on
-hosting/ownership (see Open Questions), and (b) Phase 1 ships a first release
-installable from the JetBrains Marketplace. Phases 2–4 are filed as linked
-follow-up tickets once Phase 1 validates the approach.
+**It is generated at build time and shipped with the plugin**, one entry per supported
+Solr line, derived from the Solr and Lucene artifacts for that line. The generator runs in
+the build, not in the IDE, which is what keeps it simple: loading Solr classes in a Gradle
+task is ordinary, whereas loading them inside the IDE's classloader is not. A new Solr
+line is a version bump and a regenerated catalog, not re-authoring.
 
-**Phase 1 is Done when:**
-- The plugin installs on IntelliJ IDEA Community and Ultimate (current release
-  and previous major).
-- Configset detection activates features on recognized files, with a manual
-  override.
-- S1–S9 are implemented for the schema versions of every supported (non-EOL)
-  Solr line.
-- Against a Solr-managed schema, write-side features offer a Schema API request as
-  the default action and a warned file edit as the alternative; against a
-  hand-authored schema they edit the file with no warning. Read-side features are
-  unaffected by provenance in both cases.
-- Inspections produce zero false positives on `_default` and
-  `sample_techproducts_configs`, enforced by CI golden-file tests.
-- Reference data is generated from Solr artifacts (not hand-maintained).
-- Published to JetBrains Marketplace under ALv2 with source linked.
-- All **[P1]** documentation items are published before/with the release.
+A compiled jar does not volunteer all of this, and the plan says how each piece is
+recovered. The part worth knowing at this level is that **attribute names are not
+reflectable**: a factory takes a `Map<String, String>` and reads its attributes out of it
+by string literal, so the names exist only inside the constructor body. Anything that
+enumerates fields or annotations produces a plausible short list rather than an error,
+which is the failure mode to test for.
 
-## Open Questions
+**Match analysis is a deliberate exception to all of this.** The roughly fifteen factories
+that determine whether a field matches whole values or tokens are named in code, not read
+from the catalog, because that set *defines* the semantics rather than enumerating what
+exists — and it has been stable across Solr majors while the surrounding list has not.
 
-- **Hosting and ownership.** Options: (a) code lives in an ASF repo under the
-  Solr project (like `solr-operator`); (b) an external repo under a contributor's
-  namespace, ALv2, linked from the Solr Reference Guide as community tooling.
-  Option (b) has lower governance overhead to start and does not preclude later
-  donation.
-- **Marketplace vendor identity if (a):** publishing under an ASF vendor account
-  requires PMC coordination.
-- **Marketplace compatibility cadence:** how quickly the plugin must follow a new
-  IntelliJ Platform release, given the version-support policy below is pinned to
-  Solr's lifecycle rather than JetBrains'.
-- **Evidence for the authoring split.** "Where configset XML is authored" argues
-  qualitatively that version-controlled configsets remain a large population. That
-  claim would be stronger with data — e.g. a survey of public configsets for
-  `ClassicIndexSchemaFactory` and `mutable="false"` versus the mutable default, or
-  a question to the user list. Worth gathering before the proposal goes to a wider
-  audience; it does not block implementation.
+Which entry applies is decided in this order:
+
+1. **The connected server**, if there is one. It knows its own version, and it is the
+   authority on what it will accept.
+2. **`<luceneMatchVersion>` in the configset**, which conventionally declares what the
+   configset targets. Note this names a *Lucene* version, not a Solr one — Solr 10.0
+   pairs with Lucene 10.3, Solr 9.10 with Lucene 9.12 — so it needs translating through
+   a small table rather than being used directly.
+3. **The newest supported line**, when nothing declares anything.
+
+Which source answered is recorded on the data, so the user can tell whether completion
+came from their server, their configset, or a default.
+
+An earlier draft proposed resolving this at runtime from the project's own dependency
+jars, read as bytecode to avoid classloader conflicts, with per-module resolution. That
+is deleted. It was substantial machinery to answer a question a connected server answers
+directly and a declared version answers well enough — and empirically the two supported
+lines differ by a single factory, so the precision it bought was close to zero.
+
+### Deferring to the host IDE
+
+The plugin follows the rules of the IntelliJ product it is installed into. It does not
+reimplement platform capabilities, and it does not pretend to capabilities the host
+edition lacks.
+
+Concretely: where the IDE already models a framework's configuration — Spring Boot
+profiles being the important case — the plugin asks the platform rather than parsing
+YAML itself. The platform knows things a hand-rolled parser gets wrong, including which
+profile a given run configuration activates. Those integrations are declared as
+**optional dependencies**, so the features appear when the supporting functionality is
+present and the plugin loads normally when it is not.
+
+Where the platform offers nothing, the plugin falls back to a simple reader for obvious
+cases and, failing that, to the user entering a URL once. Nobody is blocked; some users
+get a better first run.
+
+The exact platform APIs and their edition availability must be verified during
+implementation rather than assumed here.
+
+## What the plugin does
+
+### Editing configuration
+
+Available with no connection and no setup. This is the first-run experience and it must
+be good, because value arriving before configuration is what keeps a plugin installed.
+
+- **Completion** for field types, tokenizer and filter factories and their attributes,
+  and field attributes.
+- **Navigation** — a field to its type, a `copyField` to its target, a request handler
+  parameter in `solrconfig.xml` to the schema field it names, and a filter's resource
+  attribute to the actual `stopwords.txt` or `synonyms.txt` beside it.
+- **Find Usages** for fields and field types.
+- **Inspections** — dangling `copyField` sources and targets, handlers naming fields
+  that do not exist, relevance parameters pointing at non-indexed fields, unused field
+  types, known-bad analyzer chain orderings, and configuration elements removed in the
+  Solr line the configset targets.
+- **Match-capability hints.** Each field annotated with what it can actually match:
+  whole value or tokens, prefix-capable or not, case-sensitive or not — derived from its
+  index-time analyzer chain. This is the feature most likely to tell an experienced user
+  something they did not know.
+- **Quick-fixes** that add a missing capability using the standard patterns — an
+  `_exact` companion field plus its `copyField`, or an EdgeNGram-backed `_prefix` field.
+  Phrased as *efficient index-time* support, since wildcard queries already provide slow
+  partial matching on any indexed field.
+- **Quick documentation** on factories and attributes.
+- **Rename** a field or field type, updating every reference across both files.
+
+Files are edited directly and without warning. The plugin does not classify schema
+files, refuse writes, or redirect them.
+
+### Connecting
+
+A connections list, pre-populated with candidates discovered in the project — see
+"Recognizing Solr usage" below — each of which the user confirms rather than the plugin
+adopting silently. Credentials go to the IDE's PasswordSafe, never to project files or
+plain settings.
+
+### Browsing a server
+
+Collections, cores, shards, replicas and aliases. The fields the server actually has,
+which are not always the fields its schema declares.
+
+### Querying
+
+A console where field names complete from the model, results render as a table rather
+than raw JSON, and scoring explanations are an expandable tree rather than a wall of
+text. History is kept. Queries can be saved into the project so they are reviewable in
+version control and shared across a team.
+
+### Working in Java and Kotlin
+
+Full support for SolrJ usage:
+
+- **Field names checked and completed** in query strings wherever they appear — `q`,
+  `fq`, `fl`, `sort`, facet and highlight fields, and the dismax parameters.
+- **Builder calls understood**, not only raw strings: `setQuery`, `addFilterQuery`,
+  `addField`, `addFacetField`, `setSort`.
+- **The indexing side too** — `SolrInputDocument.addField` carries the same silent bug.
+- **Bean mapping** — SolrJ's `@Field` annotations map POJOs to documents, and an
+  annotation naming a field the schema does not have is a real defect nobody catches.
+- **Query syntax inside the string literal**, so a query gets structure and highlighting
+  rather than being one grey blob.
+- **Run this query** from a gutter icon beside it, in the console, against a selected
+  connection.
+- **Navigate** from a field name in code to its definition in the schema.
+
+This is best-effort by nature: finding which strings are Solr queries means following
+values through variables and constants, and it will never be complete. The plugin
+handles the direct and near-direct cases and stays silent where it cannot tell. Silence
+is the correct failure mode; a false positive on someone's working code is not.
+
+### Comparing the repository against the server
+
+The feature that justifies having both halves. Connected, with configuration in the
+project, the plugin shows where they disagree: fields declared in your repository that
+the server does not have, fields the server has that your repository never declared, and
+fields whose definitions differ.
+
+From there: upload the configset, reload the collection. Solr's own Admin UI cannot do
+this, because it has no idea your repository exists.
+
+### Indexing test documents
+
+Push sample documents into a collection to try something out, with schema-aware
+completion while writing them and sample generation from the schema.
+
+## Recognizing Solr usage
+
+Rather than treating each framework as a special case, the plugin has a small set of
+**recognizers**. Each knows how to spot Solr usage in one place, and each reports two
+kinds of finding: *here is an endpoint* and *here is a field reference*. Everything
+downstream is shared.
+
+This keeps the cost of "support framework X" visible and bounded: one recognizer, not a
+new subsystem.
+
+**SolrJ** — client construction supplies endpoints; queries and document building supply
+field references. The primary recognizer and the one that proves the interface.
+
+**Framework configuration** — a Solr URL in application configuration, resolved per
+profile with the framework's own precedence rules. The dialects differ in ways that
+matter:
+
+- *Spring Boot* keeps profiles in separate files (`application-dev.yml` beside
+  `application.yml`), with the active profile coming from a property, an environment
+  variable, or the run configuration.
+- *Quarkus* keeps them **inline in one file** as a key prefix — `%dev.quarkus.solr.url`
+  — with no profile-named file to find. Anything looking for `application-*.properties`
+  finds nothing. Quarkus also activates `dev`, `test` and `prod` automatically depending
+  on how the application is launched.
+- *Micronaut* uses separate files like Boot but calls them environments, several of
+  which activate by context.
+- *MicroProfile* implementations use ordinals rather than profile names.
+
+There is no standard property name for a Solr URL — the Spring Data Solr keys are
+effectively dead and real projects invent their own. Detection therefore matches on
+values that look like Solr endpoints and keys that mention Solr, and always presents the
+result as a suggestion the user confirms.
+
+**Apache Camel** — routes name Solr endpoints as URIs (`solr://host:8983/solr/products`).
+Three things, in value order: recognize the endpoint as a connection candidate; validate
+the URI's options, which are a defined set where typos fail only at route startup; and
+check field references in route parameters and document construction. Camel routes are
+defined in Java, XML, YAML and Kotlin, which is more surface than it first appears —
+Java and XML first. Where the IDE or an installed plugin already models Camel routes,
+read that model rather than writing another URI parser.
+
+Camel is a smaller population than plain SolrJ and multiplies the code-analysis surface.
+It is specified fully and built after SolrJ is solid, because the recognizer interface
+should be proven by its first implementation before its second depends on it.
+
+## Behavior when things are missing or wrong
+
+The quality bar is decided here, not in the feature list.
+
+**Missing inputs are ordinary states, not errors.** No configuration files, no
+connection, no code — each is normal. The plugin never shows an error for something
+being absent, never displays a banner asking the user to configure it, and never nags.
+Features whose inputs are missing are simply not present.
+
+**The server is unreliable and that is expected.** It will be down, slow, behind a VPN
+that just dropped, or return something unanticipated. Every call has a timeout. No call
+blocks the UI. Failure is reported once, where the user asked for the thing, not as a
+popup. Stale data is labelled stale rather than silently refreshed or silently kept.
+Solr's own error messages are shown rather than rewritten, because they are usually good
+and rewriting loses information.
+
+**Uncertainty is never presented as fact.** Where the repository and the server
+disagree, both are shown rather than one being chosen. A field the plugin cannot resolve
+is marked unknown, not flagged as wrong. **Where the plugin is unsure, it says nothing.**
+False positives are the failure mode that gets a plugin turned off.
+
+**Every write is initiated by a human.** Uploading a configset, reloading a collection,
+indexing a document, applying a schema change — each is invoked by name, confirms before
+acting, and states which server it is about to touch. There is no background write, no
+automatic synchronization, and no timer.
+
+**Which server am I talking to.** The realistic accident is not reaching production —
+firewalls handle that — but clobbering a shared development or staging collection that
+is reachable by design. The mitigation is clarity, not gatekeeping: the selected
+connection is always visible, and destructive actions name their target in the
+confirmation.
+
+**Performance is a correctness property.** Editor-path work runs on every keystroke.
+Parsing files is acceptable there; contacting a server is not. Server data is held
+separately and fetched asynchronously precisely so that a slow or unreachable Solr can
+never make typing stutter.
+
+## What changes in the existing code
+
+The build, CI and documentation tooling are sound and stay: the Kover coverage floor
+wired into SonarCloud, the Dokka documentation gate, SHA-pinned workflows, the JDK 21
+toolchain, the changelog plugin, and `docs/modern-intellij-plugin-development.md`.
+
+The Solr code today is the activation gate and nothing else. The plan owns which files
+change and in what order; what follows is only the constraints that outlive the current
+code, because those are what the plan is not free to trade away.
+
+**Identity is per-configset, not per-file.** Detection currently answers "is this file a
+configset file." Fields, types and analyzer chains are properties of a configset
+directory, and one project may contain several, so the model needs "which configset does
+this file belong to." The per-file answer stays, as the activation gate.
+
+**Detection sits on the editor path, so it must be cheap and cached.** It runs on every
+file the user opens. Its signals stay local — file names and their surroundings — and its
+results are cached and invalidated on file-system change. Nothing on this path may contact
+a server.
+
+**Recognizing a configset and recognizing its resources are different jobs.** Beyond the
+schema and `solrconfig.xml`, a configset contains `params.json`, `elevate.xml`,
+`currency.xml` and `enumsConfig.xml`, which are evidence a configset exists. It also
+contains the files analyzer chains name — `stopwords.txt`, `synonyms.txt`,
+`protwords.txt`, `lang/` — which are not: those names are common enough outside Solr that
+treating them as evidence would activate the plugin on projects that have none. They are
+recognized only from inside a configset already identified, which is what makes navigating
+a filter's `words=` attribute to the file it names possible.
+
+**Connection definitions must never reach a shared project file.** A marked configset root
+is a fact about the project and belongs in shared settings, where it already lives. A
+connection is a fact about one developer's machine; its definition belongs in per-user
+storage and its credentials in PasswordSafe. This is a second settings surface, not a
+change to the existing one.
+
+**Persistent settings leak between tests.** `SolrConfigsetTestCase` exists because the
+platform's test base class shares one project across test classes; the same hazard applies
+to every new persistent setting.
+
+**The `org.apache.solr` package namespace has to be decided.** The plugin lives in a
+personal repository, is published under a personal vendor account, and is not an Apache
+Software Foundation project — donation is explicitly not being pursued. Occupying
+`org.apache.solr.*` implies ASF ownership the project does not have, and carries a
+trademark question for a Marketplace listing.
+
+## Version support
+
+**The plugin supports the Solr release lines Apache Solr has not declared end-of-life.**
+Deriving the policy from upstream means it cannot drift from what the project actually
+maintains. At the time of writing that is **10.x** and **9.10.x**; 9.9 and earlier are
+EOL and unsupported.
+
+When a line goes EOL the plugin drops it in its next release, recorded in the
+compatibility matrix and the changelog.
+
+The plugin also talks to servers it was not built against. Version handling degrades:
+unknown fields in a response are ignored, unknown values are shown rather than rejected,
+and an unrecognized server version is reported rather than refused.
+
+**Toolchain floor.** Solr 10 requires Java 21, which sets the build's floor and rises
+when Solr's does.
+
+## Testing
+
+- **Zero false positives on Solr's own configsets, enforced in CI.** Every inspection
+  runs against `_default` and `sample_techproducts_configs` and must produce nothing.
+  This is the gate that makes the quality bar real.
+- **Match analysis** tested exhaustively against canonical field types — string,
+  tokenized text, EdgeNGram, and the filter orderings that change the answer.
+- **Reference resolution and rename** verified on representative configsets, asserting
+  no dangling references remain.
+- **The server reader against a fake HTTP layer**, covering success, timeout,
+  authentication failure, malformed responses, and an unrecognized server version — the
+  states a real server will not produce on demand.
+- **A contract test per supported line against a real Solr in a container**, pinned to an
+  exact image tag. A fake can only replay responses somebody imagined, which is the wrong
+  instrument for the risk that a server returns a shape nobody anticipated; this is what
+  keeps the fake honest as Solr's wire format moves. No test requires a Solr that a
+  developer started by hand.
+- **The field model's agreement states** — repository-only, server-only, agreeing,
+  disagreeing — tested directly, since drift correctness reduces to these.
+- **Recognizers against real project fixtures**, not synthetic strings: a Spring Boot
+  project with profile files, a Quarkus project with inline profile prefixes, a
+  multi-module project. This is exactly the category of feature that works on the
+  author's machine and fails everywhere else.
+- **Code inspection precision** — asserting the plugin stays silent on constructs it
+  cannot resolve, which matters more than its hit rate.
+- **Every inspection has a description file**, checked in CI, which doubles as the
+  published inspection catalog.
+
+## Documentation
+
+Required before the Marketplace release:
+
+- **README and quick start** — what it does, and from install to a working feature in
+  five minutes.
+- **Marketplace listing** — summary, annotated screenshots, a short recording of the
+  headline features, tags, compatibility statement.
+- **Feature reference** — each feature with a screenshot, what it does and its limits.
+  Explicitly including how match capability is derived, and the caveat that wildcard
+  queries provide slow partial matching regardless.
+- **Inspection catalog** — assembled from the per-inspection description files.
+- **Contributor guide** — environment setup, sandbox IDE, running the tests.
+- **Compatibility matrix and changelog** — plugin against IDE against Solr line, in
+  keep-a-changelog format, with EOL-driven drops recorded.
+
+Following later: a troubleshooting guide covering why features did not activate and the
+manual override; an architecture document recording the decisions here; and a
+cross-link from the Solr Reference Guide's community tools section.
+
+## Acceptance criteria
+
+The plugin is ready to publish when:
+
+- It installs on IntelliJ IDEA and activates on recognized configsets, with a manual
+  override for layouts the heuristics miss.
+- Editing features work with no connection, and server features work with no
+  configuration files in the project — each demonstrated on a fixture project of that
+  shape: a bare configset repository, an application with its configset in-repo, and an
+  application whose configset lives elsewhere.
+- Inspections produce zero false positives on both configsets Solr ships, enforced in
+  CI.
+- A connection can be created from a discovered candidate or entered by hand, with
+  credentials in PasswordSafe.
+- Queries run from the console and from the Java or Kotlin code that contains them, with
+  results and scoring rendered structurally.
+- Field names in SolrJ usage are checked against the model, and the Spring, Quarkus and
+  multi-module fixture projects produce no warning the plugin cannot justify.
+- Repository and server can be compared, and a configset uploaded and a collection
+  reloaded from the IDE.
+- No write happens without a human invoking it and confirming its target.
+- The documentation above is published.
+
+## Open questions
+
+- **Marketplace compatibility cadence.** How quickly the plugin must follow a new
+  IntelliJ Platform release, given the Solr-derived support policy is pinned to a
+  different upstream than JetBrains'.
+- **Package namespace.** `org.apache.solr.*` implies ASF ownership the project does not
+  have. Renaming is cheap now and expensive after the code grows, so this is the one open
+  question with a deadline — see "What changes in the existing code".
+- **Which platform framework-configuration APIs are available to plugins, and in which
+  IDE editions.** Determines how much of the framework-configuration recognizer the
+  plugin implements itself. Verify before committing to specifics.
 
 ## References
 
-- Solr configuration-file survey (which files are hand-edited, which are
-  API-written, and what this plugin covers):
-  [`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md)
-- JetBrains Marketplace (no maintained Solr plugin exists):
-  https://plugins.jetbrains.com/
-- Precedents: Confluent Plugin for JetBrains IDEs; `elasticsearch4idea`; Elastic's
-  official ES|QL IntelliJ plugin.
+- Implementation plan — the ordered path to this intent, and the authority on which steps
+  are done: [`specs/plans/0002-solr-intellij-plugin-plan.md`](plans/0002-solr-intellij-plugin-plan.md)
+- Demo runbook — these features as acceptance criteria in the user's own terms:
+  [`docs/demo/README.md`](../docs/demo/README.md)
+- Solr configuration file survey — which files are hand-edited, which are API-written,
+  and what the plugin covers: [`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md)
+- Plugin development tutorial, using this project as the worked example:
+  [`docs/modern-intellij-plugin-development.md`](../docs/modern-intellij-plugin-development.md)
+- Precedents: Big Data Tools; Confluent for Apache Kafka; JPA Buddy; `elasticsearch4idea`
 - IntelliJ Platform SDK: https://plugins.jetbrains.com/docs/intellij/
-- Solr MCP server (Phase 5, exploratory): SOLR-17944.
