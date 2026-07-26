@@ -101,8 +101,17 @@ class SolrConfigsetReader(private val project: Project) {
         }
     }
 
+    /**
+     * The file's current text, preferring the in-memory document when one already exists.
+     *
+     * `getCachedDocument` rather than `getDocument`, deliberately. The latter *creates* a document
+     * as a side effect, which made the text and the stamp disagree on first read: the stamp came
+     * from the file, then the newly-created document supplied a different one on the next call, and
+     * the cache invalidated once for no reason. Reading a file that has never been opened straight
+     * off disk is also cheaper than materialising a document for it.
+     */
     private fun textOf(file: VirtualFile): CharSequence? =
-        FileDocumentManager.getInstance().getDocument(file)?.charsSequence
+        FileDocumentManager.getInstance().getCachedDocument(file)?.charsSequence
             ?: runCatching { String(file.contentsToByteArray(), file.charset) }.getOrNull()
 
     /**

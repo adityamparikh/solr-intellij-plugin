@@ -36,12 +36,12 @@
   </fieldType>
 
   <field name="id"          type="string"       indexed="true"  stored="true" required="true"/>
-  <field name="sku"         type="stored"       indexed="true"  stored="true"/>
+  <field name="sku"         type="string"       indexed="true"  stored="true"/>
   <field name="name"        type="text_general" indexed="true"  stored="true"/>
   <field name="name_prefix" type="text_prefix"  indexed="true"  stored="false"/>
   <field name="category"    type="string"       indexed="true"  stored="true"/>
-  <field name="description" type="t" indexed="true"  stored="true"/>
-  <field stored="foo"/>
+  <field name="description" type="text_general" indexed="true"  stored="true"/>
+  <field name="text"        type="text_general" indexed="true"  stored="false" multiValued="true"/>
 
   <uniqueKey>id</uniqueKey>
 

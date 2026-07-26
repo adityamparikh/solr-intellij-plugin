@@ -7,6 +7,7 @@ import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrMatchAnalysis
 import org.apache.solr.ide.model.SolrMatchCapability
 import org.apache.solr.ide.model.SolrMatchGranularity
+import org.apache.solr.ide.model.SolrMatchTrait
 import org.apache.solr.ide.model.SolrPrefixSupport
 import org.apache.solr.ide.model.SolrPropertyOrigin
 import org.apache.solr.ide.model.SolrReferenceGuide
@@ -89,9 +90,7 @@ object SolrFieldPresentation {
                 val capability = SolrMatchAnalysis.of(fieldType)
                 if (capability.confident) {
                     append("<p><b>Matches:</b> ${escape(summarize(capability))}.")
-                    capability.evidence.firstOrNull { it.factory.contains("NGram") }?.let {
-                        append(" Partial matching comes from <code>${escape(it.factory)}</code>.")
-                    }
+                    append(prefixMechanism(capability))
                     append("</p>")
                     append(WILDCARD_CAVEAT)
                 } else {
@@ -126,8 +125,8 @@ object SolrFieldPresentation {
             append("<p><b>Match behaviour not determined</b> — this chain contains a factory the plugin does not recognise.</p>")
         }
 
-        fieldType.indexAnalyzer?.let { append(chainHtml("Index analyser", it.components.map { c -> c.className })) }
-        fieldType.queryAnalyzer?.let { append(chainHtml("Query analyser", it.components.map { c -> c.className })) }
+        fieldType.indexAnalyzer?.let { append(chainHtml("Index analyser", it.components.map { c -> c.className }, version)) }
+        fieldType.queryAnalyzer?.let { append(chainHtml("Query analyser", it.components.map { c -> c.className }, version)) }
 
         if (fieldType.attributes.isNotEmpty()) {
             append("<p><b>Declared on this type</b></p><table>")
@@ -140,11 +139,35 @@ object SolrFieldPresentation {
         append(guideLinks(version))
     }
 
-    private fun chainHtml(label: String, components: List<String>): String =
+    /**
+     * The sentence naming where partial matching comes from, or empty when there is none.
+     *
+     * Reads the mechanism off the capability rather than matching on class names. An earlier
+     * version looked for "NGram" in the evidence, which silently said nothing for a
+     * path-hierarchy tokenizer — a mechanism the model knows about exactly.
+     */
+    private fun prefixMechanism(capability: SolrMatchCapability): String {
+        if (capability.prefix == SolrPrefixSupport.NONE) return ""
+        val factory = capability.evidenceFor(SolrMatchTrait.PREFIX) ?: return ""
+        return " Partial matching comes from <code>${escape(factory)}</code>."
+    }
+
+    /**
+     * A chain rendered in pipeline order, each component linking to the guide page for its kind.
+     *
+     * Per-factory documentation waits on the generated catalog, but the page-level link costs
+     * nothing and is the difference between a name and something a reader can follow.
+     */
+    private fun chainHtml(label: String, components: List<String>, version: SolrVersionSelection): String =
         if (components.isEmpty()) {
             ""
         } else {
-            "<p><b>$label:</b> " + components.joinToString(" &rarr; ") { "<code>${escape(it.substringAfterLast('.'))}</code>" } + "</p>"
+            "<p><b>$label:</b> " + components.joinToString(" &rarr; ") { className ->
+                val simpleName = escape(className.substringAfterLast('.'))
+                SolrReferenceGuide.analyzerComponentPage(className, version)
+                    ?.let { "<a href='$it'><code>$simpleName</code></a>" }
+                    ?: "<code>$simpleName</code>"
+            } + "</p>"
         }
 
     /**
@@ -156,10 +179,17 @@ object SolrFieldPresentation {
      */
     private fun propertyTable(field: SolrField, fieldType: SolrFieldType?): String = buildString {
         append("<p><b>Properties</b></p><table>")
-        for (effective in SolrFieldProperties.effectiveFor(field, fieldType)) {
+        append("<tr><th>Property</th><th>Value</th><th>From</th><th>Accepts</th><th>Meaning</th></tr>")
+        // Declared values first: what the author actually wrote is what they came to check, and it
+        // was previously indistinguishable from a default except by reading the middle column.
+        val ordered = SolrFieldProperties.effectiveFor(field, fieldType)
+            .sortedBy { if (it.origin == SolrPropertyOrigin.FIELD) 0 else 1 }
+        for (effective in ordered) {
+            val declared = effective.origin == SolrPropertyOrigin.FIELD
             append("<tr><td><code>${escape(effective.property.name)}</code></td>")
-            append("<td>${escape(valueText(effective))}</td>")
+            append(if (declared) "<td><b>${escape(valueText(effective))}</b></td>" else "<td>${escape(valueText(effective))}</td>")
             append("<td><i>${escape(originText(effective.origin))}</i></td>")
+            append("<td>${escape(effective.property.validValues)}</td>")
             append("<td>${escape(effective.property.summary)}</td></tr>")
         }
         append("</table>")
@@ -196,8 +226,17 @@ object SolrFieldPresentation {
             "expanded across the dictionary at query time. This describes what the index supports " +
             "<i>efficiently</i>.</small></p>"
 
+    /**
+     * Escapes text for HTML, quotes included.
+     *
+     * Quotes matter even though no configset text currently reaches an attribute: links are built
+     * with single-quoted `href`, so a partial escape is one careless edit away from an injection
+     * point in a popup rendering a file the user does not necessarily trust.
+     */
     private fun escape(text: String): String = text
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
 }

@@ -30,14 +30,12 @@ enum class SolrPropertyOrigin {
  * @property summary what it does, in one line
  * @property validValues the values it accepts
  * @property defaultValue Solr's default, or null when the default depends on the field type
- * @property sinceMajor the oldest supported Solr major that has this property
  */
 data class SolrFieldProperty(
     val name: String,
     val summary: String,
     val validValues: String,
     val defaultValue: String?,
-    val sinceMajor: Int = 9,
 )
 
 /**
@@ -72,8 +70,9 @@ data class SolrEffectiveProperty(
  * exactly the kind of confident wrong statement that gets a plugin distrusted, so this reports
  * [SolrPropertyOrigin.UNDETERMINED] and links to the guide instead.
  *
- * The table is verified against the Reference Guide for the supported lines. Both currently agree;
- * [SolrFieldProperty.sinceMajor] carries the difference if they ever stop agreeing.
+ * The table is verified against the Reference Guide for the supported lines, which currently agree
+ * on all of it. If a future line diverges, this grows a per-line dimension; adding one before that
+ * happens would be inventing a distinction Solr does not currently make.
  */
 object SolrFieldProperties {
 

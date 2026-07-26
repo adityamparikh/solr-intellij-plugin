@@ -2,6 +2,7 @@ package org.apache.solr.ide.editor
 
 import com.intellij.codeInsight.hints.declarative.InlayHintsCollector
 import com.intellij.codeInsight.hints.declarative.InlayHintsProvider
+import com.intellij.codeInsight.hints.declarative.HintFormat
 import com.intellij.codeInsight.hints.declarative.InlayTreeSink
 import com.intellij.codeInsight.hints.declarative.InlineInlayPosition
 import com.intellij.codeInsight.hints.declarative.SharedBypassCollector
@@ -50,17 +51,28 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider {
 
         override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
             val model = model ?: return
-            if (element !is XmlTag || element.name != "field") return
+            if (element !is XmlTag || element.name !in HINTED_TAGS) return
             val fieldName = element.getAttributeValue("name") ?: return
-            val field = model.fields[fieldName]?.effective ?: return
+            // A dynamic field is keyed by its pattern and matches through it, but what it matches is
+            // decided by its type in exactly the same way, so it earns the same hint.
+            val field = model.fields[fieldName]?.effective
+                ?: model.dynamicFields[fieldName]?.effective?.field
+                ?: return
 
             val text = SolrFieldPresentation.inlayText(field, model.typeOf(field)) ?: return
             sink.addPresentation(
                 position = InlineInlayPosition(element.textRange.endOffset, relatedToPrevious = true),
-                hasBackground = true,
+                payloads = null,
+                tooltip = null,
+                hintFormat = HintFormat.default,
             ) {
                 text(text)
             }
+        }
+
+        private companion object {
+            /** Tags that declare a field, and therefore something with a match capability. */
+            val HINTED_TAGS = setOf("field", "dynamicField")
         }
     }
 }
