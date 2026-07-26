@@ -22,9 +22,20 @@ purpose.**
 What exists today is the *activation gate* — the code that decides whether a file belongs to a Solr
 configset, which every feature is built on top of:
 
+- Activation gated on the project depending on a Solr client (`solr-solrj` or a wrapper that carries
+  it — Spring Data Solr, Camel, the Quarkus extensions). Matched by artifact id, so any version
+  counts. Outside such a project the plugin stays silent
 - Configset detection by file name (`schema.xml`, `managed-schema`, `managed-schema.xml`,
-  `solrconfig.xml`) corroborated by directory heuristics
-- A per-project manual override for layouts the heuristics miss
+  `solrconfig.xml`, `params.json`, `elevate.xml`, `currency.xml`, `enumsConfig.xml`) within a
+  project that passed that gate
+- Resolution of a file to the configset that owns it, so a project holding several keeps them
+  apart — cached, since this runs every time you open a file
+- Recognition of analyzer resources (`stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/`)
+  from inside a known configset only; those names are too common to activate anything on their own
+- A per-project manual override, which is also how a repository of configsets with no build file —
+  and so no dependencies to detect — switches the plugin on
+- A per-user list of Solr connections, with credentials in the IDE's password store — storage only,
+  nothing talks to a server yet
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
