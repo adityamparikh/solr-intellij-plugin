@@ -125,7 +125,7 @@ one of three shapes, and the plugin does not get to choose which:
 
 | Shape | What the plugin sees | What it can offer |
 |---|---|---|
-| Configset repository — XML only, deployed by CI | Config files, no code, usually no build file | Full config intelligence; connection if the developer adds one |
+| Configset repository — XML only, deployed by CI | Config files, no code, usually no build file | Full config intelligence, **after the user marks the configset root** — see "How the plugin decides to activate" |
 | Application with configset in-repo | Config, code, build file | Everything, including the links between code and schema |
 | Application only — config owned elsewhere | Code and a connection | Server tooling and code checking against the live schema |
 
@@ -315,6 +315,31 @@ be good, because value arriving before configuration is what keeps a plugin inst
 Files are edited directly and without warning. The plugin does not classify schema
 files, refuse writes, or redirect them.
 
+### Seeing and correcting what activated
+
+Detection is a heuristic, so the user needs somewhere to see what it concluded and
+overrule it. A settings page lists the configsets in the project — those found by
+detection and those the user marked, distinguished from each other — with the marked ones
+removable and a switch that turns detection off for the project entirely.
+
+**Showing what was detected matters more than the ability to override it.** The two
+failure modes are not symmetrical. A false positive announces itself: warnings appear on
+a file that has nothing to do with Solr, and the user goes looking for the off switch. A
+false negative is silent — nothing happens, which is indistinguishable from a plugin that
+does nothing, and the user has no way to tell which they are looking at. A list that says
+*these are the configsets I found* converts that silence into an answer, and it is the
+first thing to reach for when someone reports that the plugin is not working.
+
+Marked roots are shared through the project file, so one developer's marking changes
+detection for everyone on the team. That is the intended behaviour — a configset is a fact
+about the project — but it makes the list doubly necessary: shared state that cannot be
+inspected or reverted from the UI is state nobody can be responsible for.
+
+Connections get a page of their own rather than a section of this one, because their
+storage differs — see "Connection definitions must never reach a shared project file"
+below. Keeping one page per storage scope means the page itself tells the user whether
+what they are editing will reach their teammates.
+
 ### Connecting
 
 A connections list, pre-populated with candidates discovered in the project — see
@@ -371,6 +396,54 @@ this, because it has no idea your repository exists.
 Push sample documents into a collection to try something out, with schema-aware
 completion while writing them and sample generation from the schema.
 
+## How the plugin decides to activate
+
+**The project depends on a Solr client, or the user says so. Nothing else.**
+
+Activation is gated on the open project having a Solr client library among its
+dependencies — `solr-solrj`, or one of the wrappers that carries it. Artifact ids are
+matched, never versions, so the rule does not need revisiting when Solr releases. Every
+wrapper depends on SolrJ transitively and the IDE resolves transitive dependencies, so a
+project using Camel's Solr component or a Quarkus extension satisfies the gate whether or
+not it names SolrJ directly.
+
+Outside such a project, nothing activates however Solr-shaped the filenames are.
+
+**Inside one, file names are still tiered by how much they prove.** The dependency
+establishes that the *project* uses Solr; it cannot establish that a *particular file* is
+Solr's, and a project that uses Solr may still contain an XSD called `schema.xml` that has
+nothing to do with it. So:
+
+- *Self-identifying* names — `solrconfig.xml`, `managed-schema`, `managed-schema.xml`,
+  `elevate.xml`, `enumsConfig.xml` — carry Solr's own vocabulary and stand alone. One of
+  them makes its directory a configset.
+- *Ambiguous* names — `schema.xml`, `params.json`, `currency.xml` — are recognized only
+  inside a directory a self-identifying name has already proven. In a real configset that
+  costs nothing: the `solrconfig.xml` beside them does the proving.
+- *Resources* — `stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/` — are recognized
+  only from inside an identified configset and never activate features themselves.
+
+This is containment, not a heuristic: each tier asks whether a directory contains a name
+Solr invented, which has an exact answer. It is the same mechanism the resource tier
+already used, applied one level up.
+
+**This replaces a set of directory heuristics, and it is worth saying why.** The earlier
+design corroborated file names against their surroundings — a `conf/` parent, or a second
+recognized file in the same directory — because `schema.xml` on its own is a name many
+things use. That worked, but it was an inference, and inferences are wrong in both
+directions and cannot be explained to a user who disagrees with them. A dependency is a
+fact. Conditioning on it removes the guesswork rather than tuning it, and it is the same
+signal the ecosystem already uses for this job: JPA Buddy decides a module is a JPA module
+the same way.
+
+**What this trades away, deliberately.** A repository holding configsets and nothing else
+has no build file and therefore no dependencies to find, so it cannot satisfy the gate.
+That shape stays supported, through the manual configset root the user marks — which is
+why that override exists independently of the heuristics it used to back up, and why the
+settings surface that exposes it matters more under this design than under the old one.
+The cost is a first-run step for that user; the benefit is that every other user gets an
+activation rule with no false positives to explain.
+
 ## Recognizing Solr usage
 
 Rather than treating each framework as a special case, the plugin has a small set of
@@ -381,12 +454,43 @@ downstream is shared.
 This keeps the cost of "support framework X" visible and bounded: one recognizer, not a
 new subsystem.
 
+**A recognizer activates on the module's dependencies, not on the file in front of it.**
+Each declares the library it recognizes, and runs only in modules that actually depend on
+it: no `solr-solrj` on the classpath, no SolrJ recognizer. This is the same signal JPA
+Buddy uses to decide whether a module is a JPA module, and it is the right one for code
+because the question a code recognizer has to answer is not "what is this file" but "could
+this module be talking to Solr at all."
+
+The configuration surfaces cannot use this signal — a configset is a directory of XML with
+no classpath to consult, which is why detection there rests on file names and their
+surroundings instead. Code is the one surface where an exact, already-indexed answer is
+available, and it should use it rather than inheriting a heuristic it does not need.
+
+What this buys is precision in the layout the plugin will most often meet: a repository of
+many modules in which one talks to Solr. Scanning all of them for field-shaped string
+literals would produce false positives in the modules that have nothing to do with Solr —
+exactly the modules whose authors would be least able to explain the warning. The cost is
+that a module using Solr over raw HTTP, with no client library, gets nothing; that is
+accepted, because there is nothing there to recognize with any confidence anyway.
+
 **SolrJ** — client construction supplies endpoints; queries and document building supply
 field references. The primary recognizer and the one that proves the interface.
 
-**Framework configuration** — a Solr URL in application configuration, resolved per
-profile with the framework's own precedence rules. The dialects differ in ways that
-matter:
+**Framework configuration** — a Solr URL *and its credentials* in application
+configuration, resolved per profile with the framework's own precedence rules. Credentials
+are part of the finding, not an afterthought: a server that needs authentication is
+useless as a discovered connection without them, and the username almost always sits
+beside the URL in the same profile. A connection offered from `staging` should arrive with
+staging's user, not with `dev`'s.
+
+Two rules govern a secret found this way. It is **offered, never adopted silently** —the
+same rule that governs discovered endpoints. And on confirmation the secret is copied into
+PasswordSafe rather than read from the configuration file on each use, so that the
+plugin's own storage is the single place a credential lives once the user has accepted it.
+A plaintext password in a committed `application.yml` is the user's problem to fix, not
+the plugin's to propagate.
+
+The dialects differ in ways that matter:
 
 - *Spring Boot* keeps profiles in separate files (`application-dev.yml` beside
   `application.yml`), with the active profile coming from a property, an environment
@@ -492,11 +596,17 @@ change to the existing one.
 platform's test base class shares one project across test classes; the same hazard applies
 to every new persistent setting.
 
-**The `org.apache.solr` package namespace has to be decided.** The plugin lives in a
-personal repository, is published under a personal vendor account, and is not an Apache
-Software Foundation project — donation is explicitly not being pursued. Occupying
-`org.apache.solr.*` implies ASF ownership the project does not have, and carries a
-trademark question for a Marketplace listing.
+**The package namespace stays `org.apache.solr.ide`.** The question was live: the plugin
+lives in a personal repository, is published under a personal vendor account, and is not
+an Apache Software Foundation project — donation is explicitly not being pursued — so
+occupying `org.apache.solr.*` implies an ownership the project does not have. It was
+settled in favour of keeping the namespace, so no rename is pending and none of the code
+below should be read as provisional on one.
+
+What the decision does *not* settle is the presentation of the plugin to users, which is
+where an ownership claim would actually mislead: the `<vendor>` element, the plugin name
+and the Marketplace listing. Those are the trademark surface, and they are separate from
+a package name that only appears in a stack trace.
 
 ## Version support
 

@@ -43,6 +43,10 @@ it whole, and the gutter action goes with the Server track.
 - [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
 - [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model)
 - [Step 4 — Match analysis](#step-4-match-analysis)
+- [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
+  — out of numerical order deliberately: added after the rest, belongs here. Its first
+  half needs only the activation gate overhaul; its detected-configset list waits for the
+  repository reader.
 
 ### Editor track
 
@@ -115,7 +119,9 @@ Stripped the IntelliJ plugin template, re-rooted the code under `org.apache.solr
 and implemented configset detection so features activate only on recognized files.
 
 **What shipped:**
-- `SolrConfigsetDetector` — file-name matching corroborated by directory heuristics.
+- `SolrConfigsetDetector` — file-name matching corroborated by directory heuristics. Those
+  heuristics were later removed in favour of the dependency gate; see
+  [the activation gate overhaul](#step-2-overhaul-the-activation-gate).
 - `SolrConfigsetFileKind` — the schema names and `solrconfig.xml`.
 - `SolrConfigsetSettings` — manual configset roots and a detection switch, persisted to
   the shared project file with paths collapsed through `PathMacroManager`.
@@ -138,14 +144,16 @@ possible at all.
 
 **Dependencies:** none
 
-### Step 2: Overhaul the activation gate
+### Step 2: Overhaul the activation gate (done)
 
 The existing detection code is correct for the feature set it was written for and
 insufficient for this one. Fix it before building on it.
 
 **Actions:**
 1. Resolve the package namespace question and, if renaming, do it now while the code is
-   four files.
+   four files. *Settled: the namespace stays `org.apache.solr.ide`, so there is no rename.
+   The spec records the decision and what it leaves open — the `<vendor>` element still
+   names the ASF, which is a presentation question this step did not touch.*
 2. Establish package layout for the components the spec names: repository reader, field
    model, server client, recognizers, UI. Empty packages with a package-level doc
    comment each, so later work has an obvious home.
@@ -168,11 +176,42 @@ insufficient for this one. Fix it before building on it.
    resets the existing settings.
 
 **Success criteria:**
-- [ ] A file resolves to its owning configset; a project with two configsets keeps them
+- [x] A file resolves to its owning configset; a project with two configsets keeps them
       distinct.
-- [ ] Detection results are cached and invalidate correctly on file change.
-- [ ] The widened file kinds are recognized.
-- [ ] Connection settings persist per-user; configset roots stay shared.
+- [x] Detection results are cached and invalidate correctly on file change.
+- [x] The widened file kinds are recognized.
+- [x] Connection settings persist per-user; configset roots stay shared.
+
+**What shipped:**
+- `SolrConfigsetLocator` — a project service resolving a file to its owning configset by a
+  bounded walk up the directory tree, memoized and dropped on VFS *structure* changes or a
+  settings change. Content edits deliberately do not invalidate: every signal is a name or
+  a directory listing, so typing inside `schema.xml` cannot change the answer.
+- `SolrConfigset` — the configset as a value, named for its parent when the root is `conf`
+  so that a multi-core project does not display several identical `conf` entries.
+- `SolrConfigsetFileRole` — the identifying/resource split.
+- `SolrConnectionSettings` in the new `org.apache.solr.ide.server` package — connections
+  in the per-user workspace file, secrets in PasswordSafe and never in the persisted state.
+- `SolrProjectDetector` — the outer gate, added after the rest of this step: the plugin
+  activates only in a project whose dependencies include a Solr client, matched by artifact
+  id so that no version appears in the rule. The spec argues it out under "How the plugin
+  decides to activate".
+
+**The directory heuristics were removed, not extended.** This step originally restated the
+`conf/`-parent and second-recognized-file rules on the directory rather than the file, and
+they are now gone entirely. Inside a project that passed the dependency gate a recognized
+file name is believed on its own, so the corroboration had nothing left to add and only
+produced false negatives. Two consequences worth carrying: a manually marked root now
+bypasses the outer gate — it is the *only* way a configset repository with no build file
+activates, so it is load-bearing rather than a convenience — and the tests that asserted
+corroboration were rewritten rather than deleted, so the old expectations are still visible
+as the behaviour they became.
+
+Action 2 landed as documentation rather than as empty directories. Kotlin has no
+`package-info`, and Dokka cannot document a package with no declarations, so the planned
+packages and their contents are named in `docs/Module.md` instead; each becomes a real
+package with a `# Package` section when it gets its first file, as
+`org.apache.solr.ide.server` just did.
 
 **Acceptance:**
 [demo step 21 — *enable the plugin and reopen*](../../docs/demo/README.md#step-21-enable-the-plugin-and-reopen).
@@ -194,7 +233,13 @@ The spine. Everything else reads this.
    [the server reader](#step-11-http-client-connections-and-the-server-reader) lands;
    build the seam now so it does not have to be retrofitted.
 3. Cache per configset, invalidate on file change.
-4. Test the model directly, with no IDE fixtures where possible. This is the component
+4. Enumerate every configset in the project, not just the one owning a given file.
+   `SolrConfigsetLocator` answers per file, on demand, which is right for the editor path
+   and insufficient here: a model of *the project's* configsets has to know what they are.
+   Bound the scan so it does not walk `node_modules` and build output.
+   [Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
+   consumes this to show the user what detection found; build it once, here.
+5. Test the model directly, with no IDE fixtures where possible. This is the component
    that must be exhaustively correct.
 
 **Success criteria:**
@@ -202,6 +247,8 @@ The spine. Everything else reads this.
 - [ ] The four agreement states are representable and tested with a synthetic server
       half.
 - [ ] Model rebuilds on file change and not otherwise.
+- [ ] Every configset in a project is enumerable, verified on a fixture with two of them
+      and a directory tree the scan must decline to descend.
 
 **Acceptance:** No demo step of its own. Nothing from the navigation demos onward works
 without it, so it is verified through the steps that consume it.
@@ -233,6 +280,54 @@ buildable in parallel with
 which are only ever as good as this.
 
 **Dependencies:** none
+
+### Step 22: Settings and the detection escape hatch
+
+Numbered last because it was added last; it belongs *here*, in Foundation. Step numbers in
+this plan are stable anchors that other steps link to, so renumbering to insert one costs
+more than the out-of-order number does. Read the section it sits in, not the number.
+
+The activation gate has no user-facing surface at all. `plugin.xml` registers one file-type
+mapping and nothing else — no settings page, no action — so the escape hatch the spec
+promises exists only in code. `removeManualRoot` has no caller outside tests, which means a
+marked root, once committed to the shared project file, cannot be undone through the UI by
+the teammate who receives it.
+
+**Actions:**
+1. A project settings page under *Languages & Frameworks → Solr*: the detection switch, and
+   the marked configset roots with add and remove. Pure wiring over
+   `SolrConfigsetSettings`, which is already built and tested.
+2. List the *detected* configsets on the same page alongside the marked ones, visibly
+   distinguished. This is the half that carries the value — see the spec under "Seeing and
+   correcting what activated" for why the silent failure is the one worth attacking. It
+   needs a project-wide scan, which `SolrConfigsetLocator` does not do: it answers per file,
+   on demand. Build that scan once, in
+   [the repository reader](#step-3-repository-reader-and-field-model), which needs to
+   enumerate configsets anyway, and consume it here rather than inventing a second sweep.
+3. A *Mark Directory as Solr Configset Root* action in the Project View popup menu. The
+   string `configset.action.markRoot` is already in the bundle, unused since
+   [the activation gate](#step-1-activation-gate-done). Deliberately last of the three: it
+   addresses false *negatives*, which the two-identifying-files rule from
+   [the activation gate overhaul](#step-2-overhaul-the-activation-gate) already makes rare,
+   whereas the list above addresses not knowing which failure you have.
+4. A connections page as a sibling, once there are connections worth showing. Not before
+   [the HTTP client and server reader](#step-11-http-client-connections-and-the-server-reader)
+   — a page listing servers nothing can contact is a promise the plugin cannot keep.
+
+**Success criteria:**
+- [ ] Detection can be switched off, and a root marked and unmarked, without editing XML.
+- [ ] The page lists detected configsets and marked ones, distinguishably.
+- [ ] A root marked by one developer is visible and removable in another's checkout —
+      tested by seeding the persisted state directly, as a teammate's commit would.
+
+**Acceptance:**
+[demo step 21 — *enable the plugin and reopen*](../../docs/demo/README.md#step-21-enable-the-plugin-and-reopen)
+is the fallback if the demo configset does not activate on stage, which is the one failure
+the runbook has no other recovery for.
+
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate) for
+actions 1 and 3; [the repository reader](#step-3-repository-reader-and-field-model) for the
+detected-configset list in action 2.
 
 ---
 
@@ -509,18 +604,29 @@ The document indexes into the local collection and is then findable.
 **Actions:**
 1. Define the recognizer interface: reports endpoints and field references. Keep it
    minimal — [framework configuration](#step-18-framework-configuration) and
-   [Apache Camel](#step-19-apache-camel) depend on it being right.
-2. SolrJ recognizer: client construction supplies endpoints; `SolrQuery` builder calls,
+   [Apache Camel](#step-19-apache-camel) depend on it being right. An endpoint is a URL
+   *and* the credential that goes with it, since framework configuration resolves both
+   from the same profile; a reported endpoint that cannot carry a username forces that
+   step to bolt one on afterwards.
+2. Make the interface declare the library each recognizer needs, and gate activation on
+   the *module's* dependencies rather than on the file being edited — no Solr client on
+   the classpath, no SolrJ recognizer. The spec argues this out under "Recognizing Solr
+   usage"; what matters here is the ordering. It belongs in the interface on the first
+   day, because a recognizer written without it assumes it may inspect anything, and
+   retrofitting the gate afterwards means revisiting every recognizer built on top.
+3. SolrJ recognizer: client construction supplies endpoints; `SolrQuery` builder calls,
    raw parameter strings, `SolrInputDocument` field names and `@Field` annotations
    supply field references.
-3. Inspection flagging field references absent from the model, and completion for them.
-4. **Silence where resolution fails.** Assert this in tests explicitly — precision
+4. Inspection flagging field references absent from the model, and completion for them.
+5. **Silence where resolution fails.** Assert this in tests explicitly — precision
    matters more than recall.
 
 **Success criteria:**
 - [ ] Field references resolve in builder calls, raw strings, document building and bean
       annotations.
 - [ ] Unresolvable constructs produce no warning.
+- [ ] A module with no Solr client on its classpath produces no findings at all, asserted
+      on a fixture of two modules where only one depends on SolrJ.
 
 **Acceptance:** demo steps
 [41 to 44 — the field-name checks in Java](../../docs/demo/README.md#step-41-return-to-the-opening-bug),
@@ -559,16 +665,28 @@ not.
    which editions. Prefer the platform's model over parsing configuration directly.
 2. Declare optional dependencies so these features appear when the supporting
    functionality is present and the plugin loads normally when it is not.
-3. Resolve a Solr URL per profile with each framework's own precedence: Spring Boot
+3. Resolve a Solr URL **and its credentials** per profile with each framework's own
+   precedence: Spring Boot
    profile files, **Quarkus inline `%profile.` prefixes in a single file**, Micronaut
    environments, MicroProfile ordinals.
 4. Offer discovered endpoints as connection candidates. Never connect automatically.
-5. **Real project fixtures per framework**, not synthetic strings.
+5. Carry the credential with the endpoint. A username found beside the URL in a profile
+   belongs to that profile's candidate, and on confirmation the secret is copied into
+   PasswordSafe rather than re-read from the configuration file on each use. The spec sets
+   the rules under "Recognizing Solr usage"; the consequence here is that a candidate is a
+   URL *and* a credential, so the recognizer interface must be able to report both — which
+   is why [the recognizer interface](#step-16-recognizer-interface-and-solrj) has to know
+   about it before this step starts.
+6. **Real project fixtures per framework**, not synthetic strings.
 
 **Success criteria:**
 - [ ] Boot profile files and Quarkus inline prefixes both resolve correctly.
 - [ ] The plugin loads and functions with no framework support present.
 - [ ] Discovered endpoints are offered, never adopted silently.
+- [ ] Switching the active profile changes the offered username as well as the URL,
+      asserted on the demo fixture, which carries a `dev` and a `staging` profile.
+- [ ] A secret from a configuration file reaches PasswordSafe only after the user
+      confirms, and never reaches the shared project file.
 
 **Scope of the demo.** Only Spring gets a demo step. Each additional framework would need
 its own fixture project and its own runtime on stage to show what the Spring fixture

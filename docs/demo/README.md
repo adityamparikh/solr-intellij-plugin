@@ -57,10 +57,17 @@ ending matters more than the spectacle.
 
 ## Step 2. Build the demo project
 
-Make a small project and commit it. Committing matters: when a demo goes wrong you
-recover with `git checkout .` in about two seconds.
+**This now exists and is committed at [`demo/`](../../demo/).** `./gradlew runIde` opens it by
+default, so there is nothing to type — skip to step 3 unless you want to know what is in it or you
+are rebuilding it from scratch. Committing it is what lets you recover from a demo gone wrong with
+`git checkout .` in about two seconds.
 
-Create `demo/solr/conf/managed-schema.xml`:
+Two things differ from the listings below, which are excerpts rather than literal file contents:
+the Java sources live in a `com.example.demo` package with their imports, and they are a standalone
+Gradle build (`demo/build.gradle.kts`) so that Spring and SolrJ resolve. To open something other
+than the demo, pass `-PrunIdeProject=/path/to/project`, or `-PrunIdeProject=` to open nothing.
+
+`demo/solr/conf/managed-schema.xml`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -203,9 +210,18 @@ app:
 ## Step 3. Stand up a local Solr, if you are doing the server demos
 
 ```bash
-docker run -d -p 8983:8983 --name solr-demo solr:10
-docker exec solr-demo solr create -c products
+docker compose -f demo/compose.yaml up -d      # Solr 10 on :8983, core `products`
+docker compose -f demo/compose.yaml down -v    # afterwards, including the data volume
 ```
+
+Equivalent to `docker run -d -p 8983:8983 --name solr-demo solr:10` followed by
+`docker exec solr-demo solr create -c products`, which also works if you prefer it.
+
+The core is created from Solr's **default** configset, and `demo/solr/conf` is deliberately
+not mounted into the container. That is what makes the drift demo possible: bind-mounting
+the configset would make the server and the repository identical by construction, and the
+comparison would have nothing to show. Getting your configset onto the server is itself a
+demo step.
 
 Then index a handful of documents so queries return something. Deliberately **do not**
 deploy the `sku` field to the server — you will add it to the repository copy on stage

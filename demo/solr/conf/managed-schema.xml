@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Solr managed schema - automatically generated - DO NOT EDIT -->
+<!--
+  The banner above is the one Solr really writes, and the demo opens by confronting it: the
+  plugin's whole position is that you edit this file anyway.
+
+  The dangling `manufacturer` copyField at the bottom is DELIBERATE and must not be fixed:
+  it is the inspection demo. Several other deliberate defects live in the Java sources.
+  See demo/README.md.
+-->
+<schema name="products" version="1.6">
+
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true"/>
+
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <fieldType name="text_prefix" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <field name="id"          type="string"       indexed="true"  stored="true" required="true"/>
+  <field name="sku"         type="string"       indexed="true"  stored="true"/>
+  <field name="name"        type="text_general" indexed="true"  stored="true"/>
+  <field name="name_prefix" type="text_prefix"  indexed="true"  stored="false"/>
+  <field name="category"    type="string"       indexed="true"  stored="true"/>
+  <field name="description" type="text_general" indexed="true"  stored="true"/>
+  <field name="text"        type="text_general" indexed="true"  stored="false" multiValued="true"/>
+
+  <uniqueKey>id</uniqueKey>
+
+  <copyField source="name"         dest="text"/>
+  <copyField source="description"  dest="text"/>
+  <copyField source="name"         dest="name_prefix"/>
+  <!-- DELIBERATE: no such field. This is the dangling-reference inspection demo. -->
+  <copyField source="manufacturer" dest="text"/>
+</schema>

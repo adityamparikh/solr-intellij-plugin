@@ -1,0 +1,21 @@
+spring:
+  profiles:
+    active: dev
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+app:
+  solr:
+    url: http://localhost:8983/solr
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+app:
+  solr:
+    url: http://solr-staging.internal:8983/solr

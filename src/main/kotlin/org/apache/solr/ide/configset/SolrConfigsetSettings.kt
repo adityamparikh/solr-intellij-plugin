@@ -90,6 +90,34 @@ class SolrConfigsetSettings(private val project: Project) :
     }
 
     /**
+     * The marked root that owns [file], as a [VirtualFile], or null if no marked root does.
+     *
+     * Where [isUnderManualRoot] answers whether a file is covered, this answers *by which root* —
+     * the question [SolrConfigsetLocator] has to settle to build a per-configset model. Nested roots
+     * resolve to the deepest match, so marking both a core directory and its `conf` subdirectory
+     * gives files under `conf` the more specific of the two, which is the one the user meant.
+     *
+     * The match is found by climbing [file]'s own parent chain rather than by resolving the stored
+     * path through a file system. Both would work against a real project; only this one works in
+     * the platform's in-memory test fixtures, where files live in a temp file system that
+     * [com.intellij.openapi.vfs.LocalFileSystem] cannot see. A root that no longer exists on disk,
+     * or that names a directory outside [file]'s chain, simply yields null.
+     *
+     * @param file the file or directory whose owning marked root is wanted
+     * @return the deepest marked root containing [file], or null
+     */
+    fun manualRootFor(file: VirtualFile): VirtualFile? {
+        val roots = manualRoots.toSet()
+        if (roots.isEmpty()) return null
+        var candidate: VirtualFile? = file
+        while (candidate != null) {
+            if (candidate.path in roots) return candidate
+            candidate = candidate.parent
+        }
+        return null
+    }
+
+    /**
      * Marks [dir] as a configset root, so recognized files beneath it activate features even when
      * the directory heuristics find no evidence. This is the user-facing remedy when features fail
      * to activate on a real configset whose layout the heuristics do not match.

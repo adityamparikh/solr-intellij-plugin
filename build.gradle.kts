@@ -32,6 +32,28 @@ dependencies {
     }
 }
 
+// Open the demo fixture in the sandbox IDE instead of whatever project the sandbox happened to
+// have open last. IntelliJ takes a project path as a positional argument; passing it through an
+// argument provider rather than `args` keeps it lazy, so the path is resolved at execution time and
+// the task stays compatible with the configuration cache.
+//
+// Overridable for the cases where the demo project is the wrong target — inspecting a real-world
+// configset, or reproducing a bug report:
+//
+//   ./gradlew runIde -PrunIdeProject=/path/to/project    open something else
+//   ./gradlew runIde -PrunIdeProject=                    open nothing; sandbox restores its own state
+tasks.runIde {
+    val requested = providers.gradleProperty("runIdeProject").orElse(
+        layout.projectDirectory.dir("demo").asFile.absolutePath,
+    )
+    argumentProviders.add {
+        val path = requested.get()
+        // A blank value is the documented opt-out, and an absent directory must not become a
+        // stray argument the IDE would try to interpret as a file to create.
+        if (path.isNotBlank() && file(path).isDirectory) listOf(path) else emptyList()
+    }
+}
+
 // SonarCloud analysis. Runs from CI rather than SonarCloud's Automatic Analysis, because
 // Automatic Analysis cannot ingest a coverage report — the two modes are mutually exclusive.
 sonar {
