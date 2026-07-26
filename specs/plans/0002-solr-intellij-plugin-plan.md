@@ -42,7 +42,7 @@ it whole, and the gutter action goes with the Server track.
 - [Step 1 — Activation gate](#step-1-activation-gate-done) — **done**
 - [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
 - [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model-done) — **done**
-- [Step 4 — Match analysis](#step-4-match-analysis)
+- [Step 4 — Match analysis](#step-4-match-analysis-done) — **done**
 - [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
   — out of numerical order deliberately: added after the rest, belongs here. Its first
   half needs only the activation gate overhaul; its detected-configset list waits for the
@@ -283,7 +283,7 @@ without it, so it is verified through the steps that consume it.
 
 **Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate)
 
-### Step 4: Match analysis
+### Step 4: Match analysis (done)
 
 A pure function from analyzer chain to match capability. Independent of everything;
 buildable in parallel with
@@ -298,10 +298,32 @@ buildable in parallel with
    answer.
 
 **Success criteria:**
-- [ ] Correct classification for string, tokenized text, EdgeNGram and lowercased
+- [x] Correct classification for string, tokenized text, EdgeNGram and lowercased
       variants.
-- [ ] Filter ordering that changes the result is covered by tests.
-- [ ] Tested directly as a function, not through the annotator that displays it.
+- [x] Filter ordering that changes the result is covered by tests.
+- [x] Tested directly as a function, not through the annotator that displays it.
+
+**What shipped:** `SolrMatchAnalysis`, a pure function from an index-time chain to a
+`SolrMatchCapability`, in `org.apache.solr.ide.model`.
+
+**The capability names the mechanism, not a boolean.** Demo step 32 pre-empts the objection
+that wildcards exist — `wid*` works against any indexed field, slowly — so a hint reading
+"supports prefix: true" would be simultaneously true and useless. `SolrPrefixSupport` is
+therefore `NONE`, `EDGE_NGRAM`, `N_GRAM` or `PATH_HIERARCHY`, and the claim is about
+*efficient* index-time matching.
+
+**Every conclusion records the factory behind it.** Demo step 30 invites the room to
+disagree, so "tokenized, case-insensitive" is worth much less than the same statement able
+to name the filter that made it true.
+
+**An unrecognized factory drops a `confident` flag rather than being assumed harmless.**
+A wrong hint here is worse than no hint, so the display can decline to make a claim it
+cannot defend. Neutral factories are therefore listed explicitly rather than being whatever
+is left over.
+
+The ordering case that changes the answer, and is tested both ways: a word-delimiter filter
+after a `KeywordTokenizerFactory` makes the field tokenized despite its tokenizer, and the
+evidence names the filter rather than the tokenizer.
 
 **Acceptance:** No demo step of its own. It is the correctness behind
 [demo steps 28 to 31 — the match-capability hints](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field),
