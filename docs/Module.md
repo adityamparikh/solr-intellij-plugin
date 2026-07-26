@@ -30,6 +30,10 @@ is a prerequisite for every feature, so it landed first:
 - Configset detection and resolution ([org.apache.solr.ide.configset]) — deciding
   whether a file is part of a Solr configset and which configset owns it, with
   persistent per-project settings for the manual override.
+- The field model ([org.apache.solr.ide.model]) and the reader that fills it
+  ([org.apache.solr.ide.repository]) — what fields, types, analyzer chains and
+  copy-field directives a configset declares, and which field names
+  `solrconfig.xml` references.
 - Connection settings ([org.apache.solr.ide.server]) — the per-user list of Solr
   servers, with credentials in the IDE's PasswordSafe. Storage only; nothing
   talks to a server yet.
@@ -63,9 +67,10 @@ inventing one:
 - `org.apache.solr.ide.server` — connection settings, the HTTP client and the
   server-side reader. **Partly exists**: settings only.
 - `org.apache.solr.ide.repository` — reading a configset directory off disk into
-  the field model.
+  the field model. **Exists.**
 - `org.apache.solr.ide.model` — the field model itself: fields, dynamic fields,
-  field types, analyzer chains, and what each can do.
+  field types, analyzer chains, and what each can do. **Exists**, except for the
+  match-capability analysis.
 - `org.apache.solr.ide.recognizer` — spotting field names and queries in Java and
   Kotlin code, per client library.
 - `org.apache.solr.ide.ui` — tool windows, the query console and the drift view.
@@ -140,3 +145,49 @@ committed ([SolrConnectionSettings]).
 Nothing in this package may be reached from the editor path. Configset editing
 works with no connection configured at all, and a server call on the path that
 runs when a user opens a file would make typing depend on a network.
+
+# Package org.apache.solr.ide.model
+
+What the plugin knows about a configset's fields, as data.
+
+Pure Kotlin with no IntelliJ types anywhere in it, which is deliberate:
+[SolrFieldModel] is the component every feature reads, so it has to be the
+component that is most exhaustively tested, and that is only affordable when its
+tests are plain unit tests over a string rather than fixtures around a running
+IDE.
+
+The model has **two sources that can disagree** — the configset in the
+repository, and the collection running on a server. Drift between them is a
+real failure mode: a field added to the schema but never deployed, or added
+through the Schema API and never committed. So a fact is not a value but a
+[SolrFact], holding both halves and reporting how they relate
+([SolrAgreement]). Where only one can be shown the repository wins, because the
+editor's job is to reason about the file in front of the user; the difference
+is surfaced rather than resolved.
+
+The server half is empty until the server reader lands. The seam exists now
+because retrofitting a second source into a model shaped around one means
+revisiting everything built on it.
+
+# Package org.apache.solr.ide.repository
+
+Reading a configset off disk into the model.
+
+Parsing goes through the JDK's DOM rather than IntelliJ's XML PSI. The parsers
+are pure functions from text to [org.apache.solr.ide.model.SolrConfigsetFacts],
+so they can be tested without an IDE; the PSI-based features that come later
+resolve elements by name at the point of use, which they must do anyway.
+External entities and doctypes are refused, because a cloned repository is not
+trusted input and entity resolution would run while the user is merely opening
+a file.
+
+[SolrConfigsetReader] caches a model per configset, keyed on the modification
+stamps of the files it actually read. That is what makes the model rebuild when
+the schema changes and — the half that costs performance if it is wrong — not
+rebuild when anything else does. Text comes from the in-memory document when one
+exists, so a field added in the editor is in the model before the file is saved.
+
+[SolrConfigsetScanner] answers the question the per-file locator cannot: which
+configsets does this *project* contain. It walks the content roots and is
+therefore not an editor-path operation; it prunes build output and dependency
+trees so that staying off that path remains affordable.

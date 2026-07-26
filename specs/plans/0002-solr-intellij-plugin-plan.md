@@ -41,7 +41,7 @@ it whole, and the gutter action goes with the Server track.
 
 - [Step 1 — Activation gate](#step-1-activation-gate-done) — **done**
 - [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
-- [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model)
+- [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model-done) — **done**
 - [Step 4 — Match analysis](#step-4-match-analysis)
 - [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
   — out of numerical order deliberately: added after the rest, belongs here. Its first
@@ -220,7 +220,7 @@ them apart.
 
 **Dependencies:** [the activation gate](#step-1-activation-gate-done)
 
-### Step 3: Repository reader and field model
+### Step 3: Repository reader and field model (done)
 
 The spine. Everything else reads this.
 
@@ -243,12 +243,40 @@ The spine. Everything else reads this.
    that must be exhaustively correct.
 
 **Success criteria:**
-- [ ] A configset parses to a complete field model, including dynamic fields.
-- [ ] The four agreement states are representable and tested with a synthetic server
+- [x] A configset parses to a complete field model, including dynamic fields.
+- [x] The four agreement states are representable and tested with a synthetic server
       half.
-- [ ] Model rebuilds on file change and not otherwise.
-- [ ] Every configset in a project is enumerable, verified on a fixture with two of them
+- [x] Model rebuilds on file change and not otherwise.
+- [x] Every configset in a project is enumerable, verified on a fixture with two of them
       and a directory tree the scan must decline to descend.
+
+**What shipped:**
+- `org.apache.solr.ide.model` — `SolrField`, `SolrDynamicField`, `SolrFieldType`,
+  `SolrAnalyzerChain`, `SolrCopyField`, `SolrFieldReference`, and `SolrFieldModel` merging
+  a repository half with a server half through `SolrFact` / `SolrAgreement`.
+- `org.apache.solr.ide.repository` — `SolrSchemaParser` and `SolrConfigParser` (pure,
+  string in and facts out), `SolrConfigsetReader` (per-configset cache), and
+  `SolrConfigsetScanner` (project-wide enumeration).
+
+**Parsing uses the JDK's DOM, not IntelliJ's XML PSI.** Criterion 5 is what forced it: a
+model bound to PSI can only be tested inside an IDE fixture, and this is the component
+that has to be exhaustively correct. The later PSI features resolve elements by name at
+the point of use, which they must do regardless. Doctypes and external entities are
+refused — a cloned repository is not trusted input, and entity resolution would run while
+the user is merely opening a file.
+
+**The cache is keyed on the modification stamps of the files actually read**, and takes
+text from the in-memory document when one exists. That gives both halves of criterion 3 —
+rebuild when the schema changes, and *not* when anything else does — and means an unsaved
+edit is in the model before the file is written.
+
+Ambiguous file names are still not evidence here: a directory holding only `schema.xml`
+is not enumerated as a configset, matching
+[the activation gate overhaul](#step-2-overhaul-the-activation-gate).
+
+Match-capability analysis is deliberately absent — it is
+[its own step](#step-4-match-analysis), and depends on nothing this one built beyond the
+analyzer chains.
 
 **Acceptance:** No demo step of its own. Nothing from the navigation demos onward works
 without it, so it is verified through the steps that consume it.

@@ -75,8 +75,16 @@ Solr project, names are tiered by what they prove (`SolrConfigsetFileRole`): sel
 like `solrconfig.xml` stand alone, ambiguous ones like `schema.xml` count only inside a directory a
 self-identifying name has already proven, and resources like `stopwords.txt` never activate anything.
 The old directory heuristics (a `conf/` parent, a second recognized file) are gone. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is the only way
-a configset repository with no build file activates at all. `org.apache.solr.ide` holds `SolrBundle`, the localization bundle. The
-repository reader, field model, server client, recognizers and UI get sibling packages as they land.
+a configset repository with no build file activates at all. `org.apache.solr.ide` holds `SolrBundle`, the localization bundle.
+
+`org.apache.solr.ide.model` is the field model — pure data, no IntelliJ types, so it can be tested
+without a fixture. A fact is a `SolrFact` holding a repository half and a server half plus their
+`SolrAgreement`; the server half is empty until the server reader lands. `org.apache.solr.ide.repository`
+fills it: `SolrSchemaParser` and `SolrConfigParser` are pure functions over text (JDK DOM, not XML
+PSI, with doctypes refused), `SolrConfigsetReader` caches a model per configset keyed on the
+modification stamps of the files it read, and `SolrConfigsetScanner` enumerates the project's
+configsets off the editor path. The server client, recognizers and UI get sibling packages as they
+land.
 
 Do not infer what is built from the API reference, and do not look for it here — the plan owns
 status.
