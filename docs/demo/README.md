@@ -713,12 +713,22 @@ home.
 
 # Part five — acceptance steps that are not in the talk
 
-These are not in the forty-five minutes. Completion is expected rather than surprising,
-indexing is hard to show meaningfully to an audience, and Camel is a smaller population
-than plain SolrJ. They are still user-visible behaviour, so they still need a step that
-says what "done" looks like.
+Completion is expected rather than surprising and indexing is hard to show to an
+audience, so neither is in the forty-five minutes. Both are still user-visible, so both
+still need a step saying what "done" looks like.
 
 Run these the same way as the rest: in a sandbox IDE, against the fixtures from Step 2.
+
+**Spring is the only framework with demo coverage, and that is a decision.** It is the
+common case, and its fixture already exercises the hard part — following a property
+reference from a SolrJ client construction into the active profile. Quarkus, Micronaut,
+MicroProfile and Apache Camel are specified and will be built, but each would need its
+own fixture project and runtime to show what the Spring demo already shows. Their
+acceptance is the fixture tests in their plan steps, not a step here.
+
+Quarkus is the one to test most carefully: its profiles are inline key prefixes in a
+single file rather than separate profile files, so an implementation that works for
+Spring finds nothing at all in a Quarkus project — and finds it silently.
 
 ### Step 68. Completion inside an analyser chain
 
@@ -746,25 +756,3 @@ Write a document against the demo schema with completion offering real field nam
 index it into the local collection, and find it with a query. The action names the target
 server and asks before writing.
 
----
-
-# Frameworks that are specified but deliberately not demoed
-
-Spring is the only framework with demo coverage, and that is a decision rather than an
-oversight. It is the common case, and its fixture already exercises the hard part —
-following a property reference from a SolrJ client construction into the active profile.
-
-**Quarkus, Micronaut, MicroProfile and Apache Camel are specified and will be built, but
-have no demo step.** Each would need its own fixture project, its own runtime, and its
-own slice of stage time to show something the Spring demo already showed. The cost is in
-building and maintaining four more fixture projects, not in the features themselves.
-
-What that means in practice:
-
-- Their acceptance is the unit and fixture tests in their plan steps, not a step here.
-- Quarkus is the one to write fixture tests for most carefully, because its profiles are
-  inline key prefixes in a single file rather than separate profile files. An
-  implementation that works for Spring finds nothing at all in a Quarkus project, and
-  finds it silently.
-- If a demo step is ever added, add it here rather than inline in the talk. The
-  forty-five minutes are full.

@@ -100,31 +100,22 @@ implies:
   the resulting file is what sits in ZooKeeper, what shows up in the pull request, and
   what someone opens when a search returns nothing.
 
-### The old approach, and why this document replaces it
+### What this replaces
 
-An earlier version of this specification tried to solve the banner problem by refusing
-to edit files that Solr owns. It classified each schema as hand-authored or
-Solr-managed by parsing a second configuration file, cached that classification, handled
-five fallback cases, and when Solr owned the file it withheld the edit and put a `curl`
-command with a placeholder URL on the clipboard.
+An earlier version of this specification answered the banner by refusing to edit files
+Solr owns. It classified each schema by parsing a second configuration file, cached the
+result, handled five fallback cases, and where Solr owned the file put a `curl` command
+carrying a placeholder URL on the clipboard instead of applying the edit.
 
-That design existed because the plugin was offline. With no connection, a fake URL on
-the clipboard was the only alternative to an edit it could offer.
+That existed because the plugin was offline — a fake URL was the only alternative it
+could offer. A live connection dissolves it. **Files are edited, always.** Disagreement
+between repository and server is shown rather than prevented, because that disagreement
+was the actual risk. And applying a change through the API becomes a real button rather
+than an apology.
 
-This document includes a live connection, and that dissolves the problem:
-
-- **Files are edited. Always.** A file in your repository is a source file, and editing
-  source files is what an IDE does.
-- **Drift is shown rather than prevented.** The real risk was never the edit — it was
-  your repository and the running server quietly diverging. Connected, that is
-  observable, and observing it is more useful than refusing to type.
-- **The API becomes an action rather than an apology.** "Apply this to the server" is a
-  real button against a real connection.
-
-The consequence is that the plugin does not classify schema files at all. The
-provenance model, its cache, its five cases and the write-gating rules built on it are
-all deleted from this specification. They answered "am I allowed to write here," and
-that is no longer a question the plugin needs to ask.
+So the plugin does not classify schema files at all. That model, its cache, its five
+cases and the write gating built on them are deleted. They answered "am I allowed to
+write here", which is no longer a question worth asking.
 
 ## Users and project shapes
 
