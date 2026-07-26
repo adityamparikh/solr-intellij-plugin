@@ -71,9 +71,10 @@ configset. `SolrProjectDetector` is the outer gate: it activates the plugin only
 dependencies include a Solr client, matching artifact ids (never versions) against an explicit list.
 `SolrConfigsetDetector` then gates individual files on a recognized name
 (`SolrConfigsetFileKind`), with `SolrConfigsetLocator` resolving which configset owns them. Inside a
-Solr project a recognized name is believed on its own — the directory heuristics that used to
-corroborate it (a `conf/` parent, a second recognized file) are gone, replaced by the dependency
-check. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is the only way
+Solr project, names are tiered by what they prove (`SolrConfigsetFileRole`): self-identifying names
+like `solrconfig.xml` stand alone, ambiguous ones like `schema.xml` count only inside a directory a
+self-identifying name has already proven, and resources like `stopwords.txt` never activate anything.
+The old directory heuristics (a `conf/` parent, a second recognized file) are gone. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is the only way
 a configset repository with no build file activates at all. `org.apache.solr.ide` holds `SolrBundle`, the localization bundle. The
 repository reader, field model, server client, recognizers and UI get sibling packages as they land.
 

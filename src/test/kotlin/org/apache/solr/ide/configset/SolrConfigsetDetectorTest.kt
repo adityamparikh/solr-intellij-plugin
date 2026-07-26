@@ -5,10 +5,30 @@ import com.intellij.psi.PsiFileFactory
 
 class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
 
-    fun testSchemaUnderConfDirIsRecognized() {
+    fun testClassicSchemaBesideSolrConfigIsRecognized() {
+        myFixture.addFileToProject("core/conf/solrconfig.xml", "<config/>")
         val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
         assertTrue(SolrConfigsetDetector.isConfigsetFile(project, file))
-        assertEquals(SolrConfigsetFileKind.SCHEMA, SolrConfigsetDetector.kindOf(project, file))
+        assertEquals(SolrConfigsetFileKind.SCHEMA_CLASSIC, SolrConfigsetDetector.kindOf(project, file))
+    }
+
+    /**
+     * The false positive the tiering exists to prevent: an XSD called `schema.xml`, in a project
+     * that uses Solr somewhere else entirely. The dependency gate cannot catch this — it establishes
+     * that the *project* uses Solr, not that this *file* is Solr's.
+     */
+    fun testClassicSchemaAloneIsNotRecognized() {
+        val xsd = myFixture.addFileToProject("src/main/resources/schema.xml", "<xs:schema/>").virtualFile
+        assertFalse(SolrConfigsetDetector.isConfigsetFile(project, xsd))
+        assertNull(SolrConfigsetDetector.kindOf(project, xsd))
+    }
+
+    /** Same rule, for the other two ambiguous names. */
+    fun testOtherAmbiguousNamesAloneAreNotRecognized() {
+        val params = myFixture.addFileToProject("src/test/resources/params.json", "{}").virtualFile
+        val currency = myFixture.addFileToProject("finance/currency.xml", "<rates/>").virtualFile
+        assertFalse(SolrConfigsetDetector.isConfigsetFile(project, params))
+        assertFalse(SolrConfigsetDetector.isConfigsetFile(project, currency))
     }
 
     fun testManagedSchemaWithSiblingSolrConfigIsRecognized() {
@@ -31,12 +51,11 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
     }
 
     /**
-     * Inside a Solr project a lone `schema.xml` is believed, with no corroborating sibling and no
-     * `conf/` parent. An earlier revision required both; the project-level dependency check settles
-     * that question before this code runs, and asking a second time only produced false negatives.
+     * A self-identifying name needs no corroboration at all — no sibling, no `conf/` parent. Nothing
+     * but Solr calls a file `managed-schema.xml`, so an unusual layout costs nothing here.
      */
-    fun testLoneSchemaIsRecognizedInsideASolrProject() {
-        val file = myFixture.addFileToProject("unusual-layout/schema.xml", "<schema/>").virtualFile
+    fun testSelfIdentifyingNameAloneIsRecognized() {
+        val file = myFixture.addFileToProject("unusual-layout/managed-schema.xml", "<schema/>").virtualFile
         assertTrue(SolrConfigsetDetector.isConfigsetFile(project, file))
     }
 
@@ -58,7 +77,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
     }
 
     fun testDisablingDetectionSuppressesEverything() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         SolrConfigsetSettings.getInstance(project).setDetectionEnabled(false)
         assertFalse(SolrConfigsetDetector.isConfigsetFile(project, file))
     }
@@ -72,7 +91,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
     /** Newer Solr writes `managed-schema.xml`; the extensionless form is the legacy spelling. */
     fun testManagedSchemaXmlVariantIsRecognized() {
         val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
-        assertEquals(SolrConfigsetFileKind.SCHEMA, SolrConfigsetDetector.kindOf(project, file))
+        assertEquals(SolrConfigsetFileKind.SCHEMA_MANAGED, SolrConfigsetDetector.kindOf(project, file))
     }
 
     /**
@@ -92,7 +111,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
     }
 
     fun testPsiFileOverloadDelegatesToVirtualFileDetection() {
-        val recognized = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        val recognized = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         assertTrue(SolrConfigsetDetector.isConfigsetFile(recognized))
 
         val unrecognized = myFixture.addFileToProject("unrelated/notes.xml", "<x/>")
@@ -101,7 +120,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
 
     /** The PSI overload must honour the same kill switch as the [com.intellij.openapi.vfs.VirtualFile] one. */
     fun testPsiFileOverloadRespectsDisabledDetection() {
-        val psiFile = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        val psiFile = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         SolrConfigsetSettings.getInstance(project).setDetectionEnabled(false)
         assertFalse(SolrConfigsetDetector.isConfigsetFile(psiFile))
     }
@@ -123,7 +142,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
      * earlier test asserting the opposite; the corroboration it checked for moved to the project
      * level, where a dependency answers the same question exactly instead of approximately.
      */
-    fun testASingleRecognizedFileIsEnough() {
+    fun testASingleSelfIdentifyingFileIsEnough() {
         val file = myFixture.addFileToProject("solo/managed-schema", "<schema/>").virtualFile
         assertEquals(1, file.parent.children.size)
         assertTrue(SolrConfigsetDetector.isConfigsetFile(project, file))
@@ -151,7 +170,7 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
 
     /** Resources are recognized inside a configset... */
     fun testResourceFileIsRecognizedInsideAConfigset() {
-        myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         val stopwords = myFixture.addFileToProject("core/conf/stopwords.txt", "a\n").virtualFile
         assertEquals(SolrConfigsetFileKind.STOPWORDS, SolrConfigsetDetector.kindOf(project, stopwords))
     }
@@ -175,13 +194,13 @@ class SolrConfigsetDetectorTest : SolrConfigsetTestCase() {
 
     /** A resource file never activates features, even sitting inside a real configset. */
     fun testResourceFileInsideAConfigsetStillDoesNotActivate() {
-        myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         val synonyms = myFixture.addFileToProject("core/conf/synonyms.txt", "a,b\n").virtualFile
         assertFalse(SolrConfigsetDetector.isConfigsetFile(project, synonyms))
     }
 
     fun testLangDirectoryIsRecognizedInsideAConfigset() {
-        myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         myFixture.addFileToProject("core/conf/lang/stopwords_en.txt", "a\n")
         val lang = myFixture.tempDirFixture.getFile("core/conf/lang")!!
         assertEquals(SolrConfigsetFileKind.LANGUAGE_RESOURCES, SolrConfigsetDetector.kindOf(project, lang))

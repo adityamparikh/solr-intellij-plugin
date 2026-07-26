@@ -10,17 +10,22 @@ import com.intellij.psi.PsiFile
  * Two questions are answered here, and they are not the same one:
  *
  *  - **Should features activate for this file?** — [isConfigsetFile]. A file qualifies when its name
- *    is one of the *identifying* names (see [SolrConfigsetFileRole]) and it resolves to a configset.
+ *    is one Solr uses for content rather than for a resource (see [SolrConfigsetFileRole]) and it
+ *    resolves to a configset.
  *  - **Which configset does this file belong to?** — [configsetFor], delegated to
  *    [SolrConfigsetLocator]. Fields and analyzer chains are properties of a configset directory, and
  *    a project may hold several, so every model lookup starts from this answer rather than from the
  *    file.
  *
  * Both rest on [SolrProjectDetector]: features activate only in a project that depends on a Solr
- * client. That is what keeps a stray `schema.xml` from an unrelated framework silent, and it is a
- * fact about the project rather than an inference from a directory listing. The manual override in
+ * client. That is a fact about the project rather than an inference from a directory listing, and it
+ * is what makes the rules below as simple as they are. The manual override in
  * [SolrConfigsetSettings] covers the case the dependency cannot — a repository of configsets with no
  * build file, and so no dependencies to find.
+ *
+ * It does not, however, settle whether a *particular file* is Solr's. A project may use Solr and
+ * still contain an XSD called `schema.xml` that has nothing to do with it, which is why file names
+ * are still tiered by how much they prove on their own: see [SolrConfigsetFileRole].
  *
  * Resource files such as `stopwords.txt` are recognized by [kindOf] but never activate anything on
  * their own; their names are far too common outside Solr to be evidence. They are recognized only
@@ -44,7 +49,7 @@ object SolrConfigsetDetector {
     fun isConfigsetFile(project: Project, file: VirtualFile): Boolean {
         if (file.isDirectory) return false
         val kind = SolrConfigsetFileKind.forFileName(file.name) ?: return false
-        if (kind.role != SolrConfigsetFileRole.IDENTIFYING) return false
+        if (!kind.activatesFeatures) return false
         return configsetFor(project, file) != null
     }
 

@@ -90,16 +90,27 @@ configset as a whole, and a project may hold several that must not be merged.
 Activation is settled before either question is asked. [SolrProjectDetector]
 checks whether the open project depends on a Solr client — `solr-solrj` or a
 wrapper that carries it — matching artifact ids rather than versions. Outside such
-a project nothing activates, however Solr-shaped a file name looks; inside one, a
-recognized name ([SolrConfigsetFileKind]) is believed on its own, and
-[SolrConfigsetLocator] resolves the owning directory without needing a `conf/`
-parent or a corroborating sibling.
+a project nothing activates, however Solr-shaped a file name looks.
 
-That gate replaced a set of directory heuristics. A dependency is a fact where the
+Inside one, names are tiered by how much they prove
+([SolrConfigsetFileRole]). `solrconfig.xml` and `managed-schema.xml` carry
+Solr's own vocabulary and stand alone, so one of them makes its directory a
+configset. `schema.xml`, `params.json` and `currency.xml` are shared with too
+many other things to prove anything, and are recognized only inside a directory
+a self-identifying name has already proven — in a real configset the
+`solrconfig.xml` beside them does that. Resources such as `stopwords.txt` are
+recognized only from within an identified configset and never activate features
+themselves. [SolrConfigsetLocator] resolves the owning directory on that basis,
+with no `conf/` parent or sibling-count rule involved.
+
+The gate replaced a set of directory heuristics. A dependency is a fact where the
 surroundings of a file were only ever an inference, and an inference is wrong in
-both directions and cannot be explained to a user who disagrees with it. The one
-project shape it cannot serve — a repository of configsets with no build file, and
-so no dependencies — activates through a manually marked root instead.
+both directions and cannot be explained to a user who disagrees with it. The
+tiering above is containment rather than inference for the same reason: it asks
+whether a directory holds a name Solr invented, which has an exact answer. The
+one project shape the gate cannot serve — a repository of configsets with no
+build file, and so no dependencies — activates through a manually marked root
+instead.
 
 Recognized names are split by what they are allowed to prove
 ([SolrConfigsetFileRole]). `solrconfig.xml` is evidence a configset exists;

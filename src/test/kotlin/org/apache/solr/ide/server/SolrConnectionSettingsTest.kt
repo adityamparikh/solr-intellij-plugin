@@ -42,6 +42,23 @@ class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * The credential is filed under the connection's real username, not its id. Getting this wrong
+     * is invisible until the first authenticated request, which would then send an identifier no
+     * Solr has ever heard of.
+     */
+    fun testCredentialIsFiledUnderTheRealUsername() {
+        connectionSettings.addConnection(local, "s3cret".toCharArray())
+        assertEquals("solr", connectionSettings.getStoredUsername(local.id))
+    }
+
+    fun testConnectionWithNoUsernameStoresNone() {
+        val anonymous = local.copy(id = "anon", username = null)
+        connectionSettings.addConnection(anonymous, "s3cret".toCharArray())
+        assertNull(connectionSettings.getStoredUsername(anonymous.id))
+        assertEquals("s3cret", connectionSettings.getPassword(anonymous.id))
+    }
+
+    /**
      * The point of the whole design: the secret must not be reachable from the serialized state,
      * because that state is what gets written to the workspace file.
      */

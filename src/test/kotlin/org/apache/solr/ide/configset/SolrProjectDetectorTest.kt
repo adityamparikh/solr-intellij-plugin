@@ -1,7 +1,5 @@
 package org.apache.solr.ide.configset
 
-import com.intellij.testFramework.PsiTestUtil
-
 class SolrProjectDetectorTest : SolrConfigsetTestCase() {
 
     private val detector: SolrProjectDetector get() = SolrProjectDetector.getInstance(project)
@@ -77,10 +75,5 @@ class SolrProjectDetectorTest : SolrConfigsetTestCase() {
         givenLibrary("Gradle: org.apache.solr:solr-solrj:9.10.0")
 
         assertTrue("adding the dependency must invalidate the cached answer", detector.isSolrProject())
-    }
-
-    private fun givenLibrary(name: String) {
-        PsiTestUtil.addProjectLibrary(module, name, emptyList())
-        detector.dropCache()
     }
 }

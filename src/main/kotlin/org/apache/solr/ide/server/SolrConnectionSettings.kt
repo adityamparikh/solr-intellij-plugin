@@ -134,7 +134,11 @@ class SolrConnectionSettings :
      * @param password the secret to store, or null to forget it
      */
     fun setPassword(id: String, password: CharArray?) {
-        val credentials = password?.let { Credentials(id, it) }
+        // Filed under the connection's real user, not its id. The id keys the PasswordSafe entry;
+        // the user field has to carry the username the server will actually be sent, or the first
+        // authenticated request will send an identifier no Solr has heard of.
+        val user = connections.firstOrNull { it.id == id }?.username
+        val credentials = password?.let { Credentials(user, it) }
         PasswordSafe.instance.set(credentialAttributes(id), credentials)
     }
 
@@ -146,6 +150,18 @@ class SolrConnectionSettings :
      */
     fun getPassword(id: String): String? =
         PasswordSafe.instance.get(credentialAttributes(id))?.getPasswordAsString()
+
+    /**
+     * The username stored alongside the secret for [id], or null if none is stored.
+     *
+     * Reads back from [PasswordSafe] rather than from the persisted state, so that callers building
+     * an authenticated request take both halves of a credential from the same place.
+     *
+     * @param id the connection's identifier
+     * @return the stored username, or null
+     */
+    fun getStoredUsername(id: String): String? =
+        PasswordSafe.instance.get(credentialAttributes(id))?.userName
 
     private fun credentialAttributes(id: String) =
         CredentialAttributes(generateServiceName(CREDENTIAL_SUBSYSTEM, id))

@@ -14,11 +14,24 @@ enum class SolrConfigsetFileRole {
     /**
      * Names distinctive enough to be evidence that a directory *is* a configset.
      *
-     * `solrconfig.xml`, `elevate.xml` and `enumsConfig.xml` essentially do not occur outside Solr,
-     * and `schema.xml` is common enough that it is only ever believed with corroboration — which is
-     * what [SolrConfigsetDetector] supplies.
+     * `solrconfig.xml`, `managed-schema`, `elevate.xml` and `enumsConfig.xml` essentially do not
+     * occur outside Solr — the product name, or a spelling only Solr uses, is in the file name. One
+     * of these is enough to make its directory a configset root.
      */
-    IDENTIFYING,
+    SELF_IDENTIFYING,
+
+    /**
+     * Names Solr uses that are too common to prove anything on their own.
+     *
+     * `schema.xml` belongs to XSDs and half a dozen frameworks; `params.json` could be anything.
+     * These are recognized only inside a directory a [SELF_IDENTIFYING] file has already proven,
+     * which is what keeps an unrelated `schema.xml` from being read as a Solr schema in a project
+     * that happens to use Solr elsewhere.
+     *
+     * The project-level dependency check in [SolrProjectDetector] does not settle this. It answers
+     * whether the *project* uses Solr; it cannot say whether *this file* is Solr's.
+     */
+    AMBIGUOUS,
 
     /**
      * Names too common to prove anything, recognized only from inside a configset already
@@ -56,38 +69,49 @@ enum class SolrConfigsetFileKind(
 ) {
 
     /**
-     * The schema, declaring fields, field types and analyzer chains.
+     * The schema under the names the Schema API writes: `managed-schema`, historically without an
+     * extension, and the newer `managed-schema.xml`.
      *
-     * Covers all three names Solr has used: the classic hand-edited `schema.xml`, and the
-     * managed-schema variants written by the Schema API.
+     * Self-identifying — nothing but Solr calls a file `managed-schema`. Split from
+     * [SCHEMA_CLASSIC] only because the two spellings carry different weight as evidence; use
+     * [isSchema] where the distinction does not matter.
      */
-    SCHEMA(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("schema.xml", "managed-schema", "managed-schema.xml")),
+    SCHEMA_MANAGED(SolrConfigsetFileRole.SELF_IDENTIFYING, fileNames = setOf("managed-schema", "managed-schema.xml")),
+
+    /**
+     * The schema under its classic hand-edited name, `schema.xml`.
+     *
+     * Ambiguous: XSDs and several unrelated frameworks use exactly this name, so it is recognized
+     * only inside a directory a self-identifying file has already proven — in practice the
+     * `solrconfig.xml` that sits beside it in every real configset.
+     */
+    SCHEMA_CLASSIC(SolrConfigsetFileRole.AMBIGUOUS, fileNames = setOf("schema.xml")),
 
     /**
      * The core configuration, declaring request handlers, search components and index settings.
      */
-    SOLR_CONFIG(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("solrconfig.xml")),
+    SOLR_CONFIG(SolrConfigsetFileRole.SELF_IDENTIFYING, fileNames = setOf("solrconfig.xml")),
 
     /**
      * Request parameter sets, written by the Request Parameters API and referenced by handlers
      * through `useParams`.
      */
-    PARAMS(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("params.json")),
+    PARAMS(SolrConfigsetFileRole.AMBIGUOUS, fileNames = setOf("params.json")),
 
     /**
      * Query elevation rules, mapping queries to documents forced to the top of the results.
      */
-    ELEVATE(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("elevate.xml")),
+    ELEVATE(SolrConfigsetFileRole.SELF_IDENTIFYING, fileNames = setOf("elevate.xml")),
 
     /**
      * Exchange rates backing `CurrencyFieldType`.
      */
-    CURRENCY(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("currency.xml")),
+    CURRENCY(SolrConfigsetFileRole.AMBIGUOUS, fileNames = setOf("currency.xml")),
 
     /**
      * Enumerated value ordering backing `EnumFieldType`.
      */
-    ENUMS_CONFIG(SolrConfigsetFileRole.IDENTIFYING, fileNames = setOf("enumsConfig.xml")),
+    ENUMS_CONFIG(SolrConfigsetFileRole.SELF_IDENTIFYING, fileNames = setOf("enumsConfig.xml")),
 
     /**
      * Stopword lists named by a `StopFilterFactory`'s `words` attribute.
@@ -118,19 +142,38 @@ enum class SolrConfigsetFileKind(
      */
     LANGUAGE_RESOURCES(SolrConfigsetFileRole.RESOURCE, directoryNames = setOf("lang"));
 
+    /**
+     * Whether this kind is the schema, under either of the names Solr has used for it.
+     *
+     * The managed and classic spellings are separate kinds because they differ as *evidence*, not
+     * because they differ as *content*. Everything downstream reads the same fields out of both, so
+     * it should ask this rather than naming the two kinds.
+     */
+    val isSchema: Boolean get() = this == SCHEMA_MANAGED || this == SCHEMA_CLASSIC
+
+    /**
+     * Whether a file of this kind activates features on its own account.
+     *
+     * True for everything except resources, which are recognized inside a configset but are never
+     * the reason one is found.
+     */
+    val activatesFeatures: Boolean get() = role != SolrConfigsetFileRole.RESOURCE
+
     /** Name-based lookup over the declared kinds. */
     companion object {
         /** All recognized configset file names across every kind, resources included. */
         val ALL_FILE_NAMES: Set<String> = entries.flatMap { it.fileNames }.toSet()
 
         /**
-         * The file names that may serve as evidence a directory is a configset.
+         * The file names that on their own make a directory a configset root.
          *
-         * A strict subset of [ALL_FILE_NAMES]: resource names are excluded, because they are common
-         * enough outside Solr that believing them would activate the plugin on unrelated projects.
+         * A strict subset of [ALL_FILE_NAMES], and the narrowest of the three tiers: every name here
+         * carries Solr's own vocabulary, so none of them needs corroborating. Ambiguous and resource
+         * names are excluded — they are recognized *within* a configset this set has already found,
+         * never as the reason one is found.
          */
-        val IDENTIFYING_FILE_NAMES: Set<String> =
-            entries.filter { it.role == SolrConfigsetFileRole.IDENTIFYING }.flatMap { it.fileNames }.toSet()
+        val SELF_IDENTIFYING_FILE_NAMES: Set<String> =
+            entries.filter { it.role == SolrConfigsetFileRole.SELF_IDENTIFYING }.flatMap { it.fileNames }.toSet()
 
         /**
          * The kind matching [fileName] (case-sensitive, as Solr file names are), or null.

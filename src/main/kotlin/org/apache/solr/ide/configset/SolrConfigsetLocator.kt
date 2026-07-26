@@ -134,20 +134,22 @@ class SolrConfigsetLocator(private val project: Project) {
     }
 
     /**
-     * Whether [directory] holds a recognized configset file.
+     * Whether [directory] holds a self-identifying configset file.
      *
-     * A single one is enough. An earlier revision demanded corroboration here — a second identifying
-     * file, or a `conf/` parent — because a bare `schema.xml` proves nothing on its own. That
-     * question is now settled before this code runs: [SolrProjectDetector] has already established
-     * that the project depends on a Solr client, so a `schema.xml` inside it is Solr's, and asking
-     * the directory to prove it a second time only produced false negatives.
+     * One is enough, and only the self-identifying tier counts. An earlier revision required
+     * corroboration from the surroundings — a second recognized file, or a `conf/` parent — which
+     * was an inference about a directory. This asks a narrower question with an exact answer: does
+     * this directory contain a file whose *name* is Solr's own vocabulary, such as `solrconfig.xml`
+     * or `managed-schema.xml`.
      *
-     * Resource names still never count; see [SolrConfigsetFileRole.RESOURCE]. `stopwords.txt` is
-     * common enough that it would make a configset out of any directory in the project.
+     * Ambiguous names deliberately do not count; see [SolrConfigsetFileRole.AMBIGUOUS]. Otherwise an
+     * XSD called `schema.xml`, in a project that uses Solr somewhere else entirely, would make its
+     * directory a configset. The project-level check in [SolrProjectDetector] cannot prevent that —
+     * it establishes that the project uses Solr, not that this file is Solr's.
      */
     private fun hasConfigsetEvidence(directory: VirtualFile): Boolean =
         directory.children.orEmpty().any { child ->
-            !child.isDirectory && child.name in SolrConfigsetFileKind.IDENTIFYING_FILE_NAMES
+            !child.isDirectory && child.name in SolrConfigsetFileKind.SELF_IDENTIFYING_FILE_NAMES
         }
 
     /** Memoized outcome of one resolution, including the negative one. */

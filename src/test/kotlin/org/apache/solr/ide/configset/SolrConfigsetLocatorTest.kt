@@ -3,7 +3,7 @@ package org.apache.solr.ide.configset
 class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
 
     fun testFileResolvesToItsOwningConfigset() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         val configset = SolrConfigsetDetector.configsetFor(project, file)
         assertNotNull(configset)
         assertEquals("conf", configset!!.root.name)
@@ -12,14 +12,14 @@ class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
 
     /** A `conf` root is named for its parent, so a multi-core project does not show two "conf"s. */
     fun testConfigsetIsNamedForTheCoreDirectory() {
-        val file = myFixture.addFileToProject("products/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("products/conf/managed-schema.xml", "<schema/>").virtualFile
         assertEquals("products", SolrConfigsetDetector.configsetFor(project, file)!!.name)
     }
 
     /** The core of the per-configset model: two configsets in one project must not merge. */
     fun testTwoConfigsetsInOneProjectStayDistinct() {
-        val products = myFixture.addFileToProject("products/conf/schema.xml", "<schema/>").virtualFile
-        val orders = myFixture.addFileToProject("orders/conf/schema.xml", "<schema/>").virtualFile
+        val products = myFixture.addFileToProject("products/conf/managed-schema.xml", "<schema/>").virtualFile
+        val orders = myFixture.addFileToProject("orders/conf/managed-schema.xml", "<schema/>").virtualFile
 
         val productsSet = SolrConfigsetDetector.configsetFor(project, products)!!
         val ordersSet = SolrConfigsetDetector.configsetFor(project, orders)!!
@@ -41,20 +41,20 @@ class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
     }
 
     fun testResolutionIsSuppressedWhenDetectionIsDisabled() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         settings.setDetectionEnabled(false)
         assertNull(SolrConfigsetDetector.configsetFor(project, file))
     }
 
     /** A language resource sits one level below the root and must still reach it. */
     fun testLanguageResourceResolvesUpToTheConfigsetRoot() {
-        myFixture.addFileToProject("core/conf/schema.xml", "<schema/>")
+        myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>")
         val stopwords = myFixture.addFileToProject("core/conf/lang/stopwords_en.txt", "a\nan\n").virtualFile
         assertEquals("conf", SolrConfigsetDetector.configsetFor(project, stopwords)!!.root.name)
     }
 
     fun testConfigsetDirectoryItselfResolvesToItsOwnConfigset() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         val confDir = file.parent
         assertEquals(confDir, SolrConfigsetDetector.configsetFor(project, confDir)!!.root)
     }
@@ -62,7 +62,7 @@ class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
     // --- caching ---------------------------------------------------------------------------
 
     fun testRepeatedLookupsAreServedFromTheCache() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         locator.dropCache()
         assertEquals(0, locator.cacheSize)
 
@@ -98,7 +98,7 @@ class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
     /** Marking a root changes resolution without touching a file, so settings must invalidate too. */
     fun testMarkingAManualRootInvalidatesTheCache() {
         givenNoSolrOnTheClasspath()
-        val file = myFixture.addFileToProject("weird/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("weird/managed-schema.xml", "<schema/>").virtualFile
         assertNull(SolrConfigsetDetector.configsetFor(project, file))
 
         settings.addManualRoot(file.parent)
@@ -108,7 +108,7 @@ class SolrConfigsetLocatorTest : SolrConfigsetTestCase() {
 
     /** The deepest marked root wins, so marking a core and its conf/ does not give the core. */
     fun testNestedManualRootsResolveToTheDeepestMatch() {
-        val file = myFixture.addFileToProject("core/conf/schema.xml", "<schema/>").virtualFile
+        val file = myFixture.addFileToProject("core/conf/managed-schema.xml", "<schema/>").virtualFile
         val confDir = file.parent
         settings.addManualRoot(confDir.parent)
         settings.addManualRoot(confDir)

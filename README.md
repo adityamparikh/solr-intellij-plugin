@@ -25,9 +25,11 @@ configset, which every feature is built on top of:
 - Activation gated on the project depending on a Solr client (`solr-solrj` or a wrapper that carries
   it — Spring Data Solr, Camel, the Quarkus extensions). Matched by artifact id, so any version
   counts. Outside such a project the plugin stays silent
-- Configset detection by file name (`schema.xml`, `managed-schema`, `managed-schema.xml`,
-  `solrconfig.xml`, `params.json`, `elevate.xml`, `currency.xml`, `enumsConfig.xml`) within a
-  project that passed that gate
+- Configset detection by file name within a project that passed that gate, with names tiered by
+  what they prove: `solrconfig.xml`, `managed-schema`, `managed-schema.xml`, `elevate.xml` and
+  `enumsConfig.xml` identify a configset on their own; `schema.xml`, `params.json` and
+  `currency.xml` count only alongside one of those, so an unrelated XSD named `schema.xml` stays
+  untouched
 - Resolution of a file to the configset that owns it, so a project holding several keeps them
   apart — cached, since this runs every time you open a file
 - Recognition of analyzer resources (`stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/`)

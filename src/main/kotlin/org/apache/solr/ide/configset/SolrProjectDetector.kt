@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -60,7 +61,15 @@ class SolrProjectDetector(private val project: Project) {
         cached.set(null)
     }
 
-    private fun hasSolrClientLibrary(): Boolean {
+    /**
+     * Walks the project's libraries under a read action.
+     *
+     * The read action is not optional. This reads the project model, and while the callers that
+     * matter today — inspections, annotators, reference providers — already hold the lock, an action
+     * or a background task does not. Taking it here rather than relying on the caller keeps the
+     * guarantee local to the code that needs it; a nested read action is free.
+     */
+    private fun hasSolrClientLibrary(): Boolean = ReadAction.compute<Boolean, RuntimeException> {
         var found = false
         OrderEnumerator.orderEntries(project).librariesOnly().forEachLibrary { library ->
             val name = library.name
@@ -69,7 +78,7 @@ class SolrProjectDetector(private val project: Project) {
             }
             !found // stop enumerating once a match is found
         }
-        return found
+        found
     }
 
     private class Answer(val stamp: Long, val value: Boolean)
@@ -100,14 +109,14 @@ class SolrProjectDetector(private val project: Project) {
             // Spring Data Solr and its Boot starter. Unmaintained upstream, still widely present.
             "spring-data-solr",
             "spring-boot-starter-data-solr",
-            // Apache Camel's Solr component, on plain Camel and on Camel Quarkus. Listed
-            // separately because "camel-solr" is not a substring of "camel-quarkus-solr".
+            // Apache Camel's Solr component.
             "camel-solr",
-            "camel-quarkus-solr",
-            // Quarkus: the Quarkiverse JNoSQL Solr extension, and the community Solr extension.
+            // Quarkus: the community Solr extension, and — since "camel-quarkus-solr" contains this
+            // string — Camel's Quarkus component too, which "camel-solr" above does not match.
+            "quarkus-solr",
+            // The Quarkiverse JNoSQL Solr extension, under both artifact ids it has shipped as.
             "quarkus-jnosql-solr",
             "quarkus-jnosql-document-solr",
-            "quarkus-solr",
         )
 
         /**

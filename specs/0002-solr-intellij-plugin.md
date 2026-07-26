@@ -407,9 +407,25 @@ wrapper depends on SolrJ transitively and the IDE resolves transitive dependenci
 project using Camel's Solr component or a Quarkus extension satisfies the gate whether or
 not it names SolrJ directly.
 
-Inside such a project, a recognized file name means what it says. A `schema.xml` is Solr's
-schema, and it needs no corroborating sibling and no `conf/` parent to prove it. Outside
-one, nothing activates however Solr-shaped the filenames are.
+Outside such a project, nothing activates however Solr-shaped the filenames are.
+
+**Inside one, file names are still tiered by how much they prove.** The dependency
+establishes that the *project* uses Solr; it cannot establish that a *particular file* is
+Solr's, and a project that uses Solr may still contain an XSD called `schema.xml` that has
+nothing to do with it. So:
+
+- *Self-identifying* names — `solrconfig.xml`, `managed-schema`, `managed-schema.xml`,
+  `elevate.xml`, `enumsConfig.xml` — carry Solr's own vocabulary and stand alone. One of
+  them makes its directory a configset.
+- *Ambiguous* names — `schema.xml`, `params.json`, `currency.xml` — are recognized only
+  inside a directory a self-identifying name has already proven. In a real configset that
+  costs nothing: the `solrconfig.xml` beside them does the proving.
+- *Resources* — `stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/` — are recognized
+  only from inside an identified configset and never activate features themselves.
+
+This is containment, not a heuristic: each tier asks whether a directory contains a name
+Solr invented, which has an exact answer. It is the same mechanism the resource tier
+already used, applied one level up.
 
 **This replaces a set of directory heuristics, and it is worth saying why.** The earlier
 design corroborated file names against their surroundings — a `conf/` parent, or a second
@@ -460,9 +476,21 @@ accepted, because there is nothing there to recognize with any confidence anyway
 **SolrJ** — client construction supplies endpoints; queries and document building supply
 field references. The primary recognizer and the one that proves the interface.
 
-**Framework configuration** — a Solr URL in application configuration, resolved per
-profile with the framework's own precedence rules. The dialects differ in ways that
-matter:
+**Framework configuration** — a Solr URL *and its credentials* in application
+configuration, resolved per profile with the framework's own precedence rules. Credentials
+are part of the finding, not an afterthought: a server that needs authentication is
+useless as a discovered connection without them, and the username almost always sits
+beside the URL in the same profile. A connection offered from `staging` should arrive with
+staging's user, not with `dev`'s.
+
+Two rules govern a secret found this way. It is **offered, never adopted silently** —the
+same rule that governs discovered endpoints. And on confirmation the secret is copied into
+PasswordSafe rather than read from the configuration file on each use, so that the
+plugin's own storage is the single place a credential lives once the user has accepted it.
+A plaintext password in a committed `application.yml` is the user's problem to fix, not
+the plugin's to propagate.
+
+The dialects differ in ways that matter:
 
 - *Spring Boot* keeps profiles in separate files (`application-dev.yml` beside
   `application.yml`), with the active profile coming from a property, an environment

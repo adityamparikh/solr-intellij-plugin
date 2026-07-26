@@ -55,7 +55,7 @@ abstract class SolrConfigsetTestCase : BasePlatformTestCase() {
             val table = LibraryTablesRegistrar.getInstance().getLibraryTable(project)
             val existing = table.getLibraryByName(FIXTURE_SOLRJ_LIBRARY)
             if (existing == null) {
-                PsiTestUtil.addProjectLibrary(module, FIXTURE_SOLRJ_LIBRARY, emptyList())
+                givenLibrary(FIXTURE_SOLRJ_LIBRARY)
             } else {
                 // The library outlived the test that created it — the light project is shared — but
                 // the module's dependency on it was removed. Re-link rather than recreate.
@@ -71,23 +71,41 @@ abstract class SolrConfigsetTestCase : BasePlatformTestCase() {
             .any { it.libraryName == FIXTURE_SOLRJ_LIBRARY }
 
     /**
-     * Removes every library from the fixture, leaving a project with no Solr dependency.
+     * Removes the libraries these helpers added, leaving a project with no Solr dependency.
      *
      * The starting state for tests that assert the plugin stays silent outside a Solr project.
      */
     protected fun givenNoSolrOnTheClasspath() {
         ModuleRootModificationUtil.updateModel(module) { model ->
-            model.orderEntries.filterIsInstance<LibraryOrderEntry>().forEach { model.removeOrderEntry(it) }
+            model.orderEntries
+                .filterIsInstance<LibraryOrderEntry>()
+                .filter { it.libraryName in addedByTests }
+                .forEach { model.removeOrderEntry(it) }
         }
-        // Drop the libraries themselves too, not just the module's dependency on them. The light
-        // project is shared across test classes, so a library left in the table makes the next
-        // `addProjectLibrary` of the same name fail with "already exists".
+        // Drop the libraries themselves too, not just the module's dependency on them: the light
+        // project is shared, so a library left in the table makes the next `addProjectLibrary` of
+        // the same name fail with "already exists".
+        //
+        // Scoped to libraries these helpers created. Emptying the whole table would be the same
+        // class of shared-project mutation this base class exists to prevent, and would silently
+        // break the first test that needs a library of its own.
         val table = LibraryTablesRegistrar.getInstance().getLibraryTable(project)
         WriteAction.runAndWait<RuntimeException> {
             val model = table.modifiableModel
-            table.libraries.forEach { model.removeLibrary(it) }
+            table.libraries.filter { it.name in addedByTests }.forEach { model.removeLibrary(it) }
             model.commit()
         }
+        dropDetectionCaches()
+    }
+
+    /**
+     * Adds a library by name, with no jar behind it — [SolrProjectDetector] matches on the name.
+     *
+     * @param name the library name, spelled as Gradle or Maven would spell a resolved dependency
+     */
+    protected fun givenLibrary(name: String) {
+        addedByTests += name
+        PsiTestUtil.addProjectLibrary(module, name, emptyList())
         dropDetectionCaches()
     }
 
@@ -97,6 +115,15 @@ abstract class SolrConfigsetTestCase : BasePlatformTestCase() {
     }
 
     private companion object {
+        /**
+         * Library names these helpers have created, across every test in the JVM.
+         *
+         * Static on purpose. Test instances are per-method, so an instance field could not remember
+         * a library added by an earlier method — and the light project those libraries live in
+         * outlives both the method and the class.
+         */
+        val addedByTests: MutableSet<String> = mutableSetOf()
+
         /**
          * A stand-in library for the fixture — not the production matcher, which lives in
          * [SolrProjectDetector.SOLR_CLIENT_COORDINATES] and matches artifact ids as substrings.

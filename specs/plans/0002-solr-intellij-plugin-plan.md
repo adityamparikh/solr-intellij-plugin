@@ -604,7 +604,10 @@ The document indexes into the local collection and is then findable.
 **Actions:**
 1. Define the recognizer interface: reports endpoints and field references. Keep it
    minimal — [framework configuration](#step-18-framework-configuration) and
-   [Apache Camel](#step-19-apache-camel) depend on it being right.
+   [Apache Camel](#step-19-apache-camel) depend on it being right. An endpoint is a URL
+   *and* the credential that goes with it, since framework configuration resolves both
+   from the same profile; a reported endpoint that cannot carry a username forces that
+   step to bolt one on afterwards.
 2. Make the interface declare the library each recognizer needs, and gate activation on
    the *module's* dependencies rather than on the file being edited — no Solr client on
    the classpath, no SolrJ recognizer. The spec argues this out under "Recognizing Solr
@@ -662,16 +665,28 @@ not.
    which editions. Prefer the platform's model over parsing configuration directly.
 2. Declare optional dependencies so these features appear when the supporting
    functionality is present and the plugin loads normally when it is not.
-3. Resolve a Solr URL per profile with each framework's own precedence: Spring Boot
+3. Resolve a Solr URL **and its credentials** per profile with each framework's own
+   precedence: Spring Boot
    profile files, **Quarkus inline `%profile.` prefixes in a single file**, Micronaut
    environments, MicroProfile ordinals.
 4. Offer discovered endpoints as connection candidates. Never connect automatically.
-5. **Real project fixtures per framework**, not synthetic strings.
+5. Carry the credential with the endpoint. A username found beside the URL in a profile
+   belongs to that profile's candidate, and on confirmation the secret is copied into
+   PasswordSafe rather than re-read from the configuration file on each use. The spec sets
+   the rules under "Recognizing Solr usage"; the consequence here is that a candidate is a
+   URL *and* a credential, so the recognizer interface must be able to report both — which
+   is why [the recognizer interface](#step-16-recognizer-interface-and-solrj) has to know
+   about it before this step starts.
+6. **Real project fixtures per framework**, not synthetic strings.
 
 **Success criteria:**
 - [ ] Boot profile files and Quarkus inline prefixes both resolve correctly.
 - [ ] The plugin loads and functions with no framework support present.
 - [ ] Discovered endpoints are offered, never adopted silently.
+- [ ] Switching the active profile changes the offered username as well as the URL,
+      asserted on the demo fixture, which carries a `dev` and a `staging` profile.
+- [ ] A secret from a configuration file reaches PasswordSafe only after the user
+      confirms, and never reaches the shared project file.
 
 **Scope of the demo.** Only Spring gets a demo step. Each additional framework would need
 its own fixture project and its own runtime on stage to show what the Spring fixture
