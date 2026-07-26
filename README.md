@@ -19,8 +19,8 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 **Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
 purpose.**
 
-What exists today is the Phase 1 *activation gate* — the code that decides whether a file belongs to
-a Solr configset, which every later feature is built on top of:
+What exists today is the *activation gate* — the code that decides whether a file belongs to a Solr
+configset, which every feature is built on top of:
 
 - Configset detection by file name (`schema.xml`, `managed-schema`, `managed-schema.xml`,
   `solrconfig.xml`) corroborated by directory heuristics
@@ -28,35 +28,35 @@ a Solr configset, which every later feature is built on top of:
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
-The Phase 1 feature set proper — schema completion, cross-file references, rename, inspections,
-match-capability analysis, quick documentation — is specified but unbuilt. Treat
-[the specification](specs/0002-solr-intellij-plugin.md) as the authority on intent, and this section
-as the authority on status.
+Everything else — configuration intelligence, the server connection, and the Java/Kotlin support —
+is specified but unbuilt. Treat [the specification](specs/0002-solr-intellij-plugin.md) as the
+authority on intent, and this section as the authority on status.
 
 ## Planned scope
 
-The work is structured as five phases; only Phase 1 is committed.
+Three surfaces, connected by one shared model of what fields exist and what they can do.
 
-| Phase | Theme | Needs a running Solr |
+| Surface | What it does | Needs a running Solr |
 |---|---|---|
-| **1** | Schema and config intelligence — completion, navigation, rename, inspections, match-capability hints | No |
-| 2 | Connections and query console; development-oriented indexing | Yes |
-| 3 | SolrJ code integration — field validation inside query strings in Java/Kotlin | Yes |
-| 4 | Collection explorer and dev-loop operations — configset upload, config diff, analysis debugger | Yes |
-| 5 | Ecosystem — MCP routing, additional JetBrains IDEs | Optional |
+| **Configuration** | Navigation, Find Usages, inspections, match-capability hints and quick-fixes, completion, rename | No |
+| **Server** | Browse collections, query console with structured results, index test documents, upload configsets and reload collections | Yes |
+| **Code** | Field names in SolrJ usage checked and completed, query syntax inside string literals, run a query from a gutter icon | No, better with one |
+| **Repo vs. server** | Show where your configuration and the deployed server disagree | Both |
 
-Phase 1 is deliberately **offline**: pure static analysis of the configset files in your project,
-with no Solr connection and no network access.
+No feature requires an input it might not have. A repository of bare XML gets the configuration
+half. An application with no configset in it gets the server and code halves. A project with both
+gets everything, plus the comparison neither half could produce alone.
 
 ### Where this fits with the Schema API
 
 Solr's default configset carries a banner reading *"this file is managed by the Schema API, do not
-edit it by hand."* The plugin does not work around that guidance — it reinforces it. Where a schema
-is managed and mutable, the plugin's default answer to a write is to render the edit as a Schema API
-request rather than modify the file. Where a schema is hand-authored (`ClassicIndexSchemaFactory`,
-or managed with `mutable="false"`), no API is available and editing the file is correct.
+edit it by hand."*
 
-Read-side features — navigation, inspections, hints, documentation — behave identically either way.
+The plugin edits the file anyway, because it is a source file in your repository and editing source
+files is what an IDE does. What the banner is really warning about is **drift** — your repository
+and the running server quietly diverging — and the plugin addresses that directly: connect one, and
+it shows you exactly where the two disagree. Where a change maps onto the Schema API, applying it to
+the server is an action you invoke from that comparison.
 
 [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) is the full file-by-file
 account of which Solr configuration is hand-edited, which is API-written, and what this plugin
@@ -72,8 +72,8 @@ release. See the version-support policy in the specification.
 
 | Document | Purpose |
 |---|---|
-| [Specification](specs/0002-solr-intellij-plugin.md) | What the plugin is for, phased scope, and Phase 1 requirements in implementation depth |
-| [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps delivering Phase 1 |
+| [Specification](specs/0002-solr-intellij-plugin.md) | What the plugin is for, how it is structured, and what it does |
+| [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done |
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
 | [Plugin development tutorial](docs/modern-intellij-plugin-development.md) | Building this kind of plugin from scratch, using this project as the worked example |
 | [CLAUDE.md](CLAUDE.md) | Repository orientation — build gates, architecture, conventions |

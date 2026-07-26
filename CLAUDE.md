@@ -45,25 +45,32 @@ An IntelliJ Platform plugin providing Apache Solr tooling, built with the Intell
 plugin against the unified `intellijIdea("2026.2")` artifact (Community and Ultimate merged as of
 2025.3).
 
-**The spec is the source of truth for intent**: `specs/0002-solr-intellij-plugin.md` defines a
-five-phase program and details Phase 1 (S1–S9) and the documentation deliverables (D1–D9) to
-implementation depth. Read it before designing a feature — requirements are referenced by these IDs
-in commits and KDoc.
+**The spec is the source of truth for intent**: `specs/0002-solr-intellij-plugin.md` describes three
+surfaces — configuration files, a live server, and Java/Kotlin code — unified by one model of what
+fields exist and what they can do. Read it before designing a feature. It uses plain feature names
+rather than requirement IDs; an earlier revision numbered them S1–S9 and D1–D9, and those codes are
+gone rather than renamed, so treat any surviving reference to them as stale.
 
 `specs/plans/0002-solr-intellij-plugin-plan.md` is the ordered path to that intent, and it owns
 which steps are done. Read it before starting feature work: it records why steps are split the way
-they are — S8 provenance is its own step precisely to keep an XML parse off the per-file detection
-path — and which steps block which. Do not mirror its step status into this file. Position changes
-every step and orientation does not, so a copy here goes stale while the plan stays correct.
+they are — the fake HTTP layer is part of the server step, not a follow-up, so that no test ever
+needs a running Solr — and which steps block which. It also groups the work into tracks that are
+independent after the field model exists, so parallel work does not need re-deriving. Do not mirror
+its step status into this file. Position changes every step and orientation does not, so a copy here
+goes stale while the plan stays correct.
 
 `docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
-hand-edited, which are written by an API, and what the plugin covers. Consult it before adding a
-feature that *writes* to a configset — S9 makes the plugin API-first, so a write against a mutable
-managed schema renders a Schema API request rather than editing the file. Provenance (S8) gates
-writes only; read-side features must never consult it.
+hand-edited, which are written by an API, and what the plugin covers.
 
-**What is actually implemented is a small fraction of that.** Today the codebase contains only the
-Phase 1 *activation gate*:
+**The plugin edits configuration files directly and never refuses a write.** An earlier design
+classified each schema as Solr-managed or hand-authored and withheld edits to the former, because
+without a server connection the only alternative it could offer was a `curl` command with a
+placeholder URL. That whole apparatus is deleted. The spec's position is that drift between
+repository and server is the real problem, and a connection makes drift observable — which beats
+refusing to type. If you find code or docs asking whether a write is *allowed*, it predates this.
+
+**What is actually implemented is a small fraction of the spec.** Today the codebase contains only
+the activation gate:
 
 - `org.apache.solr.ide.configset` — deciding whether a file belongs to a Solr configset.
   `SolrConfigsetDetector` gates every future feature: a recognized file name
@@ -71,14 +78,13 @@ Phase 1 *activation gate*:
   persisted in `SolrConfigsetSettings`.
 - `org.apache.solr.ide` — `SolrBundle`, the localization bundle.
 
-Phase 1 proper (schema completion, cross-file references, rename, inspections, match-capability
-hints, quick documentation) is unbuilt. Do not infer status from the API reference; check the spec.
+Everything else is unbuilt. Do not infer status from the API reference; check the plan.
 
-Detection today is name-plus-directory only. S8 adds *schema provenance* — reading `<schemaFactory>`
-from the sibling `solrconfig.xml` to tell a hand-authored schema from a Solr-managed one. Keep that
-off the per-file detection path: `SolrConfigsetDetector` runs on every file the user opens and its
-signals are deliberately cheap and local, whereas parsing a sibling XML file is neither. Resolve
-provenance once per configset directory and cache it.
+The spec's "What changes in the existing code" section lists the overhaul this gate needs before
+features land on it — configset identity rather than per-file recognition, caching on the detection
+path, more file kinds, and a separate per-user store for connections. Two constraints hold whatever
+else changes: detection runs on every file the user opens, so its signals stay cheap and local; and
+nothing on the editor path may contact a server.
 
 Detection is deliberately heuristic and therefore fallible in both directions, which is why
 `SolrConfigsetSettings` exists as an escape hatch — manual configset roots and a master off switch.
