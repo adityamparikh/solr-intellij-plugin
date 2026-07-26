@@ -1,0 +1,32 @@
+# Local Solr for the demo and for manual testing.
+#
+# Nothing in the plugin's automated tests uses this. That is a deliberate constraint from the
+# implementation plan: no automated test may require a Solr that a developer started by hand, which
+# is why the server work ships with a fake HTTP layer rather than depending on this file.
+#
+#   docker compose -f demo/compose.yaml up -d
+#   docker compose -f demo/compose.yaml down -v
+#
+# The configset in ./solr/conf is deliberately NOT mounted. Bind-mounting it would make the server
+# and the repository identical by construction, and the drift comparison — repository versus what is
+# actually deployed — would have nothing to show. The core is created from Solr's default configset
+# instead, and getting your configset onto the server is itself a demo step: upload, then reload.
+services:
+  solr:
+    image: solr:10
+    container_name: solr-demo
+    ports:
+      - "8983:8983"
+    volumes:
+      - solr-data:/var/solr
+    command:
+      - solr-precreate
+      - products
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8983/solr/admin/info/system || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  solr-data:

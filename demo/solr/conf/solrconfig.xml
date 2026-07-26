@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Demo core configuration. Deliberately minimal — everything here exists to give the plugin
+  something real to reason about, not to be a production-grade configuration.
+
+  The `qf` line below is the cross-file navigation demo: `name`, `description` and `category`
+  are defined in managed-schema.xml, and nothing in either file connects the two.
+-->
+<config>
+
+  <luceneMatchVersion>10.0.0</luceneMatchVersion>
+
+  <dataDir>${solr.data.dir:}</dataDir>
+  <directoryFactory name="DirectoryFactory" class="solr.NRTCachingDirectoryFactory"/>
+  <codecFactory class="solr.SchemaCodecFactory"/>
+
+  <!--
+    No <schemaFactory> is declared on purpose, so the Solr 9/10 default applies: the *managed*
+    schema. That is what makes the file next door `managed-schema.xml` and gives it the
+    "DO NOT EDIT" banner the demo opens by confronting. Declaring ClassicIndexSchemaFactory here
+    would make Solr look for `schema.xml` instead and the banner would never appear.
+  -->
+
+  <requestHandler name="/select" class="solr.SearchHandler">
+    <lst name="defaults">
+      <str name="defType">edismax</str>
+      <str name="df">text</str>
+      <str name="qf">name^3 description category</str>
+      <str name="rows">10</str>
+    </lst>
+  </requestHandler>
+
+  <requestHandler name="/suggest" class="solr.SearchHandler">
+    <lst name="defaults">
+      <str name="defType">edismax</str>
+      <str name="qf">name_prefix</str>
+      <str name="fl">id,name</str>
+      <str name="rows">5</str>
+    </lst>
+  </requestHandler>
+
+  <requestHandler name="/update" class="solr.UpdateRequestHandler"/>
+
+</config>
