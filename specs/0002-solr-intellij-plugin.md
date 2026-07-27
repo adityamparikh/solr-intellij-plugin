@@ -337,10 +337,16 @@ implementation rather than assumed here.
 Available with no connection and no setup. This is the first-run experience and it must
 be good, because value arriving before configuration is what keeps a plugin installed.
 
-- **Completion** for field types, tokenizer and filter factories and their attributes,
-  and field attributes — marking which value Solr would use if the attribute were absent,
-  because "this is what you already have" is the thing a reader is usually trying to work
-  out.
+- **Completion** for the schema's own vocabulary as well as its values: the elements
+  themselves, the attributes each element accepts, and the values an attribute accepts
+  where that set is closed. Plus field types, and tokenizer and filter factories and their
+  attributes from the catalog.
+  Completed values mark which one Solr would use if the attribute were absent, because
+  "this is what you already have" is the thing a reader is usually trying to work out.
+  **Completing a name the reader has not learned yet is the case that matters.** Someone
+  who knows `sortMissingLast` exists can type it; someone who does not will never discover
+  it from a file that does not already use it, and the Reference Guide is a page away only
+  if you know what to search for.
 - **Navigation** — a field to its type, a `copyField` to its target, a request handler
   parameter in `solrconfig.xml` to the schema field it names, and a filter's resource
   attribute to the actual `stopwords.txt` or `synonyms.txt` beside it.

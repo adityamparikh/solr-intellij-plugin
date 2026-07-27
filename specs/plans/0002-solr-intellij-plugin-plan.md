@@ -56,6 +56,9 @@ it whole, and the gutter action goes with the Server track.
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing
   the catalog provides.
+- [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary)
+  — likewise. Corrects a dependency that parked field attribute completion behind the
+  catalog, which it never needed.
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
@@ -528,6 +531,53 @@ survive the obvious follow-up question, which is "so what do I put there instead
 **Dependencies:** [inspections](#step-6-inspections) for the quick-fixes;
 [match hints](#step-7-match-hints-and-quick-fixes) for the documentation provider they
 extend.
+
+### Step 24: Completing the schema's own vocabulary
+
+Numbered last because it was added last; it belongs in the Editor track beside
+[explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen).
+
+Completion today answers *what value goes here* and never *what may I write at all*. Typing
+`<` in a schema offers nothing; typing a space inside `<field ` offers nothing. Both are
+answerable from what the plugin already holds, and both matter more than value completion
+for the reader who has not learned the vocabulary yet — someone who knows `sortMissingLast`
+exists can type it, and someone who does not will never meet it in a file that does not
+already use it.
+
+**A mis-filing this corrects.** Field attribute completion sits in
+[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation),
+which waits on [the factory catalog](#step-9-factory-catalog-generator). Only *factory*
+attributes need the catalog; *field* attributes come from the property table, which exists.
+The dependency was wrong, and a feature was parked behind something it never needed.
+
+**Actions:**
+1. Model the `fieldType` general properties — `positionIncrementGap`,
+   `autoGeneratePhraseQueries`, `synonymQueryStyle`, `enableGraphQueries`,
+   `docValuesFormat`, `postingsFormat`. The property table was built from the Reference
+   Guide's *field* properties and skipped the table beside it, so documentation is missing
+   them too; modelling them fixes both surfaces at once. Record which properties a
+   `fieldType` accepts and which a `field` accepts, since the sets differ.
+2. Element-name completion, from the descriptions
+   [element documentation](#step-23-explaining-and-correcting-what-is-already-on-screen)
+   already holds. Offer only elements legal in the enclosing element.
+3. Attribute-name completion on `field`, `dynamicField` and `fieldType`, from the property
+   table, showing each property's summary. Omit attributes already present on the tag —
+   an attribute cannot be written twice, and offering it is offering an error.
+4. Attribute-value completion where the set is closed and is not boolean: `analyzer`'s
+   `type`, and `synonymQueryStyle`. Positions where any value is legal stay untouched, as
+   [completion](#step-10-completion-validation-and-quick-documentation) already requires.
+
+**Success criteria:**
+- [ ] Typing `<` inside a schema offers the elements legal there and nothing else.
+- [ ] Attribute completion offers what the element accepts, minus what it already carries.
+- [ ] A `fieldType` general property completes, and documents, exactly as a field property does.
+- [ ] Non-boolean closed value sets complete; open-ended ones stay with the platform.
+
+**Acceptance:** No demo step of its own. It is the difference between a reader who can only
+edit what is already written and one who can discover what Solr allows.
+
+**Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
+for the element descriptions. Nothing from the catalog.
 
 ### Step 8: Rename
 
