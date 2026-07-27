@@ -32,7 +32,7 @@ data class SolrConnection(
  * Per-user settings holding the Solr servers this developer can talk to.
  *
  * **This is a second settings surface, not an extension of the first.** Configset roots live in
- * [org.apache.solr.ide.configset.SolrConfigsetSettings], which persists to the shared `solr.xml`,
+ * [org.apache.solr.ide.configset.activation.SolrConfigsetSettings], which persists to the shared `solr.xml`,
  * because a marked root is a fact about the project — the same directory is a configset for everyone
  * on the team. A connection is the opposite: it is a fact about one developer's machine. The URL may
  * be a personal port-forward and the credentials are personal by definition, so committing either

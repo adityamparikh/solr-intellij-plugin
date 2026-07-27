@@ -1,6 +1,6 @@
 package org.apache.solr.ide.server
 
-import org.apache.solr.ide.configset.SolrConfigsetTestCase
+import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
 
