@@ -50,6 +50,8 @@ The foundation is complete and the first two user-facing features sit on top of 
 - **Quick documentation** on a field or its type: the analyser chains, what fields of that type
   match, and every property's effective value with whether it came from the field, its type, or
   Solr's default — plus a Reference Guide link for the version the configset declares
+- An **inspection** flagging a `copyField` whose source or destination names a field the configset
+  does not declare
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 

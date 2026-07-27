@@ -1,0 +1,18 @@
+<html>
+<body>
+Reports a <code>copyField</code> whose <code>source</code> or <code>dest</code> names a field the
+configset does not declare.
+<p>
+  Solr refuses to load a core with a dangling copy rule, so the failure arrives at deploy time
+  rather than while the file is being edited. Until then nothing in the editor can see it: the
+  reference is a bare string in an attribute, connected to the field it names by nothing but
+  convention.
+</p>
+<p>
+  Field names containing <code>*</code> are not reported. A glob source is a pattern over dynamic
+  fields, and whether anything matches it is not a question the schema alone can answer.
+</p>
+<p><small>Example: <code>&lt;copyField source="manufacturer" dest="text"/&gt;</code> where no
+  <code>manufacturer</code> field is declared.</small></p>
+</body>
+</html>
