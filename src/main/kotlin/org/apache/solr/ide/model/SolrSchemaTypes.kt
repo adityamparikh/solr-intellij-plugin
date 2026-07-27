@@ -120,12 +120,7 @@ data class SolrDynamicField(val pattern: String, val field: SolrField) {
      * @param fieldName the concrete field name to test
      * @return true if this dynamic field would supply [fieldName]
      */
-    fun matches(fieldName: String): Boolean = when {
-        pattern == "*" -> true
-        pattern.startsWith("*") -> fieldName.endsWith(pattern.substring(1))
-        pattern.endsWith("*") -> fieldName.startsWith(pattern.dropLast(1))
-        else -> fieldName == pattern
-    }
+    fun matches(fieldName: String): Boolean = SolrGlob.matches(pattern, fieldName)
 
     /**
      * How specific this pattern is, used to pick a winner when several match.
@@ -166,3 +161,30 @@ data class SolrFieldReference(
     val fieldName: String,
     val boost: String? = null,
 )
+
+/**
+ * Solr's deliberately impoverished glob: a single `*` at one end, or the bare `*`.
+ *
+ * One implementation, because there were two and they disagreed. A pattern containing no wildcard
+ * matched itself in one and nothing at all in the other — masked at the time by a caller that
+ * checked equality first, which is exactly how a duplicated rule survives long enough to matter.
+ */
+object SolrGlob {
+
+    /**
+     * Whether [name] matches [pattern].
+     *
+     * A pattern with no wildcard is compared exactly, which is what Solr does with a `dynamicField`
+     * whose name contains no `*`.
+     *
+     * @param pattern a Solr glob, or a literal name
+     * @param name the concrete name to test
+     * @return true if the pattern covers the name
+     */
+    fun matches(pattern: String, name: String): Boolean = when {
+        pattern == "*" -> true
+        pattern.startsWith("*") -> name.endsWith(pattern.substring(1))
+        pattern.endsWith("*") -> name.startsWith(pattern.dropLast(1))
+        else -> name == pattern
+    }
+}

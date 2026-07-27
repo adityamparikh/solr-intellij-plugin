@@ -7,6 +7,7 @@ import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.SolrBundle
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 
 /**
  * Reports a field whose `type` names a field type the configset does not declare.
@@ -27,8 +28,8 @@ class SolrUnknownFieldTypeInspection : LocalInspectionTool() {
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file) ?: return PsiElementVisitor.EMPTY_VISITOR
         return object : XmlElementVisitor() {
             override fun visitXmlTag(tag: XmlTag) {
-                if (tag.name !in FIELD_TAGS) return
-                val value = SolrInspections.valueElementOf(tag.getAttribute("type")) ?: return
+                if (tag.name !in SolrSchemaTags.FIELD) return
+                val value = tag.getAttribute("type")?.valueElement ?: return
                 val typeName = value.value
                 // A missing type is a different defect with a different message, and reporting it
                 // here would put "unknown type ''" in front of the user.
@@ -39,8 +40,4 @@ class SolrUnknownFieldTypeInspection : LocalInspectionTool() {
         }
     }
 
-    private companion object {
-        /** Tags whose `type` names a field type. */
-        val FIELD_TAGS = setOf("field", "dynamicField")
-    }
 }

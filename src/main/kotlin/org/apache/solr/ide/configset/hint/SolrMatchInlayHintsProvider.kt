@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrMatchAnalysis
@@ -54,7 +55,7 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider {
 
         override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
             val model = model ?: return
-            if (element !is XmlTag || element.name !in HINTED_TAGS) return
+            if (element !is XmlTag || element.name !in SolrSchemaTags.FIELD) return
             val fieldName = element.getAttributeValue("name") ?: return
             // A dynamic field is keyed by its pattern and matches through it, but what it matches is
             // decided by its type in exactly the same way, so it earns the same hint.
@@ -87,9 +88,5 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider {
             return if (capability.confident) capability.summary else null
         }
 
-        private companion object {
-            /** Tags that declare a field, and therefore something with a match capability. */
-            val HINTED_TAGS = setOf("field", "dynamicField")
-        }
     }
 }

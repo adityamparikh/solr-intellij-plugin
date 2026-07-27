@@ -4,6 +4,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 
 /**
  * Finds the PSI element that *declares* something in a schema.
@@ -25,7 +26,7 @@ internal object SolrSchemaPsi {
      * @return the declaring element, or null
      */
     fun findFieldType(file: PsiFile, typeName: String): XmlAttributeValue? =
-        findDeclaration(file, TYPE_TAGS, typeName)
+        findDeclaration(file, SolrSchemaTags.FIELD_TYPE, typeName)
 
     /**
      * The `name` attribute value of the `field` or `dynamicField` declaring [fieldName].
@@ -38,7 +39,7 @@ internal object SolrSchemaPsi {
      * @return the declaring element, or null
      */
     fun findField(file: PsiFile, fieldName: String): XmlAttributeValue? =
-        findDeclaration(file, FIELD_TAGS, fieldName)
+        findDeclaration(file, SolrSchemaTags.FIELD, fieldName)
 
     private fun findDeclaration(file: PsiFile, tagNames: Set<String>, name: String): XmlAttributeValue? =
         PsiTreeUtil.findChildrenOfType(file, XmlTag::class.java)
@@ -46,9 +47,5 @@ internal object SolrSchemaPsi {
             ?.getAttribute("name")
             ?.valueElement
 
-    /** Both spellings Solr accepts for a type declaration. */
-    private val TYPE_TAGS = setOf("fieldType", "fieldtype")
 
-    /** Tags that declare something a field name can refer to. */
-    private val FIELD_TAGS = setOf("field", "dynamicField")
 }

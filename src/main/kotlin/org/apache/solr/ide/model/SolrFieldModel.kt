@@ -120,19 +120,12 @@ class SolrFieldModel(
      * @return every directive copying from it
      */
     fun copyFieldsFrom(fieldName: String): List<SolrCopyField> =
-        copyFields.map { it.effective }.filter { it.source == fieldName || globMatches(it.source, fieldName) }
+        copyFields.map { it.effective }.filter { SolrGlob.matches(it.source, fieldName) }
 
     /** Facts whose two sources disagree — the drift a user needs to see. */
     val disagreements: List<SolrFact<*>>
         get() = (fields.values + dynamicFields.values + fieldTypes.values + copyFields)
             .filter { it.agreement == SolrAgreement.DISAGREEING }
-
-    private fun globMatches(pattern: String, name: String): Boolean = when {
-        pattern == "*" -> true
-        pattern.startsWith("*") -> name.endsWith(pattern.substring(1))
-        pattern.endsWith("*") -> name.startsWith(pattern.dropLast(1))
-        else -> false
-    }
 
     /** Construction from the two halves. */
     companion object {
