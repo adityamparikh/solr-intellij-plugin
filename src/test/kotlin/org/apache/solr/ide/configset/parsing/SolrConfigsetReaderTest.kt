@@ -132,6 +132,52 @@ class SolrConfigsetReaderTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * The drift comparison needs the repository half on its own, unmerged — it exists to show where
+     * the repository and a live server disagree, and a value with the disagreement already resolved
+     * away cannot answer that.
+     */
+    fun testFactsForReturnsTheRepositoryHalfUnmerged() {
+        val facts = reader.factsFor(givenConfigset())
+
+        assertEquals(setOf("id", "name"), facts.fields.map { it.name }.toSet())
+        assertEquals("id", facts.uniqueKey)
+        assertEquals("both files contribute", "name", facts.fieldReferences.single().fieldName)
+    }
+
+    /**
+     * A configset can stop existing while something still holds a reference to it. The answer is an
+     * empty model rather than an exception — this is the path that, got wrong, threw
+     * `InvalidVirtualFileAccessException` from inside the cache.
+     */
+    fun testAConfigsetThatHasStoppedExistingYieldsAnEmptyModel() {
+        val configset = givenConfigset()
+        reader.modelFor(configset)
+
+        WriteAction.runAndWait<RuntimeException> { configset.root.delete(this) }
+
+        assertTrue(reader.modelFor(configset).fields.isEmpty())
+        assertTrue(reader.factsFor(configset).fields.isEmpty())
+    }
+
+    /**
+     * A real configset holds more than the two files the model reads. `elevate.xml` and
+     * `stopwords.txt` are recognized as belonging to it — that is what makes their own references
+     * navigable — but the field model takes nothing from them, and reading them would add facts
+     * nothing consumes.
+     */
+    fun testTheOtherConfigsetFilesContributeNothing() {
+        myFixture.addFileToProject("full/conf/elevate.xml", """<elevate><query text="ipod"/></elevate>""")
+        myFixture.addFileToProject("full/conf/stopwords.txt", "the\nand\n")
+        myFixture.addFileToProject("full/conf/solrconfig.xml", config)
+        val schemaFile = myFixture.addFileToProject("full/conf/managed-schema.xml", schema).virtualFile
+
+        val model = reader.modelFor(SolrConfigsetDetector.configsetFor(project, schemaFile)!!)
+
+        assertEquals("only the schema declares fields", setOf("id", "name"), model.fields.keys)
+        assertEquals("only solrconfig references them", 1, model.fieldReferences.size)
+    }
+
     fun testTwoConfigsetsGetSeparateModels() {
         myFixture.addFileToProject("products/conf/managed-schema.xml", schema)
         val orders = myFixture.addFileToProject(

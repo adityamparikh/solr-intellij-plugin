@@ -71,10 +71,10 @@ class SolrConfigsetReader(private val project: Project) {
     private fun modelFor(directory: PsiDirectory): SolrFieldModel =
         CachedValuesManager.getCachedValue(directory) {
             val sources = sourcesOf(directory)
-            val facts = sources.fold(SolrConfigsetFacts()) { accumulated, file -> accumulated + factsOf(file) }
+            val facts = sources.fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
             CachedValueProvider.Result.create(
                 SolrFieldModel.of(facts),
-                sources + VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
+                sources.map { it.file } + VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
             )
         }
 
@@ -95,21 +95,49 @@ class SolrConfigsetReader(private val project: Project) {
         directoryOf(configset)
             ?.let { sourcesOf(it) }
             .orEmpty()
-            .fold(SolrConfigsetFacts()) { accumulated, file -> accumulated + factsOf(file) }
+            .fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
 
     /**
-     * The files in [directory] that contribute to the model, as PSI, in a stable order.
+     * The files in [directory] that contribute to the model, each carrying the parser that reads it,
+     * in a stable order.
      *
      * PSI rather than `VirtualFile` because these double as the cache's dependencies, and a
      * dependency has to be something the platform can ask for a modification count. Taking the text
      * from the same objects also removes a discrepancy the previous implementation had to document:
      * it read the in-memory document while stamping the file, so the two could disagree on first
      * read.
+     *
+     * **The parser travels with the file** rather than being chosen again later. Selecting the
+     * files by kind and then dispatching on kind a second time needs a branch for *a file that
+     * passed the filter and is neither* — which nothing can reach, no test can cover, and which
+     * would silently contribute no facts if a third kind were ever added to the filter alone.
      */
-    private fun sourcesOf(directory: PsiDirectory): List<PsiFile> =
+    private fun sourcesOf(directory: PsiDirectory): List<SolrSource> =
         directory.files
-            .filter { SolrConfigsetFileKind.forFileName(it.name)?.let(::contributesToModel) == true }
-            .sortedBy { it.name }
+            .mapNotNull { file -> parserFor(file)?.let { SolrSource(file, it) } }
+            .sortedBy { it.file.name }
+
+    /**
+     * The parser for [file], or null when the model takes nothing from it.
+     *
+     * Only the schema and `solrconfig.xml` are read today. The other identifying files —
+     * `elevate.xml`, `currency.xml` — describe things the field model does not yet represent, and
+     * reading them would add facts nothing consumes.
+     */
+    private fun parserFor(file: PsiFile): ((CharSequence) -> SolrConfigsetFacts)? {
+        val kind = SolrConfigsetFileKind.forFileName(file.name) ?: return null
+        return when {
+            kind.isSchema -> SolrSchemaParser::parse
+            kind == SolrConfigsetFileKind.SOLR_CONFIG -> SolrConfigParser::parse
+            else -> null
+        }
+    }
+
+    /** One file the model is built from, and the parser that reads it. */
+    private class SolrSource(val file: PsiFile, val parse: (CharSequence) -> SolrConfigsetFacts) {
+        /** The facts this file declares, read from the PSI the cache also depends on. */
+        fun facts(): SolrConfigsetFacts = parse(file.text)
+    }
 
     /**
      * The model for the configset owning [file], or null when [file] belongs to none.
@@ -126,25 +154,6 @@ class SolrConfigsetReader(private val project: Project) {
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
         val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
         return modelFor(configset)
-    }
-
-    /**
-     * Whether a file of [kind] contributes facts to the model.
-     *
-     * Only the schema and `solrconfig.xml` are read today. The other identifying files —
-     * `elevate.xml`, `currency.xml` — describe things the field model does not yet represent, and
-     * reading them would add facts nothing consumes.
-     */
-    private fun contributesToModel(kind: SolrConfigsetFileKind): Boolean =
-        kind.isSchema || kind == SolrConfigsetFileKind.SOLR_CONFIG
-
-    private fun factsOf(file: PsiFile): SolrConfigsetFacts {
-        val kind = SolrConfigsetFileKind.forFileName(file.name)
-        return when {
-            kind?.isSchema == true -> SolrSchemaParser.parse(file.text)
-            kind == SolrConfigsetFileKind.SOLR_CONFIG -> SolrConfigParser.parse(file.text)
-            else -> SolrConfigsetFacts()
-        }
     }
 
     /** Service lookup, and the answer for a configset that has stopped existing. */
