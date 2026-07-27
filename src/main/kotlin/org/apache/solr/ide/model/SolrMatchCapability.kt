@@ -92,6 +92,25 @@ data class SolrMatchCapability(
     /** Whether arbitrary substrings match efficiently, which only full n-grams provide. */
     val substringSupported: Boolean get() = prefix == SolrPrefixSupport.N_GRAM
 
+    /**
+     * A one-line summary: granularity, case, and how partial matching is supported.
+     *
+     * Lives on the capability rather than in any one feature's presentation code, because the
+     * inline hint, the documentation popup and the completion lookup all show it and must never
+     * word it differently — the same field described three ways is three chances to be doubted.
+     */
+    val summary: String
+        get() = buildList {
+            add(if (granularity == SolrMatchGranularity.WHOLE_VALUE) "whole value" else "tokenised")
+            add(if (caseSensitive) "case-sensitive" else "case-insensitive")
+            when (prefix) {
+                SolrPrefixSupport.NONE -> Unit
+                SolrPrefixSupport.EDGE_NGRAM -> add("prefix-capable")
+                SolrPrefixSupport.N_GRAM -> add("substring-capable")
+                SolrPrefixSupport.PATH_HIERARCHY -> add("path-prefix-capable")
+            }
+        }.joinToString(", ")
+
     /** The factory responsible for [trait], or null if nothing in the chain decided it. */
     fun evidenceFor(trait: SolrMatchTrait): String? = evidence.firstOrNull { it.trait == trait }?.factory
 }

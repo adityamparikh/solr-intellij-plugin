@@ -66,25 +66,33 @@ hand-edited, which are written by an API, and what the plugin covers.
 out under "What this replaces". The operative consequence here: if you find code or docs asking
 whether a write is *allowed*, it predates this and should go.
 
-**Where the code lives.** `org.apache.solr.ide.configset` decides whether a file belongs to a Solr
-configset. `SolrProjectDetector` is the outer gate: it activates the plugin only in a project whose
-dependencies include a Solr client, matching artifact ids (never versions) against an explicit list.
-`SolrConfigsetDetector` then gates individual files on a recognized name
-(`SolrConfigsetFileKind`), with `SolrConfigsetLocator` resolving which configset owns them. Inside a
-Solr project, names are tiered by what they prove (`SolrConfigsetFileRole`): self-identifying names
-like `solrconfig.xml` stand alone, ambiguous ones like `schema.xml` count only inside a directory a
-self-identifying name has already proven, and resources like `stopwords.txt` never activate anything.
-The old directory heuristics (a `conf/` parent, a second recognized file) are gone. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is the only way
-a configset repository with no build file activates at all. `org.apache.solr.ide` holds `SolrBundle`, the localization bundle.
+**Where the code lives.** Packages are organised **by feature, and by feature again inside**. The
+spec's three surfaces are the top level; within a surface each package is one capability, not one
+layer. `org.apache.solr.ide.model` is the single exception and earns it: it is what both surfaces
+read, and the only package with no IntelliJ types, which is what lets the correctness-critical code
+be tested without a fixture.
 
-`org.apache.solr.ide.model` is the field model — pure data, no IntelliJ types, so it can be tested
-without a fixture. A fact is a `SolrFact` holding a repository half and a server half plus their
-`SolrAgreement`; the server half is empty until the server reader lands. `org.apache.solr.ide.repository`
-fills it: `SolrSchemaParser` and `SolrConfigParser` are pure functions over text (JDK DOM, not XML
-PSI, with doctypes refused), `SolrConfigsetReader` caches a model per configset keyed on the
-modification stamps of the files it read, and `SolrConfigsetScanner` enumerates the project's
-configsets off the editor path. The server client, recognizers and UI get sibling packages as they
-land.
+`org.apache.solr.ide.configset.activation` decides whether anything runs. `SolrProjectDetector` is
+the outer gate — the plugin activates only in a project whose dependencies include a Solr client,
+matched by artifact id, never version. `SolrConfigsetDetector` then gates individual files on a
+recognized name (`SolrConfigsetFileKind`), with `SolrConfigsetLocator` resolving which configset owns
+them and caching it. Names are tiered by what they prove (`SolrConfigsetFileRole`): self-identifying
+names like `solrconfig.xml` stand alone, ambiguous ones like `schema.xml` count only inside a
+directory a self-identifying name has already proven, and resources like `stopwords.txt` never
+activate anything. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is
+the only way a configset repository with no build file activates at all.
+
+`org.apache.solr.ide.configset.parsing` reads a configset into the model: `SolrSchemaParser` and
+`SolrConfigParser` are pure functions over text (JDK DOM, not XML PSI, with doctypes refused),
+`SolrConfigsetReader` caches a model per configset keyed on the modification stamps of the files it
+read, and `SolrConfigsetScanner` enumerates the project's configsets off the editor path.
+`SolrConfigsetReader.modelFor(PsiFile)` is the question every editor feature asks — it lives there
+rather than beside any one feature, because otherwise four features would import the fifth.
+
+The remaining `configset` packages are one capability each: `inspection`, `completion`, `reference`,
+`documentation`, `hint`. `org.apache.solr.ide.server` holds connections and will hold the HTTP
+client. `org.apache.solr.ide` holds `SolrBundle`. New packages are created when they have a file to
+hold, not in advance.
 
 Do not infer what is built from the API reference, and do not look for it here — the plan owns
 status.

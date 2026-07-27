@@ -232,4 +232,39 @@ class SolrMatchAnalysisTest {
         assertNull(capability.evidenceFor(SolrMatchTrait.PREFIX))
         assertEquals("StandardTokenizerFactory", capability.evidenceFor(SolrMatchTrait.GRANULARITY))
     }
+
+    // --- the wording ----------------------------------------------------------------------------
+
+    /**
+     * The exact words the demo puts on screen. They live on the capability so the inline hint, the
+     * documentation popup and the completion lookup cannot word the same field three ways — and
+     * they are asserted here because the demo's whole opening depends on them.
+     */
+    @Test
+    fun `the summary reads the way the demo says it does`() {
+        assertEquals(
+            "whole value, case-sensitive",
+            SolrMatchAnalysis.of(SolrFieldType("string", "solr.StrField")).summary,
+        )
+        assertEquals(
+            "tokenised, case-insensitive",
+            analyze("StandardTokenizerFactory", "LowerCaseFilterFactory").summary,
+        )
+        assertEquals(
+            "tokenised, case-insensitive, prefix-capable",
+            analyze("StandardTokenizerFactory", "LowerCaseFilterFactory", "EdgeNGramFilterFactory").summary,
+        )
+    }
+
+    @Test
+    fun `substring and path-prefix support are worded distinctly`() {
+        assertEquals(
+            "tokenised, case-sensitive, substring-capable",
+            analyze("StandardTokenizerFactory", "NGramFilterFactory").summary,
+        )
+        assertEquals(
+            "tokenised, case-sensitive, path-prefix-capable",
+            analyze("PathHierarchyTokenizerFactory").summary,
+        )
+    }
 }
