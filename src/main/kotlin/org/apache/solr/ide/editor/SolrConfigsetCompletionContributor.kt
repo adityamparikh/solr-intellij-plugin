@@ -15,6 +15,7 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrMatchAnalysis
 
 /**
@@ -74,6 +75,8 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
         tagName in FIELD_TAGS && attributeName == "type" -> fieldTypes(model)
         tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
+        tagName in FIELD_TAGS && isBooleanProperty(attributeName) -> BOOLEANS
+        tagName in TYPE_TAGS && isBooleanProperty(attributeName) -> BOOLEANS
         else -> emptyList()
     }
 
@@ -91,6 +94,16 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         }
 
     /**
+     * Whether [attributeName] is one of the properties that takes only `true` or `false`.
+     *
+     * Read from the property table rather than listed again here, so a property added there gains
+     * completion without a second edit — and so the two can never disagree about what a property
+     * accepts.
+     */
+    private fun isBooleanProperty(attributeName: String): Boolean =
+        SolrFieldProperties.byName(attributeName)?.validValues == BOOLEAN_VALUES
+
+    /**
      * The declared fields, and the dynamic patterns, each showing its type.
      *
      * Dynamic patterns are offered because a `copyField` may legitimately name one — `dest="*_t"`
@@ -106,6 +119,15 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
 
     private companion object {
         val FIELD_TAGS = setOf("field", "dynamicField")
+        val TYPE_TAGS = setOf("fieldType", "fieldtype")
         val COPY_FIELD_ATTRIBUTES = setOf("source", "dest")
+
+        /** The `validValues` string the property table uses for a boolean. */
+        const val BOOLEAN_VALUES = "true or false"
+
+        val BOOLEANS: List<LookupElement> = listOf(
+            LookupElementBuilder.create("true"),
+            LookupElementBuilder.create("false"),
+        )
     }
 }

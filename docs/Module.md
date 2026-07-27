@@ -225,6 +225,11 @@ Solr, and a query using it simply returns fewer results. Its precision rules
 matter most — `fl` legitimately contains `score`, `[docid]` and
 `max(price,0)`, none of which is a field.
 
+[SolrConfigsetCompletionContributor] covers the attribute values whose valid set
+is closed, and deliberately nothing else. A list implies the values not on it are
+wrong, so offering a partial one where any value is legal would be worse than
+offering none.
+
 [SolrMatchInlayHintsProvider] shows what each field matches inline beside its
 declaration — an inlay rather than a tooltip because a user who does not already
 suspect their field cannot match a prefix will never hover over it to find out.
