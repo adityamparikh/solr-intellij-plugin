@@ -54,6 +54,8 @@ The foundation is complete and the first two user-facing features sit on top of 
   does not declare, a field naming a field type it does not declare, and a handler parameter in
   `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
   boundary nothing else checks
+- **Completion** for a field's `type`, offering the declared field types and showing what each one
+  matches
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
