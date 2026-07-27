@@ -59,6 +59,8 @@ it whole, and the gutter action goes with the Server track.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary)
   — likewise. Corrects a dependency that parked field attribute completion behind the
   catalog, which it never needed.
+- [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
+  — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
@@ -579,6 +581,44 @@ edit what is already written and one who can discover what Solr allows.
 **Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
 for the element descriptions. Nothing from the catalog.
 
+### Step 25: solrconfig.xml as a first-class surface
+
+Numbered last because it was added last; it belongs in the Editor track after
+[the factory catalog](#step-9-factory-catalog-generator), which it depends on entirely.
+
+The spec settled the scope question under "`solrconfig.xml` gets the same treatment as the
+schema". Until now the file was read only for the field names it mentions, which gave the
+most-edited file in a configset the least support.
+
+**This is the largest step in the configuration surface and should be split when it starts.**
+It is written as one step because the pieces share a dependency and a shape, not because it
+is one pull request.
+
+**Actions:**
+1. Element and attribute completion for `solrconfig.xml`'s structure, from the catalog, with
+   the shipped `_default` and `sample_techproducts_configs` files as ground truth for what
+   nests inside what.
+2. Parameter-name completion inside `defaults`, `appends` and `invariants`, and documentation
+   on each parameter.
+3. Validation of what the catalog positively knows to be wrong: a misspelling of a name it
+   knows, a value outside a set it knows to be closed. **Never validation by absence** — a
+   parameter the generator did not find is not thereby invalid, and `solrconfig.xml` accepts
+   plugin classes from outside Solr. Flagging the unknown would produce a false positive on
+   every project with a custom component.
+4. Navigation from a `class` attribute to the plugin it names, where that class is on the
+   project's classpath.
+
+**Success criteria:**
+- [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already
+      sets for inspections.
+- [ ] A custom plugin class and its parameters produce no findings either.
+- [ ] Completion and documentation answer inside a request handler.
+
+**Acceptance:** No demo step of its own yet; the runbook predates this scope.
+
+**Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator), which
+grows to cover this vocabulary.
+
 ### Step 8: Rename
 
 **Actions:**
@@ -602,7 +642,11 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 
 **Actions:**
 1. A Gradle task that reads the Solr and Lucene artifacts per supported line and emits a
-   catalog of factories, their attributes and their documentation. Runs in the build,
+   catalog of factories, their attributes and their documentation — **and, by the same three
+   passes, of `solrconfig.xml`'s plugins and their parameters.** The spec argues this out
+   under "`solrconfig.xml` gets the same treatment as the schema": the parameter names are
+   unreflectable for exactly the reason factory attributes are, so the constructor-bytecode
+   pass is the same technique pointed at a different set of classes. Runs in the build,
    where loading Solr classes is ordinary. It needs three sources, because no single one
    carries all three pieces:
    - **Factories** — reflection over the artifact jars, via the SPI service files Solr

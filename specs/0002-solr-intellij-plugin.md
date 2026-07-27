@@ -221,6 +221,45 @@ against a server version the plugin has never seen.
 **This is unrelated to supporting the user's SolrJ code**, which is a first-class
 feature. The rule is: *the plugin reads SolrJ, it does not call SolrJ.*
 
+### `solrconfig.xml` gets the same treatment as the schema
+
+The schema and `solrconfig.xml` are both hand-edited XML, and this document argues
+elsewhere that `solrconfig.xml` is the one with *no real API alternative* — it is the file
+people actually edit. Treating it only as a source of field names, which an earlier
+revision did, gave the most-edited file the least support.
+
+So it is a first-class surface: its elements, their attributes, the request-handler and
+component parameters inside them, completed, documented and validated, exactly as the
+schema's vocabulary is.
+
+**This is the largest single body of work in the configuration surface, and it is not
+hand-maintainable.** `solrconfig.xml` spans request handlers, search components, update
+processor chains, caches, response writers, codec and replication configuration; the
+parameter sets alone run to hundreds of names, and they differ between Solr lines. The
+argument that produced the factory catalog applies here with more force.
+
+**It therefore extends the catalog rather than starting a second one.** The three sources
+the catalog already needs answer this too, and the awkward one is the same:
+
+- **Plugins and components** — the classes named by a `class` attribute — are reachable by
+  reflection over the artifacts, as the analysis factories are.
+- **Parameter names are not reflectable**, for exactly the reason factory attributes are
+  not: a handler reads them out of `SolrParams` by string literal. The constructor-bytecode
+  pass the catalog already performs is the same technique applied to a different set of
+  classes.
+- **Documentation** comes from the `-sources` artifacts, under the same ALv2 constraint.
+
+Two things are ground truth rather than derivation, and both are already required: the
+`_default` and `sample_techproducts_configs` configsets Solr ships are real, valid
+`solrconfig.xml` files, so they pin the element structure and serve as the clean fixtures
+that must produce zero findings.
+
+**Where the catalog cannot answer, the plugin says nothing.** A parameter the generator did
+not find is not thereby invalid; `solrconfig.xml` accepts plugin classes from outside Solr,
+and flagging what a catalog does not know would produce false positives on every project
+with a custom component. Validation is limited to what the catalog positively knows to be
+wrong — a misspelling of a name it does know, a value outside a set it knows to be closed.
+
 ### The factory catalog
 
 Completion and documentation need to know Solr's analysis factories — roughly 130
