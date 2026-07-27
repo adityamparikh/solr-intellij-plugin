@@ -58,6 +58,9 @@ The foundation is complete and the first two user-facing features sit on top of 
   source or destination names a field the configset does not declare, a field naming a field type it does not declare, and a handler parameter in
   `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
   boundary nothing else checks
+- **Completion of the schema's own vocabulary** — the elements legal at the caret, the attributes
+  each element accepts minus those already written, and the values an attribute accepts where that
+  set is closed
 - **Completion** for a field's `type`, offering the declared field types and showing what each one
   matches, for a `copyField`'s source and destination, offering the declared fields, and `true`/`false`
   for the boolean properties — with the value Solr would use if the attribute were absent marked as

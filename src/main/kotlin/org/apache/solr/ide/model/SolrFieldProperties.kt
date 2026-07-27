@@ -41,7 +41,26 @@ data class SolrFieldProperty(
     val defaultValue: String?,
     val scope: SolrPropertyScope = SolrPropertyScope.FIELD_AND_TYPE,
     val closedValues: List<String> = emptyList(),
-)
+) {
+
+    /**
+     * Every value this property accepts, or empty when any value is legal.
+     *
+     * Booleans are expanded here rather than repeated in [closedValues] on the sixteen entries that
+     * take one, which would be the same two strings written sixteen times. A caller offering
+     * choices should ask this rather than reading [validValues], which is prose meant for a reader.
+     */
+    val offerableValues: List<String>
+        get() = if (validValues == BOOLEAN_VALUES) BOOLEAN_OFFERS else closedValues
+
+    /** The two spellings this table uses for value sets it can enumerate. */
+    companion object {
+        /** The [validValues] prose that marks a property as taking only `true` or `false`. */
+        const val BOOLEAN_VALUES: String = "true or false"
+
+        private val BOOLEAN_OFFERS = listOf("true", "false")
+    }
+}
 
 /**
  * Where a property may be written.
