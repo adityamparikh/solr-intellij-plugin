@@ -55,7 +55,7 @@ The foundation is complete and the first two user-facing features sit on top of 
   `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
   boundary nothing else checks
 - **Completion** for a field's `type`, offering the declared field types and showing what each one
-  matches
+  matches, and for a `copyField`'s source and destination, offering the declared fields
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
