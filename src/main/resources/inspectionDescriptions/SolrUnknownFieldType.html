@@ -1,0 +1,13 @@
+<html>
+<body>
+Reports a <code>field</code> or <code>dynamicField</code> whose <code>type</code> names a field type
+the configset does not declare.
+<p>
+  Solr refuses to load a core with an unknown field type. The mistake is easy to make while editing,
+  because generic word completion will happily offer any word already present in the file — including
+  attribute names such as <code>stored</code>.
+</p>
+<p><small>Example: <code>&lt;field name="sku" type="stored"/&gt;</code> where the declared types are
+  <code>string</code> and <code>text_general</code>.</small></p>
+</body>
+</html>

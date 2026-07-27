@@ -53,5 +53,15 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.editor.SolrDanglingCopyFieldInspection"/>
+        <localInspection
+            language="XML"
+            shortName="SolrUnknownFieldType"
+            bundle="messages.SolrBundle"
+            key="inspection.fieldType.displayName"
+            groupBundle="messages.SolrBundle"
+            groupKey="inspection.group"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.apache.solr.ide.editor.SolrUnknownFieldTypeInspection"/>
     </extensions>
 </idea-plugin>

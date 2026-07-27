@@ -215,6 +215,10 @@ exist — the failure the plugin exists for, since Solr accepts the file and
 rejects it only at core reload. Its clean fixtures matter more than its flagged
 ones: a warning on a correct file is what gets a plugin uninstalled.
 
+[SolrUnknownFieldTypeInspection] reports a `type` the configset never declares —
+the mistake most easily made when something offers a word from elsewhere in the
+file as a value.
+
 [SolrMatchInlayHintsProvider] shows what each field matches inline beside its
 declaration — an inlay rather than a tooltip because a user who does not already
 suspect their field cannot match a prefix will never hover over it to find out.

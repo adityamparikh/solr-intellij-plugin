@@ -425,6 +425,7 @@ unresolved-reference checks, and these are driven off the field model instead.
 **Success criteria:**
 - [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
   - [x] Dangling `copyField` source or destination.
+  - [x] A field naming an undeclared field type.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
