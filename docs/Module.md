@@ -167,6 +167,12 @@ of syntax that resembles a field name: `fl` legitimately holds `score`, `*`,
 pattern whose matches the schema alone cannot determine. A warning on a correct
 file is what gets a plugin uninstalled.
 
+Each reference inspection offers the valid alternatives as a quick-fix, ranked by
+edit distance because the common cause is a typo and capped because a schema with
+eighty fields must not answer one with eighty menu items. The inspection computed
+that set in order to decide; discarding it and leaving the reader to find it is
+the difference between an editor that helps and one that complains.
+
 # Package org.apache.solr.ide.configset.completion
 
 Offering the values an attribute can legally take.

@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.inspection
 
+import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.ElementManipulators
@@ -29,6 +30,45 @@ internal object SolrInspections {
 
 
     /**
+     * Quick-fixes replacing [wrong] with each of [candidates], closest spelling first.
+     *
+     * Ordered by edit distance because the overwhelmingly common cause is a typo, and a reader
+     * scanning Alt-Enter should meet `description` before `category` when they typed `descriptoin`.
+     * Capped so that a schema with eighty fields does not answer a typo with eighty menu items —
+     * past a handful the list stops being a suggestion and becomes a directory.
+     *
+     * @param wrong the name that was reported
+     * @param candidates every name that would have been valid
+     * @param familyText the grouping label for the fixes
+     * @return the fixes, best first
+     */
+    fun replacementFixes(wrong: String, candidates: Collection<String>, familyText: String): Array<LocalQuickFix> =
+        candidates.asSequence()
+            .sortedWith(compareBy({ editDistance(wrong.lowercase(), it.lowercase()) }, { it }))
+            .take(MAX_SUGGESTIONS)
+            .map { SolrReplaceNameQuickFix(it, familyText) as LocalQuickFix }
+            .toList()
+            .toTypedArray()
+
+    /** Levenshtein distance, used only to rank suggestions. */
+    private fun editDistance(a: String, b: String): Int {
+        var previous = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val current = IntArray(b.length + 1)
+            current[0] = i
+            for (j in 1..b.length) {
+                val substitution = previous[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1
+                current[j] = minOf(substitution, previous[j] + 1, current[j - 1] + 1)
+            }
+            previous = current
+        }
+        return previous[b.length]
+    }
+
+    /** How many replacements Alt-Enter offers before the list stops being useful. */
+    private const val MAX_SUGGESTIONS = 6
+
+    /**
      * Reports [message] on the text *inside* an attribute's quotes.
      *
      * An attribute value element spans its quotes, so registering on the element underlines
@@ -39,12 +79,18 @@ internal object SolrInspections {
      * @param value the attribute value element
      * @param message the user-facing message
      */
-    fun reportOnValue(holder: ProblemsHolder, value: XmlAttributeValue, message: String) {
+    fun reportOnValue(
+        holder: ProblemsHolder,
+        value: XmlAttributeValue,
+        message: String,
+        fixes: Array<LocalQuickFix> = LocalQuickFix.EMPTY_ARRAY,
+    ) {
         holder.registerProblem(
             value,
             message,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
             ElementManipulators.getValueTextRange(value),
+            *fixes,
         )
     }
 
