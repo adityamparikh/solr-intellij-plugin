@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.reference
 
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlAttributeValue
@@ -41,11 +42,24 @@ internal object SolrSchemaPsi {
     fun findField(file: PsiFile, fieldName: String): XmlAttributeValue? =
         findDeclaration(file, SolrSchemaTags.FIELD, fieldName)
 
-    private fun findDeclaration(file: PsiFile, tagNames: Set<String>, name: String): XmlAttributeValue? =
-        PsiTreeUtil.findChildrenOfType(file, XmlTag::class.java)
-            .firstOrNull { it.name in tagNames && it.getAttributeValue("name") == name }
-            ?.getAttribute("name")
-            ?.valueElement
-
-
+    /**
+     * The first tag named in [tagNames] whose `name` attribute is [name].
+     *
+     * **Stops at the match and checks for cancellation on the way.** This runs once per reference
+     * per highlighting pass, and a real schema is thousands of elements — `findChildrenOfType` would
+     * collect every tag in the file into a list before looking at any of them, and would keep
+     * building that list while the user carried on typing.
+     */
+    private fun findDeclaration(file: PsiFile, tagNames: Set<String>, name: String): XmlAttributeValue? {
+        var found: XmlAttributeValue? = null
+        PsiTreeUtil.processElements(file, XmlTag::class.java) { tag ->
+            ProgressManager.checkCanceled()
+            if (tag.name in tagNames && tag.getAttributeValue("name") == name) {
+                found = tag.getAttribute("name")?.valueElement
+            }
+            // A matching tag with no value element is not an answer, so keep looking.
+            found == null
+        }
+        return found
+    }
 }

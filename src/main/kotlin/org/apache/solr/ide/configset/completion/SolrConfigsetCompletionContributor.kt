@@ -32,12 +32,22 @@ import org.apache.solr.ide.configset.documentation.SolrSchemaElements
  * value is legal would be worse than offering none, because a list implies the answers not on it
  * are wrong.
  *
- * `stopHere` is called after contributing, which is the documented way to keep other contributors
- * from extending a set that is already complete. Note that no other contributor was observed adding
- * to these positions in testing, so this is a guard rather than a fix for something reproduced —
- * IntelliJ's word completion, the obvious candidate, does not fire inside an XML attribute value.
+ * **Other contributors are left to run.** An earlier revision called `stopHere` after contributing,
+ * on the reasoning that a complete set cannot be improved on. Nothing was ever observed adding to
+ * these positions, so it suppressed nothing — but `stopHere` silences every later contributor
+ * including ones this plugin never anticipated, which is a large promise to make in exchange for a
+ * guard against something that does not happen.
  */
 class SolrConfigsetCompletionContributor : CompletionContributor() {
+
+    /**
+     * Runs while the project is still indexing.
+     *
+     * Completion here is answered from the configset's own text, never from an index, so the
+     * platform's default of withholding this until indexing finishes would disable a working
+     * feature during exactly the minutes a reader is first opening files.
+     */
+    override fun isDumbAware(): Boolean = true
 
     init {
         extend(
@@ -71,13 +81,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         val attribute = value.parentOfType<XmlAttribute>() ?: return
         val tag = attribute.parentOfType<XmlTag>() ?: return
 
-        val suggestions = suggestionsFor(tag.name, attribute.name, model)
-        if (suggestions.isEmpty()) return
-        result.addAllElements(suggestions)
-
-        // The values above are the complete set Solr accepts here, so anything else on the list
-        // could only be wrong. A guard rather than a fix for anything observed — see the class doc.
-        result.stopHere()
+        result.addAllElements(suggestionsFor(tag.name, attribute.name, model))
     }
 
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {

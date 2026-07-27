@@ -28,6 +28,15 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
 
     /**
+     * Runs while the project is still indexing.
+     *
+     * Nothing here consults an index — the model is parsed from the configset's own text — so the
+     * platform's default of skipping this until indexing finishes would withhold a working feature
+     * for no reason, exactly when a reader is most likely to be opening files for the first time.
+     */
+    override fun isDumbAware(): Boolean = true
+
+    /**
      * @param holder collects the problems found
      * @param isOnTheFly whether this is an editor pass rather than a batch run
      * @return a visitor over parameter values, or an empty one outside a configset

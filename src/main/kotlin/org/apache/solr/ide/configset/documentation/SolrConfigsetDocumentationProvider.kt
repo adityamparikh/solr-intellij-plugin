@@ -1,6 +1,7 @@
 package org.apache.solr.ide.configset.documentation
 
 import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -27,7 +28,7 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
  * resolution has not landed yet and this does not need it: the element under the caret carries
  * enough to answer.
  */
-class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
+class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), DumbAware {
 
     /**
      * Picks the element to document when the caret is inside a schema attribute value.
