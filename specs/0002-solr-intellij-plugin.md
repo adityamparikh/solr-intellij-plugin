@@ -258,6 +258,40 @@ Which entry applies is decided in this order:
 Which source answered is recorded on the data, so the user can tell whether completion
 came from their server, their configset, or a default.
 
+### Documentation links to the Reference Guide rather than copying it
+
+Embedded javadoc and the Reference Guide answer different questions, so the plugin uses
+both. Javadoc says what a class does; the Reference Guide explains the concept, with
+examples and the surrounding context that makes it usable. Copying the latter would mean
+carrying a second body of prose that goes stale on its own schedule, so documentation
+**links** to it instead — which costs no licensing question and is always current.
+
+The link points at the version the configset targets, resolved by the order already
+defined above. A user on a 9.x configset should not be sent to documentation for a Solr
+they are not running.
+
+**A dead link is worse than no link.** Reference Guide anchors are generated from headings
+and drift between releases, and field types have no per-class anchor at all — they are rows
+in a table on one page. Links are therefore page-level unless an anchor has been verified
+for the target version, and something with no known page gets no link rather than a guessed
+one. A user who follows a link into a 404 learns not to trust the next one.
+
+**Nothing on the editor path fetches a URL.** Links are constructed and displayed; the
+browser resolves them if and when the user clicks. This is the same rule that keeps
+detection off the network, and it also means documentation works offline, minus the link.
+
+### What quick documentation covers
+
+Factories and their attributes, from the catalog — and **field types**, which are a
+different target and mostly a different kind of answer.
+
+For a field type, the most useful thing to show is not prose about `TextField` but what
+*this* type does in *this* schema: its implementing class, its analyzer chain in pipeline
+order, and what a field of that type can therefore match. That is derived from the model
+and the match analysis, it is specific to the configset in front of the user, and no
+external documentation can supply it. The Reference Guide link is the supplement, not the
+substance.
+
 An earlier draft proposed resolving this at runtime from the project's own dependency
 jars, read as bytecode to avoid classloader conflicts, with per-module resolution. That
 is deleted. It was substantial machinery to answer a question a connected server answers
@@ -309,7 +343,9 @@ be good, because value arriving before configuration is what keeps a plugin inst
   `_exact` companion field plus its `copyField`, or an EdgeNGram-backed `_prefix` field.
   Phrased as *efficient index-time* support, since wildcard queries already provide slow
   partial matching on any indexed field.
-- **Quick documentation** on factories and attributes.
+- **Quick documentation** on factories and attributes, and on a field's type — what it is,
+  what its analyzer chain does, and what a field of that type can match, with a link to the
+  Reference Guide for the version the configset targets.
 - **Rename** a field or field type, updating every reference across both files.
 
 Files are edited directly and without warning. The plugin does not classify schema

@@ -50,7 +50,11 @@ object SolrConfigParser {
                 }
             }
         }
-        return SolrConfigsetFacts(fieldReferences = references)
+        return SolrConfigsetFacts(
+            fieldReferences = references,
+            luceneMatchVersion = root.descendantsNamed("luceneMatchVersion").firstOrNull()
+                ?.textContent?.trim()?.takeIf { it.isNotEmpty() },
+        )
     }
 
     private fun referencesIn(owner: String, parameterName: String, parameter: Element): List<SolrFieldReference> {

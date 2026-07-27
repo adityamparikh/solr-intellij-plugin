@@ -72,6 +72,7 @@ data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
  * @property copyFields copy-field directives, keyed by source and destination together
  * @property uniqueKey the `uniqueKey` declaration, or null if the configset declares none
  * @property fieldReferences field names referenced from `solrconfig.xml`
+ * @property luceneMatchVersion the version the configset declares it targets, or null
  */
 class SolrFieldModel(
     val fields: Map<String, SolrFact<SolrField>> = emptyMap(),
@@ -80,6 +81,7 @@ class SolrFieldModel(
     val copyFields: List<SolrFact<SolrCopyField>> = emptyList(),
     val uniqueKey: SolrFact<String>? = null,
     val fieldReferences: List<SolrFieldReference> = emptyList(),
+    val luceneMatchVersion: String? = null,
 ) {
 
     /**
@@ -167,6 +169,7 @@ class SolrFieldModel(
                     SolrFact(repo.uniqueKey, srv.uniqueKey)
                 },
                 fieldReferences = repo.fieldReferences,
+                luceneMatchVersion = repo.luceneMatchVersion,
             )
         }
 

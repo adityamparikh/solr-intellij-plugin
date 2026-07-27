@@ -59,6 +59,7 @@ object SolrSchemaParser {
             multiValued = element.booleanAttribute("multiValued"),
             required = element.booleanAttribute("required"),
             defaultValue = element.attributeOrNull("default"),
+            attributes = element.attributesExcept("name", "type"),
         )
     }
 

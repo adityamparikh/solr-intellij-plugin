@@ -430,16 +430,32 @@ rule immediately.
 
 ### Step 7: Match hints and quick-fixes
 
+Taken out of order, ahead of the Editor track's earlier steps. Its two dependencies are
+both met, it needs no PSI reference infrastructure, and it is the first step that produces
+anything a user can see — four steps of foundation had shipped with no exit to the UI.
+
 **Actions:**
-1. Annotator surfacing each field's match capability from
-   [match analysis](#step-4-match-analysis).
-2. Intentions adding a missing capability: an `_exact` companion plus `copyField`, an
+1. Inlay hints surfacing each field's match capability from
+   [match analysis](#step-4-match-analysis), inline rather than on hover, so the demo does
+   not depend on the presenter's mouse.
+2. Quick documentation on a field's `type`, covering what the type is, what its analyzer
+   chain does, and what a field of it can match — plus a Reference Guide link for the
+   version the configset targets. The spec argues this out under "What quick documentation
+   covers"; the part that matters here is that this half needs the model and match
+   analysis, not the factory catalog, so it does not wait for
+   [the catalog](#step-9-factory-catalog-generator).
+3. Intentions adding a missing capability: an `_exact` companion plus `copyField`, an
    EdgeNGram-backed `_prefix` field. Phrased as efficient index-time support — the spec
    explains the wildcard caveat behind that wording.
-3. Edit the file directly. No provenance check, no warning, no redirect.
+4. Edit the file directly. No provenance check, no warning, no redirect.
+5. Say nothing where match analysis is not confident. An unrecognized factory means the
+   chain was not fully understood, and a wrong hint is worse than none.
 
 **Success criteria:**
 - [ ] Fields annotated correctly for canonical types.
+- [ ] No hint is shown where match analysis is not confident.
+- [ ] Quick documentation on a field's type resolves, and its Reference Guide link names
+      the version the configset targets.
 - [ ] Quick-fixes produce valid configset edits.
 
 **Acceptance:** demo steps
@@ -517,7 +533,10 @@ is the one to run by hand, for the reason in the criterion above.
 2. Structural validation flagging unknown factories and invalid attributes.
 3. Dynamic field pattern awareness.
 4. Documentation provider keyed by factory and attribute, surfacing which catalog source
-   answered.
+   answered. The *field type* half of quick documentation does not belong here — it needs
+   the model and match analysis rather than the catalog, so it ships with
+   [match hints](#step-7-match-hints-and-quick-fixes) instead. Only the catalog-backed
+   half waits for this step.
 
 **Success criteria:**
 - [ ] Completion and validation work against the catalog.

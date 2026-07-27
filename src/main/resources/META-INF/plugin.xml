@@ -21,5 +21,23 @@
         <!-- Associate the extensionless `managed-schema` (and newer `managed-schema.xml`) with the
              XML file type so configsets are parsed as XML for later PSI-based features. -->
         <fileType name="XML" fileNames="managed-schema;managed-schema.xml"/>
+
+        <!-- What each field can actually match, shown inline beside its declaration. An inlay
+             rather than a tooltip on purpose: a user who does not already suspect their field
+             cannot match a prefix will never hover over it to find out. -->
+        <codeInsight.declarativeInlayProvider
+            language="XML"
+            providerId="solr.match.capability"
+            bundle="messages.SolrBundle"
+            nameKey="inlay.matchCapability.name"
+            group="OTHER_GROUP"
+            isEnabledByDefault="true"
+            implementationClass="org.apache.solr.ide.editor.SolrMatchInlayHintsProvider"/>
+
+        <!-- Quick documentation on a field or its type, resolving each property's effective value
+             and where it came from. -->
+        <lang.documentationProvider
+            language="XML"
+            implementationClass="org.apache.solr.ide.editor.SolrConfigsetDocumentationProvider"/>
     </extensions>
 </idea-plugin>

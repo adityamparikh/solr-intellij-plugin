@@ -132,7 +132,16 @@ class SolrConfigParserTest {
     }
 
     @Test
-    fun `a config with no handlers yields nothing`() {
-        assertTrue(SolrConfigParser.parse("<config><luceneMatchVersion>10.0.0</luceneMatchVersion></config>").isEmpty)
+    fun `a config with no handlers yields no references`() {
+        assertTrue(SolrConfigParser.parse("<config><lst name='x'/></config>").isEmpty)
+    }
+
+    /** The declared version is what decides which Reference Guide the plugin links to. */
+    @Test
+    fun `luceneMatchVersion is captured`() {
+        val facts = SolrConfigParser.parse("<config><luceneMatchVersion>10.0.0</luceneMatchVersion></config>")
+        assertEquals("10.0.0", facts.luceneMatchVersion)
+        assertTrue(facts.fieldReferences.isEmpty())
+        assertTrue("a declared version alone means the facts are not empty", !facts.isEmpty)
     }
 }
