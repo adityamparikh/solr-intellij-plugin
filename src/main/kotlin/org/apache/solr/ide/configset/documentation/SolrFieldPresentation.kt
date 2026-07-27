@@ -3,6 +3,7 @@ package org.apache.solr.ide.configset.documentation
 import org.apache.solr.ide.model.SolrEffectiveProperty
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldProperties
+import org.apache.solr.ide.model.SolrFieldProperty
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrMatchAnalysis
 import org.apache.solr.ide.model.SolrMatchCapability
@@ -74,6 +75,8 @@ object SolrFieldPresentation {
         description: SolrSchemaElements.Description,
         specifics: String?,
         version: SolrVersionSelection,
+        field: SolrField? = null,
+        fieldType: SolrFieldType? = null,
     ): String = buildString {
         append("<div class='definition'><pre>&lt;${escape(description.tagName)}&gt;</pre></div>")
         append("<div class='content'>")
@@ -81,6 +84,44 @@ object SolrFieldPresentation {
         // Not escaped: the specifics are built by this plugin from model values, and carry markup
         // of their own. The values interpolated into them are escaped at the point they are read.
         specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
+        // The resolved configuration, on the element rather than only on its name. Hovering the tag
+        // is the gesture a reader makes; requiring the caret to be inside the `name` quotes hid the
+        // one answer no other tool can give behind the one gesture nobody guesses.
+        field?.let { append(propertyTable(it, fieldType)) }
+        append("</div>")
+        append(guideLinks(version))
+    }
+
+    /**
+     * The popup for one property attribute — what it means, what it accepts, and what it is *here*.
+     *
+     * Hovering `omitNorms="false"` is the obvious way to ask what the property does and what Solr
+     * would have used instead. Before this it answered with the enclosing element's description,
+     * which is a reasonable answer to a question nobody asked.
+     *
+     * [effective] is null on a `fieldType`, where "the value for this field" has no meaning. The
+     * general half — summary, accepted values, Solr's default — is the same either way.
+     *
+     * @param property the property being hovered
+     * @param effective its resolved value for the enclosing field, or null on a field type
+     * @param version the Solr line this configset targets, for the guide link
+     * @return HTML for the documentation popup
+     */
+    fun propertyDocumentation(
+        property: SolrFieldProperty,
+        effective: SolrEffectiveProperty?,
+        version: SolrVersionSelection,
+    ): String = buildString {
+        append("<div class='definition'><pre>${escape(property.name)}</pre></div>")
+        append("<div class='content'>")
+        append("<p>${escape(property.summary)}</p>")
+        append("<table>")
+        append("<tr><td>Accepts</td><td>${escape(property.validValues)}</td></tr>")
+        append("<tr><td>Solr default</td><td>${escape(property.defaultValue ?: DEPENDS_ON_TYPE)}</td></tr>")
+        effective?.let {
+            append("<tr><td>Here</td><td><b>${escape(valueText(it))}</b> — ${escape(originText(it.origin))}</td></tr>")
+        }
+        append("</table>")
         append("</div>")
         append(guideLinks(version))
     }
@@ -178,7 +219,16 @@ object SolrFieldPresentation {
     }
 
     private fun valueText(effective: SolrEffectiveProperty): String =
-        effective.value ?: "depends on the field type"
+        effective.value ?: DEPENDS_ON_TYPE
+
+    /**
+     * What is reported where Solr's own default is decided by the field type's class.
+     *
+     * `omitNorms` is true for primitive types and false for text; `docValues` is documented as
+     * "true for most fields". Naming one is a confident wrong answer, and this is the output most
+     * likely to be quoted back at someone.
+     */
+    private const val DEPENDS_ON_TYPE = "depends on the field type"
 
     private fun originText(origin: SolrPropertyOrigin): String = when (origin) {
         SolrPropertyOrigin.FIELD -> "on this field"

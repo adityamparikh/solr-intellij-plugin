@@ -50,7 +50,9 @@ The foundation is complete and the first two user-facing features sit on top of 
 - **Quick documentation** on any schema element — `schema`, `field`, `dynamicField`, `fieldType`,
   `copyField`, `uniqueKey`, `analyzer` — explaining what it is and what *this* one does: which
   fields a copy rule joins and whether both ends exist, which field is the unique key, how many
-  fields use a type
+  fields use a type. On a `field` or `dynamicField` it carries the resolved configuration too
+- **Quick documentation on a property attribute** — hover `omitNorms` or `indexed` for what it
+  means, what it accepts, Solr's default, and what the value resolves to on this field
 - **Quick documentation** on a field or its type: the analyser chains, what fields of that type
   match, and every property's effective value with whether it came from the field, its type, or
   Solr's default — plus a Reference Guide link for the version the configset declares
