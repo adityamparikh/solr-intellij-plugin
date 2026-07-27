@@ -96,3 +96,98 @@ either drop the declaration or guard the index access with `DumbService`.
 The rule worth carrying: **`isDumbAware` is a promise about data sources.** Adding
 an index to a feature that declares it is a silent correctness bug, and nothing in
 the build will catch it.
+
+---
+
+## Caching the field model
+
+### The problem
+
+Every editor feature asks the same question — *what fields does this configset
+declare?* Completion, all three inspections, the inline hints, hover documentation
+and reference resolution, each of them many times per keystroke. Answering means
+parsing two XML files.
+
+Parsing per question is not affordable, so the model is cached. The whole
+difficulty is in the other half: **knowing when to throw it away.**
+
+Both directions are expensive to get wrong, and they are not symmetrical.
+
+- Rebuild too rarely and the plugin reports a field the user just deleted. Every
+  feature is then confidently wrong at once, which is the failure this plugin
+  exists to prevent in Solr configuration and would be embarrassing to reproduce.
+- Rebuild too often and both files are reparsed on every keystroke *anywhere in
+  the project* — not incorrect, just an editor that stutters for reasons nobody
+  can see.
+
+### What we do
+
+`CachedValuesManager` — the platform's mechanism. You supply a computation and a
+list of **dependencies**; the platform owns storage, thread-safety, eviction under
+memory pressure, and recomputation when any dependency's modification count moves.
+
+Two decisions in it are ours, and both were arrived at by being wrong first.
+
+**The cache hangs on the `PsiDirectory` of the configset root, not in a map.** The
+first attempt kept a `ConcurrentHashMap` keyed by directory path, holding
+platform-managed values. That looks harmless and is not: a map keyed by a string
+outlives the thing the string names. A configset deleted and recreated at the same
+path finds an entry built against files that no longer exist, and the failure
+surfaces as `InvalidVirtualFileAccessException` from inside the cache. Attaching
+the value to the directory makes the cache's lifetime exactly the directory's,
+and deletes the bookkeeping along with the map.
+
+This is also what makes the tests honest. `BasePlatformTestCase` reuses one light
+project across test *classes*, so anything a project-level service holds in a
+field leaks into the next test — which is the same hazard `SolrConfigsetTestCase`
+already exists to manage for settings.
+
+**The dependency list is the two source files plus the VFS structure count.**
+Neither half can be dropped:
+
+| Dependency | Catches | Why the obvious alternative is wrong |
+|---|---|---|
+| The source `PsiFile`s | Edits to *this* schema or `solrconfig.xml` | `PsiModificationTracker.MODIFICATION_COUNT` is the reflex, and it advances on **any** PSI change in the project — a keystroke in unrelated Java would reparse both configset files. It is the naive answer and it is a performance regression. |
+| `VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS` | A `solrconfig.xml` appearing in a configset that had none | Nothing file-scoped can catch this. The dependency list names the files that existed when the model was built, and a file that did not exist cannot be on it. |
+
+The second row is a real behaviour, not a hypothetical: the previous
+implementation recomputed the file list on every call, so it noticed a new file
+for free. Moving to a dependency list would have silently lost that, which is why
+`testASolrconfigAddedLaterIsPickedUp` exists.
+
+The cost of the VFS dependency is that creating or deleting *any* file in the
+project invalidates the model. That is deliberate. Structural changes are rare
+next to keystrokes, and the recomputation is two small XML files.
+
+### What changed in behaviour
+
+The model is now derived from PSI rather than from the in-memory `Document`.
+
+That preserves the guarantee that matters — **unsaved edits still count**, because
+PSI reflects the editor's buffer long before anything reaches disk — and fixes a
+subtler problem. Every consumer of the model is itself visiting PSI. Reading the
+document directly made the model momentarily *ahead* of the PSI an inspection was
+walking, so the two could disagree about a file neither had finished with.
+
+The visible consequence is in the tests: an edit must now be committed
+(`PsiDocumentManager.commitAllDocuments`) before the model reflects it. That is
+not a weaker guarantee, it is the same one stated accurately — the IDE commits
+before running any feature that reads the model, so uncommitted text is text no
+consumer would have been looking at either.
+
+### What we deliberately did not change
+
+`SolrConfigsetLocator` keeps its hand-written cache. It looked like the same
+problem and is not.
+
+It memoizes *which configset owns a file*, and every input to that answer is a
+name or a directory listing — so its correct dependencies are the VFS **structure**
+count and the settings modification count, and content edits must be ignored
+entirely. It already tracks exactly those two, and dropping everything on a change
+rather than reasoning about which entries a structural change could affect is a
+deliberate call its own documentation makes.
+
+Converting it would replace a correct tracker-based cache with a different correct
+tracker-based cache. The reason to record this is so the next reader does not
+"finish the job".
+
