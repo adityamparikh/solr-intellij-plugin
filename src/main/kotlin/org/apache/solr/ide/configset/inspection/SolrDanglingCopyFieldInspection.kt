@@ -35,7 +35,16 @@ class SolrDanglingCopyFieldInspection : LocalInspectionTool() {
                     // it is not a question this can answer from the schema alone.
                     if (!SolrInspections.isCheckableFieldName(name)) continue
                     if (model.resolve(name) != null) continue
-                    SolrInspections.reportOnValue(holder, value, SolrBundle.message("inspection.copyField.dangling", name))
+                    SolrInspections.reportOnValue(
+                        holder,
+                        value,
+                        SolrBundle.message("inspection.copyField.dangling", name),
+                        SolrInspections.replacementFixes(
+                            name,
+                            model.fields.keys + model.dynamicFields.keys,
+                            SolrBundle.message("quickfix.field.family"),
+                        ),
+                    )
                 }
             }
         }

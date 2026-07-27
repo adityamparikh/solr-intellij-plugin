@@ -54,8 +54,8 @@ The foundation is complete and the first two user-facing features sit on top of 
 - **Quick documentation** on a field or its type: the analyser chains, what fields of that type
   match, and every property's effective value with whether it came from the field, its type, or
   Solr's default — plus a Reference Guide link for the version the configset declares
-- **Inspections** flagging a `copyField` whose source or destination names a field the configset
-  does not declare, a field naming a field type it does not declare, and a handler parameter in
+- **Inspections** with Alt-Enter fixes offering the valid names, flagging a `copyField` whose
+  source or destination names a field the configset does not declare, a field naming a field type it does not declare, and a handler parameter in
   `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
   boundary nothing else checks
 - **Completion** for a field's `type`, offering the declared field types and showing what each one

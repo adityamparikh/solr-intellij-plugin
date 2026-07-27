@@ -35,7 +35,16 @@ class SolrUnknownFieldTypeInspection : LocalInspectionTool() {
                 // here would put "unknown type ''" in front of the user.
                 if (typeName.isEmpty()) return
                 if (model.fieldTypes.containsKey(typeName)) return
-                SolrInspections.reportOnValue(holder, value, SolrBundle.message("inspection.fieldType.unknown", typeName))
+                SolrInspections.reportOnValue(
+                    holder,
+                    value,
+                    SolrBundle.message("inspection.fieldType.unknown", typeName),
+                    SolrInspections.replacementFixes(
+                        typeName,
+                        model.fieldTypes.keys,
+                        SolrBundle.message("quickfix.fieldType.family"),
+                    ),
+                )
             }
         }
     }
