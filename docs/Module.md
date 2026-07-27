@@ -210,6 +210,11 @@ trees so that staying off that path remains affordable.
 
 What the user actually sees.
 
+Completion covers the attribute values whose valid set is closed, and deliberately
+nothing else: a field's `type`, a `copyField`'s ends, and the boolean
+properties. A list implies the values not on it are wrong, so offering a partial
+one where any value is legal would be worse than offering none.
+
 Three inspections report references that go nowhere: a dangling `copyField`, a
 field naming an undeclared type, and a handler parameter naming a field the
 schema does not declare. Their clean fixtures matter more than their flagged

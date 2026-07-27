@@ -40,6 +40,13 @@
             language="XML"
             implementationClass="org.apache.solr.ide.editor.SolrConfigsetDocumentationProvider"/>
 
+        <!-- Completion for the attribute values whose valid answers are a closed set: the declared
+             field types, the declared fields, and true/false. Positions where any value is legal are
+             left to the platform, because a partial list implies the values not on it are wrong. -->
+        <completion.contributor
+            language="XML"
+            implementationClass="org.apache.solr.ide.editor.SolrConfigsetCompletionContributor"/>
+
         <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
              authoritative enough to claim a hard error, and an error on a file the user is midway
              through editing is worse than a warning on the same file. -->

@@ -53,6 +53,9 @@ The foundation is complete and the first two user-facing features sit on top of 
 - **Inspections** flagging a `copyField` whose source or destination does not exist, a field naming
   an undeclared field type, and a handler parameter in `solrconfig.xml` naming a field the schema
   never declares — the last of which crosses the file boundary nothing else checks
+- **Completion** in the schema positions with a knowable answer — a field's `type` from the declared
+  field types (each showing what it matches), `copyField` source and destination from the declared
+  fields, and `true`/`false` for boolean properties
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
