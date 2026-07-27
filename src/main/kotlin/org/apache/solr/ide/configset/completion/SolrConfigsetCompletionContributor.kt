@@ -77,8 +77,8 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
         tagName in SolrSchemaTags.FIELD && attributeName == "type" -> fieldTypes(model)
         tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
-        tagName in SolrSchemaTags.FIELD && isBooleanProperty(attributeName) -> BOOLEANS
-        tagName in SolrSchemaTags.FIELD_TYPE && isBooleanProperty(attributeName) -> BOOLEANS
+        tagName in SolrSchemaTags.FIELD && isBooleanProperty(attributeName) -> booleans(attributeName)
+        tagName in SolrSchemaTags.FIELD_TYPE && isBooleanProperty(attributeName) -> booleans(attributeName)
         else -> emptyList()
     }
 
@@ -119,15 +119,30 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
             LookupElementBuilder.create(dynamic.pattern).withTypeText(dynamic.field.type).withItemTextItalic(true)
         }
 
+    /**
+     * `true` and `false`, with the one Solr would have used marked as the default.
+     *
+     * "This is what you already have" is usually what a reader is trying to work out, and it is the
+     * question a list of two identical-looking values cannot answer. Where the default depends on
+     * the field type — `omitNorms` is true for primitive types and false for text — neither value
+     * is marked, because marking one would assert something Solr does not.
+     */
+    private fun booleans(attributeName: String): List<LookupElement> {
+        val default = SolrFieldProperties.byName(attributeName)?.defaultValue
+        return listOf("true", "false").map { value ->
+            LookupElementBuilder.create(value)
+                .withTypeText(if (value == default) DEFAULT_LABEL else null)
+                .withBoldness(value == default)
+        }
+    }
+
     private companion object {
         val COPY_FIELD_ATTRIBUTES = setOf("source", "dest")
 
         /** The `validValues` string the property table uses for a boolean. */
         const val BOOLEAN_VALUES = "true or false"
 
-        val BOOLEANS: List<LookupElement> = listOf(
-            LookupElementBuilder.create("true"),
-            LookupElementBuilder.create("false"),
-        )
+        /** Shown beside the value Solr would use if the attribute were absent. */
+        const val DEFAULT_LABEL = "default"
     }
 }

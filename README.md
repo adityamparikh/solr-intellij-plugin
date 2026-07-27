@@ -60,7 +60,8 @@ The foundation is complete and the first two user-facing features sit on top of 
   boundary nothing else checks
 - **Completion** for a field's `type`, offering the declared field types and showing what each one
   matches, for a `copyField`'s source and destination, offering the declared fields, and `true`/`false`
-  for the boolean properties
+  for the boolean properties — with the value Solr would use if the attribute were absent marked as
+  the default
 - **Navigation** from a field's `type` to the `fieldType` that declares it — cmd-click or Ctrl-B
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come

@@ -47,4 +47,50 @@ class SolrBooleanPropertyCompletionTest : SolrConfigsetTestCase() {
         givenNoSolrOnTheClasspath()
         assertTrue("true" !in completionsFor("""<field name="sku" type="string" indexed="<caret>"/>"""))
     }
+
+    /**
+     * "This is what you already have" is usually what a reader is working out, and a list of two
+     * identical-looking values cannot answer it.
+     */
+    fun testTheDefaultValueIsMarked() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema.replace("BODY", """<field name="sku" type="string" indexed="<caret>"/>"""),
+        )
+        myFixture.complete(CompletionType.BASIC)
+        val marked = myFixture.lookupElements.orEmpty()
+            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
+            .filter { it.typeText == "default" }
+            .map { it.itemText }
+        assertEquals("indexed defaults to true", listOf("true"), marked)
+    }
+
+    fun testMultiValuedMarksFalseAsTheDefault() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema.replace("BODY", """<field name="sku" type="string" multiValued="<caret>"/>"""),
+        )
+        myFixture.complete(CompletionType.BASIC)
+        val marked = myFixture.lookupElements.orEmpty()
+            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
+            .filter { it.typeText == "default" }
+            .map { it.itemText }
+        assertEquals("multiValued defaults to false", listOf("false"), marked)
+    }
+
+    /**
+     * Where Solr's default depends on the field type — `omitNorms` is true for primitive types and
+     * false for text — neither value is marked. Marking one would assert something Solr does not.
+     */
+    fun testNothingIsMarkedWhenTheDefaultDependsOnTheFieldType() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema.replace("BODY", """<field name="sku" type="string" omitNorms="<caret>"/>"""),
+        )
+        myFixture.complete(CompletionType.BASIC)
+        val marked = myFixture.lookupElements.orEmpty()
+            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
+            .count { it.typeText == "default" }
+        assertEquals("omitNorms has no single default to claim", 0, marked)
+    }
 }
