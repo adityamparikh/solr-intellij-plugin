@@ -262,9 +262,11 @@ wrong — a misspelling of a name it does know, a value outside a set it knows t
 
 ### The factory catalog
 
-Completion and documentation need to know Solr's analysis factories — roughly 130
-tokenizers, filters and character filters — and the attributes each one accepts. That
-list is too large to hand-maintain and changes with Solr versions.
+Completion and documentation need to know the classes a configset can name and what each
+one accepts: Solr's analysis factories — roughly 130 tokenizers, filters and character
+filters — with the attributes each takes, the field type classes a `<fieldType>` can
+declare, and the plugins `solrconfig.xml` names with their parameters. Those lists are too
+large to hand-maintain and change with Solr versions.
 
 **It is generated at build time and shipped with the plugin**, one entry per supported
 Solr line, derived from the Solr and Lucene artifacts for that line. The generator runs in
@@ -278,6 +280,21 @@ reflectable**: a factory takes a `Map<String, String>` and reads its attributes 
 by string literal, so the names exist only inside the constructor body. Anything that
 enumerates fields or annotations produces a plausible short list rather than an error,
 which is the failure mode to test for.
+
+**Field type classes are in scope too, and are the easy half.** A `<fieldType>` names an
+implementation in its `class` attribute — `solr.StrField`, `solr.TextField`,
+`solr.IntPointField` — and that attribute is the most-hovered thing in the file after the
+field names themselves. It is a different population from the analysis factories, reached
+differently: perhaps forty classes rather than a hundred and thirty, found as the concrete
+subclasses of `FieldType` rather than through an SPI service file. The saving grace is that
+nothing about them is unreflectable the way factory attributes are — the class is named
+directly, and its javadoc comes from the same `-sources` artifacts.
+
+Naming them separately matters because an earlier revision of this section said "factories"
+and meant it, which left the `class` attribute of every `<fieldType>` with no answer while
+appearing to be covered. A reader hovering `solr.StrField` and getting nothing is the same
+disappointment as hovering `solr.StandardTokenizerFactory` and getting nothing, and both
+are this catalog's job.
 
 **Match analysis is a deliberate exception to all of this.** The roughly fifteen factories
 that determine whether a field matches whole values or tokens are named in code, not read
