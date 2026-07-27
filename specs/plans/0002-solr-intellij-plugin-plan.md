@@ -536,6 +536,12 @@ is the one to run by hand, for the reason in the criterion above.
 
 ### Step 10: Completion, validation and quick documentation
 
+**Partly done.** Completion for the schema positions whose valid set is closed — a field's
+`type`, a `copyField`'s two ends, and the boolean properties — landed a capability per pull
+request ahead of this step, because none of it needs the catalog. Positions where any value
+is legal are left to the platform: a partial list implies the values not on it are wrong.
+What remains here is the catalog-backed half, which is what the dependency below is about.
+
 **Actions:**
 1. Completion for field types, factories, their attributes, and field attributes.
 2. Structural validation flagging unknown factories and invalid attributes.
