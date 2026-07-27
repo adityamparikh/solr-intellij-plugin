@@ -73,6 +73,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
 
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
         tagName in FIELD_TAGS && attributeName == "type" -> fieldTypes(model)
+        tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
         else -> emptyList()
     }
 
@@ -89,7 +90,22 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
                 .withTypeText(if (capability.confident) SolrFieldPresentation.summarize(capability) else type.className)
         }
 
+    /**
+     * The declared fields, and the dynamic patterns, each showing its type.
+     *
+     * Dynamic patterns are offered because a `copyField` may legitimately name one — `dest="*_t"`
+     * is how a schema copies into a family of fields — and they are italicised so a pattern is not
+     * mistaken for a field that exists.
+     */
+    private fun fieldNames(model: SolrFieldModel): List<LookupElement> =
+        model.fields.values.map { it.effective }.map { field ->
+            LookupElementBuilder.create(field.name).withTypeText(field.type)
+        } + model.dynamicFields.values.map { it.effective }.map { dynamic ->
+            LookupElementBuilder.create(dynamic.pattern).withTypeText(dynamic.field.type).withItemTextItalic(true)
+        }
+
     private companion object {
         val FIELD_TAGS = setOf("field", "dynamicField")
+        val COPY_FIELD_ATTRIBUTES = setOf("source", "dest")
     }
 }
