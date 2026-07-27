@@ -94,4 +94,52 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
         givenNoSolrOnTheClasspath()
         checkConfig(handler("""<str name="qf">nonexistent</str>"""))
     }
+
+    /**
+     * The false positive this inspection had. `<lst name="defaults">` also appears under elements
+     * that configure something other than a query — an update processor chain, for one — and the
+     * parser already declines to read those. The inspection did not, and reported a field reference
+     * the model itself says does not exist.
+     */
+    fun testAParameterListOutsideARequestHandlerIsNotInspected() {
+        checkConfig(
+            """
+            <updateRequestProcessorChain name="x">
+              <processor class="solr.Custom">
+                <lst name="defaults"><str name="fl">nosuchfield</str></lst>
+              </processor>
+            </updateRequestProcessorChain>
+            """.trimIndent(),
+        )
+    }
+
+    /** An `arr` supplies the parameter name to each `str` inside it. */
+    fun testABadFieldInsideAnArrIsFlagged() {
+        checkConfig(
+            handler("""<arr name="facet.field"><str><warning descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</warning></str><str>id</str></arr>"""),
+        )
+    }
+
+    fun testAnArrOfDeclaredFieldsIsClean() {
+        checkConfig(handler("""<arr name="facet.field"><str>id</str><str>name</str></arr>"""))
+    }
+
+    /** An unnamed `str` outside an `arr` supplies no parameter name, so nothing is examined. */
+    fun testAnUnnamedValueOutsideAnArrIsIgnored() {
+        checkConfig(handler("""<str>nosuchfield</str>"""))
+    }
+
+    /** A name at either end of the value has no separator on that side. */
+    fun testAFieldAtTheStartAndEndOfAValueIsMatched() {
+        checkConfig(
+            handler("""<str name="qf"><warning descr="Solr: no field named 'aaa' is declared in the schema">aaa</warning> name <warning descr="Solr: no field named 'zzz' is declared in the schema">zzz</warning></str>"""),
+        )
+    }
+
+    /** The schema is not where handler parameters live, so it is not visited at all. */
+    fun testTheSchemaFileIsNotInspected() {
+        myFixture.enableInspections(SolrUnknownFieldReferenceInspection())
+        myFixture.configureByText("managed-schema.xml", schema(""))
+        myFixture.checkHighlighting(true, false, false)
+    }
 }

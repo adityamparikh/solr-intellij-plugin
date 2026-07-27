@@ -8,7 +8,6 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.repository.SolrConfigParser
 
 /**
@@ -46,7 +45,7 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
                 for (name in referencedFieldNames(parameterName, text)) {
                     if (!SolrInspections.isCheckableFieldName(name)) continue
                     if (SolrInspections.resolves(model, name)) continue
-                    reportAll(holder, tag, text, name, model)
+                    reportAll(holder, tag, text, name)
                 }
             }
         }
@@ -58,7 +57,7 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
      * Highlighting the whole `<str>` would underline `name^3 description category` when only one of
      * the three is wrong, which is exactly the moment a reader stops trusting the underline.
      */
-    private fun reportAll(holder: ProblemsHolder, tag: XmlTag, text: String, name: String, model: SolrFieldModel) {
+    private fun reportAll(holder: ProblemsHolder, tag: XmlTag, text: String, name: String) {
         val valueStart = tag.value.textRange.startOffset - tag.textRange.startOffset
         var index = text.indexOf(name)
         while (index >= 0) {
@@ -99,8 +98,18 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
         return parent.getAttributeValue("name")?.takeIf { enclosingIsParameterList(parent.parentTag) }
     }
 
+    /**
+     * Whether [tag] is a parameter list belonging to something that supplies query parameters.
+     *
+     * The enclosing check is not optional. `<lst name="defaults">` also appears under elements that
+     * have nothing to do with queries — an update processor chain, for one — and the parser already
+     * declines to read those. Without this, the inspection reported field references the model
+     * itself says do not exist, which is a warning on an entirely correct file.
+     */
     private fun enclosingIsParameterList(tag: XmlTag?): Boolean =
-        tag?.name == "lst" && tag.getAttributeValue("name") in PARAMETER_SETS
+        tag?.name == "lst" &&
+            tag.getAttributeValue("name") in PARAMETER_SETS &&
+            tag.parentTag?.name in PARAMETER_CARRIERS
 
     /**
      * The field names a parameter's text refers to, reusing the parser's rules rather than
@@ -126,6 +135,14 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
 
         /** `lst` names whose contents are query parameters. */
         val PARAMETER_SETS = setOf("defaults", "appends", "invariants")
+
+        /**
+         * Elements whose parameter lists supply a query.
+         *
+         * The same set the parser accepts, and for the same reason: a `<lst name="defaults">`
+         * elsewhere in `solrconfig.xml` configures something that is not a query.
+         */
+        val PARAMETER_CARRIERS = setOf("requestHandler", "searchComponent", "initParams")
 
         /** Characters that may sit either side of a field name in a parameter value. */
         val SEPARATORS = charArrayOf(' ', ',', '\t', '\n', '\r', '^')
