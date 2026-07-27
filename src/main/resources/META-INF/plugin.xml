@@ -63,5 +63,15 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.editor.SolrUnknownFieldTypeInspection"/>
+        <localInspection
+            language="XML"
+            shortName="SolrUnknownFieldReference"
+            bundle="messages.SolrBundle"
+            key="inspection.fieldReference.displayName"
+            groupBundle="messages.SolrBundle"
+            groupKey="inspection.group"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.apache.solr.ide.editor.SolrUnknownFieldReferenceInspection"/>
     </extensions>
 </idea-plugin>

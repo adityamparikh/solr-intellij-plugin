@@ -27,7 +27,7 @@ internal object SolrXmlDocuments {
      * would surface as a red banner every time a tag is half-typed.
      */
     fun rootOf(xml: CharSequence): Element? = try {
-        secureBuilderFactory().newDocumentBuilder()
+        SECURE_FACTORY.newDocumentBuilder()
             .parse(InputSource(StringReader(xml.toString())))
             .documentElement
     } catch (_: Exception) {
@@ -43,6 +43,17 @@ internal object SolrXmlDocuments {
      * repository is often cloned before it is read. Leaving entity resolution on would let a
      * crafted configset read local files or reach the network during what the user experiences as
      * opening a file in the editor.
+     */
+    private val SECURE_FACTORY: DocumentBuilderFactory = secureBuilderFactory()
+
+    /**
+     * Builds the factory once.
+     *
+     * `DocumentBuilderFactory.newInstance()` performs service-loader discovery on every call, which
+     * measured at roughly a quarter of a millisecond. That is invisible when a configset is parsed
+     * twice and cached, and it is not invisible to the inspection that parses once per handler
+     * parameter on every highlighting pass. The factory is configured once and only read afterwards;
+     * a fresh `DocumentBuilder` is still created per parse, since builders are not reusable.
      */
     private fun secureBuilderFactory(): DocumentBuilderFactory =
         DocumentBuilderFactory.newInstance().apply {
