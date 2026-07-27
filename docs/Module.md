@@ -199,6 +199,13 @@ References are *soft*. An unresolved hard reference draws a warning from the
 platform, which would duplicate what the inspections already report and say less
 while doing it, in the platform's vocabulary rather than Solr's.
 
+A glob is followed only as far as it is written. `copyField dest="*_t"` and
+`dynamicField name="*_t"` spell the same pattern literally, so landing on the
+declaration is exact; resolving instead to a concrete field the pattern would
+match would invent a target, since which fields those are depends on the
+documents indexed rather than on the schema. That is the same line the inspections
+draw when they stay silent on globs.
+
 [SolrSchemaPsi] exists because the model holds no PSI: it can say a field type
 exists but not where it was written, and navigation needs the second answer.
 

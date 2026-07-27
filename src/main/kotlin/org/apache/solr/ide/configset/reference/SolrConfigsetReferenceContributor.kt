@@ -36,6 +36,13 @@ class SolrConfigsetReferenceContributor : PsiReferenceContributor() {
             XmlPatterns.xmlAttributeValue().withLocalName("type"),
             SolrFieldTypeReferenceProvider(),
         )
+        val copyFieldEnds = SolrCopyFieldReferenceProvider()
+        for (attribute in SolrSchemaTags.COPY_FIELD_ENDS) {
+            registrar.registerReferenceProvider(
+                XmlPatterns.xmlAttributeValue().withLocalName(attribute),
+                copyFieldEnds,
+            )
+        }
     }
 }
 
@@ -55,6 +62,57 @@ private class SolrFieldTypeReferenceProvider : PsiReferenceProvider() {
         return arrayOf(SolrFieldTypeReference(value))
     }
 
+}
+
+/** Supplies a reference from each end of a `copyField` to the field it names. */
+private class SolrCopyFieldReferenceProvider : PsiReferenceProvider() {
+
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+        val value = element as? XmlAttributeValue ?: return PsiReference.EMPTY_ARRAY
+        if (!SolrConfigsetDetector.isConfigsetFile(value.containingFile)) return PsiReference.EMPTY_ARRAY
+
+        val attribute = value.parentOfType<XmlAttribute>() ?: return PsiReference.EMPTY_ARRAY
+        if (attribute.name !in SolrSchemaTags.COPY_FIELD_ENDS) return PsiReference.EMPTY_ARRAY
+        // `source` and `dest` are ordinary words — a build file's copy task uses both. The tag is
+        // what makes them field names.
+        val tag = attribute.parentOfType<XmlTag>() ?: return PsiReference.EMPTY_ARRAY
+        if (tag.name != SolrSchemaTags.COPY_FIELD) return PsiReference.EMPTY_ARRAY
+        if (value.value.isEmpty()) return PsiReference.EMPTY_ARRAY
+
+        return arrayOf(SolrCopyFieldReference(value))
+    }
+}
+
+/**
+ * A reference from `source="title"` or `dest="text"` to the field declaring that name.
+ *
+ * **A glob resolves to the `dynamicField` spelling it, and to nothing else.** `dest="*_t"` and
+ * `<dynamicField name="*_t">` write the same pattern literally, so landing on the declaration is an
+ * exact answer rather than a guess. What this deliberately does *not* do is resolve a pattern to the
+ * concrete fields it happens to match: which fields those are depends on the documents indexed, not
+ * on the schema, so any such target would be invented. That is the same line
+ * [org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection] draws when it stays
+ * silent on globs — here it costs a navigation nobody could have trusted, and there it prevents a
+ * warning on a correct file.
+ *
+ * Soft, for the reason [SolrFieldTypeReference] is soft.
+ */
+internal class SolrCopyFieldReference(element: XmlAttributeValue) :
+    PsiReferenceBase<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element), true) {
+
+    /**
+     * The `name` attribute of the declaring `field` or `dynamicField`, or null when none declares it.
+     *
+     * @return the declaring element, or null
+     */
+    override fun resolve(): PsiElement? =
+        SolrSchemaPsi.findField(element.containingFile, value)
+
+    /**
+     * No completion variants; the completion contributor already offers the fields here, with what
+     * each one matches attached.
+     */
+    override fun getVariants(): Array<Any> = emptyArray()
 }
 
 /**

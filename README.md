@@ -65,7 +65,9 @@ The foundation is complete and the first two user-facing features sit on top of 
   matches, for a `copyField`'s source and destination, offering the declared fields, and `true`/`false`
   for the boolean properties — with the value Solr would use if the attribute were absent marked as
   the default
-- **Navigation** from a field's `type` to the `fieldType` that declares it — cmd-click or Ctrl-B
+- **Navigation** from a field's `type` to the `fieldType` that declares it, and from each end of a
+  `copyField` to the field it names — cmd-click or Ctrl-B. A glob such as `dest="*_t"` lands on the
+  `dynamicField` that spells the same pattern, not on a concrete field it might match
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
