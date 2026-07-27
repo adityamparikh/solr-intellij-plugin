@@ -9,6 +9,7 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.XmlPatterns
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
@@ -19,6 +20,7 @@ import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrMatchAnalysis
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.documentation.SolrSchemaElements
 
 /**
  * Completes the attribute values in a configset whose valid answers are knowable.
@@ -43,6 +45,10 @@ class SolrConfigsetCompletionContributor : CompletionContributor() {
             PlatformPatterns.psiElement().inside(XmlPatterns.xmlAttributeValue()),
             SolrAttributeValueCompletionProvider(),
         )
+        // Element and attribute *names*, which answer "what may I write here at all" — the
+        // question value completion never asks, and the one that matters to a reader who has not
+        // learned the vocabulary yet.
+        extend(CompletionType.BASIC, PlatformPatterns.psiElement().inside(XmlPatterns.xmlTag()), SolrSchemaVocabularyCompletionProvider())
     }
 }
 
@@ -79,6 +85,8 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
         tagName in SolrSchemaTags.FIELD && isBooleanProperty(attributeName) -> booleans(attributeName)
         tagName in SolrSchemaTags.FIELD_TYPE && isBooleanProperty(attributeName) -> booleans(attributeName)
+        tagName == "analyzer" && attributeName == "type" -> ANALYZER_PHASES
+        closedValuesFor(attributeName).isNotEmpty() -> closedValues(attributeName)
         else -> emptyList()
     }
 
@@ -127,6 +135,25 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
      * the field type — `omitNorms` is true for primitive types and false for text — neither value
      * is marked, because marking one would assert something Solr does not.
      */
+    /**
+     * The closed set an attribute accepts, when it has one that is not boolean.
+     *
+     * Empty for anything open-ended. `synonymQueryStyle` takes one of three;
+     * `positionIncrementGap` takes any integer, and offering a list there would imply the values
+     * not on it are wrong.
+     */
+    private fun closedValuesFor(attributeName: String): List<String> =
+        SolrFieldProperties.byName(attributeName)?.closedValues.orEmpty()
+
+    private fun closedValues(attributeName: String): List<LookupElement> {
+        val default = SolrFieldProperties.byName(attributeName)?.defaultValue
+        return closedValuesFor(attributeName).map { value ->
+            LookupElementBuilder.create(value)
+                .withTypeText(if (value == default) DEFAULT_LABEL else null)
+                .withBoldness(value == default)
+        }
+    }
+
     private fun booleans(attributeName: String): List<LookupElement> {
         val default = SolrFieldProperties.byName(attributeName)?.defaultValue
         return listOf("true", "false").map { value ->
@@ -144,5 +171,107 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
 
         /** Shown beside the value Solr would use if the attribute were absent. */
         const val DEFAULT_LABEL = "default"
+
+        /**
+         * The two analyzer phases.
+         *
+         * Not a field property, so it is not in the property table — but it is the closed set a
+         * reader is most likely to want, since an index chain and a query chain that disagree is
+         * the commonest way a schema surprises its author.
+         */
+        val ANALYZER_PHASES: List<LookupElement> = listOf(
+            LookupElementBuilder.create("index").withTypeText("what is stored"),
+            LookupElementBuilder.create("query").withTypeText("what is searched for"),
+        )
     }
+}
+
+/**
+ * Completes the element and attribute *names* a schema accepts.
+ *
+ * Value completion answers "what goes here"; this answers "what may I write at all". Someone who
+ * knows `sortMissingLast` exists can type it — someone who does not will never meet it in a file
+ * that does not already use it, and a reference guide is only a page away if you know what to search
+ * for.
+ *
+ * Nesting and existing attributes are both respected. A `<copyField>` inside an `<analyzer>` is not
+ * a thing, and an attribute already on the tag cannot be written twice; offering either would teach
+ * the reader something false.
+ */
+private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<CompletionParameters>() {
+
+    override fun addCompletions(
+        parameters: CompletionParameters,
+        context: ProcessingContext,
+        result: CompletionResultSet,
+    ) {
+        val file = parameters.originalFile
+        if (SolrConfigsetReader.getInstance(file.project).modelFor(file) == null) return
+        val position = parameters.position
+
+        // Inside an attribute value is the other provider's job; contributing here as well would
+        // list every element name where a field name belongs.
+        if (position.parentOfType<XmlAttributeValue>() != null) return
+
+        val tag = position.parentOfType<XmlTag>() ?: return
+        val attribute = position.parentOfType<XmlAttribute>()
+
+        val suggestions = if (attribute != null || isAttributePosition(position, tag)) {
+            attributeNames(tag)
+        } else {
+            elementNames(tag)
+        }
+        if (suggestions.isEmpty()) return
+        result.addAllElements(suggestions)
+    }
+
+    /**
+     * Whether the caret is where an attribute name would go rather than where a child element would.
+     *
+     * The distinction is the tag's own header: inside `<field |>` an attribute is expected, and
+     * after `</field> |` a sibling element is.
+     */
+    private fun isAttributePosition(position: PsiElement, tag: XmlTag): Boolean {
+        val header = tag.textRange.startOffset..(tag.attributes.lastOrNull()?.textRange?.endOffset ?: tag.textRange.startOffset)
+        return position.textRange.startOffset in header
+    }
+
+    /**
+     * The elements legal inside [tag] — or, when the caret sits in the tag being typed, the
+     * elements legal beside it.
+     */
+    private fun elementNames(tag: XmlTag): List<LookupElement> {
+        val candidates = SolrSchemaElements.childrenOf(tag.name).ifEmpty {
+            SolrSchemaElements.childrenOf(tag.parentTag?.name)
+        }
+        return candidates.map { description ->
+            LookupElementBuilder.create(description.tagName)
+                .withTypeText(firstSentence(description.summary))
+        }
+    }
+
+    /**
+     * The attributes [tag] accepts, minus those it already carries.
+     *
+     * An attribute cannot be written twice, so offering one that is present is offering an error.
+     */
+    private fun attributeNames(tag: XmlTag): List<LookupElement> {
+        val already = tag.attributes.mapNotNull { it.name }.toSet()
+        val properties = when (tag.name) {
+            in SolrSchemaTags.FIELD -> SolrFieldProperties.FOR_FIELD
+            in SolrSchemaTags.FIELD_TYPE -> SolrFieldProperties.FOR_FIELD_TYPE
+            else -> return emptyList()
+        }
+        return properties
+            .filter { it.name !in already }
+            .map { property ->
+                LookupElementBuilder.create(property.name)
+                    .withTypeText(property.validValues)
+                    .withTailText("  ${firstSentence(property.summary)}", true)
+            }
+    }
+
+    /** The summary's first sentence, which is all a lookup row has space for. */
+    private fun firstSentence(summary: String): String =
+        summary.substringBefore(". ").removeSuffix(".").take(80)
 }

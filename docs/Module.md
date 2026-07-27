@@ -177,6 +177,12 @@ the difference between an editor that helps and one that complains.
 
 Offering the values an attribute can legally take.
 
+Completion answers two questions, not one. *What value goes here* — and *what may
+I write at all*: the elements legal at the caret, and the attributes an element
+accepts minus those it already carries. The second matters more to a reader who
+has not learned the vocabulary, since a name that appears in no existing file is
+a name they will never meet.
+
 Only closed sets are completed — the declared field types, the declared fields,
 and `true`/`false`, the last marked with the value Solr would use if the
 attribute were absent. Where that default depends on the field type, neither

@@ -26,6 +26,26 @@ internal object SolrSchemaElements {
     data class Description(val tagName: String, val summary: String)
 
     /**
+     * The elements legal directly inside [parentTag], or empty when nothing is known about it.
+     *
+     * Nesting is checked rather than offering every element everywhere. A `<copyField>` inside an
+     * `<analyzer>` is not a thing, and a completion list that includes it is teaching the reader
+     * something false about Solr.
+     *
+     * @param parentTag the element the caret sits inside, or null at the file root
+     * @return the elements that may be written there
+     */
+    fun childrenOf(parentTag: String?): List<Description> = when (parentTag) {
+        null -> listOfNotNull(forTag("schema"))
+        "schema" -> listOfNotNull(
+            forTag("field"), forTag("dynamicField"), forTag("fieldType"),
+            forTag("copyField"), forTag("uniqueKey"),
+        )
+        "fieldType", "fieldtype" -> listOfNotNull(forTag("analyzer"))
+        else -> emptyList()
+    }
+
+    /**
      * The description for [tagName], or null if this is not an element the plugin explains.
      *
      * @param tagName an element name from a schema
