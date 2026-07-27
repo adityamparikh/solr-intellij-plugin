@@ -52,11 +52,11 @@ it whole, and the gutter action goes with the Server track.
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-in-progress) — **in progress**
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**
-- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
-- [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
+- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**
+- [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) — **done**
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing
   the catalog provides.
-- [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary)
+- [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the
   catalog, which it never needed.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
@@ -96,8 +96,14 @@ it whole, and the gutter action goes with the Server track.
       [the factory catalog generator](#step-9-factory-catalog-generator), which cannot
       recover documentation from a compiled jar.
 - [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
-      ships. They are the clean fixtures for [inspections](#step-6-inspections) and the
-      subject of the golden-file gate in [CI gates](#step-20-ci-gates).
+      ships, vendored verbatim under `src/test/testData/configsets/<name>/conf/` and
+      recording the Solr release they came from. The gate asserts *clean against what Solr
+      itself ships*, which means nothing without naming which Solr. They are the clean
+      fixtures for [inspections](#step-6-inspections-in-progress) and the subject of the
+      golden-file gate in [CI gates](#step-20-ci-gates). This is also the first thing in the
+      repository to need `testData` at all — every test today builds its fixture inline with
+      `configureByText`, and `src/test/testData/` still holds nothing but the scaffold files
+      [rename](#step-8-rename) is due to replace.
 - [ ] A local Solr, for manual verification only.
 - [ ] **Decision required before
       [the activation gate overhaul](#step-2-overhaul-the-activation-gate):** the
@@ -116,6 +122,21 @@ These apply to all steps and are not repeated in each one.
   fake HTTP layer, or a container the test starts and stops itself.
 - Anything touching persistent project settings extends `SolrConfigsetTestCase`, because
   the platform's test base class shares one project across test classes and leaks state.
+- **Three test tiers, and the fourth is deliberately absent.** Pure tests over
+  `org.apache.solr.ide.model` and the parsers, which import nothing from the platform.
+  Light fixture tests on `BasePlatformTestCase` for anything with PSI in it — these boot a
+  headless IDE and run the platform's real analysis pass, so they are integration tests
+  despite sitting beside the unit ones, and `checkHighlighting` failing on *unmarked*
+  highlights is what makes the zero-false-positive bar enforceable per test rather than
+  only in CI. Heavy tests only where a light project cannot express the fixture;
+  [the recognizer interface](#step-16-recognizer-interface-and-solrj) is the one step that
+  says so. **No test drives a running IDE.** Neither `intellij-ide-starter` nor Remote
+  Robot is used: every claim this plugin makes is a highlight, a resolve target, a
+  completion list or a model value, and all four are assertable headlessly. A tool window
+  that merely renders is not a claim worth a flaky test, and a step that seems to need one
+  has put logic in a component instead of in the model. This is also the answer to the
+  coverage-floor risk below — decide what tests UI code and the floor stops being an
+  argument about Kover exclusions.
 
 ---
 
@@ -444,7 +465,7 @@ rule immediately.
 
 **Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages)
 
-### Step 7: Match hints and quick-fixes
+### Step 7: Match hints and quick-fixes (in progress)
 
 Taken out of order, ahead of the Editor track's earlier steps. Its two dependencies are
 both met, it needs no PSI reference infrastructure, and it is the first step that produces
@@ -467,10 +488,22 @@ anything a user can see — four steps of foundation had shipped with no exit to
 5. Say nothing where match analysis is not confident. An unrecognized factory means the
    chain was not fully understood, and a wrong hint is worse than none.
 
+**What shipped so far:**
+- `SolrMatchInlayHintsProvider` in `org.apache.solr.ide.configset.hint`, registered as a
+  `codeInsight.declarativeInlayProvider` — actions 1 and 5.
+- `SolrConfigsetDocumentationProvider` and `SolrFieldPresentation` in
+  `org.apache.solr.ide.configset.documentation` — action 2, including the Reference Guide
+  link resolved against the configset's declared version.
+
+**Action 3 is what remains.** No intention exists yet: nothing in `src/main` implements
+`IntentionAction`, so the `_exact` companion and the EdgeNGram-backed `_prefix` field are
+unbuilt, and the last criterion below is the one holding this step open. Action 4 is a
+constraint on that work rather than something to build, so it lands with it.
+
 **Success criteria:**
-- [ ] Fields annotated correctly for canonical types.
-- [ ] No hint is shown where match analysis is not confident.
-- [ ] Quick documentation on a field's type resolves, and its Reference Guide link names
+- [x] Fields annotated correctly for canonical types.
+- [x] No hint is shown where match analysis is not confident.
+- [x] Quick documentation on a field's type resolves, and its Reference Guide link names
       the version the configset targets.
 - [ ] Quick-fixes produce valid configset edits.
 
@@ -483,10 +516,10 @@ with its copy rule.
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
 [match analysis](#step-4-match-analysis)
 
-### Step 23: Explaining and correcting what is already on screen
+### Step 23: Explaining and correcting what is already on screen (done)
 
 Numbered last because it was added last; it belongs in the Editor track, after
-[match hints](#step-7-match-hints-and-quick-fixes). Read the section it sits in, not the
+[match hints](#step-7-match-hints-and-quick-fixes-in-progress). Read the section it sits in, not the
 number.
 
 Three gaps found by using the plugin rather than by reading the plan, and they share a
@@ -519,25 +552,36 @@ with no Alt-Enter is more frustrating than no underline.
    catalog-backed half of documentation and completion stays in
    [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
 
+**What shipped:**
+- `SolrSchemaElements` — a description per recognized tag plus the configset-specific
+  sentence beside it: which fields a copy rule joins, which field is the unique key and of
+  what type, how many fields use a type. Tested as a pure function in `SolrSchemaElementsTest`,
+  which is JUnit 4 with backtick names rather than the `testSomething()` convention the
+  fixture tests use — it needs no fixture, so it does not extend `BasePlatformTestCase`.
+- `SolrReplaceNameQuickFix`, offered by both reference inspections, ordered by closest
+  spelling and capped so a large schema does not produce an unusable list.
+- The default-value marking in `SolrConfigsetCompletionContributor`, read from
+  `SolrFieldProperties` and deliberately silent where the default depends on the field type.
+
 **Success criteria:**
-- [ ] Every recognized schema element answers on hover, and says something specific to the
+- [x] Every recognized schema element answers on hover, and says something specific to the
       configset where it can.
-- [ ] Both reference inspections offer a fix naming the valid alternatives, and applying one
+- [x] Both reference inspections offer a fix naming the valid alternatives, and applying one
       produces a configset that parses.
-- [ ] A completed value that Solr would have used anyway is marked as the default.
+- [x] A completed value that Solr would have used anyway is marked as the default.
 
 **Acceptance:** No demo step of its own. It is what makes
 [demo step 25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
 survive the obvious follow-up question, which is "so what do I put there instead".
 
 **Dependencies:** [inspections](#step-6-inspections) for the quick-fixes;
-[match hints](#step-7-match-hints-and-quick-fixes) for the documentation provider they
+[match hints](#step-7-match-hints-and-quick-fixes-in-progress) for the documentation provider they
 extend.
 
-### Step 24: Completing the schema's own vocabulary
+### Step 24: Completing the schema's own vocabulary (done)
 
 Numbered last because it was added last; it belongs in the Editor track beside
-[explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen).
+[explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done).
 
 Completion today answers *what value goes here* and never *what may I write at all*. Typing
 `<` in a schema offers nothing; typing a space inside `<field ` offers nothing. Both are
@@ -560,7 +604,7 @@ The dependency was wrong, and a feature was parked behind something it never nee
    them too; modelling them fixes both surfaces at once. Record which properties a
    `fieldType` accepts and which a `field` accepts, since the sets differ.
 2. Element-name completion, from the descriptions
-   [element documentation](#step-23-explaining-and-correcting-what-is-already-on-screen)
+   [element documentation](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
    already holds. Offer only elements legal in the enclosing element.
 3. Attribute-name completion on `field`, `dynamicField` and `fieldType`, from the property
    table, showing each property's summary. Omit attributes already present on the tag —
@@ -569,16 +613,27 @@ The dependency was wrong, and a feature was parked behind something it never nee
    `type`, and `synonymQueryStyle`. Positions where any value is legal stay untouched, as
    [completion](#step-10-completion-validation-and-quick-documentation) already requires.
 
+**What shipped:** all four actions, in `SolrConfigsetCompletionContributor` against the
+widened `SolrFieldProperties`, covered by `SolrSchemaVocabularyCompletionTest`.
+
+**Class-name completion in the same contributor is not this step.** The tests reading
+`solr.` implementations for a `fieldType`, a tokenizer and a filter, and asserting the
+offered set follows the declared Solr line, belong to
+[the factory catalog generator](#step-9-factory-catalog-generator) and
+[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
+They arrived early and share a file with this step's work; read them against those steps,
+not this one, or this step will look larger than it was.
+
 **Success criteria:**
-- [ ] Typing `<` inside a schema offers the elements legal there and nothing else.
-- [ ] Attribute completion offers what the element accepts, minus what it already carries.
-- [ ] A `fieldType` general property completes, and documents, exactly as a field property does.
-- [ ] Non-boolean closed value sets complete; open-ended ones stay with the platform.
+- [x] Typing `<` inside a schema offers the elements legal there and nothing else.
+- [x] Attribute completion offers what the element accepts, minus what it already carries.
+- [x] A `fieldType` general property completes, and documents, exactly as a field property does.
+- [x] Non-boolean closed value sets complete; open-ended ones stay with the platform.
 
 **Acceptance:** No demo step of its own. It is the difference between a reader who can only
 edit what is already written and one who can discover what Solr allows.
 
-**Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
+**Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the element descriptions. Nothing from the catalog.
 
 ### Step 25: solrconfig.xml as a first-class surface
@@ -706,7 +761,7 @@ What remains here is the catalog-backed half, which is what the dependency below
 4. Documentation provider keyed by factory and attribute, surfacing which catalog source
    answered. The *field type* half of quick documentation does not belong here — it needs
    the model and match analysis rather than the catalog, so it ships with
-   [match hints](#step-7-match-hints-and-quick-fixes) instead. Only the catalog-backed
+   [match hints](#step-7-match-hints-and-quick-fixes-in-progress) instead. Only the catalog-backed
    half waits for this step.
 
 **Success criteria:**
@@ -861,6 +916,15 @@ The document indexes into the local collection and is then findable.
 5. **Silence where resolution fails.** Assert this in tests explicitly — precision
    matters more than recall.
 
+**The two-module fixture needs more than the light test project.** `BasePlatformTestCase`
+supplies one module with no real library dependencies, so the last criterion below cannot be
+written on it at all. The cheap route is a `LightProjectDescriptor` adding a second module
+and putting a SolrJ artifact on one module's classpath through `PsiTestUtil.addLibrary`; the
+expensive route is `HeavyPlatformTestCase`, which builds a real project per test. Try the
+cheap one. This is recorded here because it is the sort of constraint that gets discovered
+halfway through the step and misread as the test framework being broken — and because the
+gate in action 2 is worthless if the only fixture that could disprove it is unwritable.
+
 **Success criteria:**
 - [ ] Field references resolve in builder calls, raw strings, document building and bean
       annotations.
@@ -976,10 +1040,20 @@ route is offered as a connection candidate, and a misspelled URI option is flagg
    [documentation](#step-21-documentation) has written the matrix; land the check here and
    expect it to pass vacuously until then.
 5. Catalog tests per supported line.
+6. **Adopt `verifyPlugin`.** It already runs in CI and no step claims it, which is exactly
+   how a gate goes unattended until the day it fails and nobody knows whose it is. It earns
+   a step of its own reasoning because no test can replace it: the suite compiles against
+   the same platform version the plugin does, so an IntelliJ API removed under the plugin
+   on a target bump is invisible to every test here and visible only to the Verifier. Pin
+   the IDE builds it verifies against in the same place [documentation](#step-21-documentation)
+   writes the compatibility matrix, so the two cannot drift apart — a matrix promising a
+   build the Verifier never checked is worse than no matrix.
 
 **Success criteria:**
 - [ ] Zero false positives on both shipped configsets, enforced in CI.
 - [ ] Missing description files and version drift both fail the build.
+- [ ] `verifyPlugin` passes for every IDE build the compatibility matrix claims, and the
+      set it checks is read from where the matrix is written rather than restated.
 
 **Acceptance:** No demo step — this step *is* the automated gate. It is what stops the
 demo passing while the suite quietly rots.
@@ -1015,7 +1089,7 @@ The cross-track invariants no single step owns. Each step's own success criteria
 rest.
 
 - [x] Build, CI, coverage and documentation gates in place.
-- [ ] Package namespace decided.
+- [x] Package namespace decided — stays `org.apache.solr.ide`; see the activation gate overhaul.
 - [ ] Editor features work with no connection.
 - [ ] Server features work with no configset in the project.
 - [ ] Code features stay silent where they cannot resolve.

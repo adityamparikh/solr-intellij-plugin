@@ -67,6 +67,9 @@ The foundation is complete and the first two user-facing features sit on top of 
   matches, for a `copyField`'s source and destination, offering the declared fields, and `true`/`false`
   for the boolean properties — with the value Solr would use if the attribute were absent marked as
   the default
+- **Completion of the `class` attribute** on a `fieldType`, `tokenizer`, `filter` or `charFilter`,
+  from a catalog generated at build time out of the Solr and Lucene artifacts for each supported
+  line — so a schema declaring Solr 9.10 is offered that line's vocabulary, not Solr 10's
 - **Navigation** from a field's `type` to the `fieldType` that declares it, and from each end of a
   `copyField` to the field it names — cmd-click or Ctrl-B. A glob such as `dest="*_t"` lands on the
   `dynamicField` that spells the same pattern, not on a concrete field it might match
