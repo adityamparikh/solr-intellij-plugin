@@ -11,7 +11,10 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrFieldProperties
+import org.apache.solr.ide.model.SolrFieldProperty
 import org.apache.solr.ide.model.SolrReferenceGuide
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
@@ -52,6 +55,12 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         contextElement?.parentOfType<XmlAttributeValue>(withSelf = true)
             ?.takeIf { documentedTarget(it) != null }
             ?.let { return it }
+        // A property attribute, from either half of it — the name or the value. `omitNorms="false"`
+        // is the obvious place to ask what a property means and what Solr would otherwise have used,
+        // and it previously answered with the enclosing element's description instead.
+        contextElement?.parentOfType<XmlAttribute>(withSelf = true)
+            ?.takeIf { documentedProperty(it) != null }
+            ?.let { return it }
         // Falling through to the tag means hovering the element itself answers. Without this, every
         // question the plugin can answer required the caret to be inside an attribute value — a
         // gesture a reader makes only once they already suspect something.
@@ -67,6 +76,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      */
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
         if (element is XmlTag) return elementDocumentation(element)
+        if (element is XmlAttribute) return propertyDocumentation(element)
         val value = element as? XmlAttributeValue ?: return null
         val file = value.containingFile ?: return null
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
@@ -120,17 +130,58 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      */
     private fun elementDocumentation(tag: XmlTag): String? {
         val description = SolrSchemaElements.forTag(tag.name) ?: return null
-        val file = tag.containingFile ?: return null
-        if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
-        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
-        val model = SolrConfigsetReader.getInstance(file.project).modelFor(configset)
-        val version = versionOf(model)
+        val model = modelFor(tag) ?: return null
         val attributes = tag.attributes.mapNotNull { a -> a.name.let { n -> a.value?.let { n to it } } }.toMap()
+        val field = fieldDeclaredBy(tag, model)
         return SolrFieldPresentation.elementDocumentation(
             description = description,
             specifics = SolrSchemaElements.specifics(tag.name, attributes, model),
-            version = version,
+            version = versionOf(model),
+            field = field,
+            fieldType = field?.let { model.typeOf(it) },
         )
+    }
+
+    /**
+     * The popup for a property attribute, resolved against the field it sits on where there is one.
+     *
+     * On a `fieldType` the general half is all there is: a type has no "effective value for this
+     * field" to report, and inventing one would be asserting something Solr does not.
+     */
+    private fun propertyDocumentation(attribute: XmlAttribute): String? {
+        val property = documentedProperty(attribute) ?: return null
+        val tag = attribute.parentOfType<XmlTag>() ?: return null
+        val model = modelFor(tag) ?: return null
+        val field = fieldDeclaredBy(tag, model)
+        return SolrFieldPresentation.propertyDocumentation(
+            property = property,
+            effective = field?.let { SolrFieldProperties.resolve(property, it, model.typeOf(it)) },
+            version = versionOf(model),
+        )
+    }
+
+    /**
+     * The property [attribute] names, or null when it is not one — including on a tag that cannot
+     * carry properties at all, where `name` on a `copyField` would otherwise look like one.
+     */
+    private fun documentedProperty(attribute: XmlAttribute): SolrFieldProperty? {
+        val tag = attribute.parentOfType<XmlTag>() ?: return null
+        if (tag.name !in SolrSchemaTags.FIELD && tag.name !in SolrSchemaTags.FIELD_TYPE) return null
+        return SolrFieldProperties.byName(attribute.name)
+    }
+
+    /** The model's field for a `field` or `dynamicField` tag, or null for any other element. */
+    private fun fieldDeclaredBy(tag: XmlTag, model: SolrFieldModel): SolrField? {
+        if (tag.name !in SolrSchemaTags.FIELD) return null
+        val name = tag.getAttributeValue("name")?.takeIf { it.isNotEmpty() } ?: return null
+        return model.fields[name]?.effective ?: model.dynamicFields[name]?.effective?.field
+    }
+
+    private fun modelFor(tag: XmlTag): SolrFieldModel? {
+        val file = tag.containingFile ?: return null
+        if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
+        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
+        return SolrConfigsetReader.getInstance(file.project).modelFor(configset)
     }
 
     /**

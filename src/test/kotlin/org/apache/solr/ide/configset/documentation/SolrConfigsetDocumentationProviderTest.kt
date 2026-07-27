@@ -115,11 +115,69 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         assertTrue("expected the copyField element's explanation: $doc", doc!!.contains("index time"))
     }
 
-    /** An attribute the plugin has nothing to say about still falls back to its element. */
+    /**
+     * An attribute the plugin has nothing to say about still falls back to its element.
+     *
+     * `class` is the case that matters: it is the most-hovered attribute in the file and the plugin
+     * cannot yet name what belongs there, so it answers about the element rather than pretending.
+     */
     fun testAnUnknownAttributeFallsBackToItsElement() {
+        val doc = docAtCaret(caretInside("class"))
+        assertNotNull(doc)
+        assertTrue("expected the fieldType element's explanation: $doc", doc!!.contains("Declares a field type"))
+    }
+
+    /**
+     * Hovering a property answers about the property.
+     *
+     * This is the gesture a reader actually makes to ask what an attribute means and what Solr
+     * would have used instead — and it previously answered with the enclosing element's
+     * description, which is a fine answer to a question nobody asked.
+     */
+    fun testHoveringAPropertyExplainsIt() {
         val doc = docAtCaret(caretInside("indexed"))
         assertNotNull(doc)
-        assertTrue("expected the field element's explanation: $doc", doc!!.contains("Declares one field"))
+        assertTrue("expected the property summary: $doc", doc!!.contains("can be searched"))
+        assertTrue("expected what it accepts: $doc", doc.contains("true or false"))
+        assertTrue("expected Solr's default: $doc", doc.contains("Solr default"))
+    }
+
+    /** And, on a field, what the value resolves to here and where it came from. */
+    fun testAPropertyOnAFieldReportsItsEffectiveValueAndOrigin() {
+        val doc = docAtCaret(caretInside("stored"))
+        assertNotNull(doc)
+        assertTrue("expected the resolved value: $doc", doc!!.contains("Here"))
+        assertTrue("expected the origin: $doc", doc.contains("on this field"))
+    }
+
+    /**
+     * A property on a `fieldType` has no "value for this field" to report, and inventing one would
+     * assert something Solr does not. The general half still answers.
+     */
+    fun testAPropertyOnAFieldTypeHasNoEffectiveValue() {
+        val doc = docAtCaret(caretInside("sortMissingLast"))
+        assertNotNull(doc)
+        assertTrue("expected what it accepts: $doc", doc!!.contains("true or false"))
+        assertFalse("a field type has no effective value: $doc", doc.contains("Here"))
+    }
+
+    /**
+     * Hovering the element gives the resolved configuration, not only a description of what a field
+     * is. The property table was previously reachable only with the caret inside the `name` quotes.
+     */
+    fun testHoveringAFieldElementShowsTheResolvedConfiguration() {
+        val doc = docAtCaret(caretInside("dynamicField"))
+        assertNotNull(doc)
+        assertTrue("expected the element description: $doc", doc!!.contains("Declares a field by"))
+        assertTrue("expected the resolved properties: $doc", doc.contains("Properties"))
+        assertTrue("expected an origin column: $doc", doc.contains("Solr default"))
+    }
+
+    /** An element that declares no field has no properties to resolve. */
+    fun testHoveringACopyFieldShowsNoPropertyTable() {
+        val doc = docAtCaret(caretInside("copyField"))
+        assertNotNull(doc)
+        assertFalse("a copy rule has no properties: $doc", doc!!.contains("<b>Properties</b>"))
     }
 
     /** A type the configset does not declare has no documentation to give. */

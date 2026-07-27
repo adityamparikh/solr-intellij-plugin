@@ -221,10 +221,13 @@ exists but not where it was written, and navigation needs the second answer.
 
 Quick documentation on a schema element, on a field, and on its type.
 
-Hovering an element answers, not only hovering a value inside one. That matters
-more than it sounds: before it, everything the plugin knew was reachable only by
-putting the caret inside an attribute value — a gesture a reader makes once they
-already suspect something. [SolrSchemaElements] holds what each element is, and
+Every position a reader would try answers: the element, a property attribute, and
+a value inside one. That matters more than it sounds. The resolved property table
+is the one thing here no external documentation can supply, and it was reachable
+only with the caret inside a field's `name` quotes — so hovering the element, or
+hovering `omitNorms` itself, returned something less useful than the thing sitting
+one gesture away. Hovering a property now answers about the property; hovering a
+field element carries its resolved configuration. [SolrSchemaElements] holds what each element is, and
 what *this* one does where the model can say: which fields a copy rule joins and
 whether both ends exist, which field is the unique key, how many fields use a
 type.
