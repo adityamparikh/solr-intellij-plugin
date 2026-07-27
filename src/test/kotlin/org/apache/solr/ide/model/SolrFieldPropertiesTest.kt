@@ -107,13 +107,65 @@ class SolrFieldPropertiesTest {
     }
 
     @Test
-    fun `every property resolves for a bare field`() {
+    fun `every property a field can carry resolves for a bare field`() {
         val bare = SolrField("x", "string")
         val resolved = SolrFieldProperties.effectiveFor(bare, null)
-        assertEquals(SolrFieldProperties.ALL.size, resolved.size)
+        assertEquals(SolrFieldProperties.FOR_FIELD.size, resolved.size)
         assertTrue(
             "a bare field takes everything from defaults or leaves it undetermined",
             resolved.all { it.origin == SolrPropertyOrigin.SOLR_DEFAULT || it.origin == SolrPropertyOrigin.UNDETERMINED },
+        )
+    }
+
+    // --- the two scopes ---------------------------------------------------------------------
+
+    /**
+     * The six the first pass missed. They come from the Reference Guide's *general* properties
+     * table, beside the field properties table the original list was built from — which left them
+     * invisible to documentation and completion alike.
+     */
+    @Test
+    fun `the fieldType general properties are modelled`() {
+        for (name in listOf(
+            "positionIncrementGap", "autoGeneratePhraseQueries", "synonymQueryStyle",
+            "enableGraphQueries", "docValuesFormat", "postingsFormat",
+        )) {
+            val property = SolrFieldProperties.byName(name)
+            assertNotNull("$name should be known", property)
+            assertEquals("$name is only legal on a fieldType", SolrPropertyScope.TYPE_ONLY, property!!.scope)
+        }
+    }
+
+    /** A field inherits its type's properties, so most are legal on both; six are not. */
+    @Test
+    fun `a field accepts fewer properties than a field type`() {
+        assertTrue(SolrFieldProperties.FOR_FIELD.size < SolrFieldProperties.FOR_FIELD_TYPE.size)
+        assertEquals(SolrFieldProperties.ALL.size, SolrFieldProperties.FOR_FIELD_TYPE.size)
+        assertTrue(SolrFieldProperties.FOR_FIELD.none { it.scope == SolrPropertyScope.TYPE_ONLY })
+    }
+
+    /** A field's property table must not offer values it cannot carry. */
+    @Test
+    fun `type-only properties are absent from a field's effective properties`() {
+        val resolved = SolrFieldProperties.effectiveFor(SolrField("x", "string"), null).map { it.property.name }
+        assertTrue("positionIncrementGap" !in resolved)
+        assertTrue("indexed" in resolved)
+    }
+
+    /** Where the accepted set is closed and not boolean, it is recorded so completion can offer it. */
+    @Test
+    fun `closed non-boolean value sets are recorded`() {
+        assertEquals(
+            listOf("as_same_term", "pick_best", "as_distinct_terms"),
+            SolrFieldProperties.byName("synonymQueryStyle")!!.closedValues,
+        )
+        assertTrue(
+            "an integer is not a closed set",
+            SolrFieldProperties.byName("positionIncrementGap")!!.closedValues.isEmpty(),
+        )
+        assertTrue(
+            "booleans are handled separately",
+            SolrFieldProperties.byName("indexed")!!.closedValues.isEmpty(),
         )
     }
 }
