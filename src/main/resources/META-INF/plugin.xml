@@ -39,5 +39,19 @@
         <lang.documentationProvider
             language="XML"
             implementationClass="org.apache.solr.ide.editor.SolrConfigsetDocumentationProvider"/>
+
+        <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
+             authoritative enough to claim a hard error, and an error on a file the user is midway
+             through editing is worse than a warning on the same file. -->
+        <localInspection
+            language="XML"
+            shortName="SolrDanglingCopyField"
+            bundle="messages.SolrBundle"
+            key="inspection.copyField.displayName"
+            groupBundle="messages.SolrBundle"
+            groupKey="inspection.group"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.apache.solr.ide.editor.SolrDanglingCopyFieldInspection"/>
     </extensions>
 </idea-plugin>

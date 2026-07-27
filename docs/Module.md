@@ -210,6 +210,11 @@ trees so that staying off that path remains affordable.
 
 What the user actually sees.
 
+[SolrDanglingCopyFieldInspection] reports a copy rule naming a field that does not
+exist — the failure the plugin exists for, since Solr accepts the file and
+rejects it only at core reload. Its clean fixtures matter more than its flagged
+ones: a warning on a correct file is what gets a plugin uninstalled.
+
 [SolrMatchInlayHintsProvider] shows what each field matches inline beside its
 declaration — an inlay rather than a tooltip because a user who does not already
 suspect their field cannot match a prefix will never hover over it to find out.

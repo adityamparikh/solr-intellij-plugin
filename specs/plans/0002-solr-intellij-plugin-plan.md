@@ -51,7 +51,7 @@ it whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages)
-- [Step 6 — Inspections](#step-6-inspections)
+- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
@@ -405,7 +405,7 @@ and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-fin
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
 
-### Step 6: Inspections
+### Step 6: Inspections (in progress)
 
 Where the zero-false-positive requirement gets teeth.
 
@@ -417,8 +417,14 @@ Where the zero-false-positive requirement gets teeth.
    published catalog entry.
 3. Test each on both flagged and clean fixtures.
 
+Landing one inspection per pull request, each with its flagged and clean fixtures, rather
+than as one change. Taken before [references and navigation](#step-5-references-navigation-and-find-usages),
+which this step nominally depends on: that dependency holds only for inspections written as
+unresolved-reference checks, and these are driven off the field model instead.
+
 **Success criteria:**
 - [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
+  - [x] Dangling `copyField` source or destination.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
