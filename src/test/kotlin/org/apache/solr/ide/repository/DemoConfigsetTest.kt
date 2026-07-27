@@ -120,6 +120,26 @@ class DemoConfigsetTest {
         }
     }
 
+    /**
+     * The demo's opening, as the inspection sees it. Demo step 25 puts this underline on screen, so
+     * it is worth pinning that exactly one thing in the committed fixture is reportable — and which.
+     */
+    @Test
+    fun `exactly one reference in the demo configset is dangling`() {
+        val danglingCopyFields = model.copyFields.map { it.effective }
+            .filter { '*' !in it.source && model.resolve(it.source) == null }
+            .map { it.source }
+        assertEquals(listOf("manufacturer"), danglingCopyFields)
+
+        val undeclaredTypes = model.fields.values.map { it.effective }
+            .filter { it.type.isNotEmpty() && !model.fieldTypes.containsKey(it.type) }
+        assertTrue("every demo field names a declared type: ${'$'}undeclaredTypes", undeclaredTypes.isEmpty())
+
+        val unknownReferences = model.fieldReferences
+            .filter { it.fieldName != "score" && model.resolve(it.fieldName) == null }
+        assertTrue("no handler parameter names a missing field: ${'$'}unknownReferences", unknownReferences.isEmpty())
+    }
+
     @Test
     fun `a field the schema does not declare resolves to nothing`() {
         assertNull("the demo schema declares no dynamic fields, so nothing catches this", model.resolve("title_s"))

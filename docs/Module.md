@@ -219,6 +219,12 @@ ones: a warning on a correct file is what gets a plugin uninstalled.
 the mistake most easily made when something offers a word from elsewhere in the
 file as a value.
 
+[SolrUnknownFieldReferenceInspection] crosses the file boundary: a `qf` in
+`solrconfig.xml` naming a field the schema does not declare is not an error to
+Solr, and a query using it simply returns fewer results. Its precision rules
+matter most — `fl` legitimately contains `score`, `[docid]` and
+`max(price,0)`, none of which is a field.
+
 [SolrMatchInlayHintsProvider] shows what each field matches inline beside its
 declaration — an inlay rather than a tooltip because a user who does not already
 suspect their field cannot match a prefix will never hover over it to find out.

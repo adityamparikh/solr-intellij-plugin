@@ -1,0 +1,21 @@
+<html>
+<body>
+Reports a request-handler parameter in <code>solrconfig.xml</code> that names a field the schema does
+not declare.
+<p>
+  This crosses the boundary between the two files, and it is the quietest failure in a Solr
+  configuration. A <code>qf</code> naming a field that was renamed in the schema is not an error to
+  Solr — the parameter is just a string. Queries return fewer results, or none, and nothing reports
+  anything.
+</p>
+<p>
+  Only parameters known to name fields are examined: <code>qf</code>, <code>pf</code>,
+  <code>df</code>, <code>fl</code>, <code>sort</code>, <code>facet.field</code> and their
+  relatives. Function queries, globs, field aliases, parameter references and document transformers
+  such as <code>[docid]</code> are not field names and are left alone, as are names Solr supplies
+  itself such as <code>score</code>.
+</p>
+<p><small>Example: <code>&lt;str name="qf"&gt;name^3 descriptoin&lt;/str&gt;</code> where the schema
+  declares <code>description</code>.</small></p>
+</body>
+</html>

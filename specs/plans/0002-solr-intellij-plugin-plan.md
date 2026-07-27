@@ -426,6 +426,7 @@ unresolved-reference checks, and these are driven off the field model instead.
 - [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
   - [x] Dangling `copyField` source or destination.
   - [x] A field naming an undeclared field type.
+  - [x] A handler parameter naming a field the schema does not declare.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)

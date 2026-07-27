@@ -101,8 +101,14 @@ object SolrConfigParser {
 
     private val WHITESPACE = Regex("\\s+")
 
-    /** Characters that mark a token as syntax rather than a field name. */
-    private val EXCLUDED_CHARACTERS = charArrayOf('*', '(', ')', ':', '$', '{', '}', '"', '\'')
+    /**
+     * Characters that mark a token as syntax rather than a field name.
+     *
+     * Square brackets matter as much as parentheses: `[docid]`, `[explain]` and `[child]` are
+     * document transformers, legal in an `fl`, and named like nothing in any schema. Reading one as
+     * a field would produce a "no such field" warning on syntax that is entirely correct.
+     */
+    private val EXCLUDED_CHARACTERS = charArrayOf('*', '(', ')', ':', '$', '{', '}', '"', '\'', '[', ']')
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")

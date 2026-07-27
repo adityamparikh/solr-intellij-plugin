@@ -51,7 +51,9 @@ The foundation is complete and the first two user-facing features sit on top of 
   match, and every property's effective value with whether it came from the field, its type, or
   Solr's default — plus a Reference Guide link for the version the configset declares
 - **Inspections** flagging a `copyField` whose source or destination names a field the configset
-  does not declare, and a field naming a field type it does not declare
+  does not declare, a field naming a field type it does not declare, and a handler parameter in
+  `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
+  boundary nothing else checks
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
