@@ -47,6 +47,10 @@ The foundation is complete and the first two user-facing features sit on top of 
 - **Inline hints** on every field in a configset, saying what it can actually match — whole value
   or tokens, case-sensitive or not, and whether prefix matching is supported efficiently. Silent
   where the analyser chain contains something it does not recognise
+- **Quick documentation** on any schema element — `schema`, `field`, `dynamicField`, `fieldType`,
+  `copyField`, `uniqueKey`, `analyzer` — explaining what it is and what *this* one does: which
+  fields a copy rule joins and whether both ends exist, which field is the unique key, how many
+  fields use a type
 - **Quick documentation** on a field or its type: the analyser chains, what fields of that type
   match, and every property's effective value with whether it came from the field, its type, or
   Solr's default — plus a Reference Guide link for the version the configset declares

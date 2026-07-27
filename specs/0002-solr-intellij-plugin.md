@@ -292,6 +292,18 @@ and the match analysis, it is specific to the configset in front of the user, an
 external documentation can supply it. The Reference Guide link is the supplement, not the
 substance.
 
+**And the elements themselves, not only the values inside them.** A reader who does not
+already know what a `copyField` does, or what `uniqueKey` is for, is exactly the reader
+documentation exists for — and asking about the *element* is the natural gesture. Hovering
+`<schema>`, `<copyField>`, `<uniqueKey>`, `<dynamicField>` or a `<fieldType>` tag explains
+what it is, in Solr's terms, and where relevant what this particular one does: which fields
+a copy rule joins, which field is the unique key, how many types the schema declares.
+
+That matters more than it sounds. Everything the plugin knows is currently reachable only
+by putting the caret inside an attribute *value*, which is a gesture you make when you
+already suspect something. A feature nobody can find is worth what a feature nobody built
+is worth.
+
 An earlier draft proposed resolving this at runtime from the project's own dependency
 jars, read as bytecode to avoid classloader conflicts, with per-module resolution. That
 is deleted. It was substantial machinery to answer a question a connected server answers
@@ -326,7 +338,9 @@ Available with no connection and no setup. This is the first-run experience and 
 be good, because value arriving before configuration is what keeps a plugin installed.
 
 - **Completion** for field types, tokenizer and filter factories and their attributes,
-  and field attributes.
+  and field attributes — marking which value Solr would use if the attribute were absent,
+  because "this is what you already have" is the thing a reader is usually trying to work
+  out.
 - **Navigation** — a field to its type, a `copyField` to its target, a request handler
   parameter in `solrconfig.xml` to the schema field it names, and a filter's resource
   attribute to the actual `stopwords.txt` or `synonyms.txt` beside it.
@@ -339,13 +353,18 @@ be good, because value arriving before configuration is what keeps a plugin inst
   whole value or tokens, prefix-capable or not, case-sensitive or not — derived from its
   index-time analyzer chain. This is the feature most likely to tell an experienced user
   something they did not know.
-- **Quick-fixes** that add a missing capability using the standard patterns — an
-  `_exact` companion field plus its `copyField`, or an EdgeNGram-backed `_prefix` field.
-  Phrased as *efficient index-time* support, since wildcard queries already provide slow
-  partial matching on any indexed field.
-- **Quick documentation** on factories and attributes, and on a field's type — what it is,
-  what its analyzer chain does, and what a field of that type can match, with a link to the
-  Reference Guide for the version the configset targets.
+- **Quick-fixes** of two kinds. Those that *add a missing capability* using the standard
+  patterns — an `_exact` companion field plus its `copyField`, or an EdgeNGram-backed
+  `_prefix` field — phrased as *efficient index-time* support, since wildcard queries
+  already provide slow partial matching on any indexed field. And those that *correct a
+  reference the plugin has just reported*: an unknown field type offers the declared types,
+  a dangling `copyField` offers the declared fields.
+  An inspection that says a name is wrong while withholding the list of right ones is doing
+  half a job, and it already computed that list in order to decide.
+- **Quick documentation** on factories and attributes, on a field's type — what it is, what
+  its analyzer chain does, and what a field of that type can match — and on the schema
+  elements themselves: `schema`, `field`, `dynamicField`, `fieldType`, `copyField`,
+  `uniqueKey`. All with a link to the Reference Guide for the version the configset targets.
 - **Rename** a field or field type, updating every reference across both files.
 
 Files are edited directly and without warning. The plugin does not classify schema

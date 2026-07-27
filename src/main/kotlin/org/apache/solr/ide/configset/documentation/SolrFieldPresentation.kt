@@ -63,6 +63,29 @@ object SolrFieldPresentation {
         }
 
     /**
+     * The documentation popup for a schema element.
+     *
+     * @param description what the element is, in general
+     * @param specifics what this particular one does, or null when nothing specific can be said
+     * @param version the Solr line this configset targets, for the guide link
+     * @return HTML for the popup
+     */
+    internal fun elementDocumentation(
+        description: SolrSchemaElements.Description,
+        specifics: String?,
+        version: SolrVersionSelection,
+    ): String = buildString {
+        append("<div class='definition'><pre>&lt;${escape(description.tagName)}&gt;</pre></div>")
+        append("<div class='content'>")
+        append("<p>${description.summary}</p>")
+        // Not escaped: the specifics are built by this plugin from model values, and carry markup
+        // of their own. The values interpolated into them are escaped at the point they are read.
+        specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
+        append("</div>")
+        append(guideLinks(version))
+    }
+
+    /**
      * The documentation popup for a field type: its class, its chains, and what it makes fields match.
      *
      * @param fieldType the type to document

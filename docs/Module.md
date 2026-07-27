@@ -190,7 +190,15 @@ exists but not where it was written, and navigation needs the second answer.
 
 # Package org.apache.solr.ide.configset.documentation
 
-Quick documentation on a field and on its type.
+Quick documentation on a schema element, on a field, and on its type.
+
+Hovering an element answers, not only hovering a value inside one. That matters
+more than it sounds: before it, everything the plugin knew was reachable only by
+putting the caret inside an attribute value — a gesture a reader makes once they
+already suspect something. [SolrSchemaElements] holds what each element is, and
+what *this* one does where the model can say: which fields a copy rule joins and
+whether both ends exist, which field is the unique key, how many fields use a
+type.
 
 Answers what the Reference Guide cannot: not what `omitNorms` means in general,
 but what it is *for this field in this schema*, and whether that value came from

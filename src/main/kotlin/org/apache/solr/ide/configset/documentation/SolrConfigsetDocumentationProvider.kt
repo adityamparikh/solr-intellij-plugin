@@ -48,7 +48,13 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
         targetOffset: Int,
     ): PsiElement? {
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
-        return contextElement?.parentOfType<XmlAttributeValue>(withSelf = true)?.takeIf { documentedTarget(it) != null }
+        contextElement?.parentOfType<XmlAttributeValue>(withSelf = true)
+            ?.takeIf { documentedTarget(it) != null }
+            ?.let { return it }
+        // Falling through to the tag means hovering the element itself answers. Without this, every
+        // question the plugin can answer required the caret to be inside an attribute value — a
+        // gesture a reader makes only once they already suspect something.
+        return contextElement?.parentOfType<XmlTag>()?.takeIf { SolrSchemaElements.forTag(it.name) != null }
     }
 
     /**
@@ -59,6 +65,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
      * @return HTML for the popup, or null
      */
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
+        if (element is XmlTag) return elementDocumentation(element)
         val value = element as? XmlAttributeValue ?: return null
         val file = value.containingFile ?: return null
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
@@ -102,6 +109,27 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
             is Target.Type -> listOf(SolrReferenceGuide.fieldTypesPage(version))
             null -> null
         }
+    }
+
+    /**
+     * The popup for a schema element: what it is, and what this particular one does.
+     *
+     * The second half is the part worth having. What a `copyField` is can be looked up; that *this*
+     * rule joins two fields, one of which the schema does not declare, cannot be.
+     */
+    private fun elementDocumentation(tag: XmlTag): String? {
+        val description = SolrSchemaElements.forTag(tag.name) ?: return null
+        val file = tag.containingFile ?: return null
+        if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
+        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
+        val model = SolrConfigsetReader.getInstance(file.project).modelFor(configset)
+        val version = versionOf(model)
+        val attributes = tag.attributes.mapNotNull { a -> a.name.let { n -> a.value?.let { n to it } } }.toMap()
+        return SolrFieldPresentation.elementDocumentation(
+            description = description,
+            specifics = SolrSchemaElements.specifics(tag.name, attributes, model),
+            version = version,
+        )
     }
 
     /**
