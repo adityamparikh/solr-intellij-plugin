@@ -40,6 +40,13 @@
             language="XML"
             implementationClass="org.apache.solr.ide.editor.SolrConfigsetDocumentationProvider"/>
 
+        <!-- References. A configset is held together by string references — a field names its
+             type, a copyField names two fields — and none of them is a reference as far as the
+             editor is concerned until this makes it one. -->
+        <psi.referenceContributor
+            language="XML"
+            implementation="org.apache.solr.ide.editor.SolrConfigsetReferenceContributor"/>
+
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
              values not on it are wrong. -->

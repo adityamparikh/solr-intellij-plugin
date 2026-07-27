@@ -50,7 +50,7 @@ it whole, and the gutter action goes with the Server track.
 
 ### Editor track
 
-- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages)
+- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-in-progress) — **in progress**
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
 - [Step 8 — Rename](#step-8-rename)
@@ -383,7 +383,7 @@ detected-configset list in action 2.
 
 ## Editor track
 
-### Step 5: References, navigation and Find Usages
+### Step 5: References, navigation and Find Usages (in progress)
 
 **Actions:**
 1. Reference providers for: a field's `type` to its field type; `copyField` source and

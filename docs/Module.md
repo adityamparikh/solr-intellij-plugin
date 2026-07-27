@@ -225,6 +225,12 @@ Solr, and a query using it simply returns fewer results. Its precision rules
 matter most — `fl` legitimately contains `score`, `[docid]` and
 `max(price,0)`, none of which is a field.
 
+[SolrConfigsetReferenceContributor] turns the strings that hold a configset
+together into references the editor understands, starting with a field's `type`.
+Its references are *soft*: an unresolved hard reference draws a warning from the
+platform, which would duplicate what the inspections already report and say less
+while doing it.
+
 [SolrConfigsetCompletionContributor] covers the attribute values whose valid set
 is closed, and deliberately nothing else. A list implies the values not on it are
 wrong, so offering a partial one where any value is legal would be worse than
