@@ -142,11 +142,19 @@ are pure functions from text to facts and can be tested without an IDE. External
 entities and doctypes are refused: a cloned repository is not trusted input, and
 entity resolution would run while the user is merely opening a file.
 
-[SolrConfigsetReader] caches a model per configset, keyed on the modification
-stamps of the files it actually read — so the model rebuilds when the schema
-changes and, the half that costs performance, not when anything else does. Text
-comes from the in-memory document when one exists, so a field added in the editor
-is in the model before the file is saved. Its `modelFor(PsiFile)` is the question
+[SolrConfigsetReader] caches a model per configset through the platform's
+`CachedValuesManager`, hung on the configset directory rather than held in a map
+this plugin owns — so its lifetime is the directory's, and a configset that stops
+existing takes its cache with it. The dependency list is the two source files plus
+the VFS structure count: the first rebuilds the model when this schema changes and
+leaves it alone when unrelated code does, the second notices a `solrconfig.xml`
+that appears later. `docs/platform-mechanisms.md` records why neither half can be
+dropped, and why the reflex choice of `PsiModificationTracker.MODIFICATION_COUNT`
+is a performance regression here.
+
+The model is derived from PSI, so unsaved edits count — PSI reflects the editor's
+buffer long before anything reaches disk — and the model can no longer disagree
+with the PSI its consumers are visiting. Its `modelFor(PsiFile)` is the question
 every editor feature asks, and lives here rather than beside any one of them.
 
 [SolrConfigsetScanner] answers what the per-file locator cannot: which configsets

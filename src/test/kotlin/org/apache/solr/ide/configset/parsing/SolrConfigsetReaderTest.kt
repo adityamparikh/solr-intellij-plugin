@@ -2,6 +2,8 @@ package org.apache.solr.ide.configset.parsing
 
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.openapi.vfs.VirtualFile
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
@@ -34,6 +36,18 @@ class SolrConfigsetReaderTest : SolrConfigsetTestCase() {
         return SolrConfigsetDetector.configsetFor(project, file)!!
     }
 
+    /**
+     * Edits the file and commits, which is what the IDE does before running any of the features
+     * that read the model. The model is derived from PSI, so an uncommitted document is text no
+     * consumer of the model would be looking at either.
+     */
+    private fun edit(file: VirtualFile, text: String) {
+        WriteAction.runAndWait<RuntimeException> {
+            FileDocumentManager.getInstance().getDocument(file)!!.setText(text)
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+    }
+
     fun testBothFilesContributeToOneModel() {
         val model = reader.modelFor(givenConfigset())
 
@@ -47,13 +61,11 @@ class SolrConfigsetReaderTest : SolrConfigsetTestCase() {
 
     fun testModelIsCachedBetweenLookups() {
         val configset = givenConfigset()
-        reader.dropCache()
 
         val first = reader.modelFor(configset)
         val second = reader.modelFor(configset)
 
         assertSame("an unchanged configset must not be reparsed", first, second)
-        assertEquals(1, reader.cacheSize)
     }
 
     /** The half of the criterion that costs performance if it is wrong. */
@@ -62,27 +74,48 @@ class SolrConfigsetReaderTest : SolrConfigsetTestCase() {
         val before = reader.modelFor(configset)
 
         val schemaFile = configset.root.findChild("managed-schema.xml")!!
-        WriteAction.runAndWait<RuntimeException> {
-            val document = FileDocumentManager.getInstance().getDocument(schemaFile)!!
-            document.setText(schema.replace("""<field name="name" type="string" indexed="true"/>""", ""))
-        }
+        edit(schemaFile, schema.replace("""<field name="name" type="string" indexed="true"/>""", ""))
 
         val after = reader.modelFor(configset)
         assertNotSame(before, after)
         assertEquals(setOf("id"), after.fields.keys)
     }
 
-    /** Editing an unrelated file must not invalidate the model, or every keystroke reparses. */
+    /**
+     * Editing an unrelated file must not invalidate the model, or every keystroke reparses.
+     *
+     * The file is created *before* the baseline deliberately. Creating a file is a structural change
+     * and does invalidate — see [testASolrconfigAddedLaterIsPickedUp] for why that is wanted — so a
+     * test that created and edited in one breath would be asserting the wrong thing about the wrong
+     * event.
+     */
     fun testModelIsNotRebuiltWhenAnUnrelatedFileChanges() {
         val configset = givenConfigset()
+        val unrelated = myFixture.addFileToProject("src/App.java", "class App {}").virtualFile
         val before = reader.modelFor(configset)
 
-        val unrelated = myFixture.addFileToProject("src/App.java", "class App {}").virtualFile
-        WriteAction.runAndWait<RuntimeException> {
-            FileDocumentManager.getInstance().getDocument(unrelated)!!.setText("class App { int x; }")
-        }
+        edit(unrelated, "class App { int x; }")
 
         assertSame(before, reader.modelFor(configset))
+    }
+
+    /**
+     * The other half of the dependency list. A configset can acquire a `solrconfig.xml` it did not
+     * have, and no dependency on the files that existed at build time can notice that — only the
+     * VFS structure count can.
+     */
+    fun testASolrconfigAddedLaterIsPickedUp() {
+        val schemaFile = myFixture.addFileToProject("late/conf/managed-schema.xml", schema).virtualFile
+        val configset = SolrConfigsetDetector.configsetFor(project, schemaFile)!!
+        assertTrue("no handler parameters yet", reader.modelFor(configset).fieldReferences.isEmpty())
+
+        myFixture.addFileToProject("late/conf/solrconfig.xml", config)
+
+        assertEquals(
+            "the qf reference must appear once solrconfig.xml exists",
+            "name",
+            reader.modelFor(configset).fieldReferences.single().fieldName,
+        )
     }
 
     /** Unsaved edits count: the plugin must not disagree with what the user is looking at. */
@@ -91,10 +124,7 @@ class SolrConfigsetReaderTest : SolrConfigsetTestCase() {
         reader.modelFor(configset)
 
         val schemaFile = configset.root.findChild("managed-schema.xml")!!
-        WriteAction.runAndWait<RuntimeException> {
-            val document = FileDocumentManager.getInstance().getDocument(schemaFile)!!
-            document.setText(schema.replace("<uniqueKey>id</uniqueKey>", """<field name="added" type="string"/><uniqueKey>id</uniqueKey>"""))
-        }
+        edit(schemaFile, schema.replace("<uniqueKey>id</uniqueKey>", """<field name="added" type="string"/><uniqueKey>id</uniqueKey>"""))
 
         assertTrue(
             "a field added in the editor must be in the model before the file is saved",
