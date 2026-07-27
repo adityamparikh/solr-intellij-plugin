@@ -845,15 +845,16 @@ Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Insta
 
 ---
 
-## Part 10 — The seven things that will trip you up
+## Part 10 — The eight things that will trip you up
 
 1. **Nothing is auto-registered.** No `plugin.xml` entry, no feature, no warning. Check the manifest first, always.
 2. **The IDE has to agree about the file's language.** If it isn't parsed as what you registered for, you're never called. Extensionless filenames are the usual culprit.
 3. **Your code sees every file of that language.** Guard on identity or you'll pollute completion in unrelated files.
 4. **PSI elements are invalidated by edits.** Don't cache them across operations; use `SmartPsiElementPointer` if you must hold one.
-5. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
-6. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
-7. **The plugin ID is permanent.** Decide before your first publish.
+5. **Your feature is switched off while the project indexes** — and nothing tells you. IntelliJ skips any contribution that hasn't declared itself *dumb-aware*, on the assumption it reads an index. If yours doesn't read one, say so: `LocalInspectionTool` and `CompletionContributor` let you override `isDumbAware()`, while `DocumentationProvider` and inlay providers take the `DumbAware` marker interface. Get this wrong and your plugin does nothing for the first minutes after project open, silently, which users read as "broken" rather than "waiting". Watch the marker-interface cases in particular: applying `DumbAware` to a class the platform doesn't check compiles cleanly and changes nothing.
+6. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
+7. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
+8. **The plugin ID is permanent.** Decide before your first publish.
 
 And one bonus, because it wastes an afternoon the first time: **the sandbox has its own configuration.** Settings you change there don't affect your real IDE — occasionally confusing when a feature "only works on my machine."
 

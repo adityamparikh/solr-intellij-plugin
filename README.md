@@ -121,6 +121,7 @@ they are written down — a compatibility matrix ships with the first release.
 | [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done |
 | [Demo runbook](docs/demo/README.md) | End-to-end acceptance criteria in user terms, doubling as a talk runbook |
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
+| [Platform mechanisms](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are, and what this plugin decided |
 | [Plugin development tutorial](docs/modern-intellij-plugin-development.md) | Building this kind of plugin from scratch, using this project as the worked example |
 | [CLAUDE.md](CLAUDE.md) | Repository orientation — build gates, architecture, conventions |
 
