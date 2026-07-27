@@ -1,4 +1,4 @@
-# GitHub Actions workflow for building, testing, verifying, and preparing plugin release drafts:
+ # GitHub Actions workflow for building, testing, verifying, and preparing plugin release drafts:
 # - Build the plugin ZIP with the 'buildPlugin' task and upload it as a workflow artifact.
 # - Run the 'check' task and upload test reports on failure.
 # - Run the 'verifyPlugin' task and upload Plugin Verifier reports.

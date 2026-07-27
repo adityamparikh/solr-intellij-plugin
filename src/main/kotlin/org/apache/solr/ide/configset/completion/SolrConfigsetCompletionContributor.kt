@@ -16,9 +16,12 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.model.SolrClassCatalog
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.documentation.SolrSchemaElements
 
@@ -88,6 +91,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         tagName in SolrSchemaTags.FIELD && attributeName == "type" -> fieldTypes(model)
         tagName == SolrSchemaTags.COPY_FIELD && attributeName in SolrSchemaTags.COPY_FIELD_ENDS -> fieldNames(model)
         tagName == "analyzer" && attributeName == "type" -> ANALYZER_PHASES
+        attributeName == "class" -> classNames(tagName, model)
         // Every remaining answerable position is a property of a field or of a type. Scoping it to
         // those two tags is what keeps `<copyField synonymQueryStyle="">` — which means nothing —
         // from being offered the three values a field type would accept there.
@@ -121,6 +125,33 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         } + model.dynamicFields.values.map { it.effective }.map { dynamic ->
             LookupElementBuilder.create(dynamic.pattern).withTypeText(dynamic.field.type).withItemTextItalic(true)
         }
+
+    /**
+     * The classes legal in this element's `class` attribute, from the generated catalog.
+     *
+     * Which population applies is decided by the tag, because `class` means four different things
+     * in a schema. Offering a tokenizer where a field type belongs would be offering an error, and
+     * a reader learning the vocabulary from the list has no way to know it was wrong.
+     *
+     * The `solr.`-prefixed short form is inserted and the fully qualified name shown beside it:
+     * that is the spelling real configsets use, and the long one is what tells you where the class
+     * actually comes from — `LowerCaseFilterFactory` being Lucene's rather than Solr's is not
+     * otherwise visible.
+     */
+    private fun classNames(tagName: String, model: SolrFieldModel): List<LookupElement> {
+        val kind = when (tagName) {
+            in SolrSchemaTags.FIELD_TYPE -> SolrClassKind.FIELD_TYPE
+            "tokenizer" -> SolrClassKind.TOKENIZER
+            "filter" -> SolrClassKind.TOKEN_FILTER
+            "charFilter" -> SolrClassKind.CHAR_FILTER
+            else -> return emptyList()
+        }
+        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
+            ?: SolrVersionSelection.DEFAULT
+        return SolrClassCatalog.of(kind, version).map { entry ->
+            LookupElementBuilder.create(entry.shortName).withTypeText(entry.className)
+        }
+    }
 
     /**
      * The values a property accepts, with the one Solr would have used marked as the default.

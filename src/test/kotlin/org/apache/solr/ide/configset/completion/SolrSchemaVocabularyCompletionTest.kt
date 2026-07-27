@@ -194,6 +194,103 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
         assertFalse("not a copyField attribute: $offered", "as_same_term" in offered)
     }
 
+    // --- class names, from the generated catalog ---------------------------------------------------
+
+    /**
+     * The `class` attribute means four different things in a schema, and each gets its own
+     * population. Offering a tokenizer where a field type belongs would be offering an error.
+     */
+    fun testAFieldTypesClassOffersFieldTypeImplementations() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="<caret>"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected solr.StrField among $offered", "solr.StrField" in offered)
+        assertTrue("expected solr.TextField among $offered", "solr.TextField" in offered)
+        assertFalse("a tokenizer is not a field type: $offered", "solr.StandardTokenizerFactory" in offered)
+    }
+
+    fun testATokenizersClassOffersTokenizers() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><tokenizer class="<caret>"/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected solr.StandardTokenizerFactory among $offered", "solr.StandardTokenizerFactory" in offered)
+        assertFalse("a field type is not a tokenizer: $offered", "solr.StrField" in offered)
+    }
+
+    fun testAFiltersClassOffersTokenFilters() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><filter class="<caret>"/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected solr.LowerCaseFilterFactory among $offered", "solr.LowerCaseFilterFactory" in offered)
+        assertFalse("a tokenizer is not a filter: $offered", "solr.StandardTokenizerFactory" in offered)
+    }
+
+    /**
+     * The catalog follows the line the configset declares — and the declaration is in
+     * `solrconfig.xml`, not the schema, which is why this needs a two-file configset. Solr 10
+     * renamed `EnumField` to `EnumFieldType`, so the two lines offer visibly different vocabularies.
+     */
+    fun testTheOfferedClassesFollowTheDeclaredSolrLine() {
+        val offered = completionsInConfigset(
+            "nine",
+            "<config><luceneMatchVersion>9.12.0</luceneMatchVersion></config>",
+            """
+            <schema name="t">
+              <fieldType name="x" class="<caret>"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("9.10 has solr.EnumField: $offered", "solr.EnumField" in offered)
+        assertFalse("that is the 9.10 catalog, not 10's: $offered", "solr.BinaryQuantizedDenseVectorField" in offered)
+    }
+
+    /**
+     * Completion inside a configset that has its own `solrconfig.xml`, kept in its own directory.
+     *
+     * `configureByText` writes at the fixture root, and a `solrconfig.xml` left there makes the
+     * root a configset for every test that runs afterwards — `BasePlatformTestCase` shares one
+     * light project across test classes, so that leaks out of this file entirely. It did, and it
+     * broke the detector's tests.
+     */
+    private fun completionsInConfigset(directory: String, solrConfig: String, schemaText: String): List<String> {
+        myFixture.addFileToProject("$directory/solrconfig.xml", solrConfig)
+        val caret = schemaText.indexOf("<caret>")
+        val schema = myFixture.addFileToProject("$directory/managed-schema.xml", schemaText.replace("<caret>", ""))
+        myFixture.configureFromExistingVirtualFile(schema.virtualFile)
+        myFixture.editor.caretModel.moveToOffset(caret)
+        myFixture.complete(CompletionType.BASIC)
+        return myFixture.lookupElementStrings.orEmpty()
+    }
+
+    /** `class` on a tag that names no class population contributes nothing. */
+    fun testClassOnAnUnrelatedTagOffersNothing() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="sku" type="string" class="<caret>"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("a field has no class: $offered", "solr.StrField" in offered)
+    }
+
     // --- the gate ---------------------------------------------------------------------------------
 
     /**

@@ -1,6 +1,18 @@
 import java.io.File
+import java.util.jar.JarFile
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Opcodes
+
+// ASM reads the Solr and Lucene class files that back the generated catalog. It sits on the
+// buildscript classpath rather than being a project dependency because it is a tool this build
+// runs, not a library the plugin ships.
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath("org.ow2.asm:asm:9.9") }
+}
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
@@ -143,3 +155,145 @@ dokka {
 tasks.check {
     dependsOn(tasks.dokkaGenerate)
 }
+
+// ---------------------------------------------------------------------------------------------
+// The generated class catalog.
+//
+// A configset names Solr classes as strings — a field type's `class`, a tokenizer's, a filter's —
+// and the plugin cannot complete or explain any of them without knowing what exists. That list is
+// roughly 170 entries per Solr line and changes between lines, which is why it is generated here
+// rather than written down. The specification argues this out under "The factory catalog".
+//
+// It runs in the build, where reading Solr's artifacts is ordinary, and ships the result. ASM reads
+// the class files directly rather than loading them: loading Solr classes runs their static
+// initialisers, and nothing here needs a live class — only its name and its ancestry.
+// ---------------------------------------------------------------------------------------------
+
+// The Solr lines this plugin supports, newest first. **This is the single place they are declared**,
+// so adding a line or dropping an end-of-life one is one edit. The policy itself lives in the
+// specification's "Version support" section: whatever Apache Solr has not declared EOL.
+val supportedSolrLines = mapOf(
+    "10" to "10.0.0",
+    "9" to "9.10.1",
+)
+
+supportedSolrLines.forEach { (line, version) ->
+    val configuration = configurations.create("solrArtifacts$line") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+    dependencies.add(configuration.name, "org.apache.solr:solr-core:$version")
+}
+
+/** The Lucene SPI files naming each kind of analysis component, and the catalog kind for each. */
+val analysisServices = mapOf(
+    "org.apache.lucene.analysis.TokenizerFactory" to "tokenizer",
+    "org.apache.lucene.analysis.TokenFilterFactory" to "tokenFilter",
+    "org.apache.lucene.analysis.CharFilterFactory" to "charFilter",
+)
+
+val generateSolrCatalog by tasks.registering {
+    group = "build"
+    description = "Reads each supported Solr line's artifacts into the shipped class catalog."
+
+    val outputDirectory = layout.buildDirectory.dir("generated/solr-catalog-resources")
+    outputs.dir(outputDirectory)
+
+    // Everything the action touches is captured here as a plain value. A task action that calls a
+    // function declared in this script, or reads one of its properties, holds the script object —
+    // which the configuration cache cannot serialize. `runIde` above carries the same scar.
+    val artifactsByLine = supportedSolrLines.keys.associateWith { line ->
+        configurations.getByName("solrArtifacts$line") as FileCollection
+    }
+    artifactsByLine.forEach { (line, files) -> inputs.files(files).withPropertyName("solrArtifacts$line") }
+    val versions = supportedSolrLines.toMap()
+    val services = analysisServices.toMap()
+
+    doLast {
+        // Declared inside the action for the same reason: a local function captures nothing but its
+        // enclosing locals, where a script-level one would drag the script in with it.
+        fun buildCatalog(line: String, version: String, jars: List<File>): String {
+            val superclasses = mutableMapOf<String, String?>()
+            val abstractClasses = mutableSetOf<String>()
+            val factories = mutableMapOf<String, MutableSet<String>>()
+
+            for (jar in jars) {
+                JarFile(jar).use { open ->
+                    for (entry in open.entries()) {
+                        val entryName = entry.name
+                        if (entryName.endsWith(".class")) {
+                            open.getInputStream(entry).use { input ->
+                                val reader = ClassReader(input)
+                                superclasses[reader.className] = reader.superName
+                                if (reader.access and Opcodes.ACC_ABSTRACT != 0) {
+                                    abstractClasses += reader.className
+                                }
+                            }
+                        } else if (entryName.startsWith("META-INF/services/")) {
+                            val kind = services[entryName.removePrefix("META-INF/services/")]
+                            if (kind != null) {
+                                val implementations = open.getInputStream(entry).bufferedReader()
+                                    .readLines()
+                                    .map { it.substringBefore('#').trim() }
+                                    .filter { it.isNotEmpty() }
+                                factories.getOrPut(kind) { mutableSetOf() } += implementations
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Solr's resource loader resolves `solr.X` against its own packages *and* Lucene's
+            // analysis packages, which is why one short form covers both populations.
+            fun shortName(binaryName: String) = "solr." + binaryName.substringAfterLast('.')
+
+            fun descendsFromFieldType(internalName: String): Boolean {
+                var current: String? = superclasses[internalName]
+                var depth = 0
+                while (current != null && depth++ < 40) {
+                    if (current == "org/apache/solr/schema/FieldType") return true
+                    current = superclasses[current]
+                }
+                return false
+            }
+
+            val fieldTypes = superclasses.keys
+                .filter { '$' !in it && it !in abstractClasses && descendsFromFieldType(it) }
+                .map { it.replace('/', '.') }
+                .sorted()
+
+            return buildString {
+                appendLine("# Generated by :generateSolrCatalog - do not edit.")
+                appendLine("# Solr line $line, read from $version.")
+                appendLine("# kind\tclass\tshort name")
+                for (className in fieldTypes) appendLine("fieldType\t$className\t${shortName(className)}")
+                for ((kind, implementations) in factories.toSortedMap()) {
+                    for (className in implementations.sorted()) {
+                        appendLine("$kind\t$className\t${shortName(className)}")
+                    }
+                }
+            }
+        }
+
+        // Nested one level so the shipped resource path is `solr-catalog/solr-10.tsv` rather than
+        // a bare file at the resource root, where it would collide with anything else generated.
+        val directory = outputDirectory.get().asFile.resolve("solr-catalog")
+        directory.mkdirs()
+        for ((line, files) in artifactsByLine) {
+            // Every Solr and Lucene artifact, not a hand-picked pair. An earlier version scanned
+            // only `solr-core` and `lucene-analysis-common` and produced a list that looked right
+            // at a glance while missing `StandardTokenizerFactory` — which lives in `lucene-core`
+            // and is the most-used tokenizer there is — along with every language module. Solr's
+            // own dependencies (Jetty, ZooKeeper) are still excluded, since they carry nothing a
+            // configset can name.
+            val relevant = files.files.filter {
+                it.name.startsWith("solr-") || it.name.startsWith("lucene-")
+            }
+            File(directory, "solr-$line.tsv").writeText(buildCatalog(line, versions.getValue(line), relevant))
+        }
+    }
+}
+
+// The catalog ships with the plugin, so it is a resource of the main source set. This is what makes
+// `processResources` depend on the generator, and therefore what makes a clean build regenerate it.
+sourceSets.named("main") { resources.srcDir(generateSolrCatalog) }
