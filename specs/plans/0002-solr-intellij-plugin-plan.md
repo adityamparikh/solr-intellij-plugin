@@ -651,6 +651,12 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
    carries all three pieces:
    - **Factories** — reflection over the artifact jars, via the SPI service files Solr
      already ships to name them.
+   - **Field type classes** — the concrete subclasses of `FieldType`, which a `<fieldType>`
+     names in its `class` attribute. A separate population from the factories and found a
+     different way, since Solr ships no SPI file for them; roughly forty classes. Cheap
+     next to the rest of this step, and the reason it is called out rather than assumed is
+     that an earlier revision said "factories" and meant it, leaving `class` uncovered
+     while appearing not to be.
    - **Attributes** — bytecode analysis of each factory's constructor, collecting the
      string constants passed to `get`, `getInt`, `getBoolean` and friends. Reflection
      cannot see these: a factory reads its attributes out of a `Map<String, String>`, so
@@ -673,6 +679,9 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 - [ ] `wordDelimiterGraph` exposes all twelve of its attributes. This is the criterion
       that proves the constructor-bytecode pass works, because reflection over fields
       produces a plausible short list instead of failing outright.
+- [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
+      is what proves the field-type-class pass ran at all — the `class` attribute of a
+      `<fieldType>` is the most-hovered thing in a schema after the field names.
 - [ ] Selection order is correct and the answering source is recorded.
 - [ ] The catalog regenerates from a clean build.
 
