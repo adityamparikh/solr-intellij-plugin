@@ -59,6 +59,14 @@ independent after the field model exists, so parallel work does not need re-deri
 its step status into this file. Position changes every step and orientation does not, so a copy here
 goes stale while the plan stays correct.
 
+`docs/platform-mechanisms.md` records the two IntelliJ Platform mechanisms that shape code across
+the plugin and are not guessable from reading it — dumb mode and model caching. Both were worked
+around before they were used, one of them silently for months, so the doc carries the decision and
+the reasoning rather than a description. The rule worth carrying from it: **every contribution here
+declares itself dumb-aware, and that is a promise about data sources.** Nothing in this plugin reads
+an index; a future feature that does must drop the declaration or guard with `DumbService`, and no
+build gate will catch it if it doesn't.
+
 `docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
 hand-edited, which are written by an API, and what the plugin covers.
 

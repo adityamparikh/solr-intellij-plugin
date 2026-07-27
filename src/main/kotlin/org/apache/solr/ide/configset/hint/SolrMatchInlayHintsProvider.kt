@@ -2,6 +2,7 @@ package org.apache.solr.ide.configset.hint
 
 import com.intellij.codeInsight.hints.declarative.InlayHintsCollector
 import com.intellij.codeInsight.hints.declarative.InlayHintsProvider
+import com.intellij.openapi.project.DumbAware
 import com.intellij.codeInsight.hints.declarative.HintFormat
 import com.intellij.codeInsight.hints.declarative.InlayTreeSink
 import com.intellij.codeInsight.hints.declarative.InlineInlayPosition
@@ -28,7 +29,7 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
  * unrecognized factory means the chain was not fully understood, and a wrong claim about what a
  * field matches is worse than no claim — this is the output most likely to be quoted back.
  */
-class SolrMatchInlayHintsProvider : InlayHintsProvider {
+class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
 
     /**
      * A collector for [file], or null when the file is not part of a Solr configset.

@@ -1,6 +1,7 @@
 package org.apache.solr.ide.configset.completion
 
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.testFramework.DumbModeTestUtils
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -194,6 +195,31 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
     }
 
     // --- the gate ---------------------------------------------------------------------------------
+
+    /**
+     * Completion answers while the project is still indexing.
+     *
+     * Nothing here reads an index — the model is parsed from the configset's own text — but the
+     * platform withholds a contributor that has not said so, which would have disabled this during
+     * exactly the minutes a reader is first opening files.
+     */
+    fun testCompletionAnswersWhileTheProjectIsIndexing() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="sku" type="string" <caret>/>
+            </schema>
+            """.trimIndent(),
+        )
+        var offered: List<String> = emptyList()
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            myFixture.complete(CompletionType.BASIC)
+            offered = myFixture.lookupElementStrings.orEmpty()
+        }
+        assertTrue("expected indexed while indexing, got $offered", "indexed" in offered)
+    }
 
     fun testNothingIsOfferedOutsideAConfigset() {
         val offered = completionsFor(

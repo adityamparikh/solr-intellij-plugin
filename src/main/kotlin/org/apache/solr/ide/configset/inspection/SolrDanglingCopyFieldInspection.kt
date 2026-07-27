@@ -5,6 +5,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.SolrBundle
 
@@ -19,6 +20,15 @@ import org.apache.solr.ide.SolrBundle
 class SolrDanglingCopyFieldInspection : LocalInspectionTool() {
 
     /**
+     * Runs while the project is still indexing.
+     *
+     * Nothing here consults an index — the model is parsed from the configset's own text — so the
+     * platform's default of skipping this until indexing finishes would withhold a working feature
+     * for no reason, exactly when a reader is most likely to be opening files for the first time.
+     */
+    override fun isDumbAware(): Boolean = true
+
+    /**
      * @param holder collects the problems found
      * @param isOnTheFly whether this is an editor pass rather than a batch run
      * @return a visitor over `copyField` tags, or an empty one outside a configset
@@ -27,8 +37,8 @@ class SolrDanglingCopyFieldInspection : LocalInspectionTool() {
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file) ?: return PsiElementVisitor.EMPTY_VISITOR
         return object : XmlElementVisitor() {
             override fun visitXmlTag(tag: XmlTag) {
-                if (tag.name != "copyField") return
-                for (attributeName in ATTRIBUTES) {
+                if (tag.name != SolrSchemaTags.COPY_FIELD) return
+                for (attributeName in SolrSchemaTags.COPY_FIELD_ENDS) {
                     val value = tag.getAttribute(attributeName)?.valueElement ?: continue
                     val name = value.value
                     // A glob source is a pattern over dynamic fields, and whether anything matches
@@ -50,8 +60,4 @@ class SolrDanglingCopyFieldInspection : LocalInspectionTool() {
         }
     }
 
-    private companion object {
-        /** Both ends of a copy rule can dangle, and both fail the same way. */
-        val ATTRIBUTES = listOf("source", "dest")
-    }
 }
