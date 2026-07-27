@@ -178,7 +178,9 @@ the difference between an editor that helps and one that complains.
 Offering the values an attribute can legally take.
 
 Only closed sets are completed — the declared field types, the declared fields,
-and `true`/`false`. Where any value is legal, nothing is contributed and the
+and `true`/`false`, the last marked with the value Solr would use if the
+attribute were absent. Where that default depends on the field type, neither
+value is marked: claiming one would assert something Solr does not. Where any value is legal, nothing is contributed and the
 platform's own behaviour is left alone: a list implies that the values not on it
 are wrong, so a partial list in an open-ended position is worse than none.
 
