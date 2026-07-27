@@ -53,6 +53,9 @@ it whole, and the gutter action goes with the Server track.
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-in-progress) — **in progress**
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
+- [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen)
+  — out of numerical order deliberately: added after the rest, belongs here. Needs nothing
+  the catalog provides.
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
@@ -474,6 +477,57 @@ with its copy rule.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
 [match analysis](#step-4-match-analysis)
+
+### Step 23: Explaining and correcting what is already on screen
+
+Numbered last because it was added last; it belongs in the Editor track, after
+[match hints](#step-7-match-hints-and-quick-fixes). Read the section it sits in, not the
+number.
+
+Three gaps found by using the plugin rather than by reading the plan, and they share a
+shape: the plugin already knows the answer and has nowhere to say it.
+
+**Documentation answers only on attribute *values*.** Hovering `<schema>`, `<copyField>`,
+`<uniqueKey>`, `<dynamicField>` or a `<fieldType>` tag gives nothing, because the provider
+was written to explain a *value* under the caret. Everything the plugin knows is therefore
+reachable only by a gesture you make when you already suspect something — including the
+property table, which answers "what is the complete configuration when the defaults are
+not written down" and which a user looking straight at it could not find.
+
+**Inspections report a bad name without offering the good ones.** Both reference
+inspections compute the valid set in order to decide, and then discard it. An underline
+with no Alt-Enter is more frustrating than no underline.
+
+**Completion does not say which value is the default.** The property table already knows.
+
+**Actions:**
+1. Documentation on the schema elements — what each is, in Solr's terms, plus what *this*
+   one does where that is knowable: which fields a copy rule joins, which field is the
+   unique key, how many types the schema declares. Reuse the version resolution and the
+   Reference Guide links that already exist.
+2. A quick-fix on the unknown-field-type inspection offering the declared types, and one on
+   the dangling-`copyField` inspection offering the declared fields. Both sets are already
+   computed by the inspection that reports the problem.
+3. Mark the default in completion — `true (default)` — read from the property table rather
+   than restated.
+4. Nothing here needs [the factory catalog](#step-9-factory-catalog-generator). The
+   catalog-backed half of documentation and completion stays in
+   [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
+
+**Success criteria:**
+- [ ] Every recognized schema element answers on hover, and says something specific to the
+      configset where it can.
+- [ ] Both reference inspections offer a fix naming the valid alternatives, and applying one
+      produces a configset that parses.
+- [ ] A completed value that Solr would have used anyway is marked as the default.
+
+**Acceptance:** No demo step of its own. It is what makes
+[demo step 25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
+survive the obvious follow-up question, which is "so what do I put there instead".
+
+**Dependencies:** [inspections](#step-6-inspections) for the quick-fixes;
+[match hints](#step-7-match-hints-and-quick-fixes) for the documentation provider they
+extend.
 
 ### Step 8: Rename
 

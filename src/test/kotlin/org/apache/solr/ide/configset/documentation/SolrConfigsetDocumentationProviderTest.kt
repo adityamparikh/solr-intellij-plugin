@@ -104,15 +104,22 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         assertNotNull("a dynamic field is documented like any other", doc)
     }
 
-    /** Positions with nothing to say must decline, rather than return an empty popup. */
-    fun testNoDocumentationOnPositionsThatAreNotFieldsOrTypes() {
-        for (caretVersion in listOf(
-            caretInside("indexed"),
-            caretInside("copyField"),
-            caretInside("solr.StrField"),
-        )) {
-            assertNull("this position has nothing to document yet", docAtCaret(caretVersion))
-        }
+    /**
+     * Positions inside an element the plugin explains now answer with the *element*, since the
+     * caret is within that tag. That is the point of element documentation: a reader should not
+     * have to find an attribute value to get an answer.
+     */
+    fun testAPositionInsideAnElementFallsBackToTheElement() {
+        val doc = docAtCaret(caretInside("copyField"))
+        assertNotNull(doc)
+        assertTrue("expected the copyField element's explanation: $doc", doc!!.contains("index time"))
+    }
+
+    /** An attribute the plugin has nothing to say about still falls back to its element. */
+    fun testAnUnknownAttributeFallsBackToItsElement() {
+        val doc = docAtCaret(caretInside("indexed"))
+        assertNotNull(doc)
+        assertTrue("expected the field element's explanation: $doc", doc!!.contains("Declares one field"))
     }
 
     /** A type the configset does not declare has no documentation to give. */
