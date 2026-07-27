@@ -9,6 +9,7 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrReferenceGuide
 import org.apache.solr.ide.model.SolrVersionSelection
@@ -118,9 +119,9 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
         val tag = attribute.parentOfType<XmlTag>() ?: return null
         val name = value.value.takeIf { it.isNotEmpty() } ?: return null
         return when {
-            tag.name in FIELD_TAGS && attribute.name == "type" -> Target.Type(name)
-            tag.name in FIELD_TAGS && attribute.name == "name" -> Target.Field(name)
-            tag.name in TYPE_TAGS && attribute.name == "name" -> Target.Type(name)
+            tag.name in SolrSchemaTags.FIELD && attribute.name == "type" -> Target.Type(name)
+            tag.name in SolrSchemaTags.FIELD && attribute.name == "name" -> Target.Field(name)
+            tag.name in SolrSchemaTags.FIELD_TYPE && attribute.name == "name" -> Target.Type(name)
             else -> null
         }
     }
@@ -130,8 +131,4 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider() {
         data class Type(val name: String) : Target
     }
 
-    private companion object {
-        val FIELD_TAGS = setOf("field", "dynamicField")
-        val TYPE_TAGS = setOf("fieldType", "fieldtype")
-    }
 }

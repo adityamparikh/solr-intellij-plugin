@@ -3,9 +3,7 @@ package org.apache.solr.ide.configset.inspection
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.ElementManipulators
-import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
-import org.apache.solr.ide.model.SolrFieldModel
 
 /**
  * Shared ground rules for the configset inspections.
@@ -28,25 +26,7 @@ internal object SolrInspections {
     fun isCheckableFieldName(name: String): Boolean =
         name.isNotEmpty() && name !in SOLR_SUPPLIED_FIELDS && '*' !in name && !name.startsWith("[")
 
-    /**
-     * Whether [model] can resolve [name], through a declared field or a dynamic pattern.
-     *
-     * @param model the configset's model
-     * @param name a concrete field name
-     * @return true if something in the schema supplies it
-     */
-    fun resolves(model: SolrFieldModel, name: String): Boolean = model.resolve(name) != null
 
-    /**
-     * The value element of [attribute], or null when the attribute is absent or has no value.
-     *
-     * Inspections highlight the *value*, not the whole tag: underlining an entire `<copyField>` to
-     * report one bad attribute makes the reader hunt for which half is wrong.
-     *
-     * @param attribute the attribute whose value is wanted
-     * @return the value element, or null
-     */
-    fun valueElementOf(attribute: XmlAttribute?): XmlAttributeValue? = attribute?.valueElement
 
     /**
      * Reports [message] on the text *inside* an attribute's quotes.

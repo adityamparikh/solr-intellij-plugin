@@ -210,3 +210,22 @@ enum class SolrConfigsetFileKind(
             if (file.isDirectory) forDirectoryName(file.name) else forFileName(file.name)
     }
 }
+
+/**
+ * The element names a Solr schema uses for the things this plugin reasons about.
+ *
+ * Knowledge about Solr's vocabulary, not about any one feature. It was previously declared in six
+ * files under three different names, which is the shape a constant takes just before someone updates
+ * five of the six.
+ */
+object SolrSchemaTags {
+
+    /** Tags that declare a field: a concrete one, or a dynamic pattern. */
+    val FIELD: Set<String> = setOf("field", "dynamicField")
+
+    /** Tags that declare a field type. Solr accepts both spellings and real configsets use both. */
+    val FIELD_TYPE: Set<String> = setOf("fieldType", "fieldtype")
+
+    /** The tag declaring a copy rule. */
+    const val COPY_FIELD: String = "copyField"
+}

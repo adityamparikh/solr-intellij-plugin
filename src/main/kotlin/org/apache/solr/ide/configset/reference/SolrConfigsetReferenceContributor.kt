@@ -1,6 +1,5 @@
 package org.apache.solr.ide.configset.reference
 
-import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.XmlPatterns
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
@@ -15,6 +14,7 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 
 /**
  * Makes the names inside a configset navigable.
@@ -29,7 +29,13 @@ class SolrConfigsetReferenceContributor : PsiReferenceContributor() {
      * @param registrar the platform's registry of reference providers
      */
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        registrar.registerReferenceProvider(XmlPatterns.xmlAttributeValue(), SolrFieldTypeReferenceProvider())
+        // Narrowed to the attribute that can hold the reference. Registering on every attribute
+        // value would consult this provider for every attribute in every XML file in the project —
+        // a pom, an Android layout — before the configset check could decline.
+        registrar.registerReferenceProvider(
+            XmlPatterns.xmlAttributeValue().withLocalName("type"),
+            SolrFieldTypeReferenceProvider(),
+        )
     }
 }
 
@@ -43,15 +49,12 @@ private class SolrFieldTypeReferenceProvider : PsiReferenceProvider() {
         val attribute = value.parentOfType<XmlAttribute>() ?: return PsiReference.EMPTY_ARRAY
         if (attribute.name != "type") return PsiReference.EMPTY_ARRAY
         val tag = attribute.parentOfType<XmlTag>() ?: return PsiReference.EMPTY_ARRAY
-        if (tag.name !in FIELD_TAGS) return PsiReference.EMPTY_ARRAY
+        if (tag.name !in SolrSchemaTags.FIELD) return PsiReference.EMPTY_ARRAY
         if (value.value.isEmpty()) return PsiReference.EMPTY_ARRAY
 
         return arrayOf(SolrFieldTypeReference(value))
     }
 
-    private companion object {
-        val FIELD_TAGS = setOf("field", "dynamicField")
-    }
 }
 
 /**
@@ -82,7 +85,4 @@ internal class SolrFieldTypeReference(element: XmlAttributeValue) :
      * show what each type matches. Returning variants here as well would produce every type twice.
      */
     override fun getVariants(): Array<Any> = emptyArray()
-
-    /** The range covered, which is the text inside the quotes rather than the quotes themselves. */
-    override fun getRangeInElement(): TextRange = ElementManipulators.getValueTextRange(element)
 }

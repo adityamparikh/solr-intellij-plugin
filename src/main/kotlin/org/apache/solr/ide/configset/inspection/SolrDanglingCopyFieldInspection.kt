@@ -29,12 +29,12 @@ class SolrDanglingCopyFieldInspection : LocalInspectionTool() {
             override fun visitXmlTag(tag: XmlTag) {
                 if (tag.name != "copyField") return
                 for (attributeName in ATTRIBUTES) {
-                    val value = SolrInspections.valueElementOf(tag.getAttribute(attributeName)) ?: continue
+                    val value = tag.getAttribute(attributeName)?.valueElement ?: continue
                     val name = value.value
                     // A glob source is a pattern over dynamic fields, and whether anything matches
                     // it is not a question this can answer from the schema alone.
                     if (!SolrInspections.isCheckableFieldName(name)) continue
-                    if (SolrInspections.resolves(model, name)) continue
+                    if (model.resolve(name) != null) continue
                     SolrInspections.reportOnValue(holder, value, SolrBundle.message("inspection.copyField.dangling", name))
                 }
             }

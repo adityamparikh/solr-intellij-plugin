@@ -18,6 +18,7 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 
 /**
  * Completes the attribute values in a configset whose valid answers are knowable.
@@ -74,10 +75,10 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
     }
 
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
-        tagName in FIELD_TAGS && attributeName == "type" -> fieldTypes(model)
+        tagName in SolrSchemaTags.FIELD && attributeName == "type" -> fieldTypes(model)
         tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
-        tagName in FIELD_TAGS && isBooleanProperty(attributeName) -> BOOLEANS
-        tagName in TYPE_TAGS && isBooleanProperty(attributeName) -> BOOLEANS
+        tagName in SolrSchemaTags.FIELD && isBooleanProperty(attributeName) -> BOOLEANS
+        tagName in SolrSchemaTags.FIELD_TYPE && isBooleanProperty(attributeName) -> BOOLEANS
         else -> emptyList()
     }
 
@@ -119,8 +120,6 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         }
 
     private companion object {
-        val FIELD_TAGS = setOf("field", "dynamicField")
-        val TYPE_TAGS = setOf("fieldType", "fieldtype")
         val COPY_FIELD_ATTRIBUTES = setOf("source", "dest")
 
         /** The `validValues` string the property table uses for a boolean. */

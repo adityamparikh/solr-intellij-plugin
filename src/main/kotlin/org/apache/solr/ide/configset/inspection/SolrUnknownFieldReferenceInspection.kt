@@ -45,7 +45,7 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
                 val text = tag.value.text
                 for (name in referencedFieldNames(parameterName, text)) {
                     if (!SolrInspections.isCheckableFieldName(name)) continue
-                    if (SolrInspections.resolves(model, name)) continue
+                    if (model.resolve(name) != null) continue
                     reportAll(holder, tag, text, name)
                 }
             }
