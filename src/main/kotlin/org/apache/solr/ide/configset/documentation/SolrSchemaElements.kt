@@ -36,14 +36,21 @@ internal object SolrSchemaElements {
      * @return the elements that may be written there
      */
     fun childrenOf(parentTag: String?): List<Description> = when (parentTag) {
-        null -> listOfNotNull(forTag("schema"))
-        "schema" -> listOfNotNull(
-            forTag("field"), forTag("dynamicField"), forTag("fieldType"),
-            forTag("copyField"), forTag("uniqueKey"),
-        )
-        "fieldType", "fieldtype" -> listOfNotNull(forTag("analyzer"))
+        null -> describe("schema")
+        "schema" -> describe("field", "dynamicField", "fieldType", "copyField", "uniqueKey")
+        "fieldType", "fieldtype" -> describe("analyzer")
         else -> emptyList()
     }
+
+    /**
+     * The descriptions for [tagNames], all of which must exist.
+     *
+     * Deliberately not null-tolerant. These names are written twice in this file — once here and
+     * once in the table — and a typo in either copy is a completion that silently stops being
+     * offered. Failing loudly is the only way that gets noticed.
+     */
+    private fun describe(vararg tagNames: String): List<Description> =
+        tagNames.map { BY_TAG.getValue(it) }
 
     /**
      * The description for [tagName], or null if this is not an element the plugin explains.
@@ -69,13 +76,10 @@ internal object SolrSchemaElements {
     fun specifics(tagName: String, attributes: Map<String, String>, model: SolrFieldModel): String? =
         when (tagName) {
             "schema" -> buildString {
-                append("This schema declares ${model.fields.size} field")
-                if (model.fields.size != 1) append("s")
-                append(", ${model.dynamicFields.size} dynamic field")
-                if (model.dynamicFields.size != 1) append("s")
-                append(" and ${model.fieldTypes.size} field type")
-                if (model.fieldTypes.size != 1) append("s")
-                append(".")
+                append("This schema declares ")
+                append(count(model.fields.size, "field"))
+                append(", ${count(model.dynamicFields.size, "dynamic field")}")
+                append(" and ${count(model.fieldTypes.size, "field type")}.")
                 model.uniqueKey?.let { append(" Its unique key is <code>${it.effective}</code>.") }
             }
             "copyField" -> copyFieldSpecifics(attributes, model)
@@ -88,9 +92,9 @@ internal object SolrSchemaElements {
                         "<code>${resolved.type}</code>."
                 }
             }
-            "fieldType" , "fieldtype" -> attributes["name"]?.let { name ->
+            "fieldType", "fieldtype" -> attributes["name"]?.let { name ->
                 val users = model.fields.values.map { it.effective }.count { it.type == name }
-                "<code>$name</code> is used by $users field${if (users == 1) "" else "s"} in this schema."
+                "<code>$name</code> is used by ${count(users, "field")} in this schema."
             }
             "field", "dynamicField" -> attributes["name"]?.let { name ->
                 val copies = model.copyFieldsFrom(name)
@@ -98,6 +102,9 @@ internal object SolrSchemaElements {
             }
             else -> null
         }
+
+    /** `1 field`, `2 fields` — the plural rule this vocabulary needs, which is the regular one. */
+    private fun count(n: Int, noun: String): String = if (n == 1) "$n $noun" else "$n ${noun}s"
 
     /**
      * What a particular copy rule joins, and whether both ends exist.

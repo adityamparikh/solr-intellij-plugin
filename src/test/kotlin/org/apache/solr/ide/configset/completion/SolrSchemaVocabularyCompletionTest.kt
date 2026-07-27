@@ -40,7 +40,6 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
      * teaches the reader something false about Solr.
      */
     fun testOnlyAnalyzerIsOfferedInsideAFieldType() {
-        // A single candidate is inserted rather than listed, so the assertion is on the result.
         myFixture.configureByText(
             "managed-schema.xml",
             """
@@ -51,15 +50,52 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
             </schema>
             """.trimIndent(),
         )
-        val offered = myFixture.complete(CompletionType.BASIC)
-            ?.map { it.lookupString }
-            ?: listOf(myFixture.file.text.substringAfter("solr.TextField\">").trim().takeWhile { it.isLetter() })
-        assertTrue("expected analyzer, got $offered", offered.any { it.contains("analyzer") })
-        assertFalse("copyField is not legal here: $offered", offered.any { it == "copyField" })
-        assertFalse("field is not legal here: $offered", offered.any { it == "field" })
+        val offered = myFixture.complete(CompletionType.BASIC).orEmpty().map { it.lookupString }
+
+        // Exactly one, not merely "analyzer is present". The point of nesting awareness is what it
+        // withholds, so a test that only checks the expected entry would pass on a provider that
+        // offered every element in the schema.
+        assertEquals(listOf("analyzer"), offered)
+    }
+
+    /**
+     * The path a reader actually takes: typing `<fie` and asking. The element being typed is not
+     * one this knows children for, so the candidates come from what is legal *beside* it — which is
+     * a different branch from the one a bare caret exercises, and the more common of the two.
+     */
+    fun testElementsAreOfferedWhileTheTagIsBeingTyped() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <fiel<caret>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected field among $offered", "field" in offered)
+        assertTrue("expected fieldType among $offered", "fieldType" in offered)
     }
 
     // --- attribute names ------------------------------------------------------------------------
+
+    /**
+     * A `copyField` carries `source`, `dest` and `maxChars` — none of which is a field property.
+     * The property table is the only thing this knows, so the honest answer is silence rather than
+     * a list of attributes that would be errors on this tag.
+     */
+    fun testNoAttributesAreOfferedOnATagWithNoKnownProperties() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="sku" type="string"/>
+              <copyField source="sku" <caret>/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("indexed is not a copyField attribute: $offered", "indexed" in offered)
+        assertFalse("sortMissingLast is not a copyField attribute: $offered", "sortMissingLast" in offered)
+    }
 
     fun testFieldAttributesAreOffered() {
         val offered = completionsFor(
@@ -126,7 +162,7 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
             </schema>
             """.trimIndent(),
         )
-        assertEquals(listOf("index", "query"), offered.sorted().sortedBy { it })
+        assertEquals(listOf("index", "query"), offered.sorted())
     }
 
     fun testSynonymQueryStyleOffersItsThreeValues() {
@@ -138,6 +174,23 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
             """.trimIndent(),
         )
         assertEquals(listOf("as_distinct_terms", "as_same_term", "pick_best"), offered.sorted())
+    }
+
+    /**
+     * The same attribute name on a tag that cannot carry it. `synonymQueryStyle` configures a field
+     * type; on a `copyField` it means nothing, and offering its three values there would present
+     * nonsense as though Solr accepted it.
+     */
+    fun testAPropertysValuesAreNotOfferedOnATagThatCannotCarryIt() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="text" class="solr.TextField"/>
+              <copyField source="a" dest="b" synonymQueryStyle="<caret>"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("not a copyField attribute: $offered", "as_same_term" in offered)
     }
 
     // --- the gate ---------------------------------------------------------------------------------

@@ -82,11 +82,12 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
 
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
         tagName in SolrSchemaTags.FIELD && attributeName == "type" -> fieldTypes(model)
-        tagName == "copyField" && attributeName in COPY_FIELD_ATTRIBUTES -> fieldNames(model)
-        tagName in SolrSchemaTags.FIELD && isBooleanProperty(attributeName) -> booleans(attributeName)
-        tagName in SolrSchemaTags.FIELD_TYPE && isBooleanProperty(attributeName) -> booleans(attributeName)
+        tagName == SolrSchemaTags.COPY_FIELD && attributeName in SolrSchemaTags.COPY_FIELD_ENDS -> fieldNames(model)
         tagName == "analyzer" && attributeName == "type" -> ANALYZER_PHASES
-        closedValuesFor(attributeName).isNotEmpty() -> closedValues(attributeName)
+        // Every remaining answerable position is a property of a field or of a type. Scoping it to
+        // those two tags is what keeps `<copyField synonymQueryStyle="">` — which means nothing —
+        // from being offered the three values a field type would accept there.
+        tagName in SolrSchemaTags.FIELD || tagName in SolrSchemaTags.FIELD_TYPE -> propertyValues(attributeName)
         else -> emptyList()
     }
 
@@ -104,16 +105,6 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         }
 
     /**
-     * Whether [attributeName] is one of the properties that takes only `true` or `false`.
-     *
-     * Read from the property table rather than listed again here, so a property added there gains
-     * completion without a second edit — and so the two can never disagree about what a property
-     * accepts.
-     */
-    private fun isBooleanProperty(attributeName: String): Boolean =
-        SolrFieldProperties.byName(attributeName)?.validValues == BOOLEAN_VALUES
-
-    /**
      * The declared fields, and the dynamic patterns, each showing its type.
      *
      * Dynamic patterns are offered because a `copyField` may legitimately name one — `dest="*_t"`
@@ -128,47 +119,28 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         }
 
     /**
-     * `true` and `false`, with the one Solr would have used marked as the default.
+     * The values a property accepts, with the one Solr would have used marked as the default.
      *
-     * "This is what you already have" is usually what a reader is trying to work out, and it is the
-     * question a list of two identical-looking values cannot answer. Where the default depends on
-     * the field type — `omitNorms` is true for primitive types and false for text — neither value
-     * is marked, because marking one would assert something Solr does not.
-     */
-    /**
-     * The closed set an attribute accepts, when it has one that is not boolean.
+     * Empty where any value is legal: `positionIncrementGap` takes any integer, and a list there
+     * would imply the values not on it are wrong. Where the set *is* closed — two values for a
+     * boolean, three for `synonymQueryStyle` — marking the default is the useful half. "This is
+     * what you already have" is usually what a reader is trying to work out, and it is the question
+     * a list of identical-looking values cannot otherwise answer.
      *
-     * Empty for anything open-ended. `synonymQueryStyle` takes one of three;
-     * `positionIncrementGap` takes any integer, and offering a list there would imply the values
-     * not on it are wrong.
+     * Where the default depends on the field type — `omitNorms` is true for primitive types and
+     * false for text — nothing is marked, because marking one would assert something Solr does not.
      */
-    private fun closedValuesFor(attributeName: String): List<String> =
-        SolrFieldProperties.byName(attributeName)?.closedValues.orEmpty()
-
-    private fun closedValues(attributeName: String): List<LookupElement> {
-        val default = SolrFieldProperties.byName(attributeName)?.defaultValue
-        return closedValuesFor(attributeName).map { value ->
+    private fun propertyValues(attributeName: String): List<LookupElement> {
+        val property = SolrFieldProperties.byName(attributeName) ?: return emptyList()
+        return property.offerableValues.map { value ->
+            val isDefault = value == property.defaultValue
             LookupElementBuilder.create(value)
-                .withTypeText(if (value == default) DEFAULT_LABEL else null)
-                .withBoldness(value == default)
-        }
-    }
-
-    private fun booleans(attributeName: String): List<LookupElement> {
-        val default = SolrFieldProperties.byName(attributeName)?.defaultValue
-        return listOf("true", "false").map { value ->
-            LookupElementBuilder.create(value)
-                .withTypeText(if (value == default) DEFAULT_LABEL else null)
-                .withBoldness(value == default)
+                .withTypeText(if (isDefault) DEFAULT_LABEL else null)
+                .withBoldness(isDefault)
         }
     }
 
     private companion object {
-        val COPY_FIELD_ATTRIBUTES = setOf("source", "dest")
-
-        /** The `validValues` string the property table uses for a boolean. */
-        const val BOOLEAN_VALUES = "true or false"
-
         /** Shown beside the value Solr would use if the attribute were absent. */
         const val DEFAULT_LABEL = "default"
 
@@ -256,7 +228,7 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
      * An attribute cannot be written twice, so offering one that is present is offering an error.
      */
     private fun attributeNames(tag: XmlTag): List<LookupElement> {
-        val already = tag.attributes.mapNotNull { it.name }.toSet()
+        val already = tag.attributes.map { it.name }.toSet()
         val properties = when (tag.name) {
             in SolrSchemaTags.FIELD -> SolrFieldProperties.FOR_FIELD
             in SolrSchemaTags.FIELD_TYPE -> SolrFieldProperties.FOR_FIELD_TYPE

@@ -228,4 +228,13 @@ object SolrSchemaTags {
 
     /** The tag declaring a copy rule. */
     const val COPY_FIELD: String = "copyField"
+
+    /**
+     * The two attributes of a [COPY_FIELD] that name a field.
+     *
+     * Unlike the tag names, these are ordinary words — an Ant-style `<copy source= dest=>` uses
+     * both. They mean a field only in the tag position, so every reader of this set has to check
+     * the tag as well.
+     */
+    val COPY_FIELD_ENDS: Set<String> = setOf("source", "dest")
 }
