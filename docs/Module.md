@@ -210,6 +210,13 @@ trees so that staying off that path remains affordable.
 
 What the user actually sees.
 
+Three inspections report references that go nowhere: a dangling `copyField`, a
+field naming an undeclared type, and a handler parameter naming a field the
+schema does not declare. Their clean fixtures matter more than their flagged
+ones — Solr's `fl` parameter legitimately contains `score`, `[docid]` and
+`max(price,0)`, and a warning on a correct file is what gets a plugin
+uninstalled.
+
 [SolrMatchInlayHintsProvider] shows what each field matches inline beside its
 declaration — an inlay rather than a tooltip because a user who does not already
 suspect their field cannot match a prefix will never hover over it to find out.

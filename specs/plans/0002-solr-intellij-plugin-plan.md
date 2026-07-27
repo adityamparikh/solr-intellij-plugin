@@ -51,7 +51,7 @@ it whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages)
-- [Step 6 — Inspections](#step-6-inspections)
+- [Step 6 — Inspections](#step-6-inspections-partly-done) — **partly done**
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes)
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
@@ -405,7 +405,7 @@ and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-fin
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
 
-### Step 6: Inspections
+### Step 6: Inspections (partly done)
 
 Where the zero-false-positive requirement gets teeth.
 
@@ -418,7 +418,27 @@ Where the zero-false-positive requirement gets teeth.
 3. Test each on both flagged and clean fixtures.
 
 **Success criteria:**
-- [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
+- [x] Every inspection fires on crafted-bad fixtures and on nothing clean — for the three
+      that have landed.
+
+**What shipped:** the three reference inspections — a dangling `copyField` source or
+destination, a field naming an undeclared field type, and a handler parameter naming a
+field the schema does not declare.
+
+**Taken before references and navigation, which this step nominally depends on.** That
+dependency holds only for inspections written as unresolved-reference checks; driven off
+the field model instead, none of them need reference infrastructure. The same reasoning let
+the match hints ship early.
+
+**The clean fixtures carry more weight than the flagged ones.** `fl` alone legitimately
+contains `score`, `*`, `[docid]`, `max(price,0)` and `alias:name`, none of which any schema
+declares — so the parser now excludes square brackets, and the inspections skip the names
+Solr supplies itself. A glob `copyField` source is not reported either way, because whether
+a dynamic field matches it is not a question the schema alone answers.
+
+Still to come in this step: relevance parameters on non-indexed fields, unused field types,
+known-bad analyzer chain orderings, and configuration elements removed in the targeted Solr
+line. The last of those needs the version data the factory catalog carries.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
