@@ -1,6 +1,10 @@
 package org.apache.solr.ide.repository
 
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.model.SolrMatchGranularity
+import org.apache.solr.ide.model.SolrMatchTrait
+import org.apache.solr.ide.model.SolrPrefixSupport
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -84,6 +88,36 @@ class DemoConfigsetTest {
             "every field the demo config names must exist in the demo schema",
             references.all { model.resolve(it.fieldName) != null },
         )
+    }
+
+    /**
+     * The three claims the demo puts on screen, against the real configset rather than a
+     * hand-built chain. Steps 28 to 31 of the runbook say exactly this, and step 30 invites the
+     * room to disagree with the middle one — so it is worth pinning that the plugin would say it.
+     */
+    @Test
+    fun `the demo's match-capability hints are what the runbook claims`() {
+        val sku = SolrMatchAnalysis.of(model.typeOf(model.resolve("sku")!!)!!)
+        assertEquals(SolrMatchGranularity.WHOLE_VALUE, sku.granularity)
+        assertTrue("sku is case-sensitive", sku.caseSensitive)
+        assertEquals(SolrPrefixSupport.NONE, sku.prefix)
+
+        val name = SolrMatchAnalysis.of(model.typeOf(model.resolve("name")!!)!!)
+        assertEquals(SolrMatchGranularity.TOKENS, name.granularity)
+        assertTrue("name is case-insensitive", !name.caseSensitive)
+        assertEquals(
+            "the demo turns on `wid` not matching `widget` here",
+            SolrPrefixSupport.NONE,
+            name.prefix,
+        )
+
+        val prefix = SolrMatchAnalysis.of(model.typeOf(model.resolve("name_prefix")!!)!!)
+        assertEquals(SolrPrefixSupport.EDGE_NGRAM, prefix.prefix)
+        assertEquals("EdgeNGramFilterFactory", prefix.evidenceFor(SolrMatchTrait.PREFIX))
+
+        for (capability in listOf(sku, name, prefix)) {
+            assertTrue("every demo field must be classified confidently", capability.confident)
+        }
     }
 
     @Test

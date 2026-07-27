@@ -69,8 +69,7 @@ inventing one:
 - `org.apache.solr.ide.repository` — reading a configset directory off disk into
   the field model. **Exists.**
 - `org.apache.solr.ide.model` — the field model itself: fields, dynamic fields,
-  field types, analyzer chains, and what each can do. **Exists**, except for the
-  match-capability analysis.
+  field types, analyzer chains, and what each can do. **Exists.**
 - `org.apache.solr.ide.recognizer` — spotting field names and queries in Java and
   Kotlin code, per client library.
 - `org.apache.solr.ide.ui` — tool windows, the query console and the drift view.
@@ -168,6 +167,19 @@ is surfaced rather than resolved.
 The server half is empty until the server reader lands. The seam exists now
 because retrofitting a second source into a model shaped around one means
 revisiting everything built on it.
+
+[SolrMatchAnalysis] is the other half of this package: a pure function from an
+index-time analyzer chain to what a field can actually match — whole value or
+tokens, prefix-capable or not, case-sensitive or not. It is the plugin's most
+surprising output, and the factories that decide it are named in code rather than
+read from the generated factory catalog, because that set defines the semantics
+rather than enumerating what exists.
+
+Two things shape [SolrMatchCapability]. It names the *mechanism* behind partial
+matching rather than asserting a boolean, because a wildcard query works against
+any indexed field and the useful claim is about efficiency. And it carries a
+confidence flag: an unrecognized factory makes the analysis decline rather than
+guess, since a wrong claim about what a field matches is worse than no claim.
 
 # Package org.apache.solr.ide.repository
 

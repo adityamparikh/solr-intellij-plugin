@@ -43,6 +43,9 @@ about a configset once it has one. No user-facing feature reads either yet:
   fields, and the field names `solrconfig.xml` references — built by parsing the files and rebuilt
   when they change, including before you save
 - Enumeration of every configset in a project, skipping build output and dependency trees
+- Match analysis — from a field's index-time analyzer chain to what it can actually match: whole
+  value or tokens, case-sensitive or not, and whether prefix matching is supported efficiently and
+  by what mechanism
 - Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
   features to come
 
