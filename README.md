@@ -69,7 +69,12 @@ The foundation is complete and the first two user-facing features sit on top of 
   the default
 - **Completion of the `class` attribute** on a `fieldType`, `tokenizer`, `filter` or `charFilter`,
   from a catalog generated at build time out of the Solr and Lucene artifacts for each supported
-  line — so a schema declaring Solr 9.10 is offered that line's vocabulary, not Solr 10's
+  line — so a schema declaring Solr 9.10 is offered that line's vocabulary, not Solr 10's.
+  Chinese, Japanese and Korean analysis components are included
+- **Completion of a factory's own attributes** — `minGramSize` on an ngram filter, `mode` and
+  `userDictionary` on the Japanese tokenizer — recovered from each factory's constructor bytecode,
+  since a factory reads its attributes out of a map by string literal and nothing reflective can
+  see them
 - **Navigation** from a field's `type` to the `fieldType` that declares it, and from each end of a
   `copyField` to the field it names — cmd-click or Ctrl-B. A glob such as `dest="*_t"` lands on the
   `dynamicField` that spells the same pattern, not on a concrete field it might match

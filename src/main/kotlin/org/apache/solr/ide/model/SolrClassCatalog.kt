@@ -26,11 +26,13 @@ enum class SolrClassKind(internal val token: String) {
  * @property kind what the class is, and therefore where it may be written
  * @property className the fully qualified name, as reflection sees it
  * @property shortName the `solr.`-prefixed form a configset normally uses
+ * @property attributes the attribute names this class reads, empty where none are known
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
     val className: String,
     val shortName: String,
+    val attributes: List<String> = emptyList(),
 )
 
 /**
@@ -45,6 +47,11 @@ data class SolrClassEntry(
  * The tab-separated form is deliberate. Reading it needs no parser and no dependency, and a
  * regenerated catalog produces a diff a human can review — which matters, because the way a
  * generator fails is by producing a plausible short list rather than an error.
+ *
+ * **The attributes are the part reflection cannot supply.** A factory reads them out of a
+ * `Map<String, String>` by string literal, so they exist only inside its constructor body and are
+ * neither fields nor annotations. The generator recovers them from bytecode; anything that
+ * enumerated members instead would produce a short, plausible, wrong list.
  */
 object SolrClassCatalog {
 
@@ -114,8 +121,11 @@ object SolrClassCatalog {
             lines.mapNotNull { row ->
                 if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
                 val columns = row.split('\t')
-                if (columns.size != 3) return@mapNotNull null
-                kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2]) }
+                if (columns.size < 3) return@mapNotNull null
+                val attributes = columns.getOrNull(3).orEmpty()
+                    .split(',')
+                    .filter { it.isNotBlank() }
+                kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
             }.toList()
         }
     }
