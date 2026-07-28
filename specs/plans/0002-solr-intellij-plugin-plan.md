@@ -731,9 +731,16 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 **Success criteria:**
 - [ ] Catalog generated at build time for both supported lines and present on the plugin
       classpath.
-- [ ] `wordDelimiterGraph` exposes all twelve of its attributes. This is the criterion
-      that proves the constructor-bytecode pass works, because reflection over fields
-      produces a plausible short list instead of failing outright.
+- [ ] `WordDelimiterGraphFilterFactory` exposes `generateWordParts`, `catenateAll`,
+      `splitOnCaseChange`, `stemEnglishPossessive`, `protected` and `types`, among others.
+      This is the criterion that proves the constructor-bytecode pass works, because
+      reflection over fields produces a plausible short list instead of failing outright.
+      **Named rather than counted**: an earlier revision said "all twelve", and the real
+      number moved with the Solr line, which makes a count a criterion that fails for the
+      wrong reason.
+- [ ] `JapaneseTokenizerFactory` exposes `mode` and `userDictionary`. Both are read by
+      paths a naive pass misses — one has a default computed by a method call, the other is
+      taken with `args.remove` rather than a getter.
 - [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
       is what proves the field-type-class pass ran at all — the `class` attribute of a
       `<fieldType>` is the most-hovered thing in a schema after the field names.

@@ -4,6 +4,7 @@ import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
 // ASM reads the Solr and Lucene class files that back the generated catalog. It sits on the
@@ -183,6 +184,10 @@ supportedSolrLines.forEach { (line, version) ->
         isCanBeResolved = true
     }
     dependencies.add(configuration.name, "org.apache.solr:solr-core:$version")
+    // Chinese (smartcn), ICU, Stempel and Morfologik ship in Solr's analysis-extras module rather
+    // than in core, so resolving core alone produced a catalog with Japanese and Korean support and
+    // no Chinese at all. A configset can name these, so the catalog has to know them.
+    dependencies.add(configuration.name, "org.apache.solr:solr-analysis-extras:$version")
 }
 
 /** The Lucene SPI files naming each kind of analysis component, and the catalog kind for each. */
@@ -212,10 +217,21 @@ val generateSolrCatalog by tasks.registering {
     doLast {
         // Declared inside the action for the same reason: a local function captures nothing but its
         // enclosing locals, where a script-level one would drag the script in with it.
+        // The methods an analysis factory calls to read its own attributes out of the argument map.
+        // Reflection cannot see these: the names are string literals in the constructor body, so
+        // they are neither fields nor annotations. This is the whole reason the catalog is built
+        // from bytecode rather than from a class listing.
+        val argumentReaders = setOf(
+            "get", "getInt", "getBoolean", "getFloat", "getDouble", "getChar", "getPattern",
+            "getSet", "getLines", "getWordSet", "getSnowballWordSet", "getClassArg",
+            "require", "requireInt", "requireBoolean", "requireFloat", "requireChar",
+        )
+
         fun buildCatalog(line: String, version: String, jars: List<File>): String {
             val superclasses = mutableMapOf<String, String?>()
             val abstractClasses = mutableSetOf<String>()
             val factories = mutableMapOf<String, MutableSet<String>>()
+            val declaredAttributes = mutableMapOf<String, MutableSet<String>>()
 
             for (jar in jars) {
                 JarFile(jar).use { open ->
@@ -227,6 +243,84 @@ val generateSolrCatalog by tasks.registering {
                                 superclasses[reader.className] = reader.superName
                                 if (reader.access and Opcodes.ACC_ABSTRACT != 0) {
                                     abstractClasses += reader.className
+                                }
+                                if (reader.className.endsWith("Factory")) {
+                                    val found = sortedSetOf<String>()
+                                    reader.accept(
+                                        object : ClassVisitor(Opcodes.ASM9) {
+                                            override fun visitMethod(
+                                                access: Int,
+                                                methodName: String,
+                                                descriptor: String,
+                                                signature: String?,
+                                                exceptions: Array<out String>?,
+                                            ): MethodVisitor? {
+                                                if (methodName != "<init>") return null
+                                                return object : MethodVisitor(Opcodes.ASM9) {
+                                                    // Strings pushed since the last call, in order.
+                                                    // The *first* is the attribute name: a reader
+                                                    // may take a default too, as in
+                                                    // `get(args, "language", "English")`, and
+                                                    // taking the most recent literal picked up the
+                                                    // default instead of the name.
+                                                    private val pending = mutableListOf<String>()
+
+                                                    override fun visitLdcInsn(value: Any?) {
+                                                        if (value is String) pending += value
+                                                    }
+
+                                                    override fun visitMethodInsn(
+                                                        opcode: Int,
+                                                        owner: String,
+                                                        called: String,
+                                                        methodDescriptor: String,
+                                                        isInterface: Boolean,
+                                                    ) {
+                                                        // The owner guard keeps `Map.get` and
+                                                        // `List.get` out: only a call on the
+                                                        // factory hierarchy reads an argument.
+                                                        val onFactory = owner.endsWith("Factory") ||
+                                                            owner == "org/apache/lucene/analysis/AbstractAnalysisFactory"
+                                                        // `args.remove("userDictionary")` is a real
+                                                        // read: a factory that consumes an argument
+                                                        // this way still accepts it.
+                                                        val isRead = (onFactory && called in argumentReaders) ||
+                                                            (called == "remove" && owner == "java/util/Map")
+                                                        if (isRead) {
+                                                            // Every Solr and Lucene attribute name
+                                                            // is lowerCamelCase. The guard catches
+                                                            // the defaults that still reach here by
+                                                            // paths the ordering rule above does not
+                                                            // cover -- `"German"` arrives as an
+                                                            // attribute of the snowball stemmer
+                                                            // otherwise, and offering it would be a
+                                                            // confident wrong answer.
+                                                            pending.firstOrNull()
+                                                                ?.takeIf { it.isNotEmpty() && it[0].isLowerCase() }
+                                                                // `class` and `name` are how a
+                                                                // component names its factory, not
+                                                                // parameters the factory accepts.
+                                                                // The base class strips them with
+                                                                // `args.remove`, which reads
+                                                                // identically to a real one.
+                                                                ?.takeIf { it != "class" && it != "name" }
+                                                                ?.let { found += it }
+                                                        }
+                                                        // Cleared only after a read, not after
+                                                        // every call. An earlier version cleared on
+                                                        // any call, which lost the name whenever the
+                                                        // default was computed by one --
+                                                        // `get(args, MODE, DEFAULT_MODE.toString())`
+                                                        // dropped `mode` from the Japanese
+                                                        // tokenizer entirely.
+                                                        if (isRead) pending.clear()
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
+                                    )
+                                    if (found.isNotEmpty()) declaredAttributes[reader.className] = found
                                 }
                             }
                         } else if (entryName.startsWith("META-INF/services/")) {
@@ -262,14 +356,30 @@ val generateSolrCatalog by tasks.registering {
                 .map { it.replace('/', '.') }
                 .sorted()
 
+            // A factory inherits whatever its superclasses read. `EdgeNGramFilterFactory` declares
+            // its own three; every analysis factory also accepts `luceneMatchVersion` from the root
+            // of the hierarchy. Reporting only the leaf's own literals would omit real attributes.
+            fun attributesOf(binaryName: String): List<String> {
+                val internal = binaryName.replace('.', '/')
+                val collected = sortedSetOf<String>()
+                var current: String? = internal
+                var depth = 0
+                while (current != null && depth++ < 40) {
+                    declaredAttributes[current]?.let { collected += it }
+                    current = superclasses[current]
+                }
+                return collected.toList()
+            }
+
             return buildString {
                 appendLine("# Generated by :generateSolrCatalog - do not edit.")
                 appendLine("# Solr line $line, read from $version.")
-                appendLine("# kind\tclass\tshort name")
-                for (className in fieldTypes) appendLine("fieldType\t$className\t${shortName(className)}")
+                appendLine("# kind\tclass\tshort name\tattributes")
+                for (className in fieldTypes) appendLine("fieldType\t$className\t${shortName(className)}\t")
                 for ((kind, implementations) in factories.toSortedMap()) {
                     for (className in implementations.sorted()) {
-                        appendLine("$kind\t$className\t${shortName(className)}")
+                        val attributes = attributesOf(className).joinToString(",")
+                        appendLine("$kind\t$className\t${shortName(className)}\t$attributes")
                     }
                 }
             }
