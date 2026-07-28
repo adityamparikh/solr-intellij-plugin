@@ -11,7 +11,7 @@ import org.objectweb.asm.Opcodes
 // runs, not a library the plugin ships.
 buildscript {
     repositories { mavenCentral() }
-    dependencies { classpath("org.ow2.asm:asm:9.9") }
+    dependencies { classpath("org.ow2.asm:asm:9.10.1") }
 }
 
 plugins {
