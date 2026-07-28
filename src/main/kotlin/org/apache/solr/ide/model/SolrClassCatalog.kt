@@ -116,17 +116,30 @@ object SolrClassCatalog {
     private fun read(line: Int): List<SolrClassEntry> {
         val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
             ?: return emptyList()
+        return stream.bufferedReader().useLines { parse(it) }
+    }
+
+    /**
+     * The entries in [rows], skipping anything that is not one.
+     *
+     * Separate from reading the resource so it can be tested against input the generator would
+     * never produce. That matters more here than the shipped file suggests: this parser is the one
+     * place a malformed or half-written catalog reaches the editor, and the guarantee worth having
+     * is that it drops the bad row rather than the file.
+     *
+     * @param rows the catalog's lines
+     * @return the entries, in the order they appear
+     */
+    internal fun parse(rows: Sequence<String>): List<SolrClassEntry> {
         val kinds = SolrClassKind.entries.associateBy { it.token }
-        return stream.bufferedReader().useLines { lines ->
-            lines.mapNotNull { row ->
-                if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
-                val columns = row.split('\t')
-                if (columns.size < 3) return@mapNotNull null
-                val attributes = columns.getOrNull(3).orEmpty()
-                    .split(',')
-                    .filter { it.isNotBlank() }
-                kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
-            }.toList()
-        }
+        return rows.mapNotNull { row ->
+            if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
+            val columns = row.split('\t')
+            if (columns.size < 3) return@mapNotNull null
+            val attributes = columns.getOrNull(3).orEmpty()
+                .split(',')
+                .filter { it.isNotBlank() }
+            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
+        }.toList()
     }
 }

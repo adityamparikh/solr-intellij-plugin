@@ -99,6 +99,46 @@ class SolrClassCatalogTest {
         assertEquals(SolrClassCatalog.entriesFor(latest), ancient)
     }
 
+    // --- the parser, against input the generator would never produce ------------------------------
+
+    /**
+     * A malformed row must cost its own line, not the file. This parser is the one place a
+     * half-written or truncated catalog would reach the editor.
+     */
+    @Test
+    fun `a malformed row is dropped and the rest survive`() {
+        val entries = SolrClassCatalog.parse(
+            sequenceOf(
+                "# a comment",
+                "",
+                "   ",
+                "fieldType\torg.apache.solr.schema.StrField\tsolr.StrField\t",
+                "truncated\trow",
+                "notAKind\torg.example.Thing\tsolr.Thing\t",
+                "tokenizer\torg.example.T\tsolr.T\talpha,beta",
+            ),
+        )
+        assertEquals(2, entries.size)
+        assertEquals(SolrClassKind.FIELD_TYPE, entries[0].kind)
+        assertTrue("a trailing empty column is no attributes", entries[0].attributes.isEmpty())
+        assertEquals(listOf("alpha", "beta"), entries[1].attributes)
+    }
+
+    /** A row with no attribute column at all is still an entry; older catalogs had three columns. */
+    @Test
+    fun `a row without an attribute column parses`() {
+        val entries = SolrClassCatalog.parse(sequenceOf("charFilter\torg.example.C\tsolr.C"))
+        assertEquals(1, entries.size)
+        assertTrue(entries.single().attributes.isEmpty())
+    }
+
+    /** Empty items between separators are not attribute names. */
+    @Test
+    fun `blank attributes are discarded`() {
+        val entries = SolrClassCatalog.parse(sequenceOf("tokenFilter\torg.example.F\tsolr.F\t,alpha,,beta,"))
+        assertEquals(listOf("alpha", "beta"), entries.single().attributes)
+    }
+
     /** Every entry carries both spellings, and the short one is the `solr.` form. */
     @Test
     fun `entries are well formed`() {

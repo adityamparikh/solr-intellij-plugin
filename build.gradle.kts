@@ -227,6 +227,30 @@ val generateSolrCatalog by tasks.registering {
             "require", "requireInt", "requireBoolean", "requireFloat", "requireChar",
         )
 
+        // How many parameters of a call could hold a string. The attribute name is always the
+        // first of them, so counting them lets the reader take the literals that belong to *this*
+        // call rather than whatever happened to be pushed before it.
+        fun stringLikeParameters(descriptor: String): Int {
+            val parameters = descriptor.substringAfter('(').substringBefore(')')
+            var index = 0
+            var count = 0
+            while (index < parameters.length) {
+                when (parameters[index]) {
+                    'L' -> {
+                        val end = parameters.indexOf(';', index)
+                        if (end < 0) return count
+                        val type = parameters.substring(index + 1, end)
+                        if (type == "java/lang/String" || type == "java/lang/Object") count++
+                        index = end + 1
+                    }
+                    // An array prefix; the element type follows and is handled on the next pass.
+                    '[' -> index++
+                    else -> index++
+                }
+            }
+            return count
+        }
+
         fun buildCatalog(line: String, version: String, jars: List<File>): String {
             val superclasses = mutableMapOf<String, String?>()
             val abstractClasses = mutableSetOf<String>()
@@ -287,15 +311,21 @@ val generateSolrCatalog by tasks.registering {
                                                         val isRead = (onFactory && called in argumentReaders) ||
                                                             (called == "remove" && owner == "java/util/Map")
                                                         if (isRead) {
+                                                            // Only the literals this call could
+                                                            // have consumed. Taking the head of
+                                                            // everything pushed since the last read
+                                                            // let a stray literal -- an exception
+                                                            // message, a builder append -- sit in
+                                                            // front of the real name and be read as
+                                                            // the attribute.
+                                                            val consumed = pending.takeLast(
+                                                                stringLikeParameters(methodDescriptor),
+                                                            )
                                                             // Every Solr and Lucene attribute name
                                                             // is lowerCamelCase. The guard catches
                                                             // the defaults that still reach here by
-                                                            // paths the ordering rule above does not
-                                                            // cover -- `"German"` arrives as an
-                                                            // attribute of the snowball stemmer
-                                                            // otherwise, and offering it would be a
-                                                            // confident wrong answer.
-                                                            pending.firstOrNull()
+                                                            // paths the rule above does not cover.
+                                                            consumed.firstOrNull()
                                                                 ?.takeIf { it.isNotEmpty() && it[0].isLowerCase() }
                                                                 // `class` and `name` are how a
                                                                 // component names its factory, not
