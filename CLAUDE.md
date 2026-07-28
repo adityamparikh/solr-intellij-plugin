@@ -124,16 +124,39 @@ file type so configsets parse as XML for the PSI-based features to come.
 
 ## Tests
 
-Tests extend `BasePlatformTestCase`, which is JUnit 3-style despite the JUnit 4 dependency: test
-methods must be named `testSomething()` and are discovered by that prefix, not by `@Test`. Build
-fixtures with `myFixture.addFileToProject(path, content)` — the path shapes the directory structure
-the detector's heuristics read, so it is part of the test's meaning rather than incidental.
+**Two conventions live here, and what you are testing decides which you get.** Anything with PSI in
+it extends `BasePlatformTestCase`, which is JUnit 3-style despite the JUnit 4 dependency: methods
+must be named `testSomething()` and are discovered by that prefix, not by `@Test`. Build fixtures
+with `myFixture.addFileToProject(path, content)` — the path shapes the directory structure the
+detector's heuristics read, so it is part of the test's meaning rather than incidental. Anything
+importing nothing from the platform — `org.apache.solr.ide.model`, the parsers, `SolrSchemaElements`
+— is plain JUnit 4 with `@Test` and backtick names instead, because it needs no fixture and booting
+an IDE to exercise a pure function costs a second of wall-clock for nothing. About a third of the
+suite is in that second group. A `testSomething()` name there would still run, but it reads as a
+claim that the test needs a platform it does not.
+
+Those fixture tests are integration tests whatever they sit beside: they start a headless IDE, and
+`checkHighlighting` runs the platform's real analysis pass. It fails on highlights the fixture did
+*not* mark as well as ones it did, which is what makes the zero-false-positive bar enforceable per
+test rather than only in CI.
 
 Anything touching `SolrConfigsetSettings` must extend `SolrConfigsetTestCase` instead.
 `BasePlatformTestCase` reuses one light project across test methods *and* test classes, and the
 settings are a project-level `PersistentStateComponent`, so state leaks between tests: one test
 disabling detection silently changes the starting conditions of every test after it. That base
 class resets in `setUp`, which holds even when a preceding test fails partway through.
+
+**A corrupted test sandbox is indistinguishable from a broken plugin until you know the signature.**
+The fixture tests run against an IDE system directory at
+`.intellijPlatform/sandbox/<project>/<IDE>/system-test`. It persists between runs, and because it
+lives outside `build/` it survives `./gradlew clean` — which is what makes this expensive to
+diagnose. When its VFS goes bad, every fixture test in the suite fails at once with the same
+`FileDeletedException: file[#N]: file is deleted, but still in [M].children list`, while the pure
+JUnit 4 tests stay green. Those three facts together are the diagnosis: identical failures across
+unrelated test classes, unaffected by `clean`, with the platform-free tests passing. Delete the
+`system-test` directory and re-run. It had reached 279MB the first time this bit, so deleting it
+costs one slower run and nothing else. Do not go looking for the cause in the code under test —
+this failure is upstream of it, and `git stash` will not clear it either.
 
 ## Conventions
 
