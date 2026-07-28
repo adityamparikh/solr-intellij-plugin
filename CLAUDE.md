@@ -1,6 +1,21 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository.
+
+The human-facing documentation is the substance; this file keeps only what gets violated when it sits
+behind a link. Read the relevant one before designing anything.
+
+| Document | Owns |
+|---|---|
+| [`docs/contributing.md`](docs/contributing.md) | Setup, first run, where work comes from, commit and PR mechanics, CI |
+| [`docs/code-organization.md`](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
+| [`docs/how-to/add-an-editor-feature.md`](docs/how-to/add-an-editor-feature.md) | Adding an inspection, completion, reference, documentation or hint |
+| [`docs/how-to/extend-the-field-model.md`](docs/how-to/extend-the-field-model.md) | Adding to `model` and the parsers that fill it |
+| [`docs/how-to/testing-and-the-build-gates.md`](docs/how-to/testing-and-the-build-gates.md) | Test conventions, and clearing Dokka and Kover |
+| [`docs/platform-mechanisms.md`](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are and what this plugin decided |
+| [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written |
+| [`specs/0002-solr-intellij-plugin.md`](specs/0002-solr-intellij-plugin.md) | **Intent.** What the plugin is for. Read before designing a feature |
+| [`specs/plans/0002-solr-intellij-plugin-plan.md`](specs/plans/0002-solr-intellij-plugin-plan.md) | **Status and order.** The only file that owns what is built |
 
 ## Commands
 
@@ -9,175 +24,92 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew check            # tests + coverage floor + documentation gate
 ./gradlew test --tests "*.SolrConfigsetDetectorTest"                          # one test class
 ./gradlew test --tests "*.SolrConfigsetDetectorTest.testSchemaUnderConfDirIsRecognized"  # one test
-./gradlew runIde           # launch a sandbox IDE with the plugin installed
-./gradlew buildPlugin      # produce the distributable ZIP in build/distributions/
+./gradlew runIde           # sandbox IDE with the plugin installed, opening demo/
+./gradlew buildPlugin      # distributable ZIP in build/distributions/
 ./gradlew verifyPlugin     # IntelliJ Plugin Verifier + plugin structure checks
 ./gradlew dokkaGenerate    # render API docs to build/dokka/html
 ./gradlew koverXmlReport   # coverage report at build/reports/kover/report.xml
 ```
 
-Equivalent IDE run configurations live in `.run/`: Run Plugin, Run Tests, Run Verifications.
+Run configurations in `.run/`: Run Plugin, Run Tests, Run Verifications. A first or post-`clean` build
+resolves Solr artifacts for every supported line to generate the class catalog, and is slow.
+
+## Status
+
+**The plan owns what is built.** Do not mirror its step status into this file or any other, and do not
+infer status from the API reference, the specification, or the code. Position changes every step and
+orientation does not, so a copy goes stale while the plan stays correct.
 
 ## Two build gates that will bite you
 
 **Documentation coverage.** Dokka runs with `reportUndocumented` and `failOnWarning`, and
 `dokkaGenerate` is a dependency of `check`. Any public class, function or property in
 `src/main/kotlin` without KDoc fails the build, naming the declaration. Adding public API means
-documenting it in the same change. Tests are exempt — only the `main` source set is gated.
+documenting it in the same change. Tests are exempt.
 
-**Test coverage.** Kover enforces an 80% line floor via `koverVerify`, also bound to `check`.
-`SolrBundle` is excluded (platform plumbing with no branches of its own). The floor sits below
-actual coverage on purpose, so that landing hard-to-unit-test UI and PSI code does not immediately
-block a PR; SonarCloud's new-code gate is what catches gradual erosion.
+**Test coverage.** Kover enforces an 80% line floor via `koverVerify`, also bound to `check`. The
+floor sits below actual coverage on purpose; SonarCloud's new-code gate is what catches gradual
+erosion.
 
-CI runs these deliberately last, in a single `./gradlew check` step, so that a gate failure still
-leaves the coverage report uploaded and the SonarCloud analysis published. Report-producing tasks
-run first. Preserve that ordering when adding steps — an artifact upload placed before `check` will
-find nothing, because `check` is what generates it.
+Package and module prose lives in `docs/Module.md`. KDoc reads `[foo]` as a symbol link, so Markdown
+reference-style links (`[text][ref]`) do not work there; use inline `[text](url)`.
 
-Package and module overview prose lives in `docs/Module.md`. Note that KDoc reads `[foo]` as a
-symbol link, so Markdown reference-style links (`[text][ref]`) do not work there; use inline
-`[text](url)`.
+## Rules no build gate enforces
 
-## Architecture
+**Every contribution declares itself dumb-aware, and that is a promise about data sources.** Nothing
+in this plugin reads an index. A future feature that does must drop the declaration or guard with
+`DumbService`. Note the mechanism differs by extension point: inspections and completion override
+`isDumbAware()`, documentation and inlay providers implement the `DumbAware` marker interface.
 
-An IntelliJ Platform plugin providing Apache Solr tooling, built with the IntelliJ Platform Gradle
-plugin against the unified `intellijIdea("2026.2")` artifact (Community and Ultimate merged as of
-2025.3).
+**Nothing in `org.apache.solr.ide.model` imports an IntelliJ type.** That is what lets a third of the
+suite be plain JUnit 4 with no fixture.
 
-**The spec is the source of truth for intent**: `specs/0002-solr-intellij-plugin.md` describes three
-surfaces — configuration files, a live server, and Java/Kotlin code — unified by one model of what
-fields exist and what they can do. Read it before designing a feature. It uses plain feature names
-rather than requirement IDs; an earlier revision numbered them S1–S9 and D1–D9, and those codes are
-gone rather than renamed, so treat any surviving reference to them as stale.
+**Nothing on the editor path contacts a server**, and detection signals stay cheap, local and cached
+because detection runs on every file the user opens.
 
-`specs/plans/0002-solr-intellij-plugin-plan.md` is the ordered path to that intent, and it owns
-which steps are done. Read it before starting feature work: it records why steps are split the way
-they are — the fake HTTP layer is part of the server step, not a follow-up, so that no test ever
-needs a running Solr — and which steps block which. It also groups the work into tracks that are
-independent after the field model exists, so parallel work does not need re-deriving. Do not mirror
-its step status into this file. Position changes every step and orientation does not, so a copy here
-goes stale while the plan stays correct.
+**Never build a cache in front of `SolrConfigsetReader.modelFor`.** It already caches through the
+platform's `CachedValuesManager`. A fact read from a file the reader does not already read must join
+`sourcesOf`, or the model goes stale after the first edit.
 
-`docs/platform-mechanisms.md` records the two IntelliJ Platform mechanisms that shape code across
-the plugin and are not guessable from reading it — dumb mode and model caching. Both were worked
-around before they were used, one of them silently for months, so the doc carries the decision and
-the reasoning rather than a description. The rule worth carrying from it: **every contribution here
-declares itself dumb-aware, and that is a promise about data sources.** Nothing in this plugin reads
-an index; a future feature that does must drop the declaration or guard with `DumbService`, and no
-build gate will catch it if it doesn't.
+**The plugin edits configuration files directly and never refuses a write.** If you find code or docs
+asking whether a write is *allowed*, it predates this and should go.
 
-`docs/solr-configuration-files.md` is the companion reference: which Solr configuration files are
-hand-edited, which are written by an API, and what the plugin covers.
-
-**The plugin edits configuration files directly and never refuses a write.** The spec argues this
-out under "What this replaces". The operative consequence here: if you find code or docs asking
-whether a write is *allowed*, it predates this and should go.
-
-**Where the code lives.** Packages are organised **by feature, and by feature again inside**. The
-spec's three surfaces are the top level; within a surface each package is one capability, not one
-layer. `org.apache.solr.ide.model` is the single exception and earns it: it is what both surfaces
-read, and the only package with no IntelliJ types, which is what lets the correctness-critical code
-be tested without a fixture.
-
-`org.apache.solr.ide.configset.activation` decides whether anything runs. `SolrProjectDetector` is
-the outer gate — the plugin activates only in a project whose dependencies include a Solr client,
-matched by artifact id, never version. `SolrConfigsetDetector` then gates individual files on a
-recognized name (`SolrConfigsetFileKind`), with `SolrConfigsetLocator` resolving which configset owns
-them and caching it. Names are tiered by what they prove (`SolrConfigsetFileRole`): self-identifying
-names like `solrconfig.xml` stand alone, ambiguous ones like `schema.xml` count only inside a
-directory a self-identifying name has already proven, and resources like `stopwords.txt` never
-activate anything. A user-marked root in `SolrConfigsetSettings` bypasses the outer gate, which is
-the only way a configset repository with no build file activates at all.
-
-`org.apache.solr.ide.configset.parsing` reads a configset into the model: `SolrSchemaParser` and
-`SolrConfigParser` are pure functions over text (JDK DOM, not XML PSI, with doctypes refused),
-`SolrConfigsetReader` caches a model per configset keyed on the modification stamps of the files it
-read, and `SolrConfigsetScanner` enumerates the project's configsets off the editor path.
-`SolrConfigsetReader.modelFor(PsiFile)` is the question every editor feature asks — it lives there
-rather than beside any one feature, because otherwise four features would import the fifth.
-
-The remaining `configset` packages are one capability each: `inspection`, `completion`, `reference`,
-`documentation`, `hint`. `org.apache.solr.ide.server` holds connections and will hold the HTTP
-client. `org.apache.solr.ide` holds `SolrBundle`. New packages are created when they have a file to
-hold, not in advance.
-
-Do not infer what is built from the API reference, and do not look for it here — the plan owns
-status.
-
-The spec's "What changes in the existing code" section sets the constraints the gate has to satisfy
-before features land on it. Two hold whatever else changes: detection runs on every file the user
-opens, so its signals stay cheap, local and cached; and nothing on the editor path may contact a
-server.
-
-Detection is deliberately heuristic and therefore fallible in both directions, which is why
-`SolrConfigsetSettings` exists as an escape hatch — manual configset roots and a master off switch.
-When features "don't activate", that override is the answer.
-
-Those settings persist to the shared `solr.xml`, not workspace-local storage, because a marked root
-is a fact about the project rather than about one machine. Paths are therefore collapsed through
-`PathMacroManager` on write (`$PROJECT_DIR$/core/conf`) and expanded on read. Treat
-`state.manualConfigsetRoots` as storage-form only and read `manualRoots` for usable absolute paths.
-
-`plugin.xml` registers the extensionless `managed-schema` (and `managed-schema.xml`) with the XML
-file type so configsets parse as XML for the PSI-based features to come.
+**Inspections must not fire on a correct file.** Solr configuration is full of syntax that resembles a
+field name — `fl` holds `score`, `*`, `[docid]`, `max(price,0)`. Use `SolrInspections`, and write the
+clean fixtures first.
 
 ## Tests
 
-**Two conventions live here, and what you are testing decides which you get.** Anything with PSI in
-it extends `BasePlatformTestCase`, which is JUnit 3-style despite the JUnit 4 dependency: methods
-must be named `testSomething()` and are discovered by that prefix, not by `@Test`. Build fixtures
-with `myFixture.addFileToProject(path, content)` — the path shapes the directory structure the
-detector's heuristics read, so it is part of the test's meaning rather than incidental. Anything
-importing nothing from the platform — `org.apache.solr.ide.model`, the parsers, `SolrSchemaElements`
-— is plain JUnit 4 with `@Test` and backtick names instead, because it needs no fixture and booting
-an IDE to exercise a pure function costs a second of wall-clock for nothing. About a third of the
-suite is in that second group. A `testSomething()` name there would still run, but it reads as a
-claim that the test needs a platform it does not.
+**Two conventions, and what you are testing decides which you get.** Anything with PSI extends
+`BasePlatformTestCase`, which is JUnit 3-style despite the JUnit 4 dependency: methods must be named
+`testSomething()` and are discovered by that prefix, not by `@Test`. Anything importing nothing from
+the platform is plain JUnit 4 with `@Test` and backtick names, because booting an IDE to exercise a
+pure function costs a second of wall-clock for nothing.
 
-Those fixture tests are integration tests whatever they sit beside: they start a headless IDE, and
-`checkHighlighting` runs the platform's real analysis pass. It fails on highlights the fixture did
-*not* mark as well as ones it did, which is what makes the zero-false-positive bar enforceable per
-test rather than only in CI.
+**Anything touching `SolrConfigsetSettings` or `SolrConnectionSettings` must extend
+`SolrConfigsetTestCase`.** `BasePlatformTestCase` reuses one light project across test methods *and*
+classes, so settings state leaks between tests. That base class also puts a Solr client on the
+fixture's classpath — without it, a test asserting nothing fires passes for the wrong reason.
 
-Anything touching `SolrConfigsetSettings` must extend `SolrConfigsetTestCase` instead.
-`BasePlatformTestCase` reuses one light project across test methods *and* test classes, and the
-settings are a project-level `PersistentStateComponent`, so state leaks between tests: one test
-disabling detection silently changes the starting conditions of every test after it. That base
-class resets in `setUp`, which holds even when a preceding test fails partway through.
+Build fixtures with `myFixture.addFileToProject(path, content)`; the path shapes the directory
+structure the detector reads, so it is part of the test's meaning. `checkHighlighting` fails on
+highlights the fixture did *not* mark as well as ones it did.
 
-**A corrupted test sandbox is indistinguishable from a broken plugin until you know the signature.**
-The fixture tests run against an IDE system directory at
-`.intellijPlatform/sandbox/<project>/<IDE>/system-test`. It persists between runs, and because it
-lives outside `build/` it survives `./gradlew clean` — which is what makes this expensive to
-diagnose. When its VFS goes bad, every fixture test in the suite fails at once with the same
-`FileDeletedException: file[#N]: file is deleted, but still in [M].children list`, while the pure
-JUnit 4 tests stay green. Those three facts together are the diagnosis: identical failures across
-unrelated test classes, unaffected by `clean`, with the platform-free tests passing. Delete the
-`system-test` directory and re-run. It had reached 279MB the first time this bit, so deleting it
-costs one slower run and nothing else. Do not go looking for the cause in the code under test —
-this failure is upstream of it, and `git stash` will not clear it either.
+**If every fixture test fails at once with `FileDeletedException` while the plain JUnit tests stay
+green, the sandbox VFS is corrupt, not your code.** It survives `./gradlew clean`. Delete
+`.intellijPlatform/sandbox/<project>/<IDE>/system-test` and re-run;
+[the testing guide](docs/how-to/testing-and-the-build-gates.md) has the full signature.
 
 ## Conventions
 
-Commits use conventional-commit subjects (`docs:`, `fix:`, `build:`, `ci:`) and must carry
-`Signed-off-by` (`git commit -s`). Commit bodies here carry real weight — for several changes they
-are the only record of *why* a constraint exists.
-GitHub Actions are pinned to full commit SHAs with a trailing version comment — keep it that way.
-Tags are mutable, and CI has `SONAR_TOKEN` in scope; the trailing comment is what lets Dependabot
-still propose upgrades. Gradle dependency verification was tried and deliberately removed (the
-manual regeneration on every bump was not worth it for a pre-release plugin), so do not read its
-absence as an oversight — `19a0e0f` and `e675f26` are what that regeneration actually cost, and are
-the only place the reasoning is written down. Both touch a `gradle/verification-metadata.xml` that
-no longer exists: read them as the history behind the removal, not as live build guidance.
+Conventional-commit subjects (`feat:`, `fix:`, `docs:`, `build:`, `ci:`) and mandatory sign-off
+(`git commit -s`). **Commit bodies carry real weight** — for several changes they are the only record
+of *why* a constraint exists.
 
-`README.md` describes the plugin and states its status honestly — the Marketplace badges and
-template TODO list are gone, because the plugin is unpublished and the placeholders rendered as
-broken links. Its Status section is the authority on what is actually built; keep it truthful when
-landing features, since the spec describes intent rather than state.
+GitHub Actions are pinned to full commit SHAs with a trailing version comment; keep it that way.
+Gradle dependency verification was tried and deliberately removed, so its absence is not an oversight.
+CI runs the gates last so a failure still leaves reports uploaded — preserve that ordering.
+[`docs/contributing.md`](docs/contributing.md) explains all three.
 
-The build pins `jvmToolchain(21)`. The floor comes from the version-support policy: the newest
-supported Solr requires Java 21, and the reference-data generator reads Solr artifacts from every
-supported line. Supported lines are whichever Apache Solr has not declared EOL — the spec's "Version
-support" section names them, deliberately in one place. The rule worth carrying: a Solr EOL
-announcement is a maintenance trigger, not a background event.
+The build pins `jvmToolchain(21)`, and `supportedSolrLines` in `build.gradle.kts` is the single place
+Solr lines are declared. A Solr EOL announcement is a maintenance trigger, not a background event.

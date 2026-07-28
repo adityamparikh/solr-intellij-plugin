@@ -19,66 +19,15 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 **Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
 purpose.**
 
-The foundation is complete and the first two user-facing features sit on top of it:
+The configuration-files surface is largely built: the plugin detects configsets, parses them into a
+field model, and uses it for inspections with quick-fixes, completion, cross-file navigation, quick
+documentation, and inline hints saying what each field can actually match. The server surface exists
+only as stored connection settings — nothing talks to a Solr server yet — and the Java/Kotlin code
+surface is unbuilt.
 
-- Activation gated on the project depending on a Solr client (`solr-solrj` or a wrapper that carries
-  it — Spring Data Solr, Camel, the Quarkus extensions). Matched by artifact id, so any version
-  counts. Outside such a project the plugin stays silent
-- Configset detection by file name within a project that passed that gate, with names tiered by
-  what they prove: `solrconfig.xml`, `managed-schema`, `managed-schema.xml`, `elevate.xml` and
-  `enumsConfig.xml` identify a configset on their own; `schema.xml`, `params.json` and
-  `currency.xml` count only alongside one of those, so an unrelated XSD named `schema.xml` stays
-  untouched
-- Resolution of a file to the configset that owns it, so a project holding several keeps them
-  apart — cached, since this runs every time you open a file
-- Recognition of analyzer resources (`stopwords.txt`, `synonyms.txt`, `protwords.txt`, `lang/`)
-  from inside a known configset only; those names are too common to activate anything on their own
-- A per-project manual override, which is also how a repository of configsets with no build file —
-  and so no dependencies to detect — switches the plugin on
-- A per-user list of Solr connections, with credentials in the IDE's password store — storage only,
-  nothing talks to a server yet
-- A field model of each configset — fields, dynamic fields, field types, analyzer chains, copy
-  fields, and the field names `solrconfig.xml` references — built by parsing the files and rebuilt
-  when they change, including before you save
-- Enumeration of every configset in a project, skipping build output and dependency trees
-- Match analysis — from a field's index-time analyzer chain to what it can actually match: whole
-  value or tokens, case-sensitive or not, and whether prefix matching is supported efficiently and
-  by what mechanism
-- **Inline hints** on every field in a configset, saying what it can actually match — whole value
-  or tokens, case-sensitive or not, and whether prefix matching is supported efficiently. Silent
-  where the analyser chain contains something it does not recognise
-- **Quick documentation** on any schema element — `schema`, `field`, `dynamicField`, `fieldType`,
-  `copyField`, `uniqueKey`, `analyzer` — explaining what it is and what *this* one does: which
-  fields a copy rule joins and whether both ends exist, which field is the unique key, how many
-  fields use a type. On a `field` or `dynamicField` it carries the resolved configuration too
-- **Quick documentation on a property attribute** — hover `omitNorms` or `indexed` for what it
-  means, what it accepts, Solr's default, and what the value resolves to on this field
-- **Quick documentation** on a field or its type: the analyser chains, what fields of that type
-  match, and every property's effective value with whether it came from the field, its type, or
-  Solr's default — plus a Reference Guide link for the version the configset declares
-- **Inspections** with Alt-Enter fixes offering the valid names, flagging a `copyField` whose
-  source or destination names a field the configset does not declare, a field naming a field type it does not declare, and a handler parameter in
-  `solrconfig.xml` naming a field the schema never declares — the last of which crosses the file
-  boundary nothing else checks
-- **Completion of the schema's own vocabulary** — the elements legal at the caret, the attributes
-  each element accepts minus those already written, and the values an attribute accepts where that
-  set is closed
-- **Completion** for a field's `type`, offering the declared field types and showing what each one
-  matches, for a `copyField`'s source and destination, offering the declared fields, and `true`/`false`
-  for the boolean properties — with the value Solr would use if the attribute were absent marked as
-  the default
-- **Completion of the `class` attribute** on a `fieldType`, `tokenizer`, `filter` or `charFilter`,
-  from a catalog generated at build time out of the Solr and Lucene artifacts for each supported
-  line — so a schema declaring Solr 9.10 is offered that line's vocabulary, not Solr 10's
-- **Navigation** from a field's `type` to the `fieldType` that declares it, and from each end of a
-  `copyField` to the field it names — cmd-click or Ctrl-B. A glob such as `dest="*_t"` lands on the
-  `dynamicField` that spells the same pattern, not on a concrete field it might match
-- Registration of the extensionless `managed-schema` as XML, so configsets parse for the PSI
-  features to come
-
-Everything else — configuration intelligence, the server connection, and the Java/Kotlin support —
-is specified but unbuilt. Treat [the specification](specs/0002-solr-intellij-plugin.md) as the
-authority on intent, and this section as the authority on status.
+**The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
+is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
+much of which is still ahead.
 
 ## Planned scope
 
@@ -124,6 +73,9 @@ they are written down — a compatibility matrix ships with the first release.
 |---|---|
 | [Specification](specs/0002-solr-intellij-plugin.md) | What the plugin is for, how it is structured, and what it does |
 | [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done |
+| [Contributing](docs/contributing.md) | Setup, first run, where work comes from, and how a change gets merged |
+| [Code organization](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
+| [How-to guides](docs/how-to/) | Adding an editor feature, extending the field model, testing against the gates |
 | [Demo runbook](docs/demo/README.md) | End-to-end acceptance criteria in user terms, doubling as a talk runbook |
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
 | [Platform mechanisms](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are, and what this plugin decided |
@@ -152,9 +104,12 @@ source and install the ZIP from `build/distributions/` via
 
 ## Contributing
 
+Start with [`docs/contributing.md`](docs/contributing.md) — setup, first run, where work comes from,
+and what will reject a pull request. [`docs/code-organization.md`](docs/code-organization.md) covers
+where a change goes, and the [how-to guides](docs/how-to/) walk through adding a feature.
+
 Commits use conventional-commit subjects and must carry a sign-off (`git commit -s`). Commit bodies
-carry real weight in this repository — they record *why* a constraint exists. See the Conventions
-section of [CLAUDE.md](CLAUDE.md).
+carry real weight in this repository — they record *why* a constraint exists.
 
 ---
 
