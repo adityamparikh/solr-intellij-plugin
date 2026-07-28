@@ -291,6 +291,76 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
         assertFalse("a field has no class: $offered", "solr.StrField" in offered)
     }
 
+    // --- factory attributes, from the constructor-bytecode pass ------------------------------------
+
+    /**
+     * The case that prompted this: a reader writing an ngram filter cannot know what it accepts
+     * without leaving the editor, and the names exist nowhere a listing of classes could find them.
+     */
+    fun testAFiltersAttributesComeFromItsClass() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><filter class="solr.EdgeNGramFilterFactory" <caret>/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected minGramSize among $offered", "minGramSize" in offered)
+        assertTrue("expected maxGramSize among $offered", "maxGramSize" in offered)
+        assertTrue("expected preserveOriginal among $offered", "preserveOriginal" in offered)
+    }
+
+    /** An attribute already written is not offered again, here as anywhere else. */
+    fun testAnAttributeAlreadyWrittenIsNotOfferedAgain() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><filter class="solr.EdgeNGramFilterFactory" minGramSize="2" <caret>/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("minGramSize is already written: $offered", "minGramSize" in offered)
+        assertTrue("maxGramSize is not: $offered", "maxGramSize" in offered)
+    }
+
+    /** Each factory gets its own attributes; a tokenizer's are not a filter's. */
+    fun testATokenizersAttributesAreItsOwn() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><tokenizer class="solr.JapaneseTokenizerFactory" <caret>/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected mode among $offered", "mode" in offered)
+        assertTrue("expected userDictionary among $offered", "userDictionary" in offered)
+        assertFalse("that is an ngram attribute: $offered", "minGramSize" in offered)
+    }
+
+    /**
+     * A class the catalog does not know accepts attributes the plugin cannot name. Silence is the
+     * answer; falling through to the field-property table would offer `indexed` on a filter.
+     */
+    fun testAnUnknownFactoryClassOffersNothingRatherThanFieldProperties() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer><filter class="com.example.MyFilterFactory" <caret>/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("a filter is not a field: $offered", "indexed" in offered)
+        assertFalse("nor does it have field properties: $offered", "sortMissingLast" in offered)
+    }
+
     // --- the gate ---------------------------------------------------------------------------------
 
     /**
