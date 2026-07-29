@@ -51,12 +51,31 @@ data class SolrFieldProperty(
      * choices should ask this rather than reading [validValues], which is prose meant for a reader.
      */
     val offerableValues: List<String>
-        get() = if (validValues == BOOLEAN_VALUES) BOOLEAN_OFFERS else closedValues
+        get() = if (valueType == SolrValueType.BOOLEAN) BOOLEAN_OFFERS else closedValues
 
-    /** The two spellings this table uses for value sets it can enumerate. */
+    /**
+     * What this property accepts, as something a check can act on.
+     *
+     * Derived from [validValues] rather than declared beside it, because that prose is what the
+     * table actually maintains and a second field would be a second thing to keep in step. The two
+     * constants below are the whole vocabulary that carries meaning; every other spelling is a
+     * sentence for a reader and means "any value of this kind is legal".
+     */
+    val valueType: SolrValueType
+        get() = when {
+            validValues == BOOLEAN_VALUES -> SolrValueType.BOOLEAN
+            validValues == INTEGER_VALUES -> SolrValueType.INTEGER
+            closedValues.isNotEmpty() -> SolrValueType.ENUM
+            else -> SolrValueType.FREE
+        }
+
+    /** The spellings this table uses for value sets it can act on. */
     companion object {
         /** The [validValues] prose that marks a property as taking only `true` or `false`. */
         const val BOOLEAN_VALUES: String = "true or false"
+
+        /** The [validValues] prose that marks a property as taking a whole number. */
+        const val INTEGER_VALUES: String = "an integer"
 
         private val BOOLEAN_OFFERS = listOf("true", "false")
     }
