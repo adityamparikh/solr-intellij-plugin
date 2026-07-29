@@ -89,6 +89,27 @@ class SolrAttributeVocabularyTest {
         assertFalse(legal.contains("indexd"))
     }
 
+    /**
+     * Solr accepts more on a `<field>` than the Reference Guide's table lists.
+     *
+     * `FieldProperties.propertyNames` in solr-core carries `tokenized`, `binary` and
+     * `storeOffsetsWithPositions`, and `isPropertyIgnored` waves `postingsFormat` and
+     * `docValuesFormat` through. Each loads without error, so reporting any of them would underline
+     * a file Solr accepts.
+     */
+    @Test
+    fun `every field attribute solr-core accepts is legal`() {
+        val accepted = listOf(
+            "tokenized", "binary", "storeOffsetsWithPositions", "postingsFormat", "docValuesFormat",
+        )
+        for (tag in listOf("field", "dynamicField")) {
+            val legal = vocabularyFor(tag)!!
+            for (name in accepted) {
+                assertTrue("$name must be legal on a <$tag>", legal.contains(name))
+            }
+        }
+    }
+
     @Test
     fun `a known analysis class has a closed vocabulary that includes class itself`() {
         val legal = vocabularyFor("filter", "solr.EdgeNGramFilterFactory")

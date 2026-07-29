@@ -32,6 +32,19 @@ class SolrUnknownAttributeInspectionTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * Field attributes solr-core accepts but the Reference Guide's field table omits.
+     *
+     * `storeOffsetsWithPositions` is real and documented only alongside the highlighter that reads
+     * it; `postingsFormat` is accepted and inert on a field, being read only from the type. Both
+     * load without error, so flagging either would underline a file Solr accepts.
+     */
+    fun testFieldAttributesTheGuideOmitsAreClean() {
+        checkNames(
+            """<field name="sku" type="string" storeOffsetsWithPositions="true" postingsFormat="Lucene912"/>""",
+        )
+    }
+
+    /**
      * A field type delegates to classes its own configuration names.
      *
      * `providerClass` picks the provider that reads `currencyConfig`, which no walk from the field

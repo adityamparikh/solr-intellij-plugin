@@ -22,6 +22,27 @@ object SolrAttributeVocabulary {
     private val STRUCTURAL: Set<String> = setOf("class", "name", "type", "source", "dest")
 
     /**
+     * Field attributes Solr accepts that the Reference Guide's field table never lists.
+     *
+     * `FieldProperties` in solr-core is the authority on what a `<field>` may carry, and it accepts
+     * three names the guide's table omits — `tokenized` and `binary` are index-detail bits a schema
+     * may still set, and `storeOffsetsWithPositions` is documented only alongside the highlighter
+     * that reads it. `postingsFormat` and `docValuesFormat` are stranger: `isPropertyIgnored`
+     * exempts them by name, so on a field they load without error and do nothing, being read only
+     * from the type. All five are names Solr accepts — solr-core 9 and 10 agree on the list — so a
+     * closed vocabulary omitting them would underline a file Solr loads. None of them join
+     * [SolrFieldProperties], because completion and documentation offer what the guide describes,
+     * not everything the parser tolerates.
+     */
+    private val FIELD_ACCEPTED_UNDOCUMENTED: Set<String> = setOf(
+        "tokenized",
+        "binary",
+        "storeOffsetsWithPositions",
+        "postingsFormat",
+        "docValuesFormat",
+    )
+
+    /**
      * The analysis elements, whose `class` names an entry in the generated catalog.
      *
      * Mapped to the kind so a `<filter>` is checked against filters rather than against every class
@@ -97,7 +118,8 @@ object SolrAttributeVocabulary {
         version: SolrVersionSelection,
     ): Set<String>? {
         if (tag in SolrSchemaElementNames.FIELD) {
-            return SolrFieldProperties.FOR_FIELD.mapTo(mutableSetOf()) { it.name } + STRUCTURAL
+            return SolrFieldProperties.FOR_FIELD.mapTo(mutableSetOf()) { it.name } +
+                STRUCTURAL + FIELD_ACCEPTED_UNDOCUMENTED
         }
         val kind = ANALYSIS_KINDS[tag] ?: return null
         val entry = SolrClassCatalog.find(className ?: return null, version)

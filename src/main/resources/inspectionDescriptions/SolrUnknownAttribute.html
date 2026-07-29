@@ -3,9 +3,10 @@
 Reports an attribute the element cannot accept &mdash; <code>indexd="true"</code>,
 <code>maxGramSiz="15"</code>.
 <p>
-    These are worse than the mistakes Solr refuses to start on, because Solr ignores them. The field
-    is simply not indexed, the gram size is simply the default, nothing fails, and the behaviour is
-    quietly not what the file says.
+    Solr reports these only when the core loads &mdash; the schema throws
+    <code>Invalid field property</code>, the factory <code>Unknown parameters</code> &mdash; and a
+    core load may be a production reload long after the edit. This inspection reports the typo while
+    the file is still open.
 </p>
 <p>
     This fires only where the set of legal attributes is genuinely complete: on

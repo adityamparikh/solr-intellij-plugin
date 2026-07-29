@@ -13,9 +13,10 @@ import org.apache.solr.ide.model.SolrVersionSelection
 /**
  * Reports an attribute name that the element cannot accept.
  *
- * `indexd="true"` and `maxGramSiz="15"` are silently ignored by Solr — the field is simply not
- * indexed, the gram size is simply the default — which makes them worse than the errors it refuses
- * to start on. Nothing fails, and the behaviour is quietly not what the file says.
+ * `indexd="true"` and `maxGramSiz="15"` are errors Solr reports only when the core loads — the
+ * schema throws `Invalid field property`, the factory `Unknown parameters` — and a core load may be
+ * a production reload long after the edit. Reporting the typo in the editor moves the discovery to
+ * the moment the file is open and the fix is a keystroke.
  *
  * **This only fires where the vocabulary is genuinely closed**, which
  * [SolrAttributeVocabulary.closedVocabularyFor] decides and this inspection does not second-guess.
@@ -57,9 +58,8 @@ class SolrUnknownAttributeInspection : LocalInspectionTool() {
                     if (attribute.name in legal) continue
                     // The name element, not the value: the value may well be correct, and
                     // underlining it would point at the half that is not wrong.
-                    val nameElement = attribute.firstChild ?: continue
                     holder.registerProblem(
-                        nameElement,
+                        attribute.nameElement,
                         SolrBundle.message("inspection.attribute.unknown", attribute.name, tag.name),
                         *SolrInspections.replacementFixes(
                             attribute.name,
