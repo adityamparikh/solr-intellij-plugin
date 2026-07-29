@@ -1,0 +1,23 @@
+<html>
+<body>
+Reports an attribute whose value cannot be what the attribute accepts &mdash;
+<code>indexed="yes"</code>, <code>positionIncrementGap="foo"</code>,
+<code>minGramSize="2.5"</code>. Solr rejects these when the core loads.
+<p>
+    The kinds come from two places. A field's and a field type's properties are modelled directly;
+    an analysis component's attributes are recovered from its constructor bytecode when the catalog
+    is generated, which is also where the kind comes from &mdash; the method a factory used to read
+    the value says what the value is.
+</p>
+<p>
+    The claim is narrow on purpose. This reports that a value is <em>not of the right kind</em>,
+    never that a legal value is a poor choice: <code>positionIncrementGap="-1"</code> is an integer
+    and is left alone.
+</p>
+<p>
+    Nothing is reported where the kind is not positively known, and a value containing
+    <code>${...}</code> is never judged &mdash; Solr's resource loader substitutes it, possibly from
+    a system property set outside the repository.
+</p>
+</body>
+</html>
