@@ -124,6 +124,9 @@ jobs:
 
       # SonarCloud analysis, including coverage. Replaces Automatic Analysis, which is
       # disabled for this project because it cannot ingest a coverage report.
+      # SONAR_TOKEN must be set in *both* secret scopes: GitHub hands a Dependabot-triggered run
+      # only the Dependabot scope, and an absent secret interpolates to the empty string rather
+      # than failing, so a token missing there surfaces as an authentication error from Sonar.
       - name: SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -132,7 +135,10 @@ jobs:
       # Enforce the local gates last, so a failure still leaves the report uploaded and the
       # SonarCloud analysis published. `check` runs both: the Kover coverage floor, and
       # dokkaGenerate, which fails when a public declaration in the main source set has no KDoc.
+      # Runs whatever the scan did: SonarCloud is a third-party service, and neither an outage
+      # there nor a missing token may decide whether this project's own gates were enforced.
       - name: Verify Gates
+        if: ${{ !cancelled() }}
         run: ./gradlew check
 
       # Publish the rendered KDoc so it can be browsed from the pull request without a local build.
