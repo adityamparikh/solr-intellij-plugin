@@ -79,8 +79,16 @@ names — `get`, `getInt`, `getBoolean`, and so on. **That set goes away.** It i
 the method's JVM descriptor, for two reasons: it is self-maintaining across Solr releases, and its
 failure mode is the safe direction.
 
-Every reader on `AbstractAnalysisFactory` has the same shape — the argument map, then the attribute
-name, then an optional default:
+Every reader that takes *an attribute name* has the same shape — the argument map, then the name,
+then an optional default. **Not every method on the class does**, and an earlier revision of this
+section wrongly said otherwise. `getLines`, `getWordSet` and `getSnowballWordSet` take a
+`ResourceLoader` instead, and `getClassArg` takes nothing. All four are excluded by the descriptor
+test, and three of them were in the seventeen-name list.
+
+**Their exclusion is a fix, not a loss.** They consume a filename that a real reader already
+resolved — `getWordSet(loader, get(args, "words"), ignoreCase)` — so matching them harvested
+whatever literal happened to be pending. The proof is a name-level diff of both generated catalogs
+against the previous output, which must show no attribute lost.
 
 **Rule A — typed reads.** A call whose owner descends from `AbstractAnalysisFactory` and whose
 descriptor begins `(Ljava/util/Map;Ljava/lang/String;` is an argument read. The attribute name is the
@@ -121,6 +129,19 @@ way.** Every expectation PR 52 established — `WordDelimiterGraphFilterFactory`
 attached. A descriptor test that quietly matches fewer methods than the name set did would produce a
 shorter plausible list, which is the exact failure this project has already been bitten by three
 times.
+
+**It found a fourth.** The name list did not contain `getCharacter`, and an unmatched reader neither
+harvests its own attribute nor clears the pending literal. So in `ConcatenateGraphFilterFactory` the
+`getCharacter` call left `tokenSeparator` pending, the following `getBoolean` harvested *that*
+instead of its own name, and `preservePositionIncrements` vanished from the catalog entirely. Solr 9
+lost `preserveSep` the same way. This is the strongest argument for the change: the failure is not
+that a list needs maintaining, it is that one unlisted reader silently corrupts its neighbour, and
+under section 7's rule a lost attribute becomes a warning on a correct file.
+
+**The types are what Solr does, not what the names suggest.**
+`WordDelimiterGraphFilterFactory` reads `generateWordParts` and its neighbours with `getInt` as
+`0`/`1` flags, so they are `int` here and `generateWordParts="true"` really does fail in Solr. A
+name-to-type table would never have discovered that; the return descriptor states it.
 
 ### 3. The generator covers field type classes
 
@@ -183,6 +204,25 @@ shape the CI gate expects.
 **`SolrUnknownAttribute`** — the name is not recognized where the vocabulary is closed.
 `indexd="true"`, `maxGramSiz="15"`, `vectorDimenson="768"`.
 
+**The valid set per element, stated rather than left to the implementation.** An earlier revision of
+this section named the two inspections and never said what either compares against, which is the
+kind of omission that gets decided differently in three places:
+
+| Element | Valid attributes |
+|---|---|
+| `<field>`, `<dynamicField>` | `SolrFieldProperties.FOR_FIELD` ∪ `{name, type}` |
+| `<fieldType>` | `FOR_FIELD_TYPE` ∪ catalog attributes of the named class ∪ `{name, class}` |
+| `<tokenizer>`, `<filter>`, `<charFilter>` | catalog attributes of the named class ∪ `{class}` |
+| `<analyzer>` | `{type, class}` |
+| anything else | unchecked |
+
+**`class` and `name` must be allowed structurally, because the catalog deliberately omits them.**
+The generator strips both — `?.takeIf { it != "class" && it != "name" }` — since the base class
+consumes them with `args.remove`, which reads identically to a real attribute. A check that trusted
+the catalog alone would therefore flag `class="solr.EdgeNGramFilterFactory"`: the very attribute
+naming the class it just looked up. `SolrClassCatalogTest` asserts the omission so this stays a
+known contract rather than a surprise.
+
 Both are `WARNING`, matching the three existing inspections and for the reason `plugin.xml` already
 records: the plugin's model of a half-typed file is not authoritative enough to claim an error.
 
@@ -205,11 +245,12 @@ left to the implementation.
 
 | Condition | Behaviour |
 |---|---|
-| Value contains `${` | Silent. Solr substitutes it, possibly from outside the repository. |
+| Value contains `${` | Silent. Solr substitutes it, possibly from outside the repository. Enforced in `SolrValueType.accepts` rather than at each call site, so no caller can forget it. |
 | `valueType` is `FREE` | Silent on the value. The *name* is still checked. |
-| `class` attribute names a class the catalog does not know | Silent on every attribute of that element. This is how custom plugin classes stay unflagged. |
-| `<field default="…">` | Silent. Its legal values are whatever the field's type accepts. |
-| Element has no `class` and is not `field`, `dynamicField` or `fieldType` | Silent. |
+| Element carries a `class` naming a class the catalog does not know | Silent on every attribute of that element. This is how custom plugin classes stay unflagged. |
+| Element carries **no** `class` and is not `field` or `dynamicField` | Silent. Covers `<copyField>`, `<uniqueKey>`, `<similarity>` and anything else a schema holds. |
+| `<field default="…">` | Silent. Its legal values are whatever the field's type accepts — an instance of the `FREE` rule above, restated because it is the one open-valued property a reader will expect to be checked. |
+| `class` or `name` on any element | Silent. Structural, and deliberately absent from the catalog. |
 | Class *is* known, attribute is *not* in its list | **Flagged.** |
 
 The last row is a deliberate acceptance of risk, taken with the alternative understood. Treating a
