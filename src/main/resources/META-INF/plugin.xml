@@ -77,8 +77,8 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
-        <!-- Reads the generated catalog, so it is silent on a class it does not know: a custom
-             plugin must not be underlined for being custom. -->
+        <!-- Value and attribute-name checks. Both read the generated catalog, so both are silent on
+             a class it does not know: a custom plugin must not be underlined for being custom. -->
         <localInspection
             language="XML"
             shortName="SolrInvalidAttributeValue"
@@ -89,6 +89,16 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.configset.inspection.SolrInvalidAttributeValueInspection"/>
+        <localInspection
+            language="XML"
+            shortName="SolrUnknownAttribute"
+            bundle="messages.SolrBundle"
+            key="inspection.attribute.displayName"
+            groupBundle="messages.SolrBundle"
+            groupKey="inspection.group"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection"/>
         <localInspection
             language="XML"
             shortName="SolrUnknownFieldReference"
