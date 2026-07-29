@@ -121,7 +121,14 @@ class SolrClassCatalogTest {
         assertEquals(2, entries.size)
         assertEquals(SolrClassKind.FIELD_TYPE, entries[0].kind)
         assertTrue("a trailing empty column is no attributes", entries[0].attributes.isEmpty())
-        assertEquals(listOf("alpha", "beta"), entries[1].attributes)
+        assertEquals(listOf("alpha", "beta"), entries[1].attributes.map { it.name })
+        // An untyped row is what a catalog generated before types existed looks like. It has to read
+        // as "any value is legal" rather than throwing, so a stale resource degrades to no value
+        // checking instead of taking the editor down.
+        assertEquals(
+            listOf(SolrValueType.FREE, SolrValueType.FREE),
+            entries[1].attributes.map { it.valueType },
+        )
     }
 
     /** A row with no attribute column at all is still an entry; older catalogs had three columns. */
@@ -136,7 +143,30 @@ class SolrClassCatalogTest {
     @Test
     fun `blank attributes are discarded`() {
         val entries = SolrClassCatalog.parse(sequenceOf("tokenFilter\torg.example.F\tsolr.F\t,alpha,,beta,"))
-        assertEquals(listOf("alpha", "beta"), entries.single().attributes)
+        assertEquals(listOf("alpha", "beta"), entries.single().attributes.map { it.name })
+    }
+
+    /** A row written by the current generator carries a type on every attribute. */
+    @Test
+    fun `a typed row parses its types`() {
+        val entries = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tminGramSize:int,ignoreCase:bool,words:free"),
+        )
+        assertEquals(
+            listOf(SolrValueType.INTEGER, SolrValueType.BOOLEAN, SolrValueType.FREE),
+            entries.single().attributes.map { it.valueType },
+        )
+    }
+
+    /** A token this version does not know reads as free rather than failing the row. */
+    @Test
+    fun `an unrecognized type token does not lose the attribute`() {
+        val entries = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tsomething:futureType"),
+        )
+        val attribute = entries.single().attributes.single()
+        assertEquals("something", attribute.name)
+        assertEquals(SolrValueType.FREE, attribute.valueType)
     }
 
     /** Every entry carries both spellings, and the short one is the `solr.` form. */
@@ -146,6 +176,129 @@ class SolrClassCatalogTest {
             assertTrue("${entry.className} is not qualified", '.' in entry.className)
             assertTrue("${entry.shortName} is not a solr. name", entry.shortName.startsWith("solr."))
             assertEquals(entry.className.substringAfterLast('.'), entry.shortName.removePrefix("solr."))
+        }
+    }
+
+    // --- attribute value types --------------------------------------------------------------------
+    //
+    // Named, never counted. A bytecode pass does not fail; it produces a plausible short list, and a
+    // count both passes for the wrong reason and moves with the Solr line.
+
+    private fun attribute(shortName: String, attribute: String): SolrClassAttribute {
+        val entry = SolrClassCatalog.find(shortName, latest)
+        assertNotNull("$shortName is missing from the catalog", entry)
+        val found = entry!!.attribute(attribute)
+        assertNotNull("$shortName does not expose $attribute", found)
+        return found!!
+    }
+
+    @Test
+    fun `an integer attribute is typed from its reader's return type`() {
+        assertEquals(SolrValueType.INTEGER, attribute("solr.EdgeNGramFilterFactory", "minGramSize").valueType)
+        assertEquals(SolrValueType.INTEGER, attribute("solr.EdgeNGramFilterFactory", "maxGramSize").valueType)
+    }
+
+    @Test
+    fun `a boolean attribute is typed from its reader's return type`() {
+        assertEquals(
+            SolrValueType.BOOLEAN,
+            attribute("solr.EdgeNGramFilterFactory", "preserveOriginal").valueType,
+        )
+        assertEquals(SolrValueType.BOOLEAN, attribute("solr.StopFilterFactory", "ignoreCase").valueType)
+    }
+
+    /**
+     * A resource filename is free-form, and typing it would be a confident wrong answer.
+     *
+     * `words` is read with a plain `get`, so the descriptor carries no type. This is the case that
+     * proves `free` is a positive statement rather than a fallback for everything unrecognized.
+     */
+    @Test
+    fun `a filename attribute stays free`() {
+        assertEquals(SolrValueType.FREE, attribute("solr.StopFilterFactory", "words").valueType)
+        assertEquals(SolrValueType.FREE, attribute("solr.JapaneseTokenizerFactory", "userDictionary").valueType)
+    }
+
+    /**
+     * Solr reads these as `0`/`1` flags with `getInt`, so `generateWordParts="true"` really does
+     * fail in Solr. The catalog records what Solr does, not what the name suggests — which is only
+     * knowable from the return descriptor.
+     */
+    @Test
+    fun `word delimiter flags are integers because Solr reads them as integers`() {
+        assertEquals(
+            SolrValueType.INTEGER,
+            attribute("solr.WordDelimiterGraphFilterFactory", "generateWordParts").valueType,
+        )
+        assertEquals(
+            SolrValueType.INTEGER,
+            attribute("solr.WordDelimiterGraphFilterFactory", "catenateAll").valueType,
+        )
+    }
+
+    /**
+     * The regression that the name-matched reader list caused, and the reason it was replaced.
+     *
+     * `ConcatenateGraphFilterFactory` reads `tokenSeparator` with `getCharacter`, which the old
+     * seventeen-name list did not contain. An unmatched reader neither harvested its own attribute
+     * nor cleared the pending literal, so the *next* read harvested `tokenSeparator` instead of its
+     * own name and `preservePositionIncrements` vanished from the catalog entirely. Matching on the
+     * descriptor cannot miss a reader this way.
+     */
+    @Test
+    fun `an attribute is not lost when its neighbour uses an unusual reader`() {
+        assertEquals(
+            SolrValueType.FREE,
+            attribute("solr.ConcatenateGraphFilterFactory", "tokenSeparator").valueType,
+        )
+        assertEquals(
+            SolrValueType.BOOLEAN,
+            attribute("solr.ConcatenateGraphFilterFactory", "preservePositionIncrements").valueType,
+        )
+        assertEquals(
+            SolrValueType.INTEGER,
+            attribute("solr.ConcatenateGraphFilterFactory", "maxGraphExpansions").valueType,
+        )
+    }
+
+    /** Every analysis class inherits this from the root of the hierarchy. */
+    @Test
+    fun `an inherited attribute is collected from the superclass chain`() {
+        assertEquals(
+            SolrValueType.FREE,
+            attribute("solr.EdgeNGramFilterFactory", "luceneMatchVersion").valueType,
+        )
+    }
+
+    /**
+     * `class` and `name` identify the component; they are not parameters it accepts.
+     *
+     * The generator strips them because the base class consumes them with `args.remove`, which reads
+     * identically to a real attribute. Anything checking attribute names has to allow them
+     * structurally, and this records that the catalog will not do it for you.
+     */
+    @Test
+    fun `the catalog never lists class or name as an attribute`() {
+        for (entry in SolrClassCatalog.entriesFor(latest)) {
+            for (attribute in entry.attributes) {
+                assertTrue(
+                    "${entry.shortName} lists ${attribute.name} as an attribute",
+                    attribute.name != "class" && attribute.name != "name",
+                )
+            }
+        }
+    }
+
+    /** A generated catalog cannot produce `enum`: a closed member set is not in a return descriptor. */
+    @Test
+    fun `no generated attribute is an enum`() {
+        for (entry in SolrClassCatalog.entriesFor(latest)) {
+            for (attribute in entry.attributes) {
+                assertTrue(
+                    "${entry.shortName}.${attribute.name} is an enum",
+                    attribute.valueType != SolrValueType.ENUM,
+                )
+            }
         }
     }
 }

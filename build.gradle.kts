@@ -217,15 +217,45 @@ val generateSolrCatalog by tasks.registering {
     doLast {
         // Declared inside the action for the same reason: a local function captures nothing but its
         // enclosing locals, where a script-level one would drag the script in with it.
-        // The methods an analysis factory calls to read its own attributes out of the argument map.
-        // Reflection cannot see these: the names are string literals in the constructor body, so
-        // they are neither fields nor annotations. This is the whole reason the catalog is built
-        // from bytecode rather than from a class listing.
-        val argumentReaders = setOf(
-            "get", "getInt", "getBoolean", "getFloat", "getDouble", "getChar", "getPattern",
-            "getSet", "getLines", "getWordSet", "getSnowballWordSet", "getClassArg",
-            "require", "requireInt", "requireBoolean", "requireFloat", "requireChar",
-        )
+        // How an analysis factory reads its own attributes out of the argument map, recognized by
+        // the shape of the call rather than by a list of method names. Reflection cannot see these:
+        // the names are string literals in the constructor body, so they are neither fields nor
+        // annotations. This is the whole reason the catalog is built from bytecode.
+        //
+        // Every reader on `AbstractAnalysisFactory` that takes an attribute name has the signature
+        // `(Map<String, String>, String, ...)`, so the descriptor identifies one exactly. An earlier
+        // revision listed seventeen method names instead, which had to be edited whenever Solr added
+        // a reader -- and a reader that went unlisted dropped real attributes silently. Under the
+        // unknown-attribute inspection this catalog now feeds, a dropped attribute becomes a warning
+        // on a *correct* file, so closing that path matters more than the tidiness.
+        //
+        // Three names from that list are deliberately not matched here, and their absence is the
+        // point rather than an oversight: `getLines`, `getWordSet` and `getSnowballWordSet` take a
+        // `ResourceLoader`, not the argument map. They consume a filename that a real reader already
+        // resolved -- `getWordSet(loader, get(args, "words"), ignoreCase)` -- so matching them
+        // harvested whatever literal happened to be pending. The generated catalog is unchanged by
+        // their removal, which is the assertion `SolrClassCatalogTest` makes.
+        val argumentMapReader = "(Ljava/util/Map;Ljava/lang/String;"
+
+        // The value type, taken from the JVM return descriptor. This is the compiler's own answer
+        // about what the factory did with the string, which is why it is read here rather than
+        // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
+        // same thing are two records of one fact, and only one of them cannot drift.
+        fun valueTypeOf(descriptor: String): String = when (descriptor.substringAfterLast(')')) {
+            "I" -> "int"
+            "Z" -> "bool"
+            "F", "D" -> "float"
+            // `Ljava/lang/String;`, `C`, `Ljava/util/Set;`, `Ljava/util/regex/Pattern;` and the
+            // erased `Map.remove` all land here. `free` is a positive statement that any value is
+            // legal, not "unknown, so guess" -- nothing typed `free` is ever value-checked.
+            else -> "free"
+        }
+
+        // A name read as two different types somewhere in one inheritance chain resolves to `free`.
+        // A conflict means the extraction did not fully understand the class, and this plugin
+        // already prefers declining a claim to making a confident wrong one.
+        fun mergeType(existing: String?, incoming: String): String =
+            if (existing == null || existing == incoming) incoming else "free"
 
         // How many parameters of a call could hold a string. The attribute name is always the
         // first of them, so counting them lets the reader take the literals that belong to *this*
@@ -255,7 +285,8 @@ val generateSolrCatalog by tasks.registering {
             val superclasses = mutableMapOf<String, String?>()
             val abstractClasses = mutableSetOf<String>()
             val factories = mutableMapOf<String, MutableSet<String>>()
-            val declaredAttributes = mutableMapOf<String, MutableSet<String>>()
+            // Class -> attribute name -> value type token.
+            val declaredAttributes = mutableMapOf<String, MutableMap<String, String>>()
 
             for (jar in jars) {
                 JarFile(jar).use { open ->
@@ -269,7 +300,7 @@ val generateSolrCatalog by tasks.registering {
                                     abstractClasses += reader.className
                                 }
                                 if (reader.className.endsWith("Factory")) {
-                                    val found = sortedSetOf<String>()
+                                    val found = sortedMapOf<String, String>()
                                     reader.accept(
                                         object : ClassVisitor(Opcodes.ASM9) {
                                             override fun visitMethod(
@@ -305,11 +336,23 @@ val generateSolrCatalog by tasks.registering {
                                                         // factory hierarchy reads an argument.
                                                         val onFactory = owner.endsWith("Factory") ||
                                                             owner == "org/apache/lucene/analysis/AbstractAnalysisFactory"
-                                                        // `args.remove("userDictionary")` is a real
-                                                        // read: a factory that consumes an argument
-                                                        // this way still accepts it.
-                                                        val isRead = (onFactory && called in argumentReaders) ||
-                                                            (called == "remove" && owner == "java/util/Map")
+                                                        // Rule A: the call takes the argument map
+                                                        // and then a name. The descriptor says so
+                                                        // exactly, and its return type says what
+                                                        // the value is.
+                                                        val typedRead = onFactory &&
+                                                            methodDescriptor.startsWith(argumentMapReader)
+                                                        // Rule B: `args.remove("userDictionary")`
+                                                        // is a real read -- a factory consuming an
+                                                        // argument this way still accepts it -- but
+                                                        // `Map.remove` is erased to
+                                                        // `(Ljava/lang/Object;)Ljava/lang/Object;`,
+                                                        // so it can never carry a type.
+                                                        val erasedRead = called == "remove" &&
+                                                            owner == "java/util/Map"
+                                                        val isRead = typedRead || erasedRead
+                                                        val valueType =
+                                                            if (typedRead) valueTypeOf(methodDescriptor) else "free"
                                                         if (isRead) {
                                                             // Only the literals this call could
                                                             // have consumed. Taking the head of
@@ -334,7 +377,7 @@ val generateSolrCatalog by tasks.registering {
                                                                 // `args.remove`, which reads
                                                                 // identically to a real one.
                                                                 ?.takeIf { it != "class" && it != "name" }
-                                                                ?.let { found += it }
+                                                                ?.let { found[it] = mergeType(found[it], valueType) }
                                                         }
                                                         // Cleared only after a read, not after
                                                         // every call. An earlier version cleared on
@@ -391,14 +434,16 @@ val generateSolrCatalog by tasks.registering {
             // of the hierarchy. Reporting only the leaf's own literals would omit real attributes.
             fun attributesOf(binaryName: String): List<String> {
                 val internal = binaryName.replace('.', '/')
-                val collected = sortedSetOf<String>()
+                val collected = sortedMapOf<String, String>()
                 var current: String? = internal
                 var depth = 0
                 while (current != null && depth++ < 40) {
-                    declaredAttributes[current]?.let { collected += it }
+                    declaredAttributes[current]?.forEach { (name, type) ->
+                        collected[name] = mergeType(collected[name], type)
+                    }
                     current = superclasses[current]
                 }
-                return collected.toList()
+                return collected.map { (name, type) -> "$name:$type" }
             }
 
             return buildString {

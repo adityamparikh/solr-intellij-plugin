@@ -21,19 +21,54 @@ enum class SolrClassKind(internal val token: String) {
 }
 
 /**
+ * One attribute a class reads, and what kind of value it accepts.
+ *
+ * @property name the attribute name as a configset writes it
+ * @property valueType what the class does with the value
+ */
+data class SolrClassAttribute(
+    val name: String,
+    val valueType: SolrValueType = SolrValueType.FREE,
+) {
+
+    /** Service lookup for the token spellings the generated catalog uses. */
+    companion object {
+
+        /**
+         * Reads one `name:type` entry as the generated catalog writes it.
+         *
+         * An entry with no `:` reads as [SolrValueType.FREE], so a catalog generated before types
+         * existed degrades to "no value checking" rather than to an exception.
+         *
+         * @param entry one comma-separated attribute from the catalog's fourth column
+         * @return the parsed attribute
+         */
+        fun parse(entry: String): SolrClassAttribute {
+            val name = entry.substringBefore(':')
+            val token = entry.substringAfter(':', "")
+            return SolrClassAttribute(name, SolrValueType.forToken(token))
+        }
+    }
+}
+
+/**
  * One class a configset may name.
  *
  * @property kind what the class is, and therefore where it may be written
  * @property className the fully qualified name, as reflection sees it
  * @property shortName the `solr.`-prefixed form a configset normally uses
- * @property attributes the attribute names this class reads, empty where none are known
+ * @property attributes the attributes this class reads, empty where none are known
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
     val className: String,
     val shortName: String,
-    val attributes: List<String> = emptyList(),
-)
+    val attributes: List<SolrClassAttribute> = emptyList(),
+) {
+
+    /** The attribute [name], or null when this class does not read one by that name. */
+    fun attribute(name: String): SolrClassAttribute? = attributes.firstOrNull { it.name == name }
+}
 
 /**
  * The Solr and Lucene classes a configset can name, per supported Solr line.
@@ -139,6 +174,7 @@ object SolrClassCatalog {
             val attributes = columns.getOrNull(3).orEmpty()
                 .split(',')
                 .filter { it.isNotBlank() }
+                .map { SolrClassAttribute.parse(it) }
             kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
         }.toList()
     }

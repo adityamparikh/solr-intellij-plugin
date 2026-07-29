@@ -307,8 +307,8 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
             ?: SolrVersionSelection.DEFAULT
         val entry = SolrClassCatalog.find(className, version)?.takeIf { it.kind == kind } ?: return emptyList()
         return entry.attributes
-            .filter { it !in already }
-            .map { LookupElementBuilder.create(it).withTypeText(entry.shortName) }
+            .filter { it.name !in already }
+            .map { LookupElementBuilder.create(it.name).withTypeText(entry.shortName) }
     }
 
     /** The summary's first sentence, which is all a lookup row has space for. */
