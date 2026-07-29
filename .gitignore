@@ -3,4 +3,8 @@
 .idea
 .intellijPlatform
 .kotlin
-build
+# Anchored: a bare `build` also matches source directories, and silently swallowed the
+# `org/apache/solr/ide/build` package the first time buildSrc was committed.
+/build/
+/buildSrc/build/
+/demo/build/

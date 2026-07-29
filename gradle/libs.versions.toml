@@ -9,6 +9,7 @@
 # in settings.gradle.kts. See the comment there.
 
 [versions]
+asm = "9.9"
 junit = "4.13.2"
 kotlin = "2.4.10"
 changelog = "2.5.0"
@@ -17,6 +18,8 @@ sonarqube = "7.3.1.8318"
 dokka = "2.2.0"
 
 [libraries]
+# Consumed by buildSrc: reads Solr class files to generate the shipped class catalog.
+asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
