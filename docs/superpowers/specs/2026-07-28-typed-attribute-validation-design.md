@@ -39,8 +39,10 @@ vocabulary at all for the attributes a `<fieldType>` actually accepts.
 - Flag an attribute value that cannot satisfy a type the plugin positively knows.
 - Flag an attribute name that is not recognized where the vocabulary is genuinely closed.
 - Offer the valid alternatives as a quick-fix wherever the valid set is enumerable.
-- Extend the catalog to field type classes, so `<fieldType>` is covered rather than exempt.
-- Produce zero findings on every configset Solr ships.
+- Extend the catalog to field type classes, which the `endsWith("Factory")` guard excluded entirely.
+- Produce zero findings on every configset Solr ships. **This is the constraint, not an aspiration** —
+  it is what decided, against this document's first draft, that a `<fieldType>` cannot be checked for
+  unknown attributes.
 
 ## Non-goals
 
@@ -74,8 +76,9 @@ value-checked.
 
 ### 2. The generator infers the type from the reader's descriptor
 
-PR 52 recognizes an argument read by matching the called method against a hardcoded set of seventeen
-names — `get`, `getInt`, `getBoolean`, and so on. **That set goes away.** It is replaced by a test on
+The shipped pass recognizes an argument read by matching the called method against a hardcoded set
+of seventeen names — `get`, `getInt`, `getBoolean`, and so on. **That set goes away.** It is
+replaced by a test on
 the method's JVM descriptor, for two reasons: it is self-maintaining across Solr releases, and its
 failure mode is the safe direction.
 
@@ -104,8 +107,9 @@ more reliable than any name-to-type table because it is the compiler's own answe
 
 **Rule B — untyped reads.** `get`, `remove` and `containsKey` on `java/util/Map`. These are erased to
 `(Ljava/lang/Object;)…`, so they carry no type and always yield `FREE`. This rule is what keeps
-`args.remove("userDictionary")` working — the case PR 52 found in `JapaneseTokenizerFactory` — and it
-is also the whole mechanism by which field type classes are read in section 3.
+`args.remove("userDictionary")` working — the case the constructor-bytecode work found in
+`JapaneseTokenizerFactory` — and it is also the whole mechanism by which field type classes are read
+in section 3.
 
 Rule B names three methods explicitly, which is a small hardcoded set. That is acceptable where the
 seventeen-name set was not: `java.util.Map` is JDK API that has been stable for decades, whereas
@@ -124,7 +128,8 @@ conflict is a signal the extraction did not fully understand the class, and a wr
 wrong underline on a correct file.
 
 **This is a rewrite of a pass that was verified by named expectation, so it is re-verified the same
-way.** Every expectation PR 52 established — `WordDelimiterGraphFilterFactory`'s attributes,
+way.** Every expectation the constructor-bytecode work established —
+`WordDelimiterGraphFilterFactory`'s attributes,
 `JapaneseTokenizerFactory`'s `mode` and `userDictionary` — must still hold, and now with types
 attached. A descriptor test that quietly matches fewer methods than the name set did would produce a
 shorter plausible list, which is the exact failure this project has already been bitten by three
@@ -167,9 +172,24 @@ That admission is the single riskiest change in this design. Any `Map.get` with 
 inside `init` will be collected, whether or not the map is the argument map. The mitigation is not a
 cleverer heuristic; it is the named expectations in the testing strategy below.
 
-The consequence for section 5 is worth stating plainly: `<fieldType>` gains a **name** check and never
-a **value** check. `vectorDimenson="768"` is caught as an unknown attribute; `vectorDimension="abc"`
-is not caught at all.
+**The consequence for section 5 is the opposite of what this section first claimed.** An earlier
+revision said a `<fieldType>` would gain a name check and never a value check. Implementing it proved
+that backwards, and the reason is worth keeping rather than quietly correcting.
+
+A field type delegates to classes its own configuration names. `providerClass` selects the
+`ExchangeRateProvider` that reads `currencyConfig`, and no walk — up the superclass chain, sideways
+into nested classes, anywhere — reaches a collaborator chosen at runtime. Solr's own
+`sample_techproducts_configs` writes `currencyConfig="currency.xml"`, and that configset is the
+fixture the golden-file gate in [CI gates](../../../specs/plans/0002-solr-intellij-plugin-plan.md)
+is built on. Treating a field type's attribute list as complete would have underlined a file Solr
+ships, and failed the gate this work has to pass.
+
+So a `<fieldType>` gets its **values** checked — `positionIncrementGap` and `synonymQueryStyle` come
+from the hand-maintained table, which is closed — and never a **completeness** claim.
+`vectorDimension="abc"` is not caught, because every field type attribute is `FREE`;
+`vectorDimenson="768"` is not caught either, because the list it would be missing from is open.
+
+That is a smaller feature than this document originally promised, and it is the honest one.
 
 ### 4. Catalog format: one column, `name:type`
 
@@ -202,19 +222,27 @@ shape the CI gate expects.
 `indexed="yes"`, `positionIncrementGap="foo"`, `minGramSize="2.5"`.
 
 **`SolrUnknownAttribute`** — the name is not recognized where the vocabulary is closed.
-`indexd="true"`, `maxGramSiz="15"`, `vectorDimenson="768"`.
+`indexd="true"`, `maxGramSiz="15"`.
 
-**The valid set per element, stated rather than left to the implementation.** An earlier revision of
-this section named the two inspections and never said what either compares against, which is the
-kind of omission that gets decided differently in three places:
+**Two questions, kept apart.** *What does this attribute accept* is answerable far more often than
+*is this the complete set of attributes*, and conflating them is how a checker starts underlining
+correct files. They are separate functions on `SolrAttributeVocabulary`, and only the second one
+decides whether an unknown name may be reported.
 
-| Element | Valid attributes |
-|---|---|
-| `<field>`, `<dynamicField>` | `SolrFieldProperties.FOR_FIELD` ∪ `{name, type}` |
-| `<fieldType>` | `FOR_FIELD_TYPE` ∪ catalog attributes of the named class ∪ `{name, class}` |
-| `<tokenizer>`, `<filter>`, `<charFilter>` | catalog attributes of the named class ∪ `{class}` |
-| `<analyzer>` | `{type, class}` |
-| anything else | unchecked |
+| Element | Values checked against | Complete set of names? |
+|---|---|---|
+| `<field>`, `<dynamicField>` | `SolrFieldProperties.FOR_FIELD` | **yes** — `FOR_FIELD` ∪ structural |
+| `<fieldType>` | `FOR_FIELD_TYPE` | **no** — delegates to classes it names |
+| `<tokenizer>`, `<filter>`, `<charFilter>` | catalog attributes of the named class | **yes**, when the catalog knows the class |
+| a class the catalog does not know | nothing | **no** |
+| anything else | nothing | **no** |
+
+**"No" is not "none".** It means an attribute absent from every list the plugin holds is not thereby
+wrong, so nothing may be reported. Three cases answer that way and each has its own reason: a field
+type delegates, a class outside Solr is a custom plugin, and everything else is simply not modelled.
+A known analysis class whose recovered attribute list is *empty* answers "no" as well — every
+analysis class inherits at least `luceneMatchVersion` from the root of the hierarchy, so an empty
+list means the extraction failed rather than that the class accepts nothing.
 
 **`class` and `name` must be allowed structurally, because the catalog deliberately omits them.**
 The generator strips both — `?.takeIf { it != "class" && it != "name" }` — since the base class
@@ -246,18 +274,25 @@ left to the implementation.
 | Condition | Behaviour |
 |---|---|
 | Value contains `${` | Silent. Solr substitutes it, possibly from outside the repository. Enforced in `SolrValueType.accepts` rather than at each call site, so no caller can forget it. |
-| `valueType` is `FREE` | Silent on the value. The *name* is still checked. |
+| `valueType` is `FREE` | Silent on the value. `typeOf` returns null rather than a `FREE` type, so a caller cannot mistake "any value is legal" for "this value was verified". |
 | Element carries a `class` naming a class the catalog does not know | Silent on every attribute of that element. This is how custom plugin classes stay unflagged. |
 | Element carries **no** `class` and is not `field` or `dynamicField` | Silent. Covers `<copyField>`, `<uniqueKey>`, `<similarity>` and anything else a schema holds. |
 | `<field default="…">` | Silent. Its legal values are whatever the field's type accepts — an instance of the `FREE` rule above, restated because it is the one open-valued property a reader will expect to be checked. |
 | `class` or `name` on any element | Silent. Structural, and deliberately absent from the catalog. |
-| Class *is* known, attribute is *not* in its list | **Flagged.** |
+| **Any** attribute name on a `<fieldType>` | Silent. Its vocabulary is open; see section 3. |
+| An analysis class *is* known, attribute is *not* in its list | **Flagged.** |
 
 The last row is a deliberate acceptance of risk, taken with the alternative understood. Treating a
-known class's attribute list as complete is what makes `maxGramSiz` and `vectorDimenson` catchable,
-and those are the typos that actually happen. It also means that if the bytecode pass ever misses a
-real attribute, a correct file gets underlined. The defence is the clean fixtures below and the CI
-gate in step 20 — a missed attribute fails a test loudly rather than reaching a user quietly.
+known analysis class's attribute list as complete is what makes `maxGramSiz` catchable, and that is
+the typo that actually happens. It also means that if the bytecode pass ever misses a real attribute,
+a correct file gets underlined. The defence is the clean fixtures below and the CI gate in step 20 —
+a missed attribute fails a test loudly rather than reaching a user quietly.
+
+**The row above it is where that reasoning ran out.** The same argument was originally applied to
+`<fieldType>`, and it does not survive contact with `CurrencyFieldType`: the risk there is not
+hypothetical but demonstrated, on a file Solr itself ships. The difference between the two rows is
+that an analysis factory reads all of its own arguments, while a field type hands some of them to a
+class its configuration names.
 
 ## Testing strategy
 
@@ -272,19 +307,25 @@ expectation names what it wants:
 |---|---|
 | `solr.EdgeNGramFilterFactory` | `minGramSize:int`, `maxGramSize:int`, `preserveOriginal:bool` |
 | `solr.WordDelimiterGraphFilterFactory` | `generateWordParts:bool`, `types:free` |
-| `solr.CurrencyFieldType` | `defaultCurrency:free`, `currencyConfig:free` |
+| `solr.CurrencyFieldType` | `defaultCurrency:free`, `providerClass:free` — **not** `currencyConfig` |
+| `solr.CollationField` | `language:free`, `strength:free` — read in `setup`, not `init` |
 | `solr.EnumFieldType` | `enumsConfig:free`, `enumName:free` |
 | `solr.DenseVectorField` | `vectorDimension:free`, `similarityFunction:free` |
 | `solr.SpatialRecursivePrefixTreeFieldType` | `geo:free`, `distErrPct:free` |
 | `solr.PointType` | `dimension:free`, `subFieldSuffix:free` |
 
-The five field type entries are the acceptance test for section 3. They are the classes whose
+**`currencyConfig` is asserted absent, not present.** It is a real attribute — Solr's
+`sample_techproducts_configs` writes it — read by `FileExchangeRateProvider`, a collaborator named at
+runtime through `providerClass`. Pinning its absence is what stops a later change quietly closing the
+field type vocabulary and taking the unknown-attribute warning with it.
+
+The field type entries are the acceptance test for section 3. They are the classes whose
 attributes are invisible today, and if the `Map.get` admission does not work they will be empty. Their
 `:free` types are not a gap to close later — the erased `Map.get` signature carries no type, as
 section 3 records.
 
 The two analysis entries are the acceptance test for section 2. `minGramSize:int` proves the
-descriptor test reads the return type, and every expectation PR 52 established must still hold: a
+descriptor test reads the return type, and every expectation it established must still hold: a
 descriptor rewrite that silently matched fewer methods would shorten the lists without failing.
 
 **The clean fixtures are written before the flagged ones.** A `<fieldType>` declaring each of the five
@@ -300,10 +341,12 @@ makes the zero-false-positive bar enforceable per test rather than only in CI.
 attributes* — plus an extension to step 9's generator. It is not a new step, and step 10's criterion
 *"Completion and validation work against the catalog"* is what it closes.
 
-**It waits for PR 52 to merge.** That PR is verified and reviewable as it stands; folding a second
-change to the same ASM pass into it would put the attribute extraction and the field type extension in
-one diff, and the extraction was verified by checking named expectations precisely because a reviewer
-cannot eyeball a bytecode pass.
+**Where it landed.** This was written expecting to wait for PR 52, which turned out to duplicate
+PR 47 — the same step implemented twice in two worktrees. PR 52 was closed, the descriptor change went
+onto PR 47 where the reader list it replaces lives, and the rest onto PR 54 stacked on top. The
+reason for keeping them apart is unchanged: the extraction is verified by named expectation precisely
+because a reviewer cannot eyeball a bytecode pass, so a shortened list has to be attributable to one
+diff.
 
 Landing order, each step independently green:
 
@@ -311,19 +354,29 @@ Landing order, each step independently green:
    behaviour change, no new inspection.
 2. Generator switches from the seventeen-name set to the descriptor test and takes types from return
    descriptors; catalog column 4 becomes `name:type`; `SolrClassCatalog` reads it. Every named
-   expectation from PR 52 re-asserted, now with types. **On its own**, so a shortened list is
+   expectation from that work re-asserted, now with types. **On its own**, so a shortened list is
    attributable to this change and not to the field type work in step 3.
-3. Generator covers field type classes, with the five named expectations.
+3. Generator covers field type classes, with the named expectations.
 4. `SolrInvalidAttributeValue` with its clean fixtures first.
 5. `SolrUnknownAttribute` with its clean fixtures first.
 
-Steps 4 and 5 are one inspection per pull request, matching how the three existing inspections landed.
+**Step 3 needed three changes this document did not anticipate**, each found by a named expectation
+coming back empty rather than by reading the code. Field types are selected by *package*, because
+`superclasses` is filled by the same loop that does the extraction and an ancestry test during it
+would depend on jar entry order. *Every* method is visited rather than `init` alone, because
+`CollationField` reads in `setup(ResourceLoader, Map)` — naming the methods is the same losing game
+that naming the readers was. And attributes read by a *nested* class reach the enclosing one, because
+`EnumFieldType` delegates to `EnumFieldType$EnumMapping`, a walk sideways rather than up.
+
+Steps 4 and 5 landed together rather than one per pull request. They share the vocabulary function
+and the same fixture file, and splitting them would have put the clean fixtures in one PR and half
+the reasons they are clean in the other.
 
 ## Risks
 
 - **The descriptor test matches fewer methods than the name set did.** This replaces a pass that was
   verified by named expectation, and the way it fails is by producing a shorter plausible list rather
-  than an error. Every expectation from PR 52 is re-asserted, now with types, and the landing order
+  than an error. Every expectation from that work is re-asserted, now with types, and the landing order
   puts this change on its own so a regression is attributable.
 - **The `Map.get` admission collects unrelated literals.** A field type's `init` may read some other
   map. Mitigated by the named expectations, and bounded by the fact that a wrongly collected name
