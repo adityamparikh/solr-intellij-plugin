@@ -237,6 +237,11 @@ val generateSolrCatalog by tasks.registering {
         // their removal, which is the assertion `SolrClassCatalogTest` makes.
         val argumentMapReader = "(Ljava/util/Map;Ljava/lang/String;"
 
+        // How a field type consumes an argument, on the plain map. Three JDK method names is a small
+        // hardcoded set, and acceptable where the seventeen Solr reader names were not: `java.util.Map`
+        // has been stable for decades, where Solr's factory API is precisely the thing that moves.
+        val mapReaders = setOf("get", "remove", "containsKey")
+
         // The value type, taken from the JVM return descriptor. This is the compiler's own answer
         // about what the factory did with the string, which is why it is read here rather than
         // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
@@ -299,7 +304,16 @@ val generateSolrCatalog by tasks.registering {
                                 if (reader.access and Opcodes.ACC_ABSTRACT != 0) {
                                     abstractClasses += reader.className
                                 }
-                                if (reader.className.endsWith("Factory")) {
+                                // A field type is read as well as a factory, and the two differ in
+                                // every mechanical detail below. Selected by package rather than by
+                                // ancestry because `superclasses` is still being filled by this very
+                                // loop, so asking "does this descend from FieldType" here would
+                                // depend on jar entry order. Every field type Solr ships lives in
+                                // `org.apache.solr.schema` -- 33 of them on Solr 10, 35 on Solr 9,
+                                // and none anywhere else -- so the package is an exact prefilter.
+                                // The definitive ancestry test still runs, after the loop.
+                                val schemaClass = reader.className.startsWith("org/apache/solr/schema/")
+                                if (reader.className.endsWith("Factory") || schemaClass) {
                                     val found = sortedMapOf<String, String>()
                                     reader.accept(
                                         object : ClassVisitor(Opcodes.ASM9) {
@@ -310,7 +324,26 @@ val generateSolrCatalog by tasks.registering {
                                                 signature: String?,
                                                 exceptions: Array<out String>?,
                                             ): MethodVisitor? {
-                                                if (methodName != "<init>") return null
+                                                // A factory reads its arguments in its constructor,
+                                                // and nowhere else.
+                                                //
+                                                // A field type threads the map through whatever
+                                                // helper it likes. `init(IndexSchema, Map)` is the
+                                                // entry point, but `CollationField` reads in
+                                                // `setup(ResourceLoader, Map)` and `EnumFieldType`
+                                                // in a nested class's constructor, so naming the
+                                                // methods would be the same losing game as naming
+                                                // the readers. Every method is visited instead.
+                                                //
+                                                // The direction of the error is why that is safe.
+                                                // A spurious attribute makes the plugin *more*
+                                                // permissive -- it silences a warning it would
+                                                // otherwise raise -- while a missing one turns a
+                                                // correct `language="en"` into an underline. The
+                                                // `Map` owner, lowercase-initial and not-class-or-
+                                                // name guards below still apply to everything found.
+                                                val reads = methodName == "<init>" || schemaClass
+                                                if (!reads) return null
                                                 return object : MethodVisitor(Opcodes.ASM9) {
                                                     // Strings pushed since the last call, in order.
                                                     // The *first* is the attribute name: a reader
@@ -348,7 +381,18 @@ val generateSolrCatalog by tasks.registering {
                                                         // `Map.remove` is erased to
                                                         // `(Ljava/lang/Object;)Ljava/lang/Object;`,
                                                         // so it can never carry a type.
-                                                        val erasedRead = called == "remove" &&
+                                                        //
+                                                        // `Map.get` joins it for field types only,
+                                                        // and that is the whole mechanism by which
+                                                        // they are read: a field type calls
+                                                        // `args.get("defaultCurrency")` on the plain
+                                                        // map, never a typed reader. Admitting it
+                                                        // for factories too would undo the owner
+                                                        // guard above, which exists to keep every
+                                                        // unrelated `Map.get` and `List.get` out.
+                                                        val erasedReaders =
+                                                            if (schemaClass) mapReaders else setOf("remove")
+                                                        val erasedRead = called in erasedReaders &&
                                                             owner == "java/util/Map"
                                                         val isRead = typedRead || erasedRead
                                                         val valueType =
@@ -435,12 +479,30 @@ val generateSolrCatalog by tasks.registering {
             fun attributesOf(binaryName: String): List<String> {
                 val internal = binaryName.replace('.', '/')
                 val collected = sortedMapOf<String, String>()
+
+                // A class may hand the argument map to a nested helper and let *it* do the reading,
+                // in which case the literals are recorded against the helper and the enclosing class
+                // looks like it accepts nothing. `EnumFieldType` is the case that forced this:
+                // `enumsConfig` and `enumName` are read in `EnumFieldType$EnumMapping`, so before
+                // this the catalog said `EnumFieldType` took no attributes at all -- and under the
+                // unknown-attribute rule that turns a correct `enumsConfig="..."` into a warning.
+                fun merge(owner: String) {
+                    declaredAttributes[owner]?.forEach { (name, type) ->
+                        collected[name] = mergeType(collected[name], type)
+                    }
+                    val nested = "$owner$"
+                    for ((className, attributes) in declaredAttributes) {
+                        if (!className.startsWith(nested)) continue
+                        attributes.forEach { (name, type) ->
+                            collected[name] = mergeType(collected[name], type)
+                        }
+                    }
+                }
+
                 var current: String? = internal
                 var depth = 0
                 while (current != null && depth++ < 40) {
-                    declaredAttributes[current]?.forEach { (name, type) ->
-                        collected[name] = mergeType(collected[name], type)
-                    }
+                    merge(current)
                     current = superclasses[current]
                 }
                 return collected.map { (name, type) -> "$name:$type" }
@@ -450,7 +512,10 @@ val generateSolrCatalog by tasks.registering {
                 appendLine("# Generated by :generateSolrCatalog - do not edit.")
                 appendLine("# Solr line $line, read from $version.")
                 appendLine("# kind\tclass\tshort name\tattributes")
-                for (className in fieldTypes) appendLine("fieldType\t$className\t${shortName(className)}\t")
+                for (className in fieldTypes) {
+                    val attributes = attributesOf(className).joinToString(",")
+                    appendLine("fieldType\t$className\t${shortName(className)}\t$attributes")
+                }
                 for ((kind, implementations) in factories.toSortedMap()) {
                     for (className in implementations.sorted()) {
                         val attributes = attributesOf(className).joinToString(",")
