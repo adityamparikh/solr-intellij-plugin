@@ -289,6 +289,78 @@ class SolrClassCatalogTest {
         }
     }
 
+    // --- field type attributes --------------------------------------------------------------------
+
+    /**
+     * A field type's own attributes, which the `endsWith("Factory")` guard used to exclude entirely.
+     *
+     * These are `free` and stay that way. A field type calls `args.get("defaultCurrency")` on the
+     * plain map, whose signature is erased to `(Object)Object`, so no type is recoverable. Knowing
+     * the attribute is *legal* is the whole gain; judging its value was never on offer.
+     */
+    @Test
+    fun `a field type exposes its own attributes`() {
+        assertEquals(SolrValueType.FREE, attribute("solr.CurrencyFieldType", "defaultCurrency").valueType)
+        assertEquals(SolrValueType.FREE, attribute("solr.DenseVectorField", "vectorDimension").valueType)
+        assertEquals(SolrValueType.FREE, attribute("solr.DenseVectorField", "similarityFunction").valueType)
+        assertEquals(SolrValueType.FREE, attribute("solr.PointType", "subFieldSuffix").valueType)
+        assertEquals(SolrValueType.FREE, attribute("solr.SpatialRecursivePrefixTreeFieldType", "distErrPct").valueType)
+    }
+
+    /**
+     * Read in `EnumFieldType$EnumMapping`, not in the field type itself.
+     *
+     * A class may hand the argument map to a nested helper, and before the enclosing class collected
+     * its nested classes the catalog said `EnumFieldType` accepted nothing at all.
+     */
+    @Test
+    fun `an attribute read by a nested helper reaches its enclosing class`() {
+        assertNotNull(SolrClassCatalog.find("solr.EnumFieldType", latest)?.attribute("enumsConfig"))
+        assertNotNull(SolrClassCatalog.find("solr.EnumFieldType", latest)?.attribute("enumName"))
+    }
+
+    /**
+     * Read in `setup(ResourceLoader, Map)`, not in `init`.
+     *
+     * Naming the methods a field type may read in is the same losing game as naming the readers, so
+     * every method of a schema class is visited.
+     */
+    @Test
+    fun `an attribute read outside init is still found`() {
+        assertNotNull(SolrClassCatalog.find("solr.CollationField", latest)?.attribute("language"))
+        assertNotNull(SolrClassCatalog.find("solr.CollationField", latest)?.attribute("strength"))
+    }
+
+    /** Every field type answers with something, so none of them looks accidentally attribute-free. */
+    @Test
+    fun `every field type carries attributes`() {
+        val bare = SolrClassCatalog.of(SolrClassKind.FIELD_TYPE, latest).filter { it.attributes.isEmpty() }
+        assertTrue("field types with no attributes: ${bare.map { it.shortName }}", bare.isEmpty())
+    }
+
+    /**
+     * The limit of what bytecode can reach, recorded so it is a known boundary rather than a bug.
+     *
+     * `currencyConfig` is a real attribute of `<fieldType class="solr.CurrencyFieldType">` — Solr's
+     * own `sample_techproducts_configs` writes it — but it is read by `FileExchangeRateProvider`,
+     * a collaborator named at runtime through the `providerClass` attribute. It is neither a
+     * superclass nor a nested class, so no walk from the field type reaches it.
+     *
+     * **This is why an unknown-attribute warning cannot be raised on a `<fieldType>`.** A field type
+     * delegates to classes chosen by its own configuration, so its attribute list is open by
+     * construction, and treating it as complete would underline a configset Solr ships.
+     */
+    @Test
+    fun `a delegated attribute is out of reach, which bounds what may be flagged`() {
+        val currency = SolrClassCatalog.find("solr.CurrencyFieldType", latest)
+        assertNotNull(currency)
+        assertNotNull("providerClass is what makes the vocabulary open", currency!!.attribute("providerClass"))
+        assertNull(
+            "if this ever resolves, the field type vocabulary may have become closed",
+            currency.attribute("currencyConfig"),
+        )
+    }
+
     /** A generated catalog cannot produce `enum`: a closed member set is not in a return descriptor. */
     @Test
     fun `no generated attribute is an enum`() {
