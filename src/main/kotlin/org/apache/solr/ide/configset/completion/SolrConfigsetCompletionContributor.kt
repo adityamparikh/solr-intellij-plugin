@@ -213,7 +213,7 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         result: CompletionResultSet,
     ) {
         val file = parameters.originalFile
-        if (SolrConfigsetReader.getInstance(file.project).modelFor(file) == null) return
+        val model = SolrConfigsetReader.getInstance(file.project).modelFor(file) ?: return
         val position = parameters.position
 
         // Inside an attribute value is the other provider's job; contributing here as well would
@@ -224,7 +224,7 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         val attribute = position.parentOfType<XmlAttribute>()
 
         val suggestions = if (attribute != null || isAttributePosition(position, tag)) {
-            attributeNames(tag)
+            attributeNames(tag, model)
         } else {
             elementNames(tag)
         }
@@ -262,8 +262,9 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
      *
      * An attribute cannot be written twice, so offering one that is present is offering an error.
      */
-    private fun attributeNames(tag: XmlTag): List<LookupElement> {
+    private fun attributeNames(tag: XmlTag, model: SolrFieldModel): List<LookupElement> {
         val already = tag.attributes.map { it.name }.toSet()
+        analysisAttributeNames(tag, model, already)?.let { return it }
         val properties = when (tag.name) {
             in SolrSchemaTags.FIELD -> SolrFieldProperties.FOR_FIELD
             in SolrSchemaTags.FIELD_TYPE -> SolrFieldProperties.FOR_FIELD_TYPE
@@ -276,6 +277,38 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
                     .withTypeText(property.validValues)
                     .withTailText("  ${firstSentence(property.summary)}", true)
             }
+    }
+
+    /**
+     * The attributes the factory named in this tag's `class` accepts, or null when the tag is not
+     * an analysis component at all.
+     *
+     * Null and empty mean different things here. Null falls through to the field-property table,
+     * which is right for a `field` or a `fieldType`. Empty stops — a `<filter>` whose class this
+     * catalog does not know accepts attributes the plugin cannot name, and offering field
+     * properties there would be offering nonsense with a straight face.
+     *
+     * The attributes are the half no listing of classes could supply: a factory reads them out of a
+     * map by string literal, so they exist only in its constructor body.
+     */
+    private fun analysisAttributeNames(
+        tag: XmlTag,
+        model: SolrFieldModel,
+        already: Set<String>,
+    ): List<LookupElement>? {
+        val kind = when (tag.name) {
+            "tokenizer" -> SolrClassKind.TOKENIZER
+            "filter" -> SolrClassKind.TOKEN_FILTER
+            "charFilter" -> SolrClassKind.CHAR_FILTER
+            else -> return null
+        }
+        val className = tag.getAttributeValue("class") ?: return emptyList()
+        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
+            ?: SolrVersionSelection.DEFAULT
+        val entry = SolrClassCatalog.find(className, version)?.takeIf { it.kind == kind } ?: return emptyList()
+        return entry.attributes
+            .filter { it.name !in already }
+            .map { LookupElementBuilder.create(it.name).withTypeText(entry.shortName) }
     }
 
     /** The summary's first sentence, which is all a lookup row has space for. */
