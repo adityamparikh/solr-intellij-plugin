@@ -21,17 +21,54 @@ enum class SolrClassKind(internal val token: String) {
 }
 
 /**
+ * One attribute a class reads, and what kind of value it accepts.
+ *
+ * @property name the attribute name as a configset writes it
+ * @property valueType what the class does with the value
+ */
+data class SolrClassAttribute(
+    val name: String,
+    val valueType: SolrValueType = SolrValueType.FREE,
+) {
+
+    /** Service lookup for the token spellings the generated catalog uses. */
+    companion object {
+
+        /**
+         * Reads one `name:type` entry as the generated catalog writes it.
+         *
+         * An entry with no `:` reads as [SolrValueType.FREE], so a catalog generated before types
+         * existed degrades to "no value checking" rather than to an exception.
+         *
+         * @param entry one comma-separated attribute from the catalog's fourth column
+         * @return the parsed attribute
+         */
+        fun parse(entry: String): SolrClassAttribute {
+            val name = entry.substringBefore(':')
+            val token = entry.substringAfter(':', "")
+            return SolrClassAttribute(name, SolrValueType.forToken(token))
+        }
+    }
+}
+
+/**
  * One class a configset may name.
  *
  * @property kind what the class is, and therefore where it may be written
  * @property className the fully qualified name, as reflection sees it
  * @property shortName the `solr.`-prefixed form a configset normally uses
+ * @property attributes the attributes this class reads, empty where none are known
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
     val className: String,
     val shortName: String,
-)
+    val attributes: List<SolrClassAttribute> = emptyList(),
+) {
+
+    /** The attribute [name], or null when this class does not read one by that name. */
+    fun attribute(name: String): SolrClassAttribute? = attributes.firstOrNull { it.name == name }
+}
 
 /**
  * The Solr and Lucene classes a configset can name, per supported Solr line.
@@ -45,6 +82,11 @@ data class SolrClassEntry(
  * The tab-separated form is deliberate. Reading it needs no parser and no dependency, and a
  * regenerated catalog produces a diff a human can review — which matters, because the way a
  * generator fails is by producing a plausible short list rather than an error.
+ *
+ * **The attributes are the part reflection cannot supply.** A factory reads them out of a
+ * `Map<String, String>` by string literal, so they exist only inside its constructor body and are
+ * neither fields nor annotations. The generator recovers them from bytecode; anything that
+ * enumerated members instead would produce a short, plausible, wrong list.
  */
 object SolrClassCatalog {
 
@@ -109,14 +151,31 @@ object SolrClassCatalog {
     private fun read(line: Int): List<SolrClassEntry> {
         val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
             ?: return emptyList()
+        return stream.bufferedReader().useLines { parse(it) }
+    }
+
+    /**
+     * The entries in [rows], skipping anything that is not one.
+     *
+     * Separate from reading the resource so it can be tested against input the generator would
+     * never produce. That matters more here than the shipped file suggests: this parser is the one
+     * place a malformed or half-written catalog reaches the editor, and the guarantee worth having
+     * is that it drops the bad row rather than the file.
+     *
+     * @param rows the catalog's lines
+     * @return the entries, in the order they appear
+     */
+    internal fun parse(rows: Sequence<String>): List<SolrClassEntry> {
         val kinds = SolrClassKind.entries.associateBy { it.token }
-        return stream.bufferedReader().useLines { lines ->
-            lines.mapNotNull { row ->
-                if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
-                val columns = row.split('\t')
-                if (columns.size != 3) return@mapNotNull null
-                kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2]) }
-            }.toList()
-        }
+        return rows.mapNotNull { row ->
+            if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
+            val columns = row.split('\t')
+            if (columns.size < 3) return@mapNotNull null
+            val attributes = columns.getOrNull(3).orEmpty()
+                .split(',')
+                .filter { it.isNotBlank() }
+                .map { SolrClassAttribute.parse(it) }
+            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
+        }.toList()
     }
 }

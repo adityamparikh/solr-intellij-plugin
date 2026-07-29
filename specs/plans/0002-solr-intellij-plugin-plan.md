@@ -11,9 +11,19 @@ Deliver the plugin described in the spec: configuration intelligence, a live Sol
 connection, and Java/Kotlin code support, unified by one field model.
 
 **Current state.** The build, CI and documentation tooling are complete and stay as they
-are. Everything else is
-[the activation gate](#step-1-activation-gate-done) and nothing more. Everything the spec
-describes is unbuilt.
+are. Foundation is built apart from its settings page. Of the three tracks the work then
+splits into, only the Editor one has moved, and what it built is real rather than
+scaffolding: a configset parses into a field model, and that model reaches the screen as
+match-capability inlay hints, quick documentation on schema elements and field types, three
+inspections that offer the valid names rather than only reporting the invalid one, and
+completion for the schema's own vocabulary. The generated catalog now carries each class's
+attributes as well as its name.
+
+**The Server and Code tracks have not started**, which is two of the spec's three pillars.
+`server/` holds `SolrConnectionSettings` and nothing else — no HTTP client, no tool window,
+no query console — and no recognizer exists, so a Java or Kotlin file gets nothing at all.
+Neither track is blocked by the other, and neither is blocked by the Editor track; they are
+simply unstarted. [The build order](#build-order) explains what cutting one whole would cost.
 
 **What this plan dropped.** The provenance classification, the API-first write gating,
 and the runtime derivation of reference data from project jars are gone. The spec records
@@ -40,7 +50,7 @@ it whole, and the gutter action goes with the Server track.
 ### Foundation — build first
 
 - [Step 1 — Activation gate](#step-1-activation-gate-done) — **done**
-- [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate)
+- [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate-done) — **done**
 - [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model-done) — **done**
 - [Step 4 — Match analysis](#step-4-match-analysis-done) — **done**
 - [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
@@ -62,7 +72,7 @@ it whole, and the gutter action goes with the Server track.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
   — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)
-- [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator)
+- [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-in-progress) — **in progress**
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
 
 ### Server track
@@ -90,10 +100,10 @@ it whole, and the gutter action goes with the Server track.
 - [x] JDK 21 toolchain, green build, CI verified.
 - [x] Solr and Lucene artifacts resolvable from Maven Central for both supported lines —
       verified: Solr 10.0.0 with Lucene 10.3.2, Solr 9.10.1 with Lucene 9.12.3. Needed by
-      [the factory catalog generator](#step-9-factory-catalog-generator).
+      [the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
 - [ ] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
       catalog without documentation text. Needed by
-      [the factory catalog generator](#step-9-factory-catalog-generator), which cannot
+      [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which cannot
       recover documentation from a compiled jar.
 - [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
       ships, vendored verbatim under `src/test/testData/configsets/<name>/conf/` and
@@ -105,9 +115,11 @@ it whole, and the gutter action goes with the Server track.
       `configureByText`, and `src/test/testData/` still holds nothing but the scaffold files
       [rename](#step-8-rename) is due to replace.
 - [ ] A local Solr, for manual verification only.
-- [ ] **Decision required before
-      [the activation gate overhaul](#step-2-overhaul-the-activation-gate):** the
-      `org.apache.solr` package namespace. See spec, "What changes in the existing code".
+- [x] Package namespace settled — it stays `org.apache.solr.ide`, so there is no rename.
+      [The activation gate overhaul](#step-2-overhaul-the-activation-gate-done) is the step
+      that had to know and is where the reasoning lives, including what the decision leaves
+      open. This line records only that the question is closed, because it read as still open
+      long after it was answered.
 
 ---
 
@@ -150,7 +162,7 @@ and implemented configset detection so features activate only on recognized file
 **What shipped:**
 - `SolrConfigsetDetector` — file-name matching corroborated by directory heuristics. Those
   heuristics were later removed in favour of the dependency gate; see
-  [the activation gate overhaul](#step-2-overhaul-the-activation-gate).
+  [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done).
 - `SolrConfigsetFileKind` — the schema names and `solrconfig.xml`.
 - `SolrConfigsetSettings` — manual configset roots and a detection switch, persisted to
   the shared project file with paths collapsed through `PathMacroManager`.
@@ -164,7 +176,7 @@ Two template artefacts survive and are not covered by that criterion:
 `src/test/testData/rename/` still holds the scaffold's `foo.xml` / `foo_after.xml`, which
 no test reads. [Rename](#step-8-rename) replaces them.
 
-[The activation gate overhaul](#step-2-overhaul-the-activation-gate) reworks this for the
+[The activation gate overhaul](#step-2-overhaul-the-activation-gate-done) reworks this for the
 model the spec describes; it is extended, not replaced.
 
 **Acceptance:** No demo step of its own. It is what makes
@@ -301,22 +313,22 @@ edit is in the model before the file is written.
 
 Ambiguous file names are still not evidence here: a directory holding only `schema.xml`
 is not enumerated as a configset, matching
-[the activation gate overhaul](#step-2-overhaul-the-activation-gate).
+[the activation gate overhaul](#step-2-overhaul-the-activation-gate-done).
 
 Match-capability analysis is deliberately absent — it is
-[its own step](#step-4-match-analysis), and depends on nothing this one built beyond the
+[its own step](#step-4-match-analysis-done), and depends on nothing this one built beyond the
 analyzer chains.
 
 **Acceptance:** No demo step of its own. Nothing from the navigation demos onward works
 without it, so it is verified through the steps that consume it.
 
-**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate)
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done)
 
 ### Step 4: Match analysis (done)
 
 A pure function from analyzer chain to match capability. Independent of everything;
 buildable in parallel with
-[the repository reader](#step-3-repository-reader-and-field-model).
+[the repository reader](#step-3-repository-reader-and-field-model-done).
 
 **Actions:**
 1. Classify a field's index-time chain: whole value or tokenized, prefix-capable or not,
@@ -381,13 +393,13 @@ the teammate who receives it.
    correcting what activated" for why the silent failure is the one worth attacking. It
    needs a project-wide scan, which `SolrConfigsetLocator` does not do: it answers per file,
    on demand. Build that scan once, in
-   [the repository reader](#step-3-repository-reader-and-field-model), which needs to
+   [the repository reader](#step-3-repository-reader-and-field-model-done), which needs to
    enumerate configsets anyway, and consume it here rather than inventing a second sweep.
 3. A *Mark Directory as Solr Configset Root* action in the Project View popup menu. The
    string `configset.action.markRoot` is already in the bundle, unused since
    [the activation gate](#step-1-activation-gate-done). Deliberately last of the three: it
    addresses false *negatives*, which the two-identifying-files rule from
-   [the activation gate overhaul](#step-2-overhaul-the-activation-gate) already makes rare,
+   [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done) already makes rare,
    whereas the list above addresses not knowing which failure you have.
 4. A connections page as a sibling, once there are connections worth showing. Not before
    [the HTTP client and server reader](#step-11-http-client-connections-and-the-server-reader)
@@ -404,8 +416,8 @@ the teammate who receives it.
 is the fallback if the demo configset does not activate on stage, which is the one failure
 the runbook has no other recovery for.
 
-**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate) for
-actions 1 and 3; [the repository reader](#step-3-repository-reader-and-field-model) for the
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done) for
+actions 1 and 3; [the repository reader](#step-3-repository-reader-and-field-model-done) for the
 detected-configset list in action 2.
 
 ---
@@ -419,7 +431,7 @@ detected-configset list in action 2.
    destination to fields; request-handler parameters in `solrconfig.xml` to schema
    fields; a filter's resource attribute to the `stopwords.txt` or `synonyms.txt` it
    names.
-2. Expose a reference-graph query surface that [inspections](#step-6-inspections) and
+2. Expose a reference-graph query surface that [inspections](#step-6-inspections-in-progress) and
    [rename](#step-8-rename) reuse.
 3. Reference tests asserting resolve targets on representative configsets.
 
@@ -432,7 +444,7 @@ detected-configset list in action 2.
 [24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary)
 and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type).
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
 ### Step 6: Inspections (in progress)
 
@@ -447,7 +459,7 @@ Where the zero-false-positive requirement gets teeth.
 3. Test each on both flagged and clean fixtures.
 
 Landing one inspection per pull request, each with its flagged and clean fixtures, rather
-than as one change. Taken before [references and navigation](#step-5-references-navigation-and-find-usages),
+than as one change. Taken before [references and navigation](#step-5-references-navigation-and-find-usages-in-progress),
 which this step nominally depends on: that dependency holds only for inspections written as
 unresolved-reference checks, and these are driven off the field model instead.
 
@@ -463,7 +475,7 @@ and [26 — *break something live*](../../docs/demo/README.md#step-26-break-some
 The planted dangling copy rule is underlined, and deleting a referenced field flags its
 rule immediately.
 
-**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages)
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-in-progress)
 
 ### Step 7: Match hints and quick-fixes (in progress)
 
@@ -473,14 +485,14 @@ anything a user can see — four steps of foundation had shipped with no exit to
 
 **Actions:**
 1. Inlay hints surfacing each field's match capability from
-   [match analysis](#step-4-match-analysis), inline rather than on hover, so the demo does
+   [match analysis](#step-4-match-analysis-done), inline rather than on hover, so the demo does
    not depend on the presenter's mouse.
 2. Quick documentation on a field's `type`, covering what the type is, what its analyzer
    chain does, and what a field of it can match — plus a Reference Guide link for the
    version the configset targets. The spec argues this out under "What quick documentation
    covers"; the part that matters here is that this half needs the model and match
    analysis, not the factory catalog, so it does not wait for
-   [the catalog](#step-9-factory-catalog-generator).
+   [the catalog](#step-9-factory-catalog-generator-in-progress).
 3. Intentions adding a missing capability: an `_exact` companion plus `copyField`, an
    EdgeNGram-backed `_prefix` field. Phrased as efficient index-time support — the spec
    explains the wildcard caveat behind that wording.
@@ -513,8 +525,8 @@ A `string` field reads as whole-value and case-sensitive, a tokenised field does
 prefix matching, an edge-n-gram field does, and Alt-Enter generates the companion field
 with its copy rule.
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
-[match analysis](#step-4-match-analysis)
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
+[match analysis](#step-4-match-analysis-done)
 
 ### Step 23: Explaining and correcting what is already on screen (done)
 
@@ -548,7 +560,7 @@ with no Alt-Enter is more frustrating than no underline.
    computed by the inspection that reports the problem.
 3. Mark the default in completion — `true (default)` — read from the property table rather
    than restated.
-4. Nothing here needs [the factory catalog](#step-9-factory-catalog-generator). The
+4. Nothing here needs [the factory catalog](#step-9-factory-catalog-generator-in-progress). The
    catalog-backed half of documentation and completion stays in
    [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
 
@@ -574,7 +586,7 @@ with no Alt-Enter is more frustrating than no underline.
 [demo step 25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
 survive the obvious follow-up question, which is "so what do I put there instead".
 
-**Dependencies:** [inspections](#step-6-inspections) for the quick-fixes;
+**Dependencies:** [inspections](#step-6-inspections-in-progress) for the quick-fixes;
 [match hints](#step-7-match-hints-and-quick-fixes-in-progress) for the documentation provider they
 extend.
 
@@ -592,7 +604,7 @@ already use it.
 
 **A mis-filing this corrects.** Field attribute completion sits in
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation),
-which waits on [the factory catalog](#step-9-factory-catalog-generator). Only *factory*
+which waits on [the factory catalog](#step-9-factory-catalog-generator-in-progress). Only *factory*
 attributes need the catalog; *field* attributes come from the property table, which exists.
 The dependency was wrong, and a feature was parked behind something it never needed.
 
@@ -619,7 +631,7 @@ widened `SolrFieldProperties`, covered by `SolrSchemaVocabularyCompletionTest`.
 **Class-name completion in the same contributor is not this step.** The tests reading
 `solr.` implementations for a `fieldType`, a tokenizer and a filter, and asserting the
 offered set follows the declared Solr line, belong to
-[the factory catalog generator](#step-9-factory-catalog-generator) and
+[the factory catalog generator](#step-9-factory-catalog-generator-in-progress) and
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
 They arrived early and share a file with this step's work; read them against those steps,
 not this one, or this step will look larger than it was.
@@ -639,7 +651,7 @@ for the element descriptions. Nothing from the catalog.
 ### Step 25: solrconfig.xml as a first-class surface
 
 Numbered last because it was added last; it belongs in the Editor track after
-[the factory catalog](#step-9-factory-catalog-generator), which it depends on entirely.
+[the factory catalog](#step-9-factory-catalog-generator-in-progress), which it depends on entirely.
 
 The spec settled the scope question under "`solrconfig.xml` gets the same treatment as the
 schema". Until now the file was read only for the field names it mentions, which gave the
@@ -671,14 +683,14 @@ is one pull request.
 
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
-**Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator), which
+**Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which
 grows to cover this vocabulary.
 
 ### Step 8: Rename
 
 **Actions:**
 1. Rename fields and field types, updating every reference through the graph built by
-   [references and navigation](#step-5-references-navigation-and-find-usages).
+   [references and navigation](#step-5-references-navigation-and-find-usages-in-progress).
 2. Replace the plugin scaffold's leftover `src/test/testData/rename/` placeholders —
    `foo.xml` and `foo_after.xml`, which no test reads — with configset before/after pairs
    asserting no dangling references remain.
@@ -691,9 +703,9 @@ grows to cover this vocabulary.
 [demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files).
 Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 
-**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages)
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-in-progress)
 
-### Step 9: Factory catalog generator
+### Step 9: Factory catalog generator (in progress)
 
 **Actions:**
 1. A Gradle task that reads the Solr and Lucene artifacts per supported line and emits a
@@ -728,23 +740,55 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
    documentation rather than hand-writing it — the spec's reason for generating this at
    all is that the list is too large to maintain by hand.
 
+**What shipped so far:**
+- The Gradle task, reading Solr and Lucene per line with ASM and emitting
+  `solr-catalog/solr-<line>.tsv` onto the plugin classpath — 198 entries for Solr 10, of
+  which 166 carry attribute names. Actions 1 and 2, less the documentation source.
+- The constructor-bytecode attribute pass, which is the part reflection cannot do: it walks
+  each factory's `<init>`, takes the literal passed to every argument reader, and inherits
+  what the superclasses read.
+- `solr-analysis-extras` resolved alongside `solr-core`. Without it the catalog had Japanese
+  and Korean analysis and no Chinese at all, which is the kind of gap a count never shows.
+- `SolrClassCatalog` and `SolrVersionSource`, which record whether the line was decided by
+  the configset or by the fallback.
+
+**What remains is the documentation source and the server arm of selection.** No `-sources`
+artifact is resolved, so the catalog has four columns and none of them is documentation —
+that is action 1's fourth source and the unchecked prerequisite above, and it is what holds
+the `StrField` criterion open even though both classes are present. Selection reads the
+configset's declared version and then falls back to the newest line; the `SERVER` arm of
+`SolrVersionSource` is unreachable until
+[the server reader](#step-11-http-client-connections-and-the-server-reader) exists, so that
+criterion closes with the Server track rather than here.
+
 **Success criteria:**
-- [ ] Catalog generated at build time for both supported lines and present on the plugin
+- [x] Catalog generated at build time for both supported lines and present on the plugin
       classpath.
-- [ ] `wordDelimiterGraph` exposes all twelve of its attributes. This is the criterion
-      that proves the constructor-bytecode pass works, because reflection over fields
-      produces a plausible short list instead of failing outright.
+- [x] `WordDelimiterGraphFilterFactory` exposes `generateWordParts`, `catenateAll`,
+      `splitOnCaseChange`, `stemEnglishPossessive`, `protected` and `types`, among others.
+      This is the criterion that proves the constructor-bytecode pass works, because
+      reflection over fields produces a plausible short list instead of failing outright.
+      **Named rather than counted**: an earlier revision said "all twelve", and the real
+      number moved with the Solr line, which makes a count a criterion that fails for the
+      wrong reason.
+- [x] `JapaneseTokenizerFactory` exposes `mode` and `userDictionary`. Both are read by
+      paths a naive pass misses — one has a default computed by a method call, the other is
+      taken with `args.remove` rather than a getter.
 - [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
       is what proves the field-type-class pass ran at all — the `class` attribute of a
-      `<fieldType>` is the most-hovered thing in a schema after the field names.
-- [ ] Selection order is correct and the answering source is recorded.
+      `<fieldType>` is the most-hovered thing in a schema after the field names. **Half met:**
+      both classes are in the catalog, so the pass ran; the documentation waits on the
+      `-sources` artifacts.
+- [ ] Selection order is correct and the answering source is recorded. The source is recorded
+      and the configset-then-newest order works; the connected-server arm waits on
+      [the server reader](#step-11-http-client-connections-and-the-server-reader).
 - [ ] The catalog regenerates from a clean build.
 
 **Acceptance:**
 [demo step 69 — *attribute completion on a factory with many options*](../../docs/demo/README.md#step-69-attribute-completion-on-a-factory-with-many-options)
 is the one to run by hand, for the reason in the criterion above.
 
-**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate)
+**Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done)
 
 ### Step 10: Completion, validation and quick documentation
 
@@ -773,8 +817,8 @@ What remains here is the catalog-backed half, which is what the dependency below
 [69 — *attribute completion on a factory with many options*](../../docs/demo/README.md#step-69-attribute-completion-on-a-factory-with-many-options)
 and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-70-quick-documentation-on-a-factory).
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
-[the factory catalog generator](#step-9-factory-catalog-generator)
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
+[the factory catalog generator](#step-9-factory-catalog-generator-in-progress)
 
 ---
 
@@ -811,7 +855,7 @@ and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-7
 **Acceptance:**
 [demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server).
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
 ### Step 12: Collections tool window
 
@@ -871,7 +915,7 @@ explanation expands as a tree.
 repository and not deployed shows as a difference; upload and reload clear it, naming the
 target server first.
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model),
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
 [the server reader](#step-11-http-client-connections-and-the-server-reader)
 
 ### Step 15: Indexing test documents
@@ -939,7 +983,7 @@ The planted typo in a filter query is flagged, so is a field that never existed,
 misspelled `@Field` annotation. Step 47 matters most: constructs the plugin cannot resolve
 produce no warning at all.
 
-**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model)
+**Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
 ### Step 17: Query syntax and the console bridge
 
@@ -1058,8 +1102,8 @@ route is offered as a connection candidate, and a misspelled URI option is flagg
 **Acceptance:** No demo step — this step *is* the automated gate. It is what stops the
 demo passing while the suite quietly rots.
 
-**Dependencies:** [inspections](#step-6-inspections) for the golden-file gate;
-[the factory catalog generator](#step-9-factory-catalog-generator) for catalog tests
+**Dependencies:** [inspections](#step-6-inspections-in-progress) for the golden-file gate;
+[the factory catalog generator](#step-9-factory-catalog-generator-in-progress) for catalog tests
 
 ### Step 21: Documentation
 
@@ -1078,7 +1122,7 @@ demo passing while the suite quietly rots.
 **Acceptance:** No demo step. The compatibility matrix written here is what makes the
 version-drift check in [CI gates](#step-20-ci-gates) meaningful rather than vacuous.
 
-**Dependencies:** [inspections](#step-6-inspections) for the catalog content,
+**Dependencies:** [inspections](#step-6-inspections-in-progress) for the catalog content,
 [CI gates](#step-20-ci-gates) for the checks that police it
 
 ---
@@ -1117,7 +1161,7 @@ step.
 - **A server version the plugin has never seen** —
   [the server reader](#step-11-http-client-connections-and-the-server-reader).
 - **Reference resolution edge cases cause dangling renames** —
-  [references and navigation](#step-5-references-navigation-and-find-usages), which is
+  [references and navigation](#step-5-references-navigation-and-find-usages-in-progress), which is
   unit-tested before [rename](#step-8-rename) consumes it.
 
 ## References
