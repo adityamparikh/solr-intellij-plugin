@@ -16,12 +16,14 @@ buildscript {
 }
 
 plugins {
-    id("org.jetbrains.kotlin.jvm")
+    alias(libs.plugins.kotlin.jvm)
+    // Versioned in settings.gradle.kts, not the catalog: the IntelliJ Platform settings plugin
+    // applied there must match this one, and a settings `plugins` block cannot read the catalog.
     id("org.jetbrains.intellij.platform")
-    id("org.jetbrains.changelog")
-    id("org.jetbrains.kotlinx.kover")
-    id("org.sonarqube")
-    id("org.jetbrains.dokka")
+    alias(libs.plugins.changelog)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.sonarqube)
+    alias(libs.plugins.dokka)
 }
 
 kotlin {
@@ -33,7 +35,7 @@ kotlin {
 }
 
 dependencies {
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {

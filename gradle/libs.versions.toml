@@ -1,0 +1,27 @@
+# Dependency coordinates and plugin versions, in one place.
+#
+# Deliberately NOT here: the Solr lines in `supportedSolrLines` and the IDE target in
+# `intellijIdea(...)`, both in build.gradle.kts. Those are version-*support policy* — a line is added
+# or dropped by a human reading an Apache EOL announcement, not by a bot reading Maven Central — and
+# a Solr line is a key/value pair (`"10" to "10.0.0"`) that a catalog cannot hold as one fact.
+#
+# Also not here, because Gradle cannot reach a catalog from those positions: the two plugins applied
+# in settings.gradle.kts. See the comment there.
+
+[versions]
+junit = "4.13.2"
+kotlin = "2.4.10"
+changelog = "2.5.0"
+kover = "0.9.9"
+sonarqube = "7.3.1.8318"
+dokka = "2.2.0"
+
+[libraries]
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
