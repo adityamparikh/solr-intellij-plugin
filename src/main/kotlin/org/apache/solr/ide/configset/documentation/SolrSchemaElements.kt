@@ -26,6 +26,28 @@ internal object SolrSchemaElements {
     data class Description(val tagName: String, val summary: String)
 
     /**
+     * One attribute a structural element accepts.
+     *
+     * @property name the attribute name as written in the schema
+     * @property summary what the attribute does, in one or two sentences
+     */
+    data class Attribute(val name: String, val summary: String)
+
+    /**
+     * The attributes [tagName] accepts — for the elements whose attributes are *not* field
+     * properties.
+     *
+     * The property table owns `field`, `dynamicField` and `fieldType`, and the generated catalog
+     * owns the analysis factories; this table is the remainder — the schema root, a copy rule, an
+     * analyzer — and is hand-maintained for the same reason the element descriptions are: the set
+     * is small and has been stable across Solr majors.
+     *
+     * @param tagName an element name from a schema
+     * @return the attributes it accepts, or empty when it takes none or is not listed here
+     */
+    fun attributesOf(tagName: String): List<Attribute> = ATTRIBUTES_BY_TAG[tagName].orEmpty()
+
+    /**
      * The elements legal directly inside [parentTag], or empty when nothing is known about it.
      *
      * Nesting is checked rather than offering every element everywhere. A `<copyField>` inside an
@@ -178,4 +200,43 @@ internal object SolrSchemaElements {
                 "type applies to both. The two chains do not have to match, and often should not.",
         ),
     ).associateBy { it.tagName }
+
+    private val ATTRIBUTES_BY_TAG: Map<String, List<Attribute>> = mapOf(
+        "schema" to listOf(
+            Attribute(
+                "name",
+                "Names the schema. Shown by the Admin UI and in log messages to identify it; " +
+                    "nothing about indexing reads it.",
+            ),
+            Attribute(
+                "version",
+                "The schema syntax version, not the Solr version. It governs schema-wide " +
+                    "defaults — 1.6 is what turned useDocValuesAsStored on by default — so " +
+                    "raising it can change behaviour without any other edit.",
+            ),
+        ),
+        "copyField" to listOf(
+            Attribute(
+                "source",
+                "The field values are copied from. May be a glob such as *_t, which copies " +
+                    "every matching field.",
+            ),
+            Attribute(
+                "dest",
+                "The field values are copied into. It must be a declared field, or match a " +
+                    "dynamic field pattern.",
+            ),
+            Attribute(
+                "maxChars",
+                "An upper bound on the characters copied, counted from the start of the value. " +
+                    "Used to keep a catch-all field from growing without limit.",
+            ),
+        ),
+        "analyzer" to listOf(
+            Attribute(
+                "type",
+                "Selects the chain: index or query. An analyzer with no type applies to both.",
+            ),
+        ),
+    )
 }
