@@ -9,7 +9,7 @@
 # in settings.gradle.kts. See the comment there.
 
 [versions]
-asm = "9.9"
+asm = "9.10.1"
 junit = "4.13.2"
 kotlin = "2.4.10"
 changelog = "2.5.0"
