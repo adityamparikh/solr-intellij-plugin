@@ -81,10 +81,10 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
 
     /**
      * A `copyField` carries `source`, `dest` and `maxChars` — none of which is a field property.
-     * The property table is the only thing this knows, so the honest answer is silence rather than
-     * a list of attributes that would be errors on this tag.
+     * Its own three are offered; the property table's are not, because they would be errors on
+     * this tag.
      */
-    fun testNoAttributesAreOfferedOnATagWithNoKnownProperties() {
+    fun testACopyFieldOffersItsOwnAttributesAndNoFieldProperties() {
         val offered = completionsFor(
             """
             <schema name="t">
@@ -94,8 +94,45 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
             </schema>
             """.trimIndent(),
         )
+        assertTrue("expected dest among $offered", "dest" in offered)
+        assertTrue("expected maxChars among $offered", "maxChars" in offered)
+        assertFalse("source is already on the tag: $offered", "source" in offered)
         assertFalse("indexed is not a copyField attribute: $offered", "indexed" in offered)
         assertFalse("sortMissingLast is not a copyField attribute: $offered", "sortMissingLast" in offered)
+    }
+
+    /**
+     * The root element's own vocabulary. `version` is the one worth offering — it silently changes
+     * schema-wide defaults, and a reader who has never met it will not type it unprompted.
+     */
+    fun testTheSchemaTagOffersItsOwnAttributes() {
+        val offered = completionsFor(
+            """
+            <schema <caret>>
+              <fieldType name="string" class="solr.StrField"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected name among $offered", "name" in offered)
+        assertTrue("expected version among $offered", "version" in offered)
+        assertFalse("indexed is a field property, not a schema attribute: $offered", "indexed" in offered)
+    }
+
+    /** An `analyzer` carries exactly `type`, whose two values already complete. */
+    fun testAnAnalyzerOffersItsTypeAttribute() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="text" class="solr.TextField">
+                <analyzer <caret>>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected type among $offered", "type" in offered)
+        assertFalse("indexed is a field property, not an analyzer attribute: $offered", "indexed" in offered)
     }
 
     fun testFieldAttributesAreOffered() {
@@ -344,6 +381,43 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A sibling's attributes are not echoed. The platform's schema-less XML fallback offers
+     * attribute names collected from same-named tags elsewhere in the file — an EdgeNGram filter
+     * next door put `minGramSize` on every `<filter>` in the schema. Owning the element
+     * descriptor is what replaces that guess with the catalog's answer.
+     */
+    fun testAnotherFactorysAttributesAreNotEchoedFromSiblingTags() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer>
+                  <filter class="solr.LowerCaseFilterFactory" <caret>/>
+                  <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("minGramSize belongs to the sibling EdgeNGram filter: $offered", "minGramSize" in offered)
+        assertFalse("maxGramSize belongs to the sibling EdgeNGram filter: $offered", "maxGramSize" in offered)
+    }
+
+    /** One entry per attribute: the descriptor and the contributor must not both add a row. */
+    fun testAttributeNamesAreOfferedExactlyOnce() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="sku" type="string" <caret>/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertEquals("indexed offered more than once: $offered", 1, offered.count { it == "indexed" })
+        assertEquals("stored offered more than once: $offered", 1, offered.count { it == "stored" })
+    }
+
+    /**
      * A class the catalog does not know accepts attributes the plugin cannot name. Silence is the
      * answer; falling through to the field-property table would offer `indexed` on a filter.
      */
@@ -459,3 +533,4 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
         assertFalse("dynamicField" in offered)
     }
 }
+

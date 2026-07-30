@@ -29,6 +29,11 @@ import org.objectweb.asm.Opcodes
  * It runs in the build, where reading Solr's artifacts is ordinary, and ships the result. ASM reads
  * the class files directly rather than loading them: loading Solr classes runs their static
  * initialisers, and nothing here needs a live class — only its name and its ancestry.
+ *
+ * Beside each catalog it writes `field-properties-<line>.txt`: the attribute names `FieldProperties`
+ * accepts on a `<field>`, read from the same bytecode. The hand-maintained field table treats its
+ * list as complete, and `SolrFieldPropertyDriftTest` holds that claim against this file — so a Solr
+ * line growing a new field property fails the build by name instead of underlining a correct file.
  */
 @CacheableTask
 abstract class GenerateSolrCatalogTask : DefaultTask() {
@@ -97,49 +102,68 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
     // has been stable for decades, where Solr's factory API is precisely the thing that moves.
     private val mapReaders = setOf("get", "remove", "containsKey")
 
-    // The value type, taken from the JVM return descriptor. This is the compiler's own answer
-    // about what the factory did with the string, which is why it is read here rather than
-    // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
-    // same thing are two records of one fact, and only one of them cannot drift.
-    private fun valueTypeOf(descriptor: String): String = when (descriptor.substringAfterLast(')')) {
-        "I" -> "int"
-        "Z" -> "bool"
-        "F", "D" -> "float"
-        // `Ljava/lang/String;`, `C`, `Ljava/util/Set;`, `Ljava/util/regex/Pattern;` and the
-        // erased `Map.remove` all land here. `free` is a positive statement that any value is
-        // legal, not "unknown, so guess" -- nothing typed `free` is ever value-checked.
-        else -> "free"
-    }
+    // Where Solr declares what a <field> accepts. `propertyNames` is the parser's whole
+    // vocabulary, and `isPropertyIgnored` names the attributes it waves through without acting
+    // on — `default`, and the two format selectors that only mean something on the type.
+    // Everything else on a <field> throws `Invalid field property` at core load.
+    private val fieldPropertiesClass = "org/apache/solr/schema/FieldProperties.class"
 
-    // A name read as two different types somewhere in one inheritance chain resolves to `free`.
-    // A conflict means the extraction did not fully understand the class, and this plugin
-    // already prefers declining a claim to making a confident wrong one.
-    private fun mergeType(existing: String?, incoming: String): String =
-        if (existing == null || existing == incoming) incoming else "free"
+    // The accepted names, read from the two places FieldProperties keeps them. `propertyNames`
+    // is filled in the static initialiser as one `ldc`/`aastore` pair per name — nothing else in
+    // that initialiser stores a string into an array — and `isPropertyIgnored` holds its names as
+    // the literals it compares against. Reading the strings out of exactly those two methods is
+    // the same bet the catalog makes everywhere: the bytecode cannot drift from what Solr does,
+    // where a copied list can.
+    private fun acceptedFieldProperties(jars: List<File>): Set<String> {
+        val names = sortedSetOf<String>()
+        for (jar in jars) {
+            JarFile(jar).use { open ->
+                val entry = open.getJarEntry(fieldPropertiesClass) ?: return@use
+                open.getInputStream(entry).use { input ->
+                    ClassReader(input).accept(
+                        object : ClassVisitor(Opcodes.ASM9) {
+                            override fun visitMethod(
+                                access: Int,
+                                methodName: String,
+                                descriptor: String,
+                                signature: String?,
+                                exceptions: Array<out String>?,
+                            ): MethodVisitor? {
+                                val storesTheArray = methodName == "<clinit>"
+                                val comparesIgnored = methodName == "isPropertyIgnored"
+                                if (!storesTheArray && !comparesIgnored) return null
+                                return object : MethodVisitor(Opcodes.ASM9) {
+                                    private var pending: String? = null
 
-    // How many parameters of a call could hold a string. The attribute name is always the
-    // first of them, so counting them lets the reader take the literals that belong to *this*
-    // call rather than whatever happened to be pushed before it.
-    private fun stringLikeParameters(descriptor: String): Int {
-        val parameters = descriptor.substringAfter('(').substringBefore(')')
-        var index = 0
-        var count = 0
-        while (index < parameters.length) {
-            when (parameters[index]) {
-                'L' -> {
-                    val end = parameters.indexOf(';', index)
-                    if (end < 0) return count
-                    val type = parameters.substring(index + 1, end)
-                    if (type == "java/lang/String" || type == "java/lang/Object") count++
-                    index = end + 1
+                                    override fun visitLdcInsn(value: Any?) {
+                                        if (value !is String) return
+                                        if (comparesIgnored) names += value else pending = value
+                                    }
+
+                                    override fun visitInsn(opcode: Int) {
+                                        if (opcode == Opcodes.AASTORE) {
+                                            pending?.let { names += it }
+                                            pending = null
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
+                    )
                 }
-                // An array prefix; the element type follows and is handled on the next pass.
-                '[' -> index++
-                else -> index++
             }
         }
-        return count
+        return names
     }
+
+    private fun buildFieldProperties(line: String, version: String, jars: List<File>): String =
+        buildString {
+            appendLine("# Generated by :generateSolrCatalog - do not edit.")
+            appendLine("# Solr line $line, read from $version.")
+            appendLine("# The attribute names FieldProperties accepts on a <field>.")
+            acceptedFieldProperties(jars).forEach { appendLine(it) }
+        }
 
     private fun buildCatalog(line: String, version: String, jars: List<File>): String {
         val superclasses = mutableMapOf<String, String?>()
@@ -399,6 +423,58 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
             }
             File(directory, "solr-${input.line.get()}.tsv")
                 .writeText(buildCatalog(input.line.get(), input.version.get(), relevant))
+            File(directory, "field-properties-${input.line.get()}.txt")
+                .writeText(buildFieldProperties(input.line.get(), input.version.get(), relevant))
+        }
+    }
+
+    // The descriptor-parsing rules, on the companion so `GenerateSolrCatalogTaskTest` can pin
+    // them without standing up a Gradle project. They are the part of the extraction that is
+    // pure input-to-output; everything stateful stays on the instance.
+    internal companion object {
+
+        // The value type, taken from the JVM return descriptor. This is the compiler's own answer
+        // about what the factory did with the string, which is why it is read here rather than
+        // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
+        // same thing are two records of one fact, and only one of them cannot drift.
+        internal fun valueTypeOf(descriptor: String): String = when (descriptor.substringAfterLast(')')) {
+            "I" -> "int"
+            "Z" -> "bool"
+            "F", "D" -> "float"
+            // `Ljava/lang/String;`, `C`, `Ljava/util/Set;`, `Ljava/util/regex/Pattern;` and the
+            // erased `Map.remove` all land here. `free` is a positive statement that any value is
+            // legal, not "unknown, so guess" -- nothing typed `free` is ever value-checked.
+            else -> "free"
+        }
+
+        // A name read as two different types somewhere in one inheritance chain resolves to `free`.
+        // A conflict means the extraction did not fully understand the class, and this plugin
+        // already prefers declining a claim to making a confident wrong one.
+        internal fun mergeType(existing: String?, incoming: String): String =
+            if (existing == null || existing == incoming) incoming else "free"
+
+        // How many parameters of a call could hold a string. The attribute name is always the
+        // first of them, so counting them lets the reader take the literals that belong to *this*
+        // call rather than whatever happened to be pushed before it.
+        internal fun stringLikeParameters(descriptor: String): Int {
+            val parameters = descriptor.substringAfter('(').substringBefore(')')
+            var index = 0
+            var count = 0
+            while (index < parameters.length) {
+                when (parameters[index]) {
+                    'L' -> {
+                        val end = parameters.indexOf(';', index)
+                        if (end < 0) return count
+                        val type = parameters.substring(index + 1, end)
+                        if (type == "java/lang/String" || type == "java/lang/Object") count++
+                        index = end + 1
+                    }
+                    // An array prefix; the element type follows and is handled on the next pass.
+                    '[' -> index++
+                    else -> index++
+                }
+            }
+            return count
         }
     }
 }
