@@ -268,7 +268,7 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         val properties = when (tag.name) {
             in SolrSchemaTags.FIELD -> SolrFieldProperties.FOR_FIELD
             in SolrSchemaTags.FIELD_TYPE -> SolrFieldProperties.FOR_FIELD_TYPE
-            else -> return emptyList()
+            else -> return structuralAttributeNames(tag.name, already)
         }
         return properties
             .filter { it.name !in already }
@@ -278,6 +278,21 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
                     .withTailText("  ${firstSentence(property.summary)}", true)
             }
     }
+
+    /**
+     * The attributes of the structural elements the property table does not cover — the schema
+     * root, a copy rule, an analyzer.
+     *
+     * [SolrSchemaElements] owns the list for the same reason it owns the element descriptions,
+     * and an element it does not list — a `uniqueKey` takes no attributes at all — stays silent.
+     */
+    private fun structuralAttributeNames(tagName: String, already: Set<String>): List<LookupElement> =
+        SolrSchemaElements.attributesOf(tagName)
+            .filter { it.name !in already }
+            .map { attribute ->
+                LookupElementBuilder.create(attribute.name)
+                    .withTailText("  ${firstSentence(attribute.summary)}", true)
+            }
 
     /**
      * The attributes the factory named in this tag's `class` accepts, or null when the tag is not

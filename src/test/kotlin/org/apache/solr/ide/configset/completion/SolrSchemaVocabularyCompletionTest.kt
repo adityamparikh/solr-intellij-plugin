@@ -81,10 +81,10 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
 
     /**
      * A `copyField` carries `source`, `dest` and `maxChars` — none of which is a field property.
-     * The property table is the only thing this knows, so the honest answer is silence rather than
-     * a list of attributes that would be errors on this tag.
+     * Its own three are offered; the property table's are not, because they would be errors on
+     * this tag.
      */
-    fun testNoAttributesAreOfferedOnATagWithNoKnownProperties() {
+    fun testACopyFieldOffersItsOwnAttributesAndNoFieldProperties() {
         val offered = completionsFor(
             """
             <schema name="t">
@@ -94,8 +94,45 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
             </schema>
             """.trimIndent(),
         )
+        assertTrue("expected dest among $offered", "dest" in offered)
+        assertTrue("expected maxChars among $offered", "maxChars" in offered)
+        assertFalse("source is already on the tag: $offered", "source" in offered)
         assertFalse("indexed is not a copyField attribute: $offered", "indexed" in offered)
         assertFalse("sortMissingLast is not a copyField attribute: $offered", "sortMissingLast" in offered)
+    }
+
+    /**
+     * The root element's own vocabulary. `version` is the one worth offering — it silently changes
+     * schema-wide defaults, and a reader who has never met it will not type it unprompted.
+     */
+    fun testTheSchemaTagOffersItsOwnAttributes() {
+        val offered = completionsFor(
+            """
+            <schema <caret>>
+              <fieldType name="string" class="solr.StrField"/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected name among $offered", "name" in offered)
+        assertTrue("expected version among $offered", "version" in offered)
+        assertFalse("indexed is a field property, not a schema attribute: $offered", "indexed" in offered)
+    }
+
+    /** An `analyzer` carries exactly `type`, whose two values already complete. */
+    fun testAnAnalyzerOffersItsTypeAttribute() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="text" class="solr.TextField">
+                <analyzer <caret>>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected type among $offered", "type" in offered)
+        assertFalse("indexed is a field property, not an analyzer attribute: $offered", "indexed" in offered)
     }
 
     fun testFieldAttributesAreOffered() {
