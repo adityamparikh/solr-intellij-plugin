@@ -102,50 +102,6 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
     // has been stable for decades, where Solr's factory API is precisely the thing that moves.
     private val mapReaders = setOf("get", "remove", "containsKey")
 
-    // The value type, taken from the JVM return descriptor. This is the compiler's own answer
-    // about what the factory did with the string, which is why it is read here rather than
-    // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
-    // same thing are two records of one fact, and only one of them cannot drift.
-    private fun valueTypeOf(descriptor: String): String = when (descriptor.substringAfterLast(')')) {
-        "I" -> "int"
-        "Z" -> "bool"
-        "F", "D" -> "float"
-        // `Ljava/lang/String;`, `C`, `Ljava/util/Set;`, `Ljava/util/regex/Pattern;` and the
-        // erased `Map.remove` all land here. `free` is a positive statement that any value is
-        // legal, not "unknown, so guess" -- nothing typed `free` is ever value-checked.
-        else -> "free"
-    }
-
-    // A name read as two different types somewhere in one inheritance chain resolves to `free`.
-    // A conflict means the extraction did not fully understand the class, and this plugin
-    // already prefers declining a claim to making a confident wrong one.
-    private fun mergeType(existing: String?, incoming: String): String =
-        if (existing == null || existing == incoming) incoming else "free"
-
-    // How many parameters of a call could hold a string. The attribute name is always the
-    // first of them, so counting them lets the reader take the literals that belong to *this*
-    // call rather than whatever happened to be pushed before it.
-    private fun stringLikeParameters(descriptor: String): Int {
-        val parameters = descriptor.substringAfter('(').substringBefore(')')
-        var index = 0
-        var count = 0
-        while (index < parameters.length) {
-            when (parameters[index]) {
-                'L' -> {
-                    val end = parameters.indexOf(';', index)
-                    if (end < 0) return count
-                    val type = parameters.substring(index + 1, end)
-                    if (type == "java/lang/String" || type == "java/lang/Object") count++
-                    index = end + 1
-                }
-                // An array prefix; the element type follows and is handled on the next pass.
-                '[' -> index++
-                else -> index++
-            }
-        }
-        return count
-    }
-
     // Where Solr declares what a <field> accepts. `propertyNames` is the parser's whole
     // vocabulary, and `isPropertyIgnored` names the attributes it waves through without acting
     // on — `default`, and the two format selectors that only mean something on the type.
@@ -469,6 +425,56 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
                 .writeText(buildCatalog(input.line.get(), input.version.get(), relevant))
             File(directory, "field-properties-${input.line.get()}.txt")
                 .writeText(buildFieldProperties(input.line.get(), input.version.get(), relevant))
+        }
+    }
+
+    // The descriptor-parsing rules, on the companion so `GenerateSolrCatalogTaskTest` can pin
+    // them without standing up a Gradle project. They are the part of the extraction that is
+    // pure input-to-output; everything stateful stays on the instance.
+    internal companion object {
+
+        // The value type, taken from the JVM return descriptor. This is the compiler's own answer
+        // about what the factory did with the string, which is why it is read here rather than
+        // mapped from the method name: `getInt` returning `I` and a name-to-type table saying the
+        // same thing are two records of one fact, and only one of them cannot drift.
+        internal fun valueTypeOf(descriptor: String): String = when (descriptor.substringAfterLast(')')) {
+            "I" -> "int"
+            "Z" -> "bool"
+            "F", "D" -> "float"
+            // `Ljava/lang/String;`, `C`, `Ljava/util/Set;`, `Ljava/util/regex/Pattern;` and the
+            // erased `Map.remove` all land here. `free` is a positive statement that any value is
+            // legal, not "unknown, so guess" -- nothing typed `free` is ever value-checked.
+            else -> "free"
+        }
+
+        // A name read as two different types somewhere in one inheritance chain resolves to `free`.
+        // A conflict means the extraction did not fully understand the class, and this plugin
+        // already prefers declining a claim to making a confident wrong one.
+        internal fun mergeType(existing: String?, incoming: String): String =
+            if (existing == null || existing == incoming) incoming else "free"
+
+        // How many parameters of a call could hold a string. The attribute name is always the
+        // first of them, so counting them lets the reader take the literals that belong to *this*
+        // call rather than whatever happened to be pushed before it.
+        internal fun stringLikeParameters(descriptor: String): Int {
+            val parameters = descriptor.substringAfter('(').substringBefore(')')
+            var index = 0
+            var count = 0
+            while (index < parameters.length) {
+                when (parameters[index]) {
+                    'L' -> {
+                        val end = parameters.indexOf(';', index)
+                        if (end < 0) return count
+                        val type = parameters.substring(index + 1, end)
+                        if (type == "java/lang/String" || type == "java/lang/Object") count++
+                        index = end + 1
+                    }
+                    // An array prefix; the element type follows and is handled on the next pass.
+                    '[' -> index++
+                    else -> index++
+                }
+            }
+            return count
         }
     }
 }
