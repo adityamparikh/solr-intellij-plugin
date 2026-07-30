@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * What each attribute accepts, tested without a fixture.
+ * Which attributes each element accepts, tested without a fixture.
  *
- * Only half the question this file will eventually answer. Whether a *set* of attributes is complete
- * is a separate and much harder claim, and arrives with the inspection that needs it.
+ * The two questions this answers are deliberately separate, and the tests are grouped that way:
+ * *what does this attribute accept* is answerable far more often than *is this the complete set*.
  */
 class SolrAttributeVocabularyTest {
 
@@ -18,6 +18,9 @@ class SolrAttributeVocabularyTest {
 
     private fun typeOf(tag: String, attribute: String, className: String? = null) =
         SolrAttributeVocabulary.typeOf(tag, attribute, className, latest)
+
+    private fun vocabularyFor(tag: String, className: String? = null) =
+        SolrAttributeVocabulary.closedVocabularyFor(tag, className, latest)
 
     // --- what an attribute accepts ----------------------------------------------------------------
 
@@ -74,5 +77,72 @@ class SolrAttributeVocabularyTest {
     fun `a filter is not typed against a tokenizer's attributes`() {
         // `mode` belongs to JapaneseTokenizerFactory. Asking for it on a filter must not resolve.
         assertNull(typeOf("filter", "mode", "solr.JapaneseTokenizerFactory"))
+    }
+
+    // --- whether the set of attributes is complete -------------------------------------------------
+
+    @Test
+    fun `a field has a closed vocabulary`() {
+        val legal = vocabularyFor("field")
+        assertTrue(legal!!.contains("indexed"))
+        assertTrue("structural attributes must be legal", legal.contains("name") && legal.contains("type"))
+        assertFalse(legal.contains("indexd"))
+    }
+
+    /**
+     * Solr accepts more on a `<field>` than the Reference Guide's table lists.
+     *
+     * `FieldProperties.propertyNames` in solr-core carries `tokenized`, `binary` and
+     * `storeOffsetsWithPositions`, and `isPropertyIgnored` waves `postingsFormat` and
+     * `docValuesFormat` through. Each loads without error, so reporting any of them would underline
+     * a file Solr accepts.
+     */
+    @Test
+    fun `every field attribute solr-core accepts is legal`() {
+        val accepted = listOf(
+            "tokenized", "binary", "storeOffsetsWithPositions", "postingsFormat", "docValuesFormat",
+        )
+        for (tag in listOf("field", "dynamicField")) {
+            val legal = vocabularyFor(tag)!!
+            for (name in accepted) {
+                assertTrue("$name must be legal on a <$tag>", legal.contains(name))
+            }
+        }
+    }
+
+    @Test
+    fun `a known analysis class has a closed vocabulary that includes class itself`() {
+        val legal = vocabularyFor("filter", "solr.EdgeNGramFilterFactory")
+        assertTrue(legal!!.contains("minGramSize"))
+        // The generator strips `class` on purpose, so this is the guard that stops the inspection
+        // flagging the very attribute it used to find the entry.
+        assertTrue("class must be legal", legal.contains("class"))
+    }
+
+    /**
+     * A field type delegates to classes its own configuration names.
+     *
+     * `providerClass` selects the `ExchangeRateProvider` that reads `currencyConfig`, and no walk
+     * from the field type reaches a collaborator chosen at runtime. Solr's own
+     * `sample_techproducts_configs` writes that attribute, so a closed answer here would underline a
+     * configset Solr ships.
+     */
+    @Test
+    fun `a field type never has a closed vocabulary`() {
+        assertNull(vocabularyFor("fieldType", "solr.CurrencyFieldType"))
+        assertNull(vocabularyFor("fieldType", "solr.StrField"))
+    }
+
+    @Test
+    fun `a class outside Solr never has a closed vocabulary`() {
+        assertNull(vocabularyFor("filter", "com.example.MyFilterFactory"))
+    }
+
+    @Test
+    fun `an element with no class has no closed vocabulary`() {
+        assertNull(vocabularyFor("filter", null))
+        assertNull(vocabularyFor("copyField"))
+        assertNull(vocabularyFor("analyzer"))
+        assertNull(vocabularyFor("schema"))
     }
 }

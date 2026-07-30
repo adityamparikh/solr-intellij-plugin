@@ -1,12 +1,13 @@
 package org.apache.solr.ide.model
 
 /**
- * What each schema element's attributes accept.
+ * What each schema element accepts, and whether that list is the whole story.
  *
- * Answered here rather than in the inspection that asks, because *what does this attribute accept*
- * and *is this the complete set of attributes* are two questions with very different answers, and
- * conflating them is how a checker starts underlining correct files. Only the first is answered so
- * far; the second arrives with the inspection that needs it.
+ * Two questions are answered here rather than in the inspections that ask them, because both
+ * inspections need the same answer and a second copy would drift. The questions are deliberately
+ * separate: *what does this attribute accept* is answerable far more often than *is this the
+ * complete set of attributes*, and conflating them is how a checker starts underlining correct
+ * files.
  */
 object SolrAttributeVocabulary {
 
@@ -19,6 +20,27 @@ object SolrAttributeVocabulary {
      * to find the entry. `type` and `dest`/`source` are structural in the same way.
      */
     private val STRUCTURAL: Set<String> = setOf("class", "name", "type", "source", "dest")
+
+    /**
+     * Field attributes Solr accepts that the Reference Guide's field table never lists.
+     *
+     * `FieldProperties` in solr-core is the authority on what a `<field>` may carry, and it accepts
+     * three names the guide's table omits — `tokenized` and `binary` are index-detail bits a schema
+     * may still set, and `storeOffsetsWithPositions` is documented only alongside the highlighter
+     * that reads it. `postingsFormat` and `docValuesFormat` are stranger: `isPropertyIgnored`
+     * exempts them by name, so on a field they load without error and do nothing, being read only
+     * from the type. All five are names Solr accepts — solr-core 9 and 10 agree on the list — so a
+     * closed vocabulary omitting them would underline a file Solr loads. None of them join
+     * [SolrFieldProperties], because completion and documentation offer what the guide describes,
+     * not everything the parser tolerates.
+     */
+    private val FIELD_ACCEPTED_UNDOCUMENTED: Set<String> = setOf(
+        "tokenized",
+        "binary",
+        "storeOffsetsWithPositions",
+        "postingsFormat",
+        "docValuesFormat",
+    )
 
     /**
      * The analysis elements, whose `class` names an entry in the generated catalog.
@@ -66,6 +88,49 @@ object SolrAttributeVocabulary {
 
     private fun checkable(type: SolrValueType, members: List<String>): SolrTypedAttribute? =
         if (type == SolrValueType.FREE) null else SolrTypedAttribute(type, members)
+
+    /**
+     * Every attribute [tag] accepts, or null when its vocabulary is not closed.
+     *
+     * **Null is not "none".** It means an attribute absent from any list the plugin holds is not
+     * thereby wrong, and the caller must not report one. Three cases answer null, each for its own
+     * reason:
+     *
+     * A `<fieldType>` always does. It delegates to classes its own configuration names — a
+     * `providerClass` picks the `ExchangeRateProvider` that reads `currencyConfig`, and no walk from
+     * the field type reaches a collaborator chosen at runtime. Solr's own
+     * `sample_techproducts_configs` writes exactly that attribute, so treating a field type's list as
+     * complete would underline a configset Solr ships.
+     *
+     * An analysis element whose `class` the catalog does not know does too, which is how a custom
+     * plugin class stays unflagged without anything having to recognize it as custom.
+     *
+     * So does any element this does not model, which is most of a schema.
+     *
+     * @param tag the element's name, as written
+     * @param className the element's `class` attribute, where it has one
+     * @param version the Solr line this configset targets
+     * @return the complete set of legal attribute names, or null when it cannot be known
+     */
+    fun closedVocabularyFor(
+        tag: String,
+        className: String?,
+        version: SolrVersionSelection,
+    ): Set<String>? {
+        if (tag in SolrSchemaElementNames.FIELD) {
+            return SolrFieldProperties.FOR_FIELD.mapTo(mutableSetOf()) { it.name } +
+                STRUCTURAL + FIELD_ACCEPTED_UNDOCUMENTED
+        }
+        val kind = ANALYSIS_KINDS[tag] ?: return null
+        val entry = SolrClassCatalog.find(className ?: return null, version)
+            ?.takeIf { it.kind == kind }
+            ?: return null
+        // A known class with no recovered attributes is not evidence that it accepts none. Every
+        // analysis class Solr ships recovers at least `luceneMatchVersion` from the root of the
+        // hierarchy, so an empty list means the extraction failed rather than that the class is bare.
+        if (entry.attributes.isEmpty()) return null
+        return entry.attributes.mapTo(mutableSetOf()) { it.name } + STRUCTURAL
+    }
 
     private fun propertiesFor(tag: String): List<SolrFieldProperty>? = when (tag) {
         in SolrSchemaElementNames.FIELD -> SolrFieldProperties.FOR_FIELD

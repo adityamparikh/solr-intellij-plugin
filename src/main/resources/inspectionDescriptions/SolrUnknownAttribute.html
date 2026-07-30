@@ -1,0 +1,24 @@
+<html>
+<body>
+Reports an attribute the element cannot accept &mdash; <code>indexd="true"</code>,
+<code>maxGramSiz="15"</code>.
+<p>
+    Solr reports these only when the core loads &mdash; the schema throws
+    <code>Invalid field property</code>, the factory <code>Unknown parameters</code> &mdash; and a
+    core load may be a production reload long after the edit. This inspection reports the typo while
+    the file is still open.
+</p>
+<p>
+    This fires only where the set of legal attributes is genuinely complete: on
+    <code>&lt;field&gt;</code> and <code>&lt;dynamicField&gt;</code>, and on an analysis component
+    whose class the generated catalog knows.
+</p>
+<p>
+    It is deliberately silent elsewhere. A <code>&lt;fieldType&gt;</code> is never checked, because
+    it delegates to classes its own configuration names &mdash; a <code>providerClass</code> selects
+    the provider that reads <code>currencyConfig</code> &mdash; so its attribute list is open by
+    construction. A component naming a class outside Solr is never checked either, which is how a
+    custom plugin stays unflagged.
+</p>
+</body>
+</html>
