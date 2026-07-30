@@ -110,8 +110,10 @@ diagnose.
 
 Three facts together are the diagnosis:
 
-1. Every fixture test in the suite fails at once with the same
-   `FileDeletedException: file[#N]: file is deleted, but still in [M].children list`
+1. Every fixture test in the suite fails at once with the same platform-internal error. Two
+   spellings have been seen so far, and the corruption wears others:
+   `FileDeletedException: file[#N]: file is deleted, but still in [M].children list`, and
+   `An exception during updateWithMap(). Index DomFileIndex will be rebuilt.`
 2. The failures are unaffected by `clean`
 3. The plain JUnit 4 tests stay green
 
