@@ -1,6 +1,9 @@
 package org.apache.solr.ide.configset.hint
 
+import com.intellij.codeInsight.hints.declarative.CollapseState
+import com.intellij.codeInsight.hints.declarative.CollapsiblePresentationTreeBuilder
 import com.intellij.codeInsight.hints.declarative.HintFormat
+import com.intellij.codeInsight.hints.declarative.InlayActionData
 import com.intellij.codeInsight.hints.declarative.InlayPayload
 import com.intellij.codeInsight.hints.declarative.InlayPosition
 import com.intellij.codeInsight.hints.declarative.InlayTreeSink
@@ -40,9 +43,10 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
         </schema>
     """.trimIndent()
 
-    /** Records that a presentation was requested, without rendering it. */
+    /** Records each requested presentation and its text segments, without rendering them. */
     private class RecordingSink : InlayTreeSink {
         val presentations = mutableListOf<InlayPosition>()
+        val trees = mutableListOf<List<String>>()
 
         override fun addPresentation(
             position: InlayPosition,
@@ -52,9 +56,30 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
             builder: PresentationTreeBuilder.() -> Unit,
         ) {
             presentations += position
+            trees += RecordingTreeBuilder().apply(builder).segments
         }
 
         override fun whenOptionEnabled(optionId: String, block: () -> Unit) = block()
+    }
+
+    /** Collects `text()` segments in order; the tree structure itself is not under test. */
+    private class RecordingTreeBuilder : PresentationTreeBuilder {
+        val segments = mutableListOf<String>()
+
+        override fun text(text: String, actionData: InlayActionData?) {
+            segments += text
+        }
+
+        override fun list(builder: PresentationTreeBuilder.() -> Unit) = builder()
+
+        override fun collapsibleList(
+            state: CollapseState,
+            expandedState: CollapsiblePresentationTreeBuilder.() -> Unit,
+            collapsedState: CollapsiblePresentationTreeBuilder.() -> Unit,
+        ) = Unit
+
+        override fun clickHandlerScope(actionData: InlayActionData, builder: PresentationTreeBuilder.() -> Unit) =
+            builder()
     }
 
     /**
@@ -111,5 +136,44 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
     fun testNoCollectorOutsideASolrProject() {
         givenNoSolrOnTheClasspath()
         assertTrue(hintedFields().isEmpty())
+    }
+
+    /**
+     * The declarative renderer truncates any single `text()` segment past its inline budget —
+     * `PresentationTreeBuilderImpl.MAX_SEGMENT_TEXT_LENGTH`, 30 characters — so the longest
+     * summary must arrive as several short segments that reconstruct it exactly. One segment
+     * carrying the whole summary renders on screen as "tokenised, case-insensitive,…".
+     */
+    fun testEachHintSegmentFitsTheRenderersInlineBudget() {
+        myFixture.addFileToProject("core/conf/solrconfig.xml", "<config/>")
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="products">
+              <fieldType name="text_prefix" class="solr.TextField">
+                <analyzer type="index">
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                  <filter class="solr.LowerCaseFilterFactory"/>
+                  <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
+                </analyzer>
+              </fieldType>
+              <field name="name_prefix" type="text_prefix"/>
+            </schema>
+            """.trimIndent(),
+        )
+        val collector = SolrMatchInlayHintsProvider().createCollector(myFixture.file, myFixture.editor)!!
+        val sink = RecordingSink()
+        for (tag in PsiTreeUtil.findChildrenOfType(myFixture.file, XmlTag::class.java)) {
+            (collector as SharedBypassCollector).collectFromElement(tag, sink)
+        }
+
+        val segments = sink.trees.single()
+        assertEquals("tokenised, case-insensitive, prefix-capable", segments.joinToString(""))
+        for (segment in segments) {
+            assertTrue(
+                "'$segment' (${segment.length} chars) exceeds the renderer's 30-character segment budget",
+                segment.length <= 30,
+            )
+        }
     }
 }
