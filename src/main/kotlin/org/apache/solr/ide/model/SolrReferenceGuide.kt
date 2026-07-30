@@ -55,6 +55,27 @@ object SolrReferenceGuide {
     }
 
     /**
+     * The guide page describing the class a `class` attribute names, chosen by what the class is.
+     *
+     * One mapping on purpose: the popup's footer link and the external-documentation URL must
+     * never disagree about where a class is documented, and an exhaustive `when` here is what
+     * makes a new [SolrClassKind] update both under compiler pressure.
+     *
+     * @param kind what the class is
+     * @param className the class name, in either the `solr.` or fully qualified form
+     * @param version the Solr line the configset targets
+     * @return an absolute URL, or null when no page is known for it
+     */
+    fun classPage(kind: SolrClassKind, className: String, version: SolrVersionSelection): String? =
+        when (kind) {
+            SolrClassKind.FIELD_TYPE -> fieldTypesPage(version)
+            SolrClassKind.TOKENIZER,
+            SolrClassKind.TOKEN_FILTER,
+            SolrClassKind.CHAR_FILTER,
+            -> analyzerComponentPage(className, version)
+        }
+
+    /**
      * The guide page describing field type definitions and the properties fields may carry.
      *
      * This is the page behind every entry in [SolrFieldProperties]: it holds the property table

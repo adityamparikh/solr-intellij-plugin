@@ -797,6 +797,10 @@ is the one to run by hand, for the reason in the criterion above.
 request ahead of this step, because none of it needs the catalog. Positions where any value
 is legal are left to the platform: a partial list implies the values not on it are wrong.
 What remains here is the catalog-backed half, which is what the dependency below is about.
+Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup
+renders the catalog's kind, spellings and attributes plus the schema's own usage, and the
+Javadoc summary waits on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
+resolution.
 
 **Actions:**
 1. Completion for field types, factories, their attributes, and field attributes.

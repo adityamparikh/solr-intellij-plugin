@@ -11,6 +11,8 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.model.SolrClassCatalog
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
@@ -20,7 +22,7 @@ import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
- * Quick documentation for fields and field types in a configset.
+ * Quick documentation for fields, field types and `class` attribute values in a configset.
  *
  * Answers the question the Reference Guide cannot: not "what does `omitNorms` mean" in general, but
  * what it is *for this field in this schema*, and whether that value came from the field, from its
@@ -96,6 +98,14 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
                 val type = model.fieldTypes[target.name]?.effective ?: return null
                 SolrFieldPresentation.fieldTypeDocumentation(type, version)
             }
+            is Target.SchemaClass -> {
+                val entry = SolrClassCatalog.find(target.name, version) ?: return null
+                SolrFieldPresentation.classDocumentation(
+                    entry,
+                    SolrSchemaElements.classSpecifics(entry, model),
+                    version,
+                )
+            }
             null -> null
         }
     }
@@ -115,9 +125,10 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
         val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
         val version = versionOf(SolrConfigsetReader.getInstance(file.project).modelFor(configset))
-        return when (documentedTarget(value)) {
+        return when (val target = documentedTarget(value)) {
             is Target.Field -> listOf(SolrReferenceGuide.fieldPropertiesPage(version))
             is Target.Type -> listOf(SolrReferenceGuide.fieldTypesPage(version))
+            is Target.SchemaClass -> classPage(target.name, version)?.let { listOf(it) }
             null -> null
         }
     }
@@ -202,13 +213,22 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             tag.name in SolrSchemaTags.FIELD && attribute.name == "type" -> Target.Type(name)
             tag.name in SolrSchemaTags.FIELD && attribute.name == "name" -> Target.Field(name)
             tag.name in SolrSchemaTags.FIELD_TYPE && attribute.name == "name" -> Target.Type(name)
+            attribute.name == "class" && SolrClassKind.forTag(tag.name) != null -> Target.SchemaClass(name)
             else -> null
         }
+    }
+
+    /** The guide page for the class [name] refers to, or null when the catalog does not know it. */
+    private fun classPage(name: String, version: SolrVersionSelection): String? {
+        val entry = SolrClassCatalog.find(name, version) ?: return null
+        return SolrReferenceGuide.classPage(entry.kind, entry.className, version)
     }
 
     private sealed interface Target {
         data class Field(val name: String) : Target
         data class Type(val name: String) : Target
+        /** A `class` attribute's value — named `SchemaClass` so it cannot shadow `java.lang.Class`. */
+        data class SchemaClass(val name: String) : Target
     }
 
 }

@@ -17,7 +17,30 @@ enum class SolrClassKind(internal val token: String) {
     TOKEN_FILTER("tokenFilter"),
 
     /** A `<charFilter>`, applied to the raw text before tokenization. */
-    CHAR_FILTER("charFilter"),
+    CHAR_FILTER("charFilter");
+
+    /** Lookup from the schema's element vocabulary. */
+    companion object {
+
+        /**
+         * The kind of class [tagName]'s `class` attribute names, or null when the element does
+         * not carry one.
+         *
+         * Both spellings of `fieldType` are accepted, as Solr accepts both. This is the single
+         * mapping from schema vocabulary to catalog population; completion and documentation both
+         * read it, so a kind added to one cannot silently be missed by the other.
+         *
+         * @param tagName an element name as written in a schema
+         * @return the kind, or null
+         */
+        fun forTag(tagName: String): SolrClassKind? = when (tagName) {
+            "fieldType", "fieldtype" -> FIELD_TYPE
+            "tokenizer" -> TOKENIZER
+            "filter" -> TOKEN_FILTER
+            "charFilter" -> CHAR_FILTER
+            else -> null
+        }
+    }
 }
 
 /**
