@@ -34,6 +34,12 @@
             isEnabledByDefault="true"
             implementationClass="org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider"/>
 
+        <!-- Element descriptors for schema files. A schema has no XSD, so without these the
+             platform guesses: attribute completion echoes whatever same-named sibling tags carry.
+             The descriptors are deliberately permissive — validation stays with the inspections. -->
+        <xml.elementDescriptorProvider
+            implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
+
         <!-- Quick documentation on a field or its type, resolving each property's effective value
              and where it came from. -->
         <lang.documentationProvider
@@ -50,8 +56,11 @@
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
              values not on it are wrong. -->
+        <!-- order="first" so the vocabulary provider runs ahead of the platform's XML contributor
+             and can drop the bare duplicates of names it already offered with summaries. -->
         <completion.contributor
             language="XML"
+            order="first"
             implementationClass="org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor"/>
 
         <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
