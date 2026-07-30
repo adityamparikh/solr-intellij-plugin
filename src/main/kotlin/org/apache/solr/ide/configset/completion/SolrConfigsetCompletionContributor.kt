@@ -230,6 +230,15 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         }
         if (suggestions.isEmpty()) return
         result.addAllElements(suggestions)
+
+        // The platform offers these same names again, read back from the element descriptors this
+        // plugin now provides, as bare rows without the summaries. Only the exact duplicates are
+        // dropped; everything else another contributor wants to add passes through untouched,
+        // which is the promise `stopHere` could not make.
+        val offered = suggestions.mapTo(HashSet()) { it.lookupString }
+        result.runRemainingContributors(parameters) { delegate ->
+            if (delegate.lookupElement.lookupString !in offered) result.passResult(delegate)
+        }
     }
 
     /**

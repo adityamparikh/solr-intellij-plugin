@@ -381,6 +381,43 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A sibling's attributes are not echoed. The platform's schema-less XML fallback offers
+     * attribute names collected from same-named tags elsewhere in the file — an EdgeNGram filter
+     * next door put `minGramSize` on every `<filter>` in the schema. Owning the element
+     * descriptor is what replaces that guess with the catalog's answer.
+     */
+    fun testAnotherFactorysAttributesAreNotEchoedFromSiblingTags() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="x" class="solr.TextField">
+                <analyzer>
+                  <filter class="solr.LowerCaseFilterFactory" <caret>/>
+                  <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertFalse("minGramSize belongs to the sibling EdgeNGram filter: $offered", "minGramSize" in offered)
+        assertFalse("maxGramSize belongs to the sibling EdgeNGram filter: $offered", "maxGramSize" in offered)
+    }
+
+    /** One entry per attribute: the descriptor and the contributor must not both add a row. */
+    fun testAttributeNamesAreOfferedExactlyOnce() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="sku" type="string" <caret>/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertEquals("indexed offered more than once: $offered", 1, offered.count { it == "indexed" })
+        assertEquals("stored offered more than once: $offered", 1, offered.count { it == "stored" })
+    }
+
+    /**
      * A class the catalog does not know accepts attributes the plugin cannot name. Silence is the
      * answer; falling through to the field-property table would offer `indexed` on a filter.
      */
@@ -496,3 +533,4 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
         assertFalse("dynamicField" in offered)
     }
 }
+

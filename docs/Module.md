@@ -96,6 +96,16 @@ the caret.
 [Why only closed sets are
 completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetcompletion).
 
+# Package org.apache.solr.ide.configset.descriptor
+
+Owning the XML element descriptors for schema files, so the platform's answers
+come from the plugin's knowledge instead of from schema-less guessing — which
+echoed one filter's attributes onto every other.
+
+Deliberately permissive: every unknown attribute and element resolves rather
+than being flagged, because validation is the inspections' job and they know
+when not to fire.
+
 # Package org.apache.solr.ide.configset.reference
 
 Turning the strings that hold a configset together into references the editor
