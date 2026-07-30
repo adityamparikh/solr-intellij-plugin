@@ -2,10 +2,15 @@ package org.apache.solr.ide.configset.documentation
 
 import org.apache.solr.ide.model.SolrAnalyzerChain
 import org.apache.solr.ide.model.SolrAnalyzerComponent
+import org.apache.solr.ide.model.SolrClassAttribute
+import org.apache.solr.ide.model.SolrClassEntry
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldType
+import org.apache.solr.ide.model.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,6 +45,23 @@ class SolrFieldPresentationTest {
         name = "custom",
         className = "solr.TextField",
         indexAnalyzer = SolrAnalyzerChain(tokenizer = SolrAnalyzerComponent("com.example.MysteryTokenizerFactory")),
+    )
+
+    private val strFieldEntry = SolrClassEntry(
+        SolrClassKind.FIELD_TYPE,
+        "org.apache.solr.schema.StrField",
+        "solr.StrField",
+        listOf(SolrClassAttribute("docValuesFormat")),
+    )
+
+    private val edgeNGramEntry = SolrClassEntry(
+        SolrClassKind.TOKEN_FILTER,
+        "org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory",
+        "solr.EdgeNGramFilterFactory",
+        listOf(
+            SolrClassAttribute("maxGramSize", SolrValueType.INTEGER),
+            SolrClassAttribute("preserveOriginal", SolrValueType.BOOLEAN),
+        ),
     )
 
     private fun field(type: String) = SolrField("f", type)
@@ -120,5 +142,53 @@ class SolrFieldPresentationTest {
         )
         assertTrue("raw markup must not survive", !html.contains("<script>"))
         assertTrue(html.contains("&lt;script&gt;"))
+    }
+
+    // --- the class documentation popup -------------------------------------------------------
+
+    @Test
+    fun `a class popup names the kind and both spellings`() {
+        val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
+        assertTrue(html.contains("solr.StrField"))
+        assertTrue("the kind belongs in the definition: $html", html.contains("field type class"))
+        assertTrue(html.contains("org.apache.solr.schema.StrField"))
+    }
+
+    @Test
+    fun `a class popup lists the attributes the class accepts with their value types`() {
+        val html = SolrFieldPresentation.classDocumentation(edgeNGramEntry, null, SolrVersionSelection.DEFAULT)
+        assertTrue(html.contains("maxGramSize"))
+        assertTrue("an int attribute reads as a whole number: $html", html.contains("whole number"))
+        assertTrue("a bool attribute reads as true or false: $html", html.contains("true or false"))
+    }
+
+    @Test
+    fun `a class with no known attributes claims nothing about them`() {
+        val bare = SolrClassEntry(SolrClassKind.TOKENIZER, "org.example.T", "solr.T")
+        val html = SolrFieldPresentation.classDocumentation(bare, null, SolrVersionSelection.DEFAULT)
+        assertFalse("no attribute table for an empty list: $html", html.contains("Accepts"))
+    }
+
+    @Test
+    fun `a factory popup links the guide page for its kind`() {
+        val html = SolrFieldPresentation.classDocumentation(edgeNGramEntry, null, SolrVersionSelection.DEFAULT)
+        assertTrue("expected the filters page: $html", html.contains("/indexing-guide/filters.html"))
+    }
+
+    @Test
+    fun `a field type class popup links the field types page`() {
+        val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
+        assertTrue("expected the field types page: $html", html.contains("/indexing-guide/field-types-included-with-solr.html"))
+    }
+
+    @Test
+    fun `specifics render under the configset heading`() {
+        val html = SolrFieldPresentation.classDocumentation(
+            strFieldEntry,
+            "Used by 1 field type: <code>string</code>.",
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("In this configset:"))
+        assertTrue(html.contains("<code>string</code>"))
     }
 }
