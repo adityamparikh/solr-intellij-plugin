@@ -2,16 +2,10 @@ import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
 rootProject.name = "solr-intellij-plugin"
 
-pluginManagement {
-    plugins {
-        id("org.jetbrains.kotlin.jvm") version "2.4.10"
-        id("org.jetbrains.changelog") version "2.5.0"
-        id("org.jetbrains.kotlinx.kover") version "0.9.9"
-        id("org.sonarqube") version "7.3.1.8318"
-        id("org.jetbrains.dokka") version "2.2.0"
-    }
-}
-
+// The only versions declared outside gradle/libs.versions.toml. A settings `plugins` block runs
+// before any version catalog exists, so these two cannot be aliased; every other plugin is applied
+// in build.gradle.kts via `alias(libs.plugins...)`. The IntelliJ Platform version named here also
+// governs the unversioned `org.jetbrains.intellij.platform` id the build script applies.
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
     id("org.jetbrains.intellij.platform.settings") version "2.18.1"
