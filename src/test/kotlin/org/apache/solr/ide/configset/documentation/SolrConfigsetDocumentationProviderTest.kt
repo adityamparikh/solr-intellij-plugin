@@ -278,4 +278,21 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         assertNotNull(urls)
         assertTrue("expected the filters page: $urls", urls!!.single().endsWith("/indexing-guide/filters.html"))
     }
+
+    fun testExternalUrlForAFieldTypeClassNamesTheFieldTypesPage() {
+        givenSolrConfigAtFixtureRoot()
+        myFixture.configureByText("managed-schema.xml", caretInside("solr.StrField"))
+        val element: PsiElement = provider.getCustomDocumentationElement(
+            myFixture.editor,
+            myFixture.file,
+            myFixture.file.findElementAt(myFixture.caretOffset),
+            myFixture.caretOffset,
+        )!!
+        val urls = provider.getUrlFor(element, element)
+        assertNotNull(urls)
+        assertTrue(
+            "expected the field types page: $urls",
+            urls!!.single().endsWith("/indexing-guide/field-types-included-with-solr.html"),
+        )
+    }
 }

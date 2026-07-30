@@ -221,10 +221,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
     /** The guide page for the class [name] refers to, or null when the catalog does not know it. */
     private fun classPage(name: String, version: SolrVersionSelection): String? {
         val entry = SolrClassCatalog.find(name, version) ?: return null
-        return when (entry.kind) {
-            SolrClassKind.FIELD_TYPE -> SolrReferenceGuide.fieldTypesPage(version)
-            else -> SolrReferenceGuide.analyzerComponentPage(entry.className, version)
-        }
+        return SolrReferenceGuide.classPage(entry.kind, entry.className, version)
     }
 
     private sealed interface Target {

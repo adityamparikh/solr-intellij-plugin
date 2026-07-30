@@ -85,7 +85,7 @@ object SolrFieldPresentation {
         append("<div class='content'>")
         append("<p>${description.summary}</p>")
         // Not escaped: the specifics are built by this plugin from model values, and carry markup
-        // of their own. The values interpolated into them are escaped at the point they are read.
+        // of their own. XML attribute values cannot contain a raw `<`, so no markup arrives here.
         specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
         // The resolved configuration, on the element rather than only on its name. Hovering the tag
         // is the gesture a reader makes; requiring the caret to be inside the `name` quotes hid the
@@ -233,10 +233,7 @@ object SolrFieldPresentation {
      * for a tokenizer; a link that lands somewhere unrelated teaches a reader to stop clicking.
      */
     private fun classGuideLink(entry: SolrClassEntry, version: SolrVersionSelection): String {
-        val url = when (entry.kind) {
-            SolrClassKind.FIELD_TYPE -> SolrReferenceGuide.fieldTypesPage(version)
-            else -> SolrReferenceGuide.analyzerComponentPage(entry.className, version)
-        } ?: return ""
+        val url = SolrReferenceGuide.classPage(entry.kind, entry.className, version) ?: return ""
         val label = when (entry.kind) {
             SolrClassKind.FIELD_TYPE -> "Field types included with Solr"
             SolrClassKind.TOKENIZER -> "Tokenizers in the Reference Guide"
