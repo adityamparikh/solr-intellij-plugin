@@ -373,4 +373,20 @@ class SolrClassCatalogTest {
             }
         }
     }
+
+    @Test
+    fun `every schema element carrying a class maps to its kind`() {
+        assertEquals(SolrClassKind.FIELD_TYPE, SolrClassKind.forTag("fieldType"))
+        assertEquals(SolrClassKind.FIELD_TYPE, SolrClassKind.forTag("fieldtype"))
+        assertEquals(SolrClassKind.TOKENIZER, SolrClassKind.forTag("tokenizer"))
+        assertEquals(SolrClassKind.TOKEN_FILTER, SolrClassKind.forTag("filter"))
+        assertEquals(SolrClassKind.CHAR_FILTER, SolrClassKind.forTag("charFilter"))
+    }
+
+    @Test
+    fun `an element that carries no class maps to nothing`() {
+        assertNull(SolrClassKind.forTag("copyField"))
+        assertNull(SolrClassKind.forTag("analyzer"))
+        assertNull(SolrClassKind.forTag("field"))
+    }
 }
