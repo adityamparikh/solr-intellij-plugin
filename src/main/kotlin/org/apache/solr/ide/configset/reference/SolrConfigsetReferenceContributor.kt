@@ -15,6 +15,7 @@ import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 
 /**
  * Makes the names inside a configset navigable.
@@ -43,6 +44,27 @@ class SolrConfigsetReferenceContributor : PsiReferenceContributor() {
                 copyFieldEnds,
             )
         }
+        // Narrowed to the one tag name that holds parameter values, for the same reason as above.
+        registrar.registerReferenceProvider(
+            XmlPatterns.xmlTag().withLocalName("str"),
+            SolrConfigFieldReferenceProvider(),
+        )
+    }
+}
+
+/** Supplies references from a handler parameter's field names to their schema declarations. */
+private class SolrConfigFieldReferenceProvider : PsiReferenceProvider() {
+
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+        val tag = element as? XmlTag ?: return PsiReference.EMPTY_ARRAY
+        // The file-name check runs first because it is the cheapest way to decline the `<str>`
+        // tags of every other XML file the pattern lets through.
+        if (tag.containingFile.name != "solrconfig.xml") return PsiReference.EMPTY_ARRAY
+        if (!SolrConfigsetDetector.isConfigsetFile(tag.containingFile)) return PsiReference.EMPTY_ARRAY
+
+        val occurrences = SolrConfigParameters.fieldNameOccurrences(tag)
+        if (occurrences.isEmpty()) return PsiReference.EMPTY_ARRAY
+        return occurrences.map { SolrConfigFieldReference(tag, it) }.toTypedArray()
     }
 }
 
@@ -141,6 +163,41 @@ internal class SolrFieldTypeReference(element: XmlAttributeValue) :
      *
      * Completion for this position is contributed by [org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor], which can
      * show what each type matches. Returning variants here as well would produce every type twice.
+     */
+    override fun getVariants(): Array<Any> = emptyArray()
+}
+
+/**
+ * A reference from a field name inside a handler parameter to the schema declaration it names.
+ *
+ * The only reference here that crosses a file boundary: the parameter lives in `solrconfig.xml`
+ * and the declaration in the schema, and nothing in either file connects the two for the editor.
+ * Anchored on the parameter's tag with a range per field name, because a value like
+ * `name^3 description` holds several references in one text node.
+ *
+ * Soft, for the reason [SolrFieldTypeReference] is soft: the unresolved case belongs to
+ * [org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection], which reports it
+ * in Solr's vocabulary from the same positions this reference navigates.
+ */
+internal class SolrConfigFieldReference(
+    tag: XmlTag,
+    private val occurrence: SolrConfigParameters.FieldNameOccurrence,
+) : PsiReferenceBase<XmlTag>(tag, occurrence.rangeInTag, true) {
+
+    /**
+     * The `name` attribute of the declaring `field` or `dynamicField` in the owning configset's
+     * schema, or null when nothing declares it.
+     *
+     * @return the declaring element, or null
+     */
+    override fun resolve(): PsiElement? {
+        val schema = SolrSchemaPsi.schemaFileOf(element.containingFile) ?: return null
+        return SolrSchemaPsi.findField(schema, occurrence.fieldName)
+    }
+
+    /**
+     * No completion variants; what may be offered in a parameter value is the completion
+     * contributor's decision, not this reference's.
      */
     override fun getVariants(): Array<Any> = emptyArray()
 }
