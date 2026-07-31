@@ -17,6 +17,7 @@ behind a link. Read the relevant one before designing anything.
 | [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written |
 | [`specs/0002-solr-intellij-plugin.md`](specs/0002-solr-intellij-plugin.md) | **Intent.** What the plugin is for. Read before designing a feature |
 | [`specs/plans/0002-solr-intellij-plugin-plan.md`](specs/plans/0002-solr-intellij-plugin-plan.md) | **Status and order.** The only file that owns what is built |
+| [`docs/design/`](docs/design/README.md) | Per-feature design records: backlog write-ups not yet in the plan (`pending/`), and shipped ones kept for history (`archive/`) |
 
 ## Commands
 
