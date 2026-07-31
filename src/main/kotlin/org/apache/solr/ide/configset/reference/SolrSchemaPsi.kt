@@ -2,9 +2,12 @@ package org.apache.solr.ide.configset.reference
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
+import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 
 /**
@@ -41,6 +44,24 @@ internal object SolrSchemaPsi {
      */
     fun findField(file: PsiFile, fieldName: String): XmlAttributeValue? =
         findDeclaration(file, SolrSchemaTags.FIELD, fieldName)
+
+    /**
+     * The schema file of the configset owning [file], or null when there is none.
+     *
+     * This is what lets a reference in `solrconfig.xml` cross the file boundary. Deterministic
+     * when a configset carries more than one schema-named file: candidates are taken in name
+     * order, which puts `managed-schema` first — the spelling Solr itself prefers.
+     *
+     * @param file any file of the configset, typically its `solrconfig.xml`
+     * @return the schema as PSI, or null outside a configset or where none exists
+     */
+    fun schemaFileOf(file: PsiFile): PsiFile? {
+        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
+        val schema = configset.root.children
+            .filter { SolrConfigsetFileKind.forFileName(it.name)?.isSchema == true }
+            .minByOrNull { it.name } ?: return null
+        return PsiManager.getInstance(file.project).findFile(schema)
+    }
 
     /**
      * The first tag named in [tagNames] whose `name` attribute is [name].
