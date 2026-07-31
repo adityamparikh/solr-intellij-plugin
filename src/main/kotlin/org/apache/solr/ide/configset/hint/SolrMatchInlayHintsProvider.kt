@@ -64,29 +64,33 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
                 ?: model.dynamicFields[fieldName]?.effective?.field
                 ?: return
 
-            val text = hintFor(field, model.typeOf(field)) ?: return
+            val parts = hintFor(field, model.typeOf(field)) ?: return
             sink.addPresentation(
                 position = InlineInlayPosition(element.textRange.endOffset, relatedToPrevious = true),
                 payloads = null,
                 tooltip = null,
                 hintFormat = HintFormat.default,
             ) {
-                text(text)
+                // One segment per part: the renderer truncates any single segment past 30
+                // characters, and the full summary is over that budget on a tokenised chain.
+                parts.forEachIndexed { index, part ->
+                    text(if (index < parts.lastIndex) "$part, " else part)
+                }
             }
         }
 
         /**
-         * The hint for a field, or null when nothing should be said.
+         * The hint for a field as its summary parts, or null when nothing should be said.
          *
          * Null in two cases, both deliberate. An undeclared field type means the schema is wrong in
          * a way an inspection should report rather than a hint should paper over. An unconfident
          * analysis means a factory in the chain was not recognised, and a wrong claim about what a
          * field matches is worse than no claim.
          */
-        private fun hintFor(field: SolrField, fieldType: SolrFieldType?): String? {
+        private fun hintFor(field: SolrField, fieldType: SolrFieldType?): List<String>? {
             if (fieldType == null) return null
             val capability = SolrMatchAnalysis.of(fieldType)
-            return if (capability.confident) capability.summary else null
+            return if (capability.confident) capability.summaryParts else null
         }
 
     }

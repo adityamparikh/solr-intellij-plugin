@@ -93,13 +93,13 @@ data class SolrMatchCapability(
     val substringSupported: Boolean get() = prefix == SolrPrefixSupport.N_GRAM
 
     /**
-     * A one-line summary: granularity, case, and how partial matching is supported.
+     * The [summary] as its parts: granularity, case, and how partial matching is supported.
      *
-     * Lives on the capability rather than in any one feature's presentation code, because the
-     * inline hint, the documentation popup and the completion lookup all show it and must never
-     * word it differently — the same field described three ways is three chances to be doubted.
+     * Split out for the inline hint, whose renderer truncates any single text segment past a
+     * 30-character budget; a part per segment keeps the whole summary visible. [summary] is
+     * this list joined, so the two can never disagree.
      */
-    val summary: String
+    val summaryParts: List<String>
         get() = buildList {
             add(if (granularity == SolrMatchGranularity.WHOLE_VALUE) "whole value" else "tokenised")
             add(if (caseSensitive) "case-sensitive" else "case-insensitive")
@@ -109,7 +109,17 @@ data class SolrMatchCapability(
                 SolrPrefixSupport.N_GRAM -> add("substring-capable")
                 SolrPrefixSupport.PATH_HIERARCHY -> add("path-prefix-capable")
             }
-        }.joinToString(", ")
+        }
+
+    /**
+     * A one-line summary: granularity, case, and how partial matching is supported.
+     *
+     * Lives on the capability rather than in any one feature's presentation code, because the
+     * inline hint, the documentation popup and the completion lookup all show it and must never
+     * word it differently — the same field described three ways is three chances to be doubted.
+     */
+    val summary: String
+        get() = summaryParts.joinToString(", ")
 
     /** The factory responsible for [trait], or null if nothing in the chain decided it. */
     fun evidenceFor(trait: SolrMatchTrait): String? = evidence.firstOrNull { it.trait == trait }?.factory
