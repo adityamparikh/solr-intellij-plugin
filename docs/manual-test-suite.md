@@ -68,8 +68,9 @@ placement and readability of the rendered hint.*
 
 ## 4. Navigation and Find Usages (NAV)
 
-*Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`. Manual adds: the
-click gesture, caret placement, the Find Usages tool window.*
+*Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`,
+`SolrConfigFieldReferenceTest`. Manual adds: the click gesture, caret placement, the
+Find Usages tool window.*
 
 - [ ] **NAV-1** — Cmd+Click a field's `type="text_general"` jumps to the
       `<fieldType name="text_general">` declaration.
@@ -77,6 +78,10 @@ click gesture, caret placement, the Find Usages tool window.*
       declaration.
 - [ ] **NAV-3** — Find Usages (⌥F7) on the `text_general` field type lists every field
       declared with it.
+- [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
+      (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
+      in `name^3 description` navigates on its own, and Find Usages on the field lists
+      the parameter among its usages.
 
 ## 5. Quick documentation (DOC)
 
@@ -128,8 +133,9 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       each property's summary, and **omits** attributes already present on the tag.
 - [ ] **COMP-3** — `fieldType` general properties complete (`positionIncrementGap`,
       `synonymQueryStyle`, `enableGraphQueries`…), documented like field properties.
-- [ ] **COMP-4** — A boolean value Solr would have used anyway is marked
-      `true (default)`; properties whose default depends on the field type stay unmarked.
+- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked `(default)`,
+      whichever it is — `indexed` marks `true`, `multiValued` marks `false`; properties
+      whose default depends on the field type stay unmarked.
 - [ ] **COMP-5** — A field's `type=` offers the declared types; a `copyField`'s two ends
       offer the declared fields; `<analyzer type=` offers `index`/`query`.
 
@@ -157,8 +163,6 @@ finding one alive means the suite is behind, not that something is wrong:
 
 - Alt-Enter intentions generating an `_exact`/`_prefix` companion field
 - Rename refactoring on fields and field types
-- Cmd+Click from a `solrconfig.xml` parameter into the schema (the inspection sees it;
-  the reference does not yet)
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection

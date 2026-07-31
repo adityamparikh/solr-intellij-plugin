@@ -1,0 +1,125 @@
+package org.apache.solr.ide.configset.parsing
+
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.xml.XmlTag
+
+/**
+ * Where a `solrconfig.xml` parameter names schema fields, as positions in the PSI.
+ *
+ * [SolrConfigParser] decides *what counts* as a field reference — which parameters carry field
+ * names, and how a value like `name^3 description` splits — and this object maps that decision
+ * back onto the tag that holds the value, so the unknown-field inspection and the reference
+ * provider annotate exactly the same positions. It lives in `parsing` because both consume it,
+ * and features go through this package rather than through each other.
+ */
+internal object SolrConfigParameters {
+
+    /**
+     * One field name inside a parameter value.
+     *
+     * @property fieldName the name as the parameter writes it
+     * @property rangeInTag where it sits, relative to the start of the enclosing tag
+     */
+    data class FieldNameOccurrence(val fieldName: String, val rangeInTag: TextRange)
+
+    /**
+     * The field-name occurrences inside [tag], or empty when it is not a parameter value.
+     *
+     * Every occurrence of each referenced name is reported, not just the first: underlining or
+     * navigating only the first `title` in a value that names it twice is exactly the moment a
+     * reader stops trusting the feature. Matches are whole tokens — reporting `name` must not
+     * also cover the `name` inside `name_prefix`.
+     */
+    fun fieldNameOccurrences(tag: XmlTag): List<FieldNameOccurrence> {
+        if (tag.name !in VALUE_TAGS) return emptyList()
+        val parameterName = parameterNameOf(tag) ?: return emptyList()
+        val text = tag.value.text
+        val valueStart = tag.value.textRange.startOffset - tag.textRange.startOffset
+
+        val occurrences = mutableListOf<FieldNameOccurrence>()
+        for (name in referencedFieldNames(parameterName, text)) {
+            var index = text.indexOf(name)
+            while (index >= 0) {
+                if (isWholeToken(text, index, name.length)) {
+                    occurrences += FieldNameOccurrence(
+                        name,
+                        TextRange(valueStart + index, valueStart + index + name.length),
+                    )
+                }
+                index = text.indexOf(name, index + 1)
+            }
+        }
+        return occurrences
+    }
+
+    /**
+     * Whether the match at [index] is a whole token rather than part of a longer name.
+     */
+    private fun isWholeToken(text: String, index: Int, length: Int): Boolean {
+        val before = text.getOrNull(index - 1)
+        val after = text.getOrNull(index + length)
+        return (before == null || before in SEPARATORS) && (after == null || after in SEPARATORS)
+    }
+
+    /**
+     * The `name` of the enclosing parameter, or null when this tag is not inside a parameter list.
+     *
+     * An `<str>` inside an `<arr name="facet.field">` takes its parameter name from the array; one
+     * directly under a `<lst name="defaults">` carries its own.
+     */
+    private fun parameterNameOf(tag: XmlTag): String? {
+        val own = tag.getAttributeValue("name")
+        if (own != null) return own.takeIf { enclosingIsParameterList(tag.parentTag) }
+        val parent = tag.parentTag ?: return null
+        if (parent.name != "arr") return null
+        return parent.getAttributeValue("name")?.takeIf { enclosingIsParameterList(parent.parentTag) }
+    }
+
+    /**
+     * Whether [tag] is a parameter list belonging to something that supplies query parameters.
+     *
+     * The enclosing check is not optional. `<lst name="defaults">` also appears under elements that
+     * have nothing to do with queries — an update processor chain, for one — and the parser already
+     * declines to read those. Without this, positions would be reported that the model itself says
+     * hold no field references.
+     */
+    private fun enclosingIsParameterList(tag: XmlTag?): Boolean =
+        tag?.name == "lst" &&
+            tag.getAttributeValue("name") in PARAMETER_SETS &&
+            tag.parentTag?.name in PARAMETER_CARRIERS
+
+    /**
+     * The field names a parameter's text refers to, reusing the parser's rules rather than
+     * restating them.
+     *
+     * Parsing a one-parameter document is wasteful in the abstract and free in practice — it runs
+     * per parameter tag on a file the user is editing — and it guarantees the consumers and the
+     * model can never disagree about what counts as a field reference.
+     */
+    private fun referencedFieldNames(parameterName: String, text: String): List<String> {
+        val synthetic = """<config><requestHandler name="x"><lst name="defaults">""" +
+            """<str name="${escapeXml(parameterName)}">${escapeXml(text)}</str>""" +
+            """</lst></requestHandler></config>"""
+        return SolrConfigParser.parse(synthetic).fieldReferences.map { it.fieldName }.distinct()
+    }
+
+    private fun escapeXml(text: String): String =
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+    /** Tags whose text holds a parameter value. */
+    private val VALUE_TAGS = setOf("str")
+
+    /** `lst` names whose contents are query parameters. */
+    private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")
+
+    /**
+     * Elements whose parameter lists supply a query.
+     *
+     * The same set the parser accepts, and for the same reason: a `<lst name="defaults">`
+     * elsewhere in `solrconfig.xml` configures something that is not a query.
+     */
+    private val PARAMETER_CARRIERS = setOf("requestHandler", "searchComponent", "initParams")
+
+    /** Characters that may sit either side of a field name in a parameter value. */
+    private val SEPARATORS = charArrayOf(' ', ',', '\t', '\n', '\r', '^')
+}
