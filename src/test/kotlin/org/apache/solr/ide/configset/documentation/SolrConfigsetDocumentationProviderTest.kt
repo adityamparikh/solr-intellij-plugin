@@ -118,8 +118,9 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
     /**
      * An attribute the plugin has nothing to say about still falls back to its element.
      *
-     * `class` is the case that matters: it is the most-hovered attribute in the file and the plugin
-     * cannot yet name what belongs there, so it answers about the element rather than pretending.
+     * The caret here is on the *name* `class`, not its value. The value half now answers with
+     * the named class itself; the name half keeps falling back to the element, which answers
+     * the "what is this element" a reader mid-tag is actually asking.
      */
     fun testAnUnknownAttributeFallsBackToItsElement() {
         val doc = docAtCaret(caretInside("class"))
@@ -212,5 +213,86 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         val urls = provider.getUrlFor(element, element)
         assertNotNull(urls)
         assertTrue(urls!!.single().startsWith("https://solr.apache.org/guide/solr/"))
+    }
+
+    fun testDocumentationIsOfferedOnAFieldTypesClassValue() {
+        val doc = docAtCaret(caretInside("solr.StrField"))
+        assertNotNull(doc)
+        assertTrue("expected the kind in words: $doc", doc!!.contains("field type class"))
+        assertTrue("expected the fully qualified name: $doc", doc.contains("org.apache.solr.schema.StrField"))
+        assertTrue("expected the declaring type in the usage line: $doc", doc.contains("<code>string</code>"))
+    }
+
+    fun testDocumentationIsOfferedOnATokenizersClassValue() {
+        val doc = docAtCaret(caretInside("solr.StandardTokenizerFactory"))
+        assertNotNull(doc)
+        assertTrue("expected the kind in words: $doc", doc!!.contains("tokenizer factory"))
+        assertTrue("expected a catalog attribute: $doc", doc.contains("maxTokenLength"))
+    }
+
+    fun testDocumentationIsOfferedOnAFilterClassValue() {
+        val doc = docAtCaret(caretInside("solr.LowerCaseFilterFactory"))
+        assertNotNull(doc)
+        assertTrue("expected the kind in words: $doc", doc!!.contains("token filter factory"))
+    }
+
+    /** The catalog matches both spellings, so the hover must too. */
+    fun testAFullyQualifiedClassValueAnswersLikeItsShortForm() {
+        val fqn = schema.replace("solr.StrField", "org.apache.solr.schema.StrField")
+        val doc = docAtCaret(caretInside("org.apache.solr.schema.StrField", text = fqn))
+        assertNotNull(doc)
+        assertTrue("expected the short spelling: $doc", doc!!.contains("solr.StrField"))
+    }
+
+    /**
+     * A class the catalog does not know gets no popup — the same contract an undeclared type
+     * has. Saying nothing beats describing a class the plugin has never seen.
+     */
+    fun testAnUnknownClassValueOffersNothing() {
+        val custom = schema.replace("solr.StrField", "com.example.CustomField")
+        val doc = docAtCaret(caretInside("com.example.CustomField", text = custom))
+        assertNull("an unknown class must not be described: $doc", doc)
+    }
+
+    /**
+     * A class in the wrong position still gets documented as what it is. Naming its kind is
+     * itself the honest answer; flagging the misplacement is the inspections' job, not the hover's.
+     */
+    fun testAMisplacedClassValueIsDocumentedAsWhatItIs() {
+        val misplaced = schema.replace("class=\"solr.StrField\"", "class=\"solr.StandardTokenizerFactory\"")
+        val doc = docAtCaret(caretInside("solr.StandardTokenizerFactory", text = misplaced))
+        assertNotNull(doc)
+        assertTrue("expected the actual kind: $doc", doc!!.contains("tokenizer factory"))
+    }
+
+    fun testExternalUrlForAFilterClassNamesTheFiltersPage() {
+        givenSolrConfigAtFixtureRoot()
+        myFixture.configureByText("managed-schema.xml", caretInside("solr.LowerCaseFilterFactory"))
+        val element: PsiElement = provider.getCustomDocumentationElement(
+            myFixture.editor,
+            myFixture.file,
+            myFixture.file.findElementAt(myFixture.caretOffset),
+            myFixture.caretOffset,
+        )!!
+        val urls = provider.getUrlFor(element, element)
+        assertNotNull(urls)
+        assertTrue("expected the filters page: $urls", urls!!.single().endsWith("/indexing-guide/filters.html"))
+    }
+
+    fun testExternalUrlForAFieldTypeClassNamesTheFieldTypesPage() {
+        givenSolrConfigAtFixtureRoot()
+        myFixture.configureByText("managed-schema.xml", caretInside("solr.StrField"))
+        val element: PsiElement = provider.getCustomDocumentationElement(
+            myFixture.editor,
+            myFixture.file,
+            myFixture.file.findElementAt(myFixture.caretOffset),
+            myFixture.caretOffset,
+        )!!
+        val urls = provider.getUrlFor(element, element)
+        assertNotNull(urls)
+        assertTrue(
+            "expected the field types page: $urls",
+            urls!!.single().endsWith("/indexing-guide/field-types-included-with-solr.html"),
+        )
     }
 }

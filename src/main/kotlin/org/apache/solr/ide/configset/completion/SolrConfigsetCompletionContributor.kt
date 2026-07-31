@@ -139,13 +139,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
      * otherwise visible.
      */
     private fun classNames(tagName: String, model: SolrFieldModel): List<LookupElement> {
-        val kind = when (tagName) {
-            in SolrSchemaTags.FIELD_TYPE -> SolrClassKind.FIELD_TYPE
-            "tokenizer" -> SolrClassKind.TOKENIZER
-            "filter" -> SolrClassKind.TOKEN_FILTER
-            "charFilter" -> SolrClassKind.CHAR_FILTER
-            else -> return emptyList()
-        }
+        val kind = SolrClassKind.forTag(tagName) ?: return emptyList()
         val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
             ?: SolrVersionSelection.DEFAULT
         return SolrClassCatalog.of(kind, version).map { entry ->
@@ -320,12 +314,10 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         model: SolrFieldModel,
         already: Set<String>,
     ): List<LookupElement>? {
-        val kind = when (tag.name) {
-            "tokenizer" -> SolrClassKind.TOKENIZER
-            "filter" -> SolrClassKind.TOKEN_FILTER
-            "charFilter" -> SolrClassKind.CHAR_FILTER
-            else -> return null
-        }
+        // A fieldType names a class too, but its attributes are the field properties, and the
+        // property path owns those — this null keeps the fall-through that gets them offered.
+        val kind = SolrClassKind.forTag(tag.name)?.takeIf { it != SolrClassKind.FIELD_TYPE }
+            ?: return null
         val className = tag.getAttributeValue("class") ?: return emptyList()
         val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
             ?: SolrVersionSelection.DEFAULT

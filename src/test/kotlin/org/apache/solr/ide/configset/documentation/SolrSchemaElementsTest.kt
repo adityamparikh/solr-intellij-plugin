@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.documentation
 
+import org.apache.solr.ide.model.SolrClassEntry
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.SolrCopyField
 import org.apache.solr.ide.model.SolrDynamicField
@@ -112,5 +114,47 @@ class SolrSchemaElementsTest {
     fun `an element with nothing specific to say says nothing`() {
         assertNull(specifics("analyzer", "type" to "index"))
         assertNull(specifics("copyField"))
+    }
+
+    // --- class-specific usage documentation --------------------------------------------------
+
+    private val strField = SolrClassEntry(
+        SolrClassKind.FIELD_TYPE,
+        "org.apache.solr.schema.StrField",
+        "solr.StrField",
+    )
+
+    private val edgeNGram = SolrClassEntry(
+        SolrClassKind.TOKEN_FILTER,
+        "org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory",
+        "solr.EdgeNGramFilterFactory",
+    )
+
+    @Test
+    fun `a field type class reports the types declared with it, under either spelling`() {
+        val model = SolrFieldModel.of(
+            SolrConfigsetFacts(
+                fieldTypes = listOf(
+                    SolrFieldType("string", "solr.StrField"),
+                    SolrFieldType("strings", "org.apache.solr.schema.StrField"),
+                    SolrFieldType("text_general", "solr.TextField"),
+                ),
+            ),
+        )
+        val specifics = SolrSchemaElements.classSpecifics(strField, model)
+        assertNotNull(specifics)
+        assertTrue("expected a count of both spellings: $specifics", specifics!!.contains("2 field types"))
+        assertTrue(specifics.contains("<code>string</code>"))
+        assertTrue(specifics.contains("<code>strings</code>"))
+    }
+
+    @Test
+    fun `a factory class has no usage line`() {
+        assertNull(SolrSchemaElements.classSpecifics(edgeNGram, SolrFieldModel.of(SolrConfigsetFacts())))
+    }
+
+    @Test
+    fun `a class no field type uses says nothing rather than counting zero`() {
+        assertNull(SolrSchemaElements.classSpecifics(strField, SolrFieldModel.of(SolrConfigsetFacts())))
     }
 }

@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.documentation
 
+import org.apache.solr.ide.model.SolrClassEntry
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrEffectiveProperty
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldProperties
@@ -12,6 +14,7 @@ import org.apache.solr.ide.model.SolrMatchTrait
 import org.apache.solr.ide.model.SolrPrefixSupport
 import org.apache.solr.ide.model.SolrPropertyOrigin
 import org.apache.solr.ide.model.SolrReferenceGuide
+import org.apache.solr.ide.model.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**
@@ -82,7 +85,7 @@ object SolrFieldPresentation {
         append("<div class='content'>")
         append("<p>${description.summary}</p>")
         // Not escaped: the specifics are built by this plugin from model values, and carry markup
-        // of their own. The values interpolated into them are escaped at the point they are read.
+        // of their own. XML attribute values cannot contain a raw `<`, so no markup arrives here.
         specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
         // The resolved configuration, on the element rather than only on its name. Hovering the tag
         // is the gesture a reader makes; requiring the caret to be inside the `name` quotes hid the
@@ -160,6 +163,85 @@ object SolrFieldPresentation {
         }
         append("</div>")
         append(guideLinks(version))
+    }
+
+    /**
+     * The documentation popup for a class named in a `class` attribute.
+     *
+     * What it renders is what the generated catalog and the model can vouch for: the kind of
+     * class, both of its spellings, the attributes its constructor actually reads, and what this
+     * schema declared with it. There is deliberately no prose paragraph yet — that column joins
+     * the catalog when the `-sources` artifacts are resolved, and inventing one meanwhile would
+     * be asserting something no source states.
+     *
+     * @param entry the catalog entry for the class
+     * @param specifics what this schema does with it, or null when nothing specific is known
+     * @param version the Solr line this configset targets, for the guide link
+     * @return HTML for the documentation popup
+     */
+    fun classDocumentation(
+        entry: SolrClassEntry,
+        specifics: String?,
+        version: SolrVersionSelection,
+    ): String = buildString {
+        append("<div class='definition'><pre>")
+        append("<b>${escape(entry.shortName)}</b> — ${kindText(entry.kind)}")
+        append("\n${escape(entry.className)}")
+        append("</pre></div>")
+        append("<div class='content'>")
+        if (entry.attributes.isNotEmpty()) {
+            append("<p><b>Accepts</b></p><table>")
+            for (attribute in entry.attributes) {
+                append("<tr><td><code>${escape(attribute.name)}</code></td>")
+                append("<td>${valueTypeText(attribute.valueType)}</td></tr>")
+            }
+            append("</table>")
+        }
+        // Not escaped: the specifics are built by this plugin from model values and carry markup
+        // of their own, the same contract elementDocumentation documents.
+        specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
+        append("</div>")
+        append(classGuideLink(entry, version))
+    }
+
+    /** The kind in words, for the definition line. */
+    private fun kindText(kind: SolrClassKind): String = when (kind) {
+        SolrClassKind.FIELD_TYPE -> "field type class"
+        SolrClassKind.TOKENIZER -> "tokenizer factory"
+        SolrClassKind.TOKEN_FILTER -> "token filter factory"
+        SolrClassKind.CHAR_FILTER -> "character filter factory"
+    }
+
+    /**
+     * The value type in words, or empty for a free-form attribute.
+     *
+     * Empty rather than "any value": the catalog's FREE means the generator could not narrow the
+     * type, which is weaker than a promise that anything is legal.
+     */
+    private fun valueTypeText(type: SolrValueType): String = when (type) {
+        SolrValueType.BOOLEAN -> "true or false"
+        SolrValueType.INTEGER -> "a whole number"
+        SolrValueType.FLOAT -> "a decimal number"
+        SolrValueType.ENUM -> "one of a closed set"
+        SolrValueType.FREE -> ""
+    }
+
+    /**
+     * The guide footer for a class popup — one page, chosen by what the class is.
+     *
+     * The shared [guideLinks] footer names the two field pages, which are the wrong destination
+     * for a tokenizer; a link that lands somewhere unrelated teaches a reader to stop clicking.
+     */
+    private fun classGuideLink(entry: SolrClassEntry, version: SolrVersionSelection): String {
+        val url = SolrReferenceGuide.classPage(entry.kind, entry.className, version) ?: return ""
+        val label = when (entry.kind) {
+            SolrClassKind.FIELD_TYPE -> "Field types included with Solr"
+            SolrClassKind.TOKENIZER -> "Tokenizers in the Reference Guide"
+            SolrClassKind.TOKEN_FILTER -> "Filters in the Reference Guide"
+            SolrClassKind.CHAR_FILTER -> "Char filter factories in the Reference Guide"
+        }
+        return "<div class='bottom'><p><a href='$url'>$label</a></p>" +
+            "<p><small>Reference Guide for ${escape(version.describeSource())}.</small></p></div>"
     }
 
     /**

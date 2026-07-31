@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.documentation
 
+import org.apache.solr.ide.model.SolrClassEntry
+import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel
 
 /**
@@ -124,6 +126,27 @@ internal object SolrSchemaElements {
             }
             else -> null
         }
+
+    /**
+     * What this schema does with the class [entry] names, or null when nothing specific is known.
+     *
+     * Only field type classes get a usage line. A factory is hovered inside the very chain that
+     * uses it, so "used here" would state what the reader is looking at; which *field types* were
+     * declared with a class is the fact spread across the file that a hover can gather.
+     *
+     * @param entry the catalog entry for the hovered class
+     * @param model the configset's model
+     * @return a sentence about this schema's use of the class, or null
+     */
+    fun classSpecifics(entry: SolrClassEntry, model: SolrFieldModel): String? {
+        if (entry.kind != SolrClassKind.FIELD_TYPE) return null
+        val users = model.fieldTypes.values.map { it.effective }
+            .filter { it.className == entry.shortName || it.className == entry.className }
+            .map { it.name }
+        if (users.isEmpty()) return null
+        return "Used by ${count(users.size, "field type")}: " +
+            users.joinToString(", ") { "<code>$it</code>" } + "."
+    }
 
     /** `1 field`, `2 fields` — the plural rule this vocabulary needs, which is the regular one. */
     private fun count(n: Int, noun: String): String = if (n == 1) "$n $noun" else "$n ${noun}s"
