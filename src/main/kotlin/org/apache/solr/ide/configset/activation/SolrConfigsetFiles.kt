@@ -241,13 +241,27 @@ object SolrSchemaTags {
     /** The tag declaring an analyzer filter — the position whose attributes may name resource files. */
     const val FILTER: String = "filter"
 
+    /** The tag declaring a char filter — the other analyzer component that reads resource files. */
+    const val CHAR_FILTER: String = "charFilter"
+
     /**
-     * The [FILTER] attributes whose value is a path to a resource file in the configset.
+     * The analyzer components a resource attribute may sit on.
      *
-     * `words` on a stop filter, `synonyms` on a synonym graph, `protected` on the stemmers —
-     * one attribute per resource kind [SolrConfigsetFileKind] recognizes. Ordinary words, like
-     * [COPY_FIELD_ENDS] — `protected` especially — so they mean a file only on a [FILTER] tag,
-     * and every reader of this set has to check the tag as well.
+     * Tokenizers are deliberately absent: the stock tokenizers that read files at all take them
+     * through attributes named per factory (`rulefiles`), and guessing at those would put file
+     * references on values that are not paths.
      */
-    val RESOURCE_ATTRIBUTES: Set<String> = setOf("words", "synonyms", "protected")
+    val RESOURCE_CARRIERS: Set<String> = setOf(FILTER, CHAR_FILTER)
+
+    /**
+     * The analyzer component attributes whose value is a path to a resource file in the configset.
+     *
+     * `words` on a stop filter, `synonyms` on a synonym graph, `protected` on the stemmers,
+     * `articles` on elision, `mapping` on the mapping char filter, and the Hunspell
+     * `dictionary`/`affix` pair. Ordinary words, like [COPY_FIELD_ENDS] — `protected`
+     * especially — so they mean a file only on a [RESOURCE_CARRIERS] tag, and every reader of
+     * this set has to check the tag as well.
+     */
+    val RESOURCE_ATTRIBUTES: Set<String> =
+        setOf("words", "synonyms", "protected", "articles", "mapping", "dictionary", "affix")
 }

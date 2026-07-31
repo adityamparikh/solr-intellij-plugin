@@ -62,7 +62,7 @@ class SolrConfigsetReferenceContributor : PsiReferenceContributor() {
 }
 
 /**
- * Supplies file references from a filter's resource attribute to the files it names.
+ * Supplies file references from an analyzer component's resource attribute to the files it names.
  *
  * Built on the platform's [FileReferenceSet] rather than a bespoke resolver: it already answers
  * per path segment — `lang/stopwords_en.txt` navigates from `lang` and from the file name — and
@@ -82,7 +82,7 @@ private class SolrResourceFileReferenceProvider : PsiReferenceProvider() {
         if (attribute.name !in SolrSchemaTags.RESOURCE_ATTRIBUTES) return PsiReference.EMPTY_ARRAY
         // `protected` and `words` are ordinary words; the tag is what makes them resource paths.
         val tag = attribute.parentOfType<XmlTag>() ?: return PsiReference.EMPTY_ARRAY
-        if (tag.name != SolrSchemaTags.FILTER) return PsiReference.EMPTY_ARRAY
+        if (tag.name !in SolrSchemaTags.RESOURCE_CARRIERS) return PsiReference.EMPTY_ARRAY
 
         val text = value.value
         if (text.isEmpty()) return PsiReference.EMPTY_ARRAY

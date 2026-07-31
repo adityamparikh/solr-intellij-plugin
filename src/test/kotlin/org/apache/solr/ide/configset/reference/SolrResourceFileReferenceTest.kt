@@ -31,6 +31,9 @@ class SolrResourceFileReferenceTest : SolrConfigsetTestCase() {
         myFixture.addFileToProject("synonyms.txt", "tv, television\n")
         myFixture.addFileToProject("protwords.txt", "solr\n")
         myFixture.addFileToProject("lang/stopwords_en.txt", "a\n")
+        myFixture.addFileToProject("lang/contractions_fr.txt", "l\n")
+        myFixture.addFileToProject("mapping-ISOLatin1Accent.txt", "\"é\" => \"e\"\n")
+        myFixture.addFileToProject("en_GB.dic", "1\nhello\n")
         myFixture.configureByText("managed-schema.xml", schema(analyzer))
         return myFixture.getReferenceAtCaretPosition()?.resolve()
     }
@@ -56,6 +59,29 @@ class SolrResourceFileReferenceTest : SolrConfigsetTestCase() {
             """<filter class="solr.StopFilterFactory" words="lang/stopwords<caret>_en.txt"/>""",
         )
         assertEquals("stopwords_en.txt", (target as PsiFile).name)
+    }
+
+    /** `mapping` sits on a `charFilter` — the other analyzer component that reads resources. */
+    fun testMappingOnACharFilterResolvesToTheFileItNames() {
+        val target = resolveAtCaret(
+            """<charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISO<caret>Latin1Accent.txt"/>""",
+        )
+        assertEquals("mapping-ISOLatin1Accent.txt", (target as PsiFile).name)
+    }
+
+    fun testArticlesResolvesToTheFileItNames() {
+        val target = resolveAtCaret(
+            """<filter class="solr.ElisionFilterFactory" articles="lang/contract<caret>ions_fr.txt"/>""",
+        )
+        assertEquals("contractions_fr.txt", (target as PsiFile).name)
+    }
+
+    /** The Hunspell pair names two files; `dictionary` is the representative under test. */
+    fun testAHunspellDictionaryResolvesToTheFileItNames() {
+        val target = resolveAtCaret(
+            """<filter class="solr.HunspellStemFilterFactory" dictionary="en_<caret>GB.dic" affix="en_GB.aff"/>""",
+        )
+        assertEquals("en_GB.dic", (target as PsiFile).name)
     }
 
     /** `words` accepts a comma-separated list; each entry is its own reference. */
