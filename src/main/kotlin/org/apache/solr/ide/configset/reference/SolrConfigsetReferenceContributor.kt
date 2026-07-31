@@ -17,6 +17,7 @@ import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
+import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
  * Makes the names inside a configset navigable.
@@ -179,18 +180,30 @@ private class SolrCopyFieldReferenceProvider : PsiReferenceProvider() {
  * silent on globs — here it costs a navigation nobody could have trusted, and there it prevents a
  * warning on a correct file.
  *
+ * **The other direction is safe, and resolution goes through the model to get it.** A concrete
+ * `source="body_t"` supplied only by `<dynamicField name="*_t">` lands on that declaration —
+ * Solr's own resolution, declared-beats-dynamic and longest-literal-wins, and the same
+ * [org.apache.solr.ide.model.SolrFieldModel.resolve] the inspection consults when it stays silent
+ * on exactly this name. A reference that matched literally while the inspection resolved through
+ * patterns produced no warning *and* a dead click, which teaches the reader the click is broken.
+ *
  * Soft, for the reason [SolrFieldTypeReference] is soft.
  */
 internal class SolrCopyFieldReference(element: XmlAttributeValue) :
     PsiReferenceBase<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element), true) {
 
     /**
-     * The `name` attribute of the declaring `field` or `dynamicField`, or null when none declares it.
+     * The `name` attribute of the declaration supplying this name — declared outright, or the
+     * dynamic pattern matching it — or null when nothing does.
      *
      * @return the declaring element, or null
      */
-    override fun resolve(): PsiElement? =
-        SolrSchemaPsi.findField(element.containingFile, value)
+    override fun resolve(): PsiElement? {
+        val file = element.containingFile
+        val declared = SolrConfigsetReader.getInstance(element.project).modelFor(file)
+            ?.resolve(value)?.name ?: return null
+        return SolrSchemaPsi.findField(file, declared)
+    }
 
     /**
      * No completion variants; the completion contributor already offers the fields here, with what
@@ -247,14 +260,21 @@ internal class SolrConfigFieldReference(
 ) : PsiReferenceBase<XmlTag>(tag, occurrence.rangeInTag, true) {
 
     /**
-     * The `name` attribute of the declaring `field` or `dynamicField` in the owning configset's
-     * schema, or null when nothing declares it.
+     * The `name` attribute of the declaration supplying this name in the owning configset's
+     * schema — declared outright, or the dynamic pattern matching it — or null when nothing does.
+     *
+     * Resolution goes through [org.apache.solr.ide.model.SolrFieldModel.resolve] for the reason
+     * [SolrCopyFieldReference] documents: it is the same answer the unknown-field inspection
+     * consults, so the two cannot disagree about which names are real.
      *
      * @return the declaring element, or null
      */
     override fun resolve(): PsiElement? {
-        val schema = SolrSchemaPsi.schemaFileOf(element.containingFile) ?: return null
-        return SolrSchemaPsi.findField(schema, occurrence.fieldName)
+        val file = element.containingFile
+        val declared = SolrConfigsetReader.getInstance(element.project).modelFor(file)
+            ?.resolve(occurrence.fieldName)?.name ?: return null
+        val schema = SolrSchemaPsi.schemaFileOf(file) ?: return null
+        return SolrSchemaPsi.findField(schema, declared)
     }
 
     /**

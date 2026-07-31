@@ -441,7 +441,10 @@ detected-configset list in action 2.
 **What shipped:**
 - `SolrConfigsetReferenceContributor` with the four providers, each soft: an unresolved
   name is the matching inspection's to report in Solr's vocabulary, so navigation never
-  brings a second platform-worded warning with it.
+  brings a second platform-worded warning with it. Field references resolve through the
+  model's own resolution — declared beats dynamic, longest literal part wins — so a name
+  only a pattern supplies navigates to that pattern's declaration: exactly the names the
+  inspections accept, because both consult the same answer.
 - The handler-parameter references cross the file boundary through the owning configset's
   schema, each name in a weighted value carrying its own range; the resource references
   ride the platform's `FileReferenceSet`, so rename and move refactorings already know

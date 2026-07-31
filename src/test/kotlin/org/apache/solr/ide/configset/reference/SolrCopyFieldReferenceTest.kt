@@ -61,6 +61,25 @@ class SolrCopyFieldReferenceTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * The other direction crosses the line safely: a concrete name that only a dynamic pattern
+     * supplies navigates to that pattern's declaration. Unlike a glob's concrete matches, this
+     * target is not invented — it is Solr's own resolution, the same one the dangling-copyField
+     * inspection consults when it stays silent on exactly this name.
+     */
+    fun testANameBackedOnlyByAPatternResolvesToTheDynamicFieldDeclaringIt() {
+        val declaration = declaringTagAt("""<copyField source="body<caret>_t" dest="text"/>""")
+        assertEquals("dynamicField", declaration.name)
+        assertEquals("*_t", declaration.getAttributeValue("name"))
+    }
+
+    /** Declared beats dynamic, Solr's own precedence: `title_t` is declared outright and wins. */
+    fun testADeclaredNameBeatsThePatternThatWouldAlsoMatchIt() {
+        val declaration = declaringTagAt("""<copyField source="title<caret>_t" dest="text"/>""")
+        assertEquals("field", declaration.name)
+        assertEquals("title_t", declaration.getAttributeValue("name"))
+    }
+
+    /**
      * `source="*"` copies every field and declares nothing. It resolves to nothing and, because the
      * reference is soft, draws no warning for it — the correct outcome for valid syntax the schema
      * simply has no declaration to point at.
