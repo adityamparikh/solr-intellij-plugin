@@ -69,6 +69,9 @@ it whole, and the gutter action goes with the Server track.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the
   catalog, which it never needed.
+- [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
+  — likewise added late; belongs beside the two above. Its field half needs only the
+  property table; its factory half waits on the catalog carrying defaults.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
   — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)
@@ -686,6 +689,49 @@ is one pull request.
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which
 grows to cover this vocabulary.
 
+### Step 26: Showing that an attribute restates the default
+
+Numbered last because it was added last; it belongs in the Editor track beside
+[explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done).
+Read the section it sits in, not the number.
+
+The distinction exists in one surface and is invisible in the other. The property table
+behind quick documentation marks whether each value was declared or defaulted, but the
+editor renders `indexed="true"` identically whether deleting it would change anything. A
+reader auditing a schema cannot tell the load-bearing attributes from the restated ones
+without hovering each in turn.
+
+**Not an inspection, deliberately.** A restated default is *correct*, and the standing
+rule is that inspections do not fire on correct files — an underline here would be the
+plugin manufacturing a problem in order to have something to say. The platform already has
+an idiom for "true but removable": the dimmed rendering it gives redundant code, paired
+with an intention rather than a quick-fix, because an intention carries no claim that
+anything is wrong.
+
+**Actions:**
+1. Dim an attribute whose written value equals its effective default, as an annotator at
+   information severity — no underline, no entry in the Problems view.
+2. An intention on the dimmed attribute that removes it, leaving a file whose parsed model
+   is identical.
+3. Stay silent wherever the default is not knowable with confidence: properties whose
+   default depends on the field type, and factory attributes until
+   [the catalog](#step-9-factory-catalog-generator-in-progress) carries defaults — at which
+   point factory attributes join with no new machinery here.
+
+**Success criteria:**
+- [ ] `indexed="true"` on a field dims and `indexed="false"` does not, and removing the
+      dimmed attribute leaves the parsed model identical.
+- [ ] A property whose default depends on the field type never dims.
+- [ ] Nothing this step adds appears in the Problems view on a correct file.
+
+**Acceptance:** No demo step of its own. It is the editor-side answer to the question the
+property table answers in the popup — which of these lines could go.
+
+**Dependencies:**
+[completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done)
+for the property table it reads; the factory half additionally needs the defaults column in
+[the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
+
 ### Step 8: Rename
 
 **Actions:**
@@ -728,7 +774,15 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
      string constants passed to `get`, `getInt`, `getBoolean` and friends. Reflection
      cannot see these: a factory reads its attributes out of a `Map<String, String>`, so
      the names are literals in the constructor body and appear as neither fields nor
-     annotations.
+     annotations. **The same pass distinguishes three shapes and harvests two more facts
+     for free.** `requireInt` and its siblings mark an attribute *required*. A literal
+     default sits as the argument beside the name in the same call — verified against the
+     shipped bytecode: `WordDelimiterGraphFilterFactory` reads `generateWordParts` with
+     `iconst_1` beside it, and javac's constant inlining puts even a named `DEFAULT_*`
+     constant there as a literal. A default computed at runtime —
+     `JapaneseTokenizerFactory`'s `mode` — is recorded as *absent, never guessed*, for the
+     same reason match analysis carries a `confident` flag: a wrong default shown in the
+     editor is worse than none.
    - **Documentation** — the `-sources` artifacts. Javadoc is not retained in bytecode,
      so a compiled jar cannot supply it at all.
 2. Declare supported lines in one place so adding or dropping one is a single edit.
@@ -752,10 +806,16 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 - `SolrClassCatalog` and `SolrVersionSource`, which record whether the line was decided by
   the configset or by the fallback.
 
-**What remains is the documentation source and the server arm of selection.** No `-sources`
+**What remains is the documentation source, the defaults-and-required column, and the
+server arm of selection.** No `-sources`
 artifact is resolved, so the catalog has four columns and none of them is documentation —
 that is action 1's fourth source and the unchecked prerequisite above, and it is what holds
-the `StrField` criterion open even though both classes are present. Selection reads the
+the `StrField` criterion open even though both classes are present. The attribute pass
+currently keeps only the name: the default and the required marker it walks straight past
+are what the factory half of
+[quick documentation](#step-10-completion-validation-and-quick-documentation) and
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
+consume, so the column is on this step's critical path even though nothing displays it yet. Selection reads the
 configset's declared version and then falls back to the newest line; the `SERVER` arm of
 `SolrVersionSource` is unreachable until
 [the server reader](#step-11-http-client-connections-and-the-server-reader) exists, so that
@@ -774,6 +834,12 @@ criterion closes with the Server track rather than here.
 - [x] `JapaneseTokenizerFactory` exposes `mode` and `userDictionary`. Both are read by
       paths a naive pass misses — one has a default computed by a method call, the other is
       taken with `args.remove` rather than a getter.
+- [ ] Defaults and requiredness are recorded where the bytecode proves them, and only
+      there: `WordDelimiterGraphFilterFactory`'s `generateWordParts` carries its default,
+      `EdgeNGramFilterFactory`'s `minGramSize` and `maxGramSize` are marked required with
+      no default, and `JapaneseTokenizerFactory`'s `mode` carries neither. The trio is the
+      criterion because it proves all three behaviours at once — taking the literal,
+      reading `require*`, and declining the computed value rather than guessing it.
 - [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
       is what proves the field-type-class pass ran at all — the `class` attribute of a
       `<fieldType>` is the most-hovered thing in a schema after the field names. **Half met:**
@@ -811,10 +877,26 @@ resolution.
    the model and match analysis rather than the catalog, so it ships with
    [match hints](#step-7-match-hints-and-quick-fixes-in-progress) instead. Only the catalog-backed
    half waits for this step.
+5. Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers
+   with what the catalog can prove: the class that reads it, its value type, and its
+   default or required marker once the catalog carries them, with the guide link for the
+   rest. Javadoc is written per class, not per attribute, so full per-attribute prose has
+   no source anywhere in this design; the provider states what it can cite and claims
+   nothing beyond it.
+6. The factory sibling of the field property table: quick documentation on a factory tag
+   shows every attribute the class accepts at its effective value, written or defaulted,
+   distinguishably — the complete-configuration picture the field half already gives, and
+   the second consumer of the defaults column beside
+   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default).
 
 **Success criteria:**
 - [ ] Completion and validation work against the catalog.
 - [ ] Quick documentation resolves for factories and attributes.
+- [ ] A factory attribute answers on hover with its owner, value type, and — where the
+      catalog carries them — its default or required marker, and stays silent about
+      meaning it cannot cite.
+- [ ] A factory tag's documentation shows its complete configuration, unwritten
+      attributes at their defaults, distinguishably from written ones.
 
 **Acceptance:** demo steps
 [68 — *completion inside an analyser chain*](../../docs/demo/README.md#step-68-completion-inside-an-analyser-chain),

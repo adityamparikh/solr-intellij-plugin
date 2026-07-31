@@ -12,6 +12,7 @@ behind a link. Read the relevant one before designing anything.
 | [`docs/how-to/add-an-editor-feature.md`](docs/how-to/add-an-editor-feature.md) | Adding an inspection, completion, reference, documentation or hint |
 | [`docs/how-to/extend-the-field-model.md`](docs/how-to/extend-the-field-model.md) | Adding to `model` and the parsers that fill it |
 | [`docs/how-to/testing-and-the-build-gates.md`](docs/how-to/testing-and-the-build-gates.md) | Test conventions, and clearing Dokka and Kover |
+| [`docs/manual-test-suite.md`](docs/manual-test-suite.md) | The sandbox verification pass: gesture, expected outcome, pass history — never build status |
 | [`docs/platform-mechanisms.md`](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are and what this plugin decided |
 | [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written |
 | [`specs/0002-solr-intellij-plugin.md`](specs/0002-solr-intellij-plugin.md) | **Intent.** What the plugin is for. Read before designing a feature |
