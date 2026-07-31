@@ -8,6 +8,7 @@ import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
@@ -16,6 +17,7 @@ import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
+import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
  * Makes the names inside a configset navigable.
@@ -49,7 +51,68 @@ class SolrConfigsetReferenceContributor : PsiReferenceContributor() {
             XmlPatterns.xmlTag().withLocalName("str"),
             SolrConfigFieldReferenceProvider(),
         )
+        val resourceFiles = SolrResourceFileReferenceProvider()
+        for (attribute in SolrSchemaTags.RESOURCE_ATTRIBUTES) {
+            registrar.registerReferenceProvider(
+                XmlPatterns.xmlAttributeValue().withLocalName(attribute),
+                resourceFiles,
+            )
+        }
     }
+}
+
+/**
+ * Supplies file references from a filter's resource attribute to the files it names.
+ *
+ * Built on the platform's [FileReferenceSet] rather than a bespoke resolver: it already answers
+ * per path segment — `lang/stopwords_en.txt` navigates from `lang` and from the file name — and
+ * it is the machinery rename and file-move refactorings already know how to update. Resolution is
+ * relative to the schema's own directory, which is the configset root Solr resolves against.
+ *
+ * A value may hold a comma-separated list — `words="stopwords.txt,extra.txt"` — so each entry
+ * gets its own reference set at its own offset.
+ */
+private class SolrResourceFileReferenceProvider : PsiReferenceProvider() {
+
+    override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+        val value = element as? XmlAttributeValue ?: return PsiReference.EMPTY_ARRAY
+        if (!SolrConfigsetDetector.isConfigsetFile(value.containingFile)) return PsiReference.EMPTY_ARRAY
+
+        val attribute = value.parentOfType<XmlAttribute>() ?: return PsiReference.EMPTY_ARRAY
+        if (attribute.name !in SolrSchemaTags.RESOURCE_ATTRIBUTES) return PsiReference.EMPTY_ARRAY
+        // `protected` and `words` are ordinary words; the tag is what makes them resource paths.
+        val tag = attribute.parentOfType<XmlTag>() ?: return PsiReference.EMPTY_ARRAY
+        if (tag.name != SolrSchemaTags.FILTER) return PsiReference.EMPTY_ARRAY
+
+        val text = value.value
+        if (text.isEmpty()) return PsiReference.EMPTY_ARRAY
+        val valueStart = ElementManipulators.getValueTextRange(value).startOffset
+
+        val references = mutableListOf<PsiReference>()
+        var offset = 0
+        for (piece in text.split(',')) {
+            val path = piece.trim()
+            if (path.isNotEmpty()) {
+                val start = valueStart + offset + piece.indexOf(path)
+                references += SoftFileReferenceSet(path, value, start).allReferences
+            }
+            offset += piece.length + 1
+        }
+        return references.toTypedArray()
+    }
+}
+
+/**
+ * The platform's file-path references, made soft.
+ *
+ * Soft for the reason every reference in this package is: a missing resource file deserves an
+ * inspection speaking Solr's language, not the platform's generic unresolved-path warning, and
+ * until that inspection exists the navigation should not bring a warning with it.
+ */
+private class SoftFileReferenceSet(path: String, element: PsiElement, startInElement: Int) :
+    FileReferenceSet(path, element, startInElement, null, true) {
+
+    override fun isSoft(): Boolean = true
 }
 
 /** Supplies references from a handler parameter's field names to their schema declarations. */
@@ -117,18 +180,30 @@ private class SolrCopyFieldReferenceProvider : PsiReferenceProvider() {
  * silent on globs — here it costs a navigation nobody could have trusted, and there it prevents a
  * warning on a correct file.
  *
+ * **The other direction is safe, and resolution goes through the model to get it.** A concrete
+ * `source="body_t"` supplied only by `<dynamicField name="*_t">` lands on that declaration —
+ * Solr's own resolution, declared-beats-dynamic and longest-literal-wins, and the same
+ * [org.apache.solr.ide.model.SolrFieldModel.resolve] the inspection consults when it stays silent
+ * on exactly this name. A reference that matched literally while the inspection resolved through
+ * patterns produced no warning *and* a dead click, which teaches the reader the click is broken.
+ *
  * Soft, for the reason [SolrFieldTypeReference] is soft.
  */
 internal class SolrCopyFieldReference(element: XmlAttributeValue) :
     PsiReferenceBase<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element), true) {
 
     /**
-     * The `name` attribute of the declaring `field` or `dynamicField`, or null when none declares it.
+     * The `name` attribute of the declaration supplying this name — declared outright, or the
+     * dynamic pattern matching it — or null when nothing does.
      *
      * @return the declaring element, or null
      */
-    override fun resolve(): PsiElement? =
-        SolrSchemaPsi.findField(element.containingFile, value)
+    override fun resolve(): PsiElement? {
+        val file = element.containingFile
+        val declared = SolrConfigsetReader.getInstance(element.project).modelFor(file)
+            ?.resolve(value)?.name ?: return null
+        return SolrSchemaPsi.findField(file, declared)
+    }
 
     /**
      * No completion variants; the completion contributor already offers the fields here, with what
@@ -185,14 +260,21 @@ internal class SolrConfigFieldReference(
 ) : PsiReferenceBase<XmlTag>(tag, occurrence.rangeInTag, true) {
 
     /**
-     * The `name` attribute of the declaring `field` or `dynamicField` in the owning configset's
-     * schema, or null when nothing declares it.
+     * The `name` attribute of the declaration supplying this name in the owning configset's
+     * schema — declared outright, or the dynamic pattern matching it — or null when nothing does.
+     *
+     * Resolution goes through [org.apache.solr.ide.model.SolrFieldModel.resolve] for the reason
+     * [SolrCopyFieldReference] documents: it is the same answer the unknown-field inspection
+     * consults, so the two cannot disagree about which names are real.
      *
      * @return the declaring element, or null
      */
     override fun resolve(): PsiElement? {
-        val schema = SolrSchemaPsi.schemaFileOf(element.containingFile) ?: return null
-        return SolrSchemaPsi.findField(schema, occurrence.fieldName)
+        val file = element.containingFile
+        val declared = SolrConfigsetReader.getInstance(element.project).modelFor(file)
+            ?.resolve(occurrence.fieldName)?.name ?: return null
+        val schema = SolrSchemaPsi.schemaFileOf(file) ?: return null
+        return SolrSchemaPsi.findField(schema, declared)
     }
 
     /**

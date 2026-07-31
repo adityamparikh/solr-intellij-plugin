@@ -237,4 +237,17 @@ object SolrSchemaTags {
      * the tag as well.
      */
     val COPY_FIELD_ENDS: Set<String> = setOf("source", "dest")
+
+    /** The tag declaring an analyzer filter — the position whose attributes may name resource files. */
+    const val FILTER: String = "filter"
+
+    /**
+     * The [FILTER] attributes whose value is a path to a resource file in the configset.
+     *
+     * `words` on a stop filter, `synonyms` on a synonym graph, `protected` on the stemmers —
+     * one attribute per resource kind [SolrConfigsetFileKind] recognizes. Ordinary words, like
+     * [COPY_FIELD_ENDS] — `protected` especially — so they mean a file only on a [FILTER] tag,
+     * and every reader of this set has to check the tag as well.
+     */
+    val RESOURCE_ATTRIBUTES: Set<String> = setOf("words", "synonyms", "protected")
 }

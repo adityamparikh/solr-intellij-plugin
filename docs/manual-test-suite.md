@@ -69,8 +69,8 @@ placement and readability of the rendered hint.*
 ## 4. Navigation and Find Usages (NAV)
 
 *Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`,
-`SolrConfigFieldReferenceTest`. Manual adds: the click gesture, caret placement, the
-Find Usages tool window.*
+`SolrConfigFieldReferenceTest`, `SolrResourceFileReferenceTest`. Manual adds: the click
+gesture, caret placement, the Find Usages tool window.*
 
 - [ ] **NAV-1** — Cmd+Click a field's `type="text_general"` jumps to the
       `<fieldType name="text_general">` declaration.
@@ -82,6 +82,9 @@ Find Usages tool window.*
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
       in `name^3 description` navigates on its own, and Find Usages on the field lists
       the parameter among its usages.
+- [ ] **NAV-5** — Cmd+Click a filter's resource path — `words="stopwords.txt"`,
+      `synonyms=`, `protected=` — opens the file, including through `lang/`; each entry
+      in a comma-separated list navigates on its own.
 
 ## 5. Quick documentation (DOC)
 
@@ -97,6 +100,10 @@ clickability.*
       `<fieldType>`, `<dynamicField>`, `<copyField>`, `<uniqueKey>` — each with a
       configset-specific sentence where one exists (which fields the copy rule joins,
       which field is the unique key and of what type, how many fields use a type).
+- [ ] **DOC-4** — A `class=` value answers on hover — `solr.WordDelimiterGraphFilterFactory`
+      shows what kind of class it is, both spellings, the attributes it reads, how this
+      configset uses it, and a Reference Guide link. Javadoc prose is expected to be
+      absent until the catalog carries a documentation column.
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -166,9 +173,8 @@ finding one alive means the suite is behind, not that something is wrong:
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Hover documentation on a `class=` value — landed in code but not yet merged; its
-  checks join the DOC section when it does. The Javadoc prose inside it waits further,
-  on the catalog's `-sources` column
+- Javadoc prose inside the `class=` hover (DOC-4 shows structure and links today) — waits
+  on the catalog's `-sources` documentation column
 - Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
   default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown

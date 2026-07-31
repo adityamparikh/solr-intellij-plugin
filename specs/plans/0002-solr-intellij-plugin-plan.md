@@ -60,7 +60,7 @@ it whole, and the gutter action goes with the Server track.
 
 ### Editor track
 
-- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-in-progress) — **in progress**
+- [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) — **done**
@@ -427,7 +427,7 @@ detected-configset list in action 2.
 
 ## Editor track
 
-### Step 5: References, navigation and Find Usages (in progress)
+### Step 5: References, navigation and Find Usages (done)
 
 **Actions:**
 1. Reference providers for: a field's `type` to its field type; `copyField` source and
@@ -438,8 +438,25 @@ detected-configset list in action 2.
    [rename](#step-8-rename) reuse.
 3. Reference tests asserting resolve targets on representative configsets.
 
+**What shipped:**
+- `SolrConfigsetReferenceContributor` with the four providers, each soft: an unresolved
+  name is the matching inspection's to report in Solr's vocabulary, so navigation never
+  brings a second platform-worded warning with it. Field references resolve through the
+  model's own resolution — declared beats dynamic, longest literal part wins — so a name
+  only a pattern supplies navigates to that pattern's declaration: exactly the names the
+  inspections accept, because both consult the same answer.
+- The handler-parameter references cross the file boundary through the owning configset's
+  schema, each name in a weighted value carrying its own range; the resource references
+  ride the platform's `FileReferenceSet`, so rename and move refactorings already know
+  how to update them.
+- The query surface landed as two objects sized to their consumers rather than a graph
+  API nothing asks for: `SolrConfigParameters` in `parsing` maps the parser's idea of a
+  field reference onto PSI positions for both the inspection and the references, and
+  `SolrSchemaPsi` answers where a name is declared for references, documentation and —
+  when it arrives — [rename](#step-8-rename).
+
 **Success criteria:**
-- [ ] All four reference kinds resolve; Find Usages returns every reference.
+- [x] All four reference kinds resolve; Find Usages returns every reference.
 
 **Acceptance:** demo steps
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
@@ -462,7 +479,7 @@ Where the zero-false-positive requirement gets teeth.
 3. Test each on both flagged and clean fixtures.
 
 Landing one inspection per pull request, each with its flagged and clean fixtures, rather
-than as one change. Taken before [references and navigation](#step-5-references-navigation-and-find-usages-in-progress),
+than as one change. Taken before [references and navigation](#step-5-references-navigation-and-find-usages-done),
 which this step nominally depends on: that dependency holds only for inspections written as
 unresolved-reference checks, and these are driven off the field model instead.
 
@@ -478,7 +495,7 @@ and [26 — *break something live*](../../docs/demo/README.md#step-26-break-some
 The planted dangling copy rule is underlined, and deleting a referenced field flags its
 rule immediately.
 
-**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-in-progress)
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done)
 
 ### Step 7: Match hints and quick-fixes (in progress)
 
@@ -736,7 +753,7 @@ for the property table it reads; the factory half additionally needs the default
 
 **Actions:**
 1. Rename fields and field types, updating every reference through the graph built by
-   [references and navigation](#step-5-references-navigation-and-find-usages-in-progress).
+   [references and navigation](#step-5-references-navigation-and-find-usages-done).
 2. Replace the plugin scaffold's leftover `src/test/testData/rename/` placeholders —
    `foo.xml` and `foo_after.xml`, which no test reads — with configset before/after pairs
    asserting no dangling references remain.
@@ -749,7 +766,7 @@ for the property table it reads; the factory half additionally needs the default
 [demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files).
 Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 
-**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-in-progress)
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done)
 
 ### Step 9: Factory catalog generator (in progress)
 
@@ -1247,7 +1264,7 @@ step.
 - **A server version the plugin has never seen** —
   [the server reader](#step-11-http-client-connections-and-the-server-reader).
 - **Reference resolution edge cases cause dangling renames** —
-  [references and navigation](#step-5-references-navigation-and-find-usages-in-progress), which is
+  [references and navigation](#step-5-references-navigation-and-find-usages-done), which is
   unit-tested before [rename](#step-8-rename) consumes it.
 
 ## References

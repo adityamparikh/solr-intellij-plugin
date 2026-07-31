@@ -61,6 +61,18 @@ class SolrConfigFieldReferenceTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A name only a dynamic pattern supplies navigates to that pattern's declaration — Solr's own
+     * resolution, and the same answer the unknown-field inspection consults when it stays silent
+     * on exactly this name. Without this, the inspection and the navigation disagree: no warning,
+     * yet a dead Cmd+Click.
+     */
+    fun testANameBackedByADynamicPatternResolvesToItsDeclaration() {
+        val declaration = declaringTagAt(handler("""<str name="qf">body<caret>_t</str>"""))
+        assertEquals("dynamicField", declaration.name)
+        assertEquals("*_t", declaration.getAttributeValue("name"))
+    }
+
+    /**
      * A `defaults` list also appears under elements that have nothing to do with queries, and the
      * parser already declines to read those. A reference there would navigate from a value that is
      * not a field name.
