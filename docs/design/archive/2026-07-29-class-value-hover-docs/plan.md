@@ -4,7 +4,7 @@
 
 **Goal:** Hovering `class="solr.StrField"` — or any `tokenizer`/`filter`/`charFilter` class value — answers with quick documentation built from the class catalog and the field model.
 
-**Architecture:** A fourth target arm in the existing `SolrConfigsetDocumentationProvider`, fed by a new shared tag→kind mapping (`SolrClassKind.forTag`), a schema-specifics helper in `SolrSchemaElements`, and a popup builder in `SolrFieldPresentation`. No new extension points, no new files except tests. Spec: `docs/superpowers/specs/2026-07-29-class-value-hover-docs-design.md`.
+**Architecture:** A fourth target arm in the existing `SolrConfigsetDocumentationProvider`, fed by a new shared tag→kind mapping (`SolrClassKind.forTag`), a schema-specifics helper in `SolrSchemaElements`, and a popup builder in `SolrFieldPresentation`. No new extension points, no new files except tests. Spec: `docs/design/archive/2026-07-29-class-value-hover-docs/design.md`.
 
 **Tech Stack:** Kotlin, IntelliJ Platform SDK (PSI, `AbstractDocumentationProvider`), Gradle, JUnit 4 (two conventions — see constraints).
 
