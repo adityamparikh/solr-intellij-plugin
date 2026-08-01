@@ -44,13 +44,17 @@ be retired from here, not accumulated.
 *Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
 analysis pass over the real demo files, all inspections at once.*
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **zero** warnings or weak
-      warnings from the plugin.
-- [ ] **BASE-2** — `solrconfig.xml`, untouched, likewise shows zero.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly one** warning: the
+      planted dangling `manufacturer` copyField at the bottom, which is the inspection
+      demo and must not be fixed. Nothing else in the file is underlined.
+- [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
-This is the suite's most important check. Solr configuration is full of syntax that
-resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); an underline on a
-correct file is a bug, never noise.
+This is the suite's most important check, and the count is the whole of it: one report,
+on the one defect the fixture plants deliberately. Solr configuration is full of syntax
+that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a second underline
+is a false positive, and a false positive on a correct file is a bug, never noise.
+`DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
+committed demo configset is dangling, and which one.
 
 ## 3. Match-capability inlay hints (HINT)
 
