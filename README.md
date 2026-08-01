@@ -29,6 +29,53 @@ surface is unbuilt.
 is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
 much of which is still ahead.
 
+## What it looks like today
+
+Captures come from the sandbox IDE running against `demo/`.
+[`docs/screenshots.md`](docs/screenshots.md) says how each one is taken and what invalidates it.
+
+### What each field can actually match, inline
+
+<!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
+     Frame managed-schema.xml:40-46 so all six fields show at once. This is the lead image. -->
+
+> *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
+> read as whole-value and case-sensitive, `text_general` as tokenized and case-insensitive, and
+> `name_prefix` names EdgeNGram as the mechanism rather than claiming "prefix: true".
+
+### Quick documentation on a field
+
+![Quick documentation for the field category: a properties table giving each property's value, where
+that value came from, what it accepts, and what it means](docs/images/quick-doc-field.png)
+
+Every property's value **and where it came from** — this field, its type, or Solr's default. That
+last column is the one the Reference Guide cannot have, because it is about your schema.
+
+### Quick documentation on a class value
+
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
+name, one-sentence summary, accepted attributes, and a Reference Guide link](docs/images/quick-doc-class.png)
+
+Read from the Solr artifacts themselves when the plugin was built — never fetched at edit time, and
+never copied out of the Reference Guide it links to.
+
+### An inspection catching what fails only at core reload
+
+<!-- SCREENSHOT PENDING: inspection-copyfield-quickfix.png — screenshot catalog entry 4.
+     managed-schema.xml:54 ships a deliberate dangling copyField; Alt-Enter on it. -->
+
+> *Screenshot pending.* A `copyField` pointing at a field no longer declared, underlined in the
+> editor, with Alt-Enter offering the declared fields closest-spelling-first.
+
+### Completion that knows the schema's vocabulary
+
+<!-- SCREENSHOT PENDING: completion-field-properties.png — screenshot catalog entry 5.
+     Also worth a second slot for completion-factory-attributes.png (entry 6). -->
+
+> *Screenshot pending.* Attribute completion inside a `<field>` tag, each property carrying its
+> one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
+> marked `(default)`.
+
 ## Planned scope
 
 Three surfaces, connected by one shared model of what fields exist and what they can do —
@@ -77,6 +124,7 @@ they are written down — a compatibility matrix ships with the first release.
 | [Code organization](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [How-to guides](docs/how-to/) | Adding an editor feature, extending the field model, testing against the gates |
 | [Demo runbook](docs/demo/README.md) | End-to-end acceptance criteria in user terms, doubling as a talk runbook |
+| [Screenshot catalog](docs/screenshots.md) | What each documentation image must show, how to capture it, and what invalidates it |
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
 | [Platform mechanisms](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are, and what this plugin decided |
 | [Plugin development tutorial](docs/modern-intellij-plugin-development.md) | Building this kind of plugin from scratch, using this project as the worked example |

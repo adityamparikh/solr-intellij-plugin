@@ -15,6 +15,10 @@ join this suite only when its code has shipped and there is something to press.
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
+While the sandbox is open, capture anything [the screenshot catalog](screenshots.md) lists as
+outstanding — the gestures are the same ones, and a screenshot taken during a pass is evidence the
+check passed rather than a picture of an unverified claim.
+
 If every feature is dead at once, suspect the sandbox, not the plugin: delete
 `.intellijPlatform/sandbox/<project>/<IDE>/system-test` and relaunch — the full signature
 is in [the testing guide](how-to/testing-and-the-build-gates.md).
