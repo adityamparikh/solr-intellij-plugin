@@ -1,6 +1,7 @@
 package org.apache.solr.ide.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -169,6 +170,47 @@ class SolrClassCatalogTest {
         assertEquals(SolrValueType.FREE, attribute.valueType)
     }
 
+    /**
+     * The current generator marks an attribute required with a trailing `!` or gives it a literal
+     * default after `=`. The two markers are mutually exclusive, and a bare `name:type` carries
+     * neither.
+     */
+    @Test
+    fun `a required marker and a literal default parse from the entry`() {
+        val attributes = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tminGramSize:int!,generateWordParts:int=1,words:free"),
+        ).single().attributes.associateBy { it.name }
+
+        assertTrue("minGramSize is required", attributes.getValue("minGramSize").required)
+        assertNull("a required attribute carries no default", attributes.getValue("minGramSize").defaultValue)
+
+        assertEquals("1", attributes.getValue("generateWordParts").defaultValue)
+        assertFalse("a default is not a requirement", attributes.getValue("generateWordParts").required)
+
+        assertNull("a bare attribute has no default", attributes.getValue("words").defaultValue)
+        assertFalse("a bare attribute is not required", attributes.getValue("words").required)
+    }
+
+    /** A string default keeps its text, and the type still parses from the token before the `=`. */
+    @Test
+    fun `a string default keeps its text`() {
+        val attribute = SolrClassCatalog.parse(
+            sequenceOf("tokenizer\torg.example.T\tsolr.T\tlanguage:free=English"),
+        ).single().attributes.single()
+        assertEquals("English", attribute.defaultValue)
+        assertEquals(SolrValueType.FREE, attribute.valueType)
+    }
+
+    /** An older catalog, with only name and type, reads as neither required nor defaulted. */
+    @Test
+    fun `an entry without markers has no default and is not required`() {
+        val attribute = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tignoreCase:bool"),
+        ).single().attributes.single()
+        assertNull(attribute.defaultValue)
+        assertFalse(attribute.required)
+    }
+
     /** Every entry carries both spellings, and the short one is the `solr.` form. */
     @Test
     fun `entries are well formed`() {
@@ -287,6 +329,51 @@ class SolrClassCatalogTest {
                 )
             }
         }
+    }
+
+    // --- attribute defaults and requiredness ------------------------------------------------------
+    //
+    // The three behaviours the constructor-bytecode pass has to get right, each named by the factory
+    // that proves it: taking a literal default, reading `require*` as required, and declining a
+    // computed default rather than guessing it. Named, never counted, for the same reason the types
+    // are.
+
+    /**
+     * A literal default beside the name is taken. `WordDelimiterGraphFilterFactory` reads
+     * `generateWordParts` with `getInt(args, GENERATE_WORD_PARTS, 1)`, and javac inlines the named
+     * constant to the literal `1` in the argument slot.
+     */
+    @Test
+    fun `a literal default is recorded`() {
+        val generateWordParts = attribute("solr.WordDelimiterGraphFilterFactory", "generateWordParts")
+        assertEquals("1", generateWordParts.defaultValue)
+        assertFalse("a default is not a requirement", generateWordParts.required)
+    }
+
+    /**
+     * `requireInt` marks an attribute required and takes no default. `EdgeNGramFilterFactory` reads
+     * both grammar sizes that way, so each is required with nothing to fall back to.
+     */
+    @Test
+    fun `a required attribute is marked required and carries no default`() {
+        for (name in listOf("minGramSize", "maxGramSize")) {
+            val required = attribute("solr.EdgeNGramFilterFactory", name)
+            assertTrue("$name is required", required.required)
+            assertNull("$name carries no default", required.defaultValue)
+        }
+    }
+
+    /**
+     * A default computed at runtime is recorded as absent rather than guessed.
+     * `JapaneseTokenizerFactory` reads `mode` with `get(args, MODE, DEFAULT_MODE.toString())`, whose
+     * default is a method result, not a literal — so `mode` carries neither a default nor a
+     * requirement, the same reason match analysis carries a `confident` flag.
+     */
+    @Test
+    fun `a computed default is declined rather than guessed`() {
+        val mode = attribute("solr.JapaneseTokenizerFactory", "mode")
+        assertNull("mode's default is DEFAULT_MODE.toString(), not a literal", mode.defaultValue)
+        assertFalse("mode is optional", mode.required)
     }
 
     // --- field type attributes --------------------------------------------------------------------

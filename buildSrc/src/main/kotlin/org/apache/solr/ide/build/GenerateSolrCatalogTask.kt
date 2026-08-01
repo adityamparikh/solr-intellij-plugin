@@ -16,6 +16,7 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
@@ -187,6 +188,13 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
             }
             return count
         }
+
+        // Whether a typed reader carries a default: a third parameter after the (Map, String)
+        // every reader opens with. `get(args, name)` has none; `get(args, name, "English")` and
+        // `getInt(args, name, 1)` each do. `require*` readers have two parameters and so never do,
+        // which is what keeps a required attribute from also carrying a default.
+        internal fun hasDefaultParameter(descriptor: String): Boolean =
+            !descriptor.removePrefix(argumentMapReader).startsWith(")")
     }
 }
 
@@ -202,6 +210,59 @@ private val analysisServices = mapOf(
 private fun shortName(binaryName: String) = "solr." + binaryName.substringAfterLast('.')
 
 /**
+ * What one attribute read tells the catalog: the value [type] token, a literal [default] where the
+ * bytecode carries one, and whether the reader marked it [required]. The default and the required
+ * marker are the two facts the constructor-bytecode pass harvests beyond the name and the type,
+ * and they are what the factory half of quick documentation and the restates-the-default
+ * inspection consume.
+ */
+private data class AttributeFacts(
+    val type: String,
+    val default: String? = null,
+    val required: Boolean = false,
+)
+
+/**
+ * One attribute's facts, folded across every reading of it -- several within a class, then one per
+ * ancestor up the hierarchy. Each fold declines a claim it cannot keep rather than picking a side:
+ * a type read two ways resolves to `free`, two disagreeing defaults resolve to none, and one
+ * optional reading anywhere makes the attribute optional. That is the same bet the type merge
+ * already makes, extended to the two new facts. An optional reading with a default therefore beats
+ * a required one, which is correct -- an attribute a subclass can omit is not required.
+ */
+private fun mergeFacts(existing: AttributeFacts?, incoming: AttributeFacts): AttributeFacts {
+    if (existing == null) return incoming
+    return AttributeFacts(
+        type = GenerateSolrCatalogTask.mergeType(existing.type, incoming.type),
+        default = when {
+            existing.default == incoming.default -> existing.default
+            existing.default == null -> incoming.default
+            incoming.default == null -> existing.default
+            else -> null
+        },
+        required = existing.required && incoming.required,
+    )
+}
+
+/**
+ * One attribute as the catalog's fourth column writes it: `name:type`, plus a trailing `!` when it
+ * is required or `=default` when a literal default was found. The two markers are mutually
+ * exclusive, and required wins if both are somehow set, because the reader that proves required
+ * takes no default.
+ */
+private fun encodeAttribute(name: String, facts: AttributeFacts): String {
+    val base = "$name:${facts.type}"
+    return when {
+        facts.required -> "$base!"
+        facts.default != null -> "$base=${facts.default}"
+        else -> base
+    }
+}
+
+/** The characters the fourth column's grammar uses, and which therefore may not sit in a default. */
+private val attributeDelimiters = setOf('\t', ',', ':', '=', '!')
+
+/**
  * Everything one [ArtifactScanner] pass over a Solr line's jars discovers, before the class
  * hierarchy is walked: the superclass of every class seen, which are abstract, which analysis
  * factories each SPI file names, and which attributes each factory or field type reads out of its
@@ -212,8 +273,8 @@ private class ScanResult {
     val abstractClasses = mutableSetOf<String>()
     val factories = mutableMapOf<String, MutableSet<String>>()
 
-    // Class -> attribute name -> value type token.
-    val declaredAttributes = mutableMapOf<String, MutableMap<String, String>>()
+    // Class -> attribute name -> the facts one bytecode pass recorded about it.
+    val declaredAttributes = mutableMapOf<String, MutableMap<String, AttributeFacts>>()
 }
 
 /** One pass over a Solr line's resolved jars, filling a [ScanResult]. */
@@ -250,7 +311,7 @@ private class ArtifactScanner(private val analysisServices: Map<String, String>)
             // definitive ancestry test still runs afterwards, in [ClassHierarchy].
             val schemaClass = reader.className.startsWith("org/apache/solr/schema/")
             if (reader.className.endsWith("Factory") || schemaClass) {
-                val found = sortedMapOf<String, String>()
+                val found = sortedMapOf<String, AttributeFacts>()
                 reader.accept(
                     AttributeExtractingClassVisitor(schemaClass, found),
                     ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
@@ -278,7 +339,7 @@ private class ArtifactScanner(private val analysisServices: Map<String, String>)
  */
 private class AttributeExtractingClassVisitor(
     private val schemaClass: Boolean,
-    private val found: MutableMap<String, String>,
+    private val found: MutableMap<String, AttributeFacts>,
 ) : ClassVisitor(Opcodes.ASM9) {
     override fun visitMethod(
         access: Int,
@@ -320,7 +381,7 @@ private class AttributeExtractingClassVisitor(
  */
 private class AttributeReadingMethodVisitor(
     private val schemaClass: Boolean,
-    private val found: MutableMap<String, String>,
+    private val found: MutableMap<String, AttributeFacts>,
 ) : MethodVisitor(Opcodes.ASM9) {
 
     // Strings pushed since the last read, in order. The *first* is the attribute name: a reader
@@ -328,8 +389,67 @@ private class AttributeReadingMethodVisitor(
     // literal picked up the default instead of the name.
     private val pending = mutableListOf<String>()
 
+    // The value on top of the operand stack, tracked only closely enough to answer one question at
+    // a read: was the default argument a compile-time literal, and if so what was its text? A
+    // literal default sits in the argument slot as an `ldc` or an `iconst`/`bipush`; anything
+    // computed -- a `getstatic` enum, a `toString()`, a local variable -- leaves a non-literal on
+    // top, and a default the pass cannot read as a literal is recorded as absent rather than
+    // guessed. `JapaneseTokenizerFactory`'s `mode`, whose default is `DEFAULT_MODE.toString()`, is
+    // the case this declines.
+    private var top = Pushed.COMPUTED
+
     override fun visitLdcInsn(value: Any?) {
-        if (value is String) pending += value
+        top = when (value) {
+            is String -> {
+                pending += value
+                Pushed.literal(value)
+            }
+            is Int, is Long, is Float, is Double -> Pushed.literal(value.toString())
+            else -> Pushed.COMPUTED
+        }
+    }
+
+    override fun visitInsn(opcode: Int) {
+        top = when (opcode) {
+            Opcodes.ICONST_M1 -> Pushed.literal("-1")
+            Opcodes.ICONST_0, Opcodes.LCONST_0 -> Pushed.literal("0")
+            Opcodes.ICONST_1, Opcodes.LCONST_1 -> Pushed.literal("1")
+            Opcodes.ICONST_2 -> Pushed.literal("2")
+            Opcodes.ICONST_3 -> Pushed.literal("3")
+            Opcodes.ICONST_4 -> Pushed.literal("4")
+            Opcodes.ICONST_5 -> Pushed.literal("5")
+            Opcodes.FCONST_0, Opcodes.DCONST_0 -> Pushed.literal("0.0")
+            Opcodes.FCONST_1, Opcodes.DCONST_1 -> Pushed.literal("1.0")
+            Opcodes.FCONST_2 -> Pushed.literal("2.0")
+            else -> Pushed.COMPUTED
+        }
+    }
+
+    override fun visitIntInsn(opcode: Int, operand: Int) {
+        top = if (opcode == Opcodes.BIPUSH || opcode == Opcodes.SIPUSH) {
+            Pushed.literal(operand.toString())
+        } else {
+            Pushed.COMPUTED
+        }
+    }
+
+    // A variable load, a field read, a `new`, and a jump each leave something on top that is not a
+    // compile-time literal. Marking the top computed after any of them is the safe direction: a
+    // default the pass is unsure about is a default it declines.
+    override fun visitVarInsn(opcode: Int, variable: Int) {
+        top = Pushed.COMPUTED
+    }
+
+    override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
+        top = Pushed.COMPUTED
+    }
+
+    override fun visitTypeInsn(opcode: Int, type: String) {
+        top = Pushed.COMPUTED
+    }
+
+    override fun visitJumpInsn(opcode: Int, label: Label) {
+        top = Pushed.COMPUTED
     }
 
     override fun visitMethodInsn(
@@ -343,13 +463,43 @@ private class AttributeReadingMethodVisitor(
         val erasedRead = isErasedRead(owner, called)
         if (typedRead || erasedRead) {
             val valueType = if (typedRead) GenerateSolrCatalogTask.valueTypeOf(methodDescriptor) else "free"
-            recordAttribute(methodDescriptor, valueType)
+            // `require*` marks the attribute required and takes no default; every other typed
+            // reader with a third parameter carries one. An erased read -- `args.remove` or a
+            // field type's `args.get` -- has neither.
+            val required = typedRead && called.startsWith("require")
+            val default = if (typedRead && !required && GenerateSolrCatalogTask.hasDefaultParameter(methodDescriptor)) {
+                literalDefault(valueType)
+            } else {
+                null
+            }
+            recordAttribute(methodDescriptor, AttributeFacts(valueType, default, required))
             // Cleared only after a read, not after every call. An earlier version cleared on any
             // call, which lost the name whenever the default was computed by one --
             // `get(args, MODE, DEFAULT_MODE.toString())` dropped `mode` from the Japanese
             // tokenizer entirely.
             pending.clear()
         }
+        // A read pushes its result and any other call pushes whatever it returns; either way the
+        // top is no longer a literal by the time the next argument list starts.
+        top = Pushed.COMPUTED
+    }
+
+    // The default argument is the last operand pushed before the read, so it is whatever is on top
+    // now. A `bool` default arrives as the integer `0` or `1` -- `getBoolean` pushes `iconst` --
+    // and reads back as `false`/`true`. A default carrying one of the fourth column's own
+    // delimiters is declined rather than allowed to corrupt the row.
+    private fun literalDefault(valueType: String): String? {
+        val value = top.text ?: return null
+        val text = if (valueType == "bool") {
+            when (value) {
+                "0" -> "false"
+                "1" -> "true"
+                else -> value
+            }
+        } else {
+            value
+        }
+        return text.takeIf { candidate -> candidate.none { it in attributeDelimiters } }
     }
 
     // The owner guard keeps `Map.get` and `List.get` out: only a call on the factory hierarchy
@@ -376,7 +526,7 @@ private class AttributeReadingMethodVisitor(
         return called in erasedReaders && owner == "java/util/Map"
     }
 
-    private fun recordAttribute(methodDescriptor: String, valueType: String) {
+    private fun recordAttribute(methodDescriptor: String, facts: AttributeFacts) {
         // Only the literals this call could have consumed. Taking the head of everything pushed
         // since the last read let a stray literal -- an exception message, a builder append -- sit
         // in front of the real name and be read as the attribute.
@@ -389,7 +539,18 @@ private class AttributeReadingMethodVisitor(
             // factory accepts. The base class strips them with `args.remove`, which reads
             // identically to a real one.
             ?.takeIf { it != "class" && it != "name" }
-            ?.let { found[it] = GenerateSolrCatalogTask.mergeType(found[it], valueType) }
+            ?.let { found[it] = mergeFacts(found[it], facts) }
+    }
+}
+
+/** The top of the operand stack, reduced to what a default read needs: its literal text, or none. */
+private class Pushed private constructor(val text: String?) {
+    companion object {
+        /** Something the pass cannot read as a compile-time literal -- a call result, a field, a var. */
+        val COMPUTED = Pushed(null)
+
+        /** A compile-time literal with the given [text]. */
+        fun literal(text: String) = Pushed(text)
     }
 }
 
@@ -409,7 +570,7 @@ private val mapReaders = setOf("get", "remove", "containsKey")
  */
 private class ClassHierarchy(
     private val superclasses: Map<String, String?>,
-    private val declaredAttributes: Map<String, Map<String, String>>,
+    private val declaredAttributes: Map<String, Map<String, AttributeFacts>>,
 ) {
     fun descendsFrom(internalName: String, ancestor: String): Boolean {
         var current: String? = superclasses[internalName]
@@ -426,7 +587,7 @@ private class ClassHierarchy(
     // hierarchy. Reporting only the leaf's own literals would omit real attributes.
     fun attributesOf(binaryName: String): List<String> {
         val internal = binaryName.replace('.', '/')
-        val collected = sortedMapOf<String, String>()
+        val collected = sortedMapOf<String, AttributeFacts>()
 
         var current: String? = internal
         var depth = 0
@@ -434,7 +595,7 @@ private class ClassHierarchy(
             mergeDeclared(current, collected)
             current = superclasses[current]
         }
-        return collected.map { (name, type) -> "$name:$type" }
+        return collected.map { (name, facts) -> encodeAttribute(name, facts) }
     }
 
     // A class may hand the argument map to a nested helper and let *it* do the reading, in which
@@ -443,15 +604,15 @@ private class ClassHierarchy(
     // are read in `EnumFieldType$EnumMapping`, so before this the catalog said `EnumFieldType`
     // took no attributes at all -- and under the unknown-attribute rule that turns a correct
     // `enumsConfig="..."` into a warning.
-    private fun mergeDeclared(owner: String, collected: MutableMap<String, String>) {
-        declaredAttributes[owner]?.forEach { (name, type) ->
-            collected[name] = GenerateSolrCatalogTask.mergeType(collected[name], type)
+    private fun mergeDeclared(owner: String, collected: MutableMap<String, AttributeFacts>) {
+        declaredAttributes[owner]?.forEach { (name, facts) ->
+            collected[name] = mergeFacts(collected[name], facts)
         }
         val nested = "$owner$"
         for ((className, attributes) in declaredAttributes) {
             if (!className.startsWith(nested)) continue
-            attributes.forEach { (name, type) ->
-                collected[name] = GenerateSolrCatalogTask.mergeType(collected[name], type)
+            attributes.forEach { (name, facts) ->
+                collected[name] = mergeFacts(collected[name], facts)
             }
         }
     }

@@ -82,9 +82,10 @@ gesture, caret placement, the Find Usages tool window.*
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
       in `name^3 description` navigates on its own, and Find Usages on the field lists
       the parameter among its usages.
-- [ ] **NAV-5** — Cmd+Click a filter's resource path — `words="stopwords.txt"`,
-      `synonyms=`, `protected=` — opens the file, including through `lang/`; each entry
-      in a comma-separated list navigates on its own.
+- [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
+      `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
+      opens the file, including through `lang/`; each entry in a comma-separated list
+      navigates on its own.
 
 ## 5. Quick documentation (DOC)
 
@@ -190,3 +191,4 @@ One row per completed pass. Scope names what was skipped and why, if anything.
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
 | 2026-07-30 | e4a35ac | | full suite | *in progress* | first pass with this document |
+| 2026-08-01 | a2e0bc5 | | full suite | *in progress* | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
