@@ -1,6 +1,7 @@
 package org.apache.solr.ide.build
 
 import java.io.File
+import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
@@ -34,6 +35,12 @@ import org.objectweb.asm.Opcodes
  * accepts on a `<field>`, read from the same bytecode. The hand-maintained field table treats its
  * list as complete, and `SolrFieldPropertyDriftTest` holds that claim against this file — so a Solr
  * line growing a new field property fails the build by name instead of underlining a correct file.
+ *
+ * The task itself only orchestrates: [ArtifactScanner] does the one pass over the jars,
+ * [ClassHierarchy] answers ancestry and inherited-attribute questions about what it found, and
+ * [FieldPropertyExtractor] handles the separate `FieldProperties` file. Each of those, and the ASM
+ * visitors they use, is a private top-level class in this file — collaborators of the task rather
+ * than nested pieces of it, since none of them touch Gradle or task state.
  */
 @CacheableTask
 abstract class GenerateSolrCatalogTask : DefaultTask() {
@@ -70,338 +77,42 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
         solrLines.add(input)
     }
 
-    /** The Lucene SPI files naming each kind of analysis component, and the catalog kind for each. */
-    private val analysisServices = mapOf(
-        "org.apache.lucene.analysis.TokenizerFactory" to "tokenizer",
-        "org.apache.lucene.analysis.TokenFilterFactory" to "tokenFilter",
-        "org.apache.lucene.analysis.CharFilterFactory" to "charFilter",
-    )
-
-    // How an analysis factory reads its own attributes out of the argument map, recognized by
-    // the shape of the call rather than by a list of method names. Reflection cannot see these:
-    // the names are string literals in the constructor body, so they are neither fields nor
-    // annotations. This is the whole reason the catalog is built from bytecode.
-    //
-    // Every reader on `AbstractAnalysisFactory` that takes an attribute name has the signature
-    // `(Map<String, String>, String, ...)`, so the descriptor identifies one exactly. An earlier
-    // revision listed seventeen method names instead, which had to be edited whenever Solr added
-    // a reader -- and a reader that went unlisted dropped real attributes silently. Under the
-    // unknown-attribute inspection this catalog now feeds, a dropped attribute becomes a warning
-    // on a *correct* file, so closing that path matters more than the tidiness.
-    //
-    // Three names from that list are deliberately not matched here, and their absence is the
-    // point rather than an oversight: `getLines`, `getWordSet` and `getSnowballWordSet` take a
-    // `ResourceLoader`, not the argument map. They consume a filename that a real reader already
-    // resolved -- `getWordSet(loader, get(args, "words"), ignoreCase)` -- so matching them
-    // harvested whatever literal happened to be pending. The generated catalog is unchanged by
-    // their removal, which is the assertion `SolrClassCatalogTest` makes.
-    private val argumentMapReader = "(Ljava/util/Map;Ljava/lang/String;"
-
-    // How a field type consumes an argument, on the plain map. Three JDK method names is a small
-    // hardcoded set, and acceptable where the seventeen Solr reader names were not: `java.util.Map`
-    // has been stable for decades, where Solr's factory API is precisely the thing that moves.
-    private val mapReaders = setOf("get", "remove", "containsKey")
-
-    // Where Solr declares what a <field> accepts. `propertyNames` is the parser's whole
-    // vocabulary, and `isPropertyIgnored` names the attributes it waves through without acting
-    // on — `default`, and the two format selectors that only mean something on the type.
-    // Everything else on a <field> throws `Invalid field property` at core load.
-    private val fieldPropertiesClass = "org/apache/solr/schema/FieldProperties.class"
-
-    // The accepted names, read from the two places FieldProperties keeps them. `propertyNames`
-    // is filled in the static initialiser as one `ldc`/`aastore` pair per name — nothing else in
-    // that initialiser stores a string into an array — and `isPropertyIgnored` holds its names as
-    // the literals it compares against. Reading the strings out of exactly those two methods is
-    // the same bet the catalog makes everywhere: the bytecode cannot drift from what Solr does,
-    // where a copied list can.
-    private fun acceptedFieldProperties(jars: List<File>): Set<String> {
-        val names = sortedSetOf<String>()
-        for (jar in jars) {
-            JarFile(jar).use { open ->
-                val entry = open.getJarEntry(fieldPropertiesClass) ?: return@use
-                open.getInputStream(entry).use { input ->
-                    ClassReader(input).accept(
-                        object : ClassVisitor(Opcodes.ASM9) {
-                            override fun visitMethod(
-                                access: Int,
-                                methodName: String,
-                                descriptor: String,
-                                signature: String?,
-                                exceptions: Array<out String>?,
-                            ): MethodVisitor? {
-                                val storesTheArray = methodName == "<clinit>"
-                                val comparesIgnored = methodName == "isPropertyIgnored"
-                                if (!storesTheArray && !comparesIgnored) return null
-                                return object : MethodVisitor(Opcodes.ASM9) {
-                                    private var pending: String? = null
-
-                                    override fun visitLdcInsn(value: Any?) {
-                                        if (value !is String) return
-                                        if (comparesIgnored) names += value else pending = value
-                                    }
-
-                                    override fun visitInsn(opcode: Int) {
-                                        if (opcode == Opcodes.AASTORE) {
-                                            pending?.let { names += it }
-                                            pending = null
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
-                    )
-                }
-            }
-        }
-        return names
-    }
-
     private fun buildFieldProperties(line: String, version: String, jars: List<File>): String =
         buildString {
             appendLine("# Generated by :generateSolrCatalog - do not edit.")
             appendLine("# Solr line $line, read from $version.")
             appendLine("# The attribute names FieldProperties accepts on a <field>.")
-            acceptedFieldProperties(jars).forEach { appendLine(it) }
+            FieldPropertyExtractor.extract(jars).forEach { appendLine(it) }
         }
 
     private fun buildCatalog(line: String, version: String, jars: List<File>): String {
-        val superclasses = mutableMapOf<String, String?>()
-        val abstractClasses = mutableSetOf<String>()
-        val factories = mutableMapOf<String, MutableSet<String>>()
-        // Class -> attribute name -> value type token.
-        val declaredAttributes = mutableMapOf<String, MutableMap<String, String>>()
+        val scan = ArtifactScanner(analysisServices).scan(jars)
+        val hierarchy = ClassHierarchy(scan.superclasses, scan.declaredAttributes)
 
-        for (jar in jars) {
-            JarFile(jar).use { open ->
-                for (entry in open.entries()) {
-                    val entryName = entry.name
-                    if (entryName.endsWith(".class")) {
-                        open.getInputStream(entry).use { input ->
-                            val reader = ClassReader(input)
-                            superclasses[reader.className] = reader.superName
-                            if (reader.access and Opcodes.ACC_ABSTRACT != 0) {
-                                abstractClasses += reader.className
-                            }
-                            // A field type is read as well as a factory, and the two differ in
-                            // every mechanical detail below. Selected by package rather than by
-                            // ancestry because `superclasses` is still being filled by this very
-                            // loop, so asking "does this descend from FieldType" here would
-                            // depend on jar entry order. Every field type Solr ships lives in
-                            // `org.apache.solr.schema` -- 33 of them on Solr 10, 35 on Solr 9,
-                            // and none anywhere else -- so the package is an exact prefilter.
-                            // The definitive ancestry test still runs, after the loop.
-                            val schemaClass = reader.className.startsWith("org/apache/solr/schema/")
-                            if (reader.className.endsWith("Factory") || schemaClass) {
-                                val found = sortedMapOf<String, String>()
-                                reader.accept(
-                                    object : ClassVisitor(Opcodes.ASM9) {
-                                        override fun visitMethod(
-                                            access: Int,
-                                            methodName: String,
-                                            descriptor: String,
-                                            signature: String?,
-                                            exceptions: Array<out String>?,
-                                        ): MethodVisitor? {
-                                            // A factory reads its arguments in its constructor,
-                                            // and nowhere else.
-                                            //
-                                            // A field type threads the map through whatever
-                                            // helper it likes. `init(IndexSchema, Map)` is the
-                                            // entry point, but `CollationField` reads in
-                                            // `setup(ResourceLoader, Map)` and `EnumFieldType`
-                                            // in a nested class's constructor, so naming the
-                                            // methods would be the same losing game as naming
-                                            // the readers. Every method is visited instead.
-                                            //
-                                            // The direction of the error is why that is safe.
-                                            // A spurious attribute makes the plugin *more*
-                                            // permissive -- it silences a warning it would
-                                            // otherwise raise -- while a missing one turns a
-                                            // correct `language="en"` into an underline. The
-                                            // `Map` owner, lowercase-initial and not-class-or-
-                                            // name guards below still apply to everything found.
-                                            val reads = methodName == "<init>" || schemaClass
-                                            if (!reads) return null
-                                            return object : MethodVisitor(Opcodes.ASM9) {
-                                                // Strings pushed since the last call, in order.
-                                                // The *first* is the attribute name: a reader
-                                                // may take a default too, as in
-                                                // `get(args, "language", "English")`, and
-                                                // taking the most recent literal picked up the
-                                                // default instead of the name.
-                                                private val pending = mutableListOf<String>()
-
-                                                override fun visitLdcInsn(value: Any?) {
-                                                    if (value is String) pending += value
-                                                }
-
-                                                override fun visitMethodInsn(
-                                                    opcode: Int,
-                                                    owner: String,
-                                                    called: String,
-                                                    methodDescriptor: String,
-                                                    isInterface: Boolean,
-                                                ) {
-                                                    // The owner guard keeps `Map.get` and
-                                                    // `List.get` out: only a call on the
-                                                    // factory hierarchy reads an argument.
-                                                    val onFactory = owner.endsWith("Factory") ||
-                                                        owner == "org/apache/lucene/analysis/AbstractAnalysisFactory"
-                                                    // Rule A: the call takes the argument map
-                                                    // and then a name. The descriptor says so
-                                                    // exactly, and its return type says what
-                                                    // the value is.
-                                                    val typedRead = onFactory &&
-                                                        methodDescriptor.startsWith(argumentMapReader)
-                                                    // Rule B: `args.remove("userDictionary")`
-                                                    // is a real read -- a factory consuming an
-                                                    // argument this way still accepts it -- but
-                                                    // `Map.remove` is erased to
-                                                    // `(Ljava/lang/Object;)Ljava/lang/Object;`,
-                                                    // so it can never carry a type.
-                                                    //
-                                                    // `Map.get` joins it for field types only,
-                                                    // and that is the whole mechanism by which
-                                                    // they are read: a field type calls
-                                                    // `args.get("defaultCurrency")` on the plain
-                                                    // map, never a typed reader. Admitting it
-                                                    // for factories too would undo the owner
-                                                    // guard above, which exists to keep every
-                                                    // unrelated `Map.get` and `List.get` out.
-                                                    val erasedReaders =
-                                                        if (schemaClass) mapReaders else setOf("remove")
-                                                    val erasedRead = called in erasedReaders &&
-                                                        owner == "java/util/Map"
-                                                    val isRead = typedRead || erasedRead
-                                                    val valueType =
-                                                        if (typedRead) valueTypeOf(methodDescriptor) else "free"
-                                                    if (isRead) {
-                                                        // Only the literals this call could
-                                                        // have consumed. Taking the head of
-                                                        // everything pushed since the last read
-                                                        // let a stray literal -- an exception
-                                                        // message, a builder append -- sit in
-                                                        // front of the real name and be read as
-                                                        // the attribute.
-                                                        val consumed = pending.takeLast(
-                                                            stringLikeParameters(methodDescriptor),
-                                                        )
-                                                        // Every Solr and Lucene attribute name
-                                                        // is lowerCamelCase. The guard catches
-                                                        // the defaults that still reach here by
-                                                        // paths the rule above does not cover.
-                                                        consumed.firstOrNull()
-                                                            ?.takeIf { it.isNotEmpty() && it[0].isLowerCase() }
-                                                            // `class` and `name` are how a
-                                                            // component names its factory, not
-                                                            // parameters the factory accepts.
-                                                            // The base class strips them with
-                                                            // `args.remove`, which reads
-                                                            // identically to a real one.
-                                                            ?.takeIf { it != "class" && it != "name" }
-                                                            ?.let { found[it] = mergeType(found[it], valueType) }
-                                                    }
-                                                    // Cleared only after a read, not after
-                                                    // every call. An earlier version cleared on
-                                                    // any call, which lost the name whenever the
-                                                    // default was computed by one --
-                                                    // `get(args, MODE, DEFAULT_MODE.toString())`
-                                                    // dropped `mode` from the Japanese
-                                                    // tokenizer entirely.
-                                                    if (isRead) pending.clear()
-                                                }
-                                            }
-                                        }
-                                    },
-                                    ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
-                                )
-                                if (found.isNotEmpty()) declaredAttributes[reader.className] = found
-                            }
-                        }
-                    } else if (entryName.startsWith("META-INF/services/")) {
-                        val kind = analysisServices[entryName.removePrefix("META-INF/services/")]
-                        if (kind != null) {
-                            val implementations = open.getInputStream(entry).bufferedReader()
-                                .readLines()
-                                .map { it.substringBefore('#').trim() }
-                                .filter { it.isNotEmpty() }
-                            factories.getOrPut(kind) { mutableSetOf() } += implementations
-                        }
-                    }
-                }
-            }
-        }
-
-        // Solr's resource loader resolves `solr.X` against its own packages *and* Lucene's
-        // analysis packages, which is why one short form covers both populations.
-        fun shortName(binaryName: String) = "solr." + binaryName.substringAfterLast('.')
-
-        fun descendsFromFieldType(internalName: String): Boolean {
-            var current: String? = superclasses[internalName]
-            var depth = 0
-            while (current != null && depth++ < 40) {
-                if (current == "org/apache/solr/schema/FieldType") return true
-                current = superclasses[current]
-            }
-            return false
-        }
-
-        val fieldTypes = superclasses.keys
-            .filter { '$' !in it && it !in abstractClasses && descendsFromFieldType(it) }
+        val fieldTypes = scan.superclasses.keys
+            .filter { '$' !in it && it !in scan.abstractClasses }
+            .filter { hierarchy.descendsFrom(it, "org/apache/solr/schema/FieldType") }
             .map { it.replace('/', '.') }
             .sorted()
-
-        // A factory inherits whatever its superclasses read. `EdgeNGramFilterFactory` declares
-        // its own three; every analysis factory also accepts `luceneMatchVersion` from the root
-        // of the hierarchy. Reporting only the leaf's own literals would omit real attributes.
-        fun attributesOf(binaryName: String): List<String> {
-            val internal = binaryName.replace('.', '/')
-            val collected = sortedMapOf<String, String>()
-
-            // A class may hand the argument map to a nested helper and let *it* do the reading,
-            // in which case the literals are recorded against the helper and the enclosing class
-            // looks like it accepts nothing. `EnumFieldType` is the case that forced this:
-            // `enumsConfig` and `enumName` are read in `EnumFieldType$EnumMapping`, so before
-            // this the catalog said `EnumFieldType` took no attributes at all -- and under the
-            // unknown-attribute rule that turns a correct `enumsConfig="..."` into a warning.
-            fun merge(owner: String) {
-                declaredAttributes[owner]?.forEach { (name, type) ->
-                    collected[name] = mergeType(collected[name], type)
-                }
-                val nested = "$owner$"
-                for ((className, attributes) in declaredAttributes) {
-                    if (!className.startsWith(nested)) continue
-                    attributes.forEach { (name, type) ->
-                        collected[name] = mergeType(collected[name], type)
-                    }
-                }
-            }
-
-            var current: String? = internal
-            var depth = 0
-            while (current != null && depth++ < 40) {
-                merge(current)
-                current = superclasses[current]
-            }
-            return collected.map { (name, type) -> "$name:$type" }
-        }
 
         return buildString {
             appendLine("# Generated by :generateSolrCatalog - do not edit.")
             appendLine("# Solr line $line, read from $version.")
             appendLine("# kind\tclass\tshort name\tattributes")
             for (className in fieldTypes) {
-                val attributes = attributesOf(className).joinToString(",")
-                appendLine("fieldType\t$className\t${shortName(className)}\t$attributes")
+                appendCatalogRow(this, "fieldType", className, hierarchy)
             }
-            for ((kind, implementations) in factories.toSortedMap()) {
+            for ((kind, implementations) in scan.factories.toSortedMap()) {
                 for (className in implementations.sorted()) {
-                    val attributes = attributesOf(className).joinToString(",")
-                    appendLine("$kind\t$className\t${shortName(className)}\t$attributes")
+                    appendCatalogRow(this, kind, className, hierarchy)
                 }
             }
         }
+    }
+
+    private fun appendCatalogRow(out: StringBuilder, kind: String, className: String, hierarchy: ClassHierarchy) {
+        val attributes = hierarchy.attributesOf(className).joinToString(",")
+        out.appendLine("$kind\t$className\t${shortName(className)}\t$attributes")
     }
 
     /** Writes one catalog file per registered line under `outputDirectory`. */
@@ -430,7 +141,7 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
 
     // The descriptor-parsing rules, on the companion so `GenerateSolrCatalogTaskTest` can pin
     // them without standing up a Gradle project. They are the part of the extraction that is
-    // pure input-to-output; everything stateful stays on the instance.
+    // pure input-to-output; everything stateful stays in the collaborator classes below.
     internal companion object {
 
         // The value type, taken from the JVM return descriptor. This is the compiler's own answer
@@ -475,6 +186,342 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
                 }
             }
             return count
+        }
+    }
+}
+
+/** The Lucene SPI files naming each kind of analysis component, and the catalog kind for each. */
+private val analysisServices = mapOf(
+    "org.apache.lucene.analysis.TokenizerFactory" to "tokenizer",
+    "org.apache.lucene.analysis.TokenFilterFactory" to "tokenFilter",
+    "org.apache.lucene.analysis.CharFilterFactory" to "charFilter",
+)
+
+// Solr's resource loader resolves `solr.X` against its own packages *and* Lucene's analysis
+// packages, which is why one short form covers both populations.
+private fun shortName(binaryName: String) = "solr." + binaryName.substringAfterLast('.')
+
+/**
+ * Everything one [ArtifactScanner] pass over a Solr line's jars discovers, before the class
+ * hierarchy is walked: the superclass of every class seen, which are abstract, which analysis
+ * factories each SPI file names, and which attributes each factory or field type reads out of its
+ * own bytecode.
+ */
+private class ScanResult {
+    val superclasses = mutableMapOf<String, String?>()
+    val abstractClasses = mutableSetOf<String>()
+    val factories = mutableMapOf<String, MutableSet<String>>()
+
+    // Class -> attribute name -> value type token.
+    val declaredAttributes = mutableMapOf<String, MutableMap<String, String>>()
+}
+
+/** One pass over a Solr line's resolved jars, filling a [ScanResult]. */
+private class ArtifactScanner(private val analysisServices: Map<String, String>) {
+
+    fun scan(jars: List<File>): ScanResult {
+        val result = ScanResult()
+        for (jar in jars) {
+            JarFile(jar).use { open ->
+                for (entry in open.entries()) {
+                    when {
+                        entry.name.endsWith(".class") -> visitClass(open, entry, result)
+                        entry.name.startsWith("META-INF/services/") -> visitService(open, entry, result)
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    private fun visitClass(open: JarFile, entry: JarEntry, result: ScanResult) {
+        open.getInputStream(entry).use { input ->
+            val reader = ClassReader(input)
+            result.superclasses[reader.className] = reader.superName
+            if (reader.access and Opcodes.ACC_ABSTRACT != 0) {
+                result.abstractClasses += reader.className
+            }
+            // A field type is read as well as a factory, and the two differ in every mechanical
+            // detail the attribute visitors apply below. Selected by package rather than by
+            // ancestry because `superclasses` is still being filled by this very pass, so asking
+            // "does this descend from FieldType" here would depend on jar entry order. Every field
+            // type Solr ships lives in `org.apache.solr.schema` -- 33 of them on Solr 10, 35 on
+            // Solr 9, and none anywhere else -- so the package is an exact prefilter. The
+            // definitive ancestry test still runs afterwards, in [ClassHierarchy].
+            val schemaClass = reader.className.startsWith("org/apache/solr/schema/")
+            if (reader.className.endsWith("Factory") || schemaClass) {
+                val found = sortedMapOf<String, String>()
+                reader.accept(
+                    AttributeExtractingClassVisitor(schemaClass, found),
+                    ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
+                )
+                if (found.isNotEmpty()) result.declaredAttributes[reader.className] = found
+            }
+        }
+    }
+
+    private fun visitService(open: JarFile, entry: JarEntry, result: ScanResult) {
+        val kind = analysisServices[entry.name.removePrefix("META-INF/services/")] ?: return
+        val implementations = open.getInputStream(entry).bufferedReader()
+            .readLines()
+            .map { it.substringBefore('#').trim() }
+            .filter { it.isNotEmpty() }
+        result.factories.getOrPut(kind) { mutableSetOf() } += implementations
+    }
+}
+
+/**
+ * Visits one factory or field type class, collecting the attribute names it reads out of its own
+ * bytecode into [found]. Reflection cannot see these: the names are string literals in the
+ * constructor body, so they are neither fields nor annotations. This is the whole reason the
+ * catalog is built from bytecode rather than reflected.
+ */
+private class AttributeExtractingClassVisitor(
+    private val schemaClass: Boolean,
+    private val found: MutableMap<String, String>,
+) : ClassVisitor(Opcodes.ASM9) {
+    override fun visitMethod(
+        access: Int,
+        methodName: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: Array<out String>?,
+    ): MethodVisitor? {
+        // A factory reads its arguments in its constructor, and nowhere else.
+        //
+        // A field type threads the map through whatever helper it likes. `init(IndexSchema, Map)`
+        // is the entry point, but `CollationField` reads in `setup(ResourceLoader, Map)` and
+        // `EnumFieldType` in a nested class's constructor, so naming the methods would be the same
+        // losing game as naming the readers (below). Every method is visited instead.
+        //
+        // The direction of the error is why that is safe. A spurious attribute makes the plugin
+        // *more* permissive -- it silences a warning it would otherwise raise -- while a missing
+        // one turns a correct `language="en"` into an underline.
+        val reads = methodName == "<init>" || schemaClass
+        if (!reads) return null
+        return AttributeReadingMethodVisitor(schemaClass, found)
+    }
+}
+
+/**
+ * Visits one method that may read arguments out of the `Map<String, String>` Solr passes a
+ * factory or field type, recognizing a read by the shape of the call rather than by a list of
+ * method names. An earlier revision listed seventeen method names instead, which had to be edited
+ * whenever Solr added a reader -- and a reader that went unlisted dropped real attributes
+ * silently. Under the unknown-attribute inspection this catalog feeds, a dropped attribute becomes
+ * a warning on a *correct* file, so closing that path matters more than the tidiness.
+ *
+ * Three names from that old list are deliberately not matched here, and their absence is the point
+ * rather than an oversight: `getLines`, `getWordSet` and `getSnowballWordSet` take a
+ * `ResourceLoader`, not the argument map. They consume a filename that a real reader already
+ * resolved -- `getWordSet(loader, get(args, "words"), ignoreCase)` -- so matching them harvested
+ * whatever literal happened to be pending. The generated catalog is unchanged by their removal,
+ * which is the assertion `SolrClassCatalogTest` makes.
+ */
+private class AttributeReadingMethodVisitor(
+    private val schemaClass: Boolean,
+    private val found: MutableMap<String, String>,
+) : MethodVisitor(Opcodes.ASM9) {
+
+    // Strings pushed since the last read, in order. The *first* is the attribute name: a reader
+    // may take a default too, as in `get(args, "language", "English")`, and taking the most recent
+    // literal picked up the default instead of the name.
+    private val pending = mutableListOf<String>()
+
+    override fun visitLdcInsn(value: Any?) {
+        if (value is String) pending += value
+    }
+
+    override fun visitMethodInsn(
+        opcode: Int,
+        owner: String,
+        called: String,
+        methodDescriptor: String,
+        isInterface: Boolean,
+    ) {
+        val typedRead = isTypedRead(owner, methodDescriptor)
+        val erasedRead = isErasedRead(owner, called)
+        if (typedRead || erasedRead) {
+            val valueType = if (typedRead) GenerateSolrCatalogTask.valueTypeOf(methodDescriptor) else "free"
+            recordAttribute(methodDescriptor, valueType)
+            // Cleared only after a read, not after every call. An earlier version cleared on any
+            // call, which lost the name whenever the default was computed by one --
+            // `get(args, MODE, DEFAULT_MODE.toString())` dropped `mode` from the Japanese
+            // tokenizer entirely.
+            pending.clear()
+        }
+    }
+
+    // The owner guard keeps `Map.get` and `List.get` out: only a call on the factory hierarchy
+    // reads an argument.
+    private fun isFactoryOwner(owner: String) =
+        owner.endsWith("Factory") || owner == "org/apache/lucene/analysis/AbstractAnalysisFactory"
+
+    // Rule A: the call takes the argument map and then a name. The descriptor says so exactly, and
+    // its return type says what the value is. Every reader on `AbstractAnalysisFactory` that takes
+    // an attribute name has this signature, so the descriptor identifies one exactly.
+    private fun isTypedRead(owner: String, methodDescriptor: String) =
+        isFactoryOwner(owner) && methodDescriptor.startsWith(argumentMapReader)
+
+    // Rule B: `args.remove("userDictionary")` is a real read -- a factory consuming an argument
+    // this way still accepts it -- but `Map.remove` is erased to
+    // `(Ljava/lang/Object;)Ljava/lang/Object;`, so it can never carry a type.
+    //
+    // `Map.get` joins it for field types only, and that is the whole mechanism by which they are
+    // read: a field type calls `args.get("defaultCurrency")` on the plain map, never a typed
+    // reader. Admitting it for factories too would undo the owner guard above, which exists to
+    // keep every unrelated `Map.get` and `List.get` out.
+    private fun isErasedRead(owner: String, called: String): Boolean {
+        val erasedReaders = if (schemaClass) mapReaders else setOf("remove")
+        return called in erasedReaders && owner == "java/util/Map"
+    }
+
+    private fun recordAttribute(methodDescriptor: String, valueType: String) {
+        // Only the literals this call could have consumed. Taking the head of everything pushed
+        // since the last read let a stray literal -- an exception message, a builder append -- sit
+        // in front of the real name and be read as the attribute.
+        val consumed = pending.takeLast(GenerateSolrCatalogTask.stringLikeParameters(methodDescriptor))
+        // Every Solr and Lucene attribute name is lowerCamelCase. The guard catches the defaults
+        // that still reach here by paths the rules above do not cover.
+        consumed.firstOrNull()
+            ?.takeIf { it.isNotEmpty() && it[0].isLowerCase() }
+            // `class` and `name` are how a component names its factory, not parameters the
+            // factory accepts. The base class strips them with `args.remove`, which reads
+            // identically to a real one.
+            ?.takeIf { it != "class" && it != "name" }
+            ?.let { found[it] = GenerateSolrCatalogTask.mergeType(found[it], valueType) }
+    }
+}
+
+// The shape a typed reader's descriptor starts with -- see [AttributeReadingMethodVisitor.isTypedRead].
+private const val argumentMapReader = "(Ljava/util/Map;Ljava/lang/String;"
+
+// How a field type consumes an argument on the plain map. Three JDK method names is a small
+// hardcoded set, and acceptable where the seventeen Solr reader names were not:
+// `java.util.Map` has been stable for decades, where Solr's factory API is precisely the thing
+// that moves.
+private val mapReaders = setOf("get", "remove", "containsKey")
+
+/**
+ * The class hierarchy and declared attributes one [ArtifactScanner] pass discovered, queried by
+ * ancestry: whether a class descends from another, and the full set of attributes it accepts once
+ * every ancestor's own declarations are merged in.
+ */
+private class ClassHierarchy(
+    private val superclasses: Map<String, String?>,
+    private val declaredAttributes: Map<String, Map<String, String>>,
+) {
+    fun descendsFrom(internalName: String, ancestor: String): Boolean {
+        var current: String? = superclasses[internalName]
+        var depth = 0
+        while (current != null && depth++ < 40) {
+            if (current == ancestor) return true
+            current = superclasses[current]
+        }
+        return false
+    }
+
+    // A factory inherits whatever its superclasses read. `EdgeNGramFilterFactory` declares its own
+    // three; every analysis factory also accepts `luceneMatchVersion` from the root of the
+    // hierarchy. Reporting only the leaf's own literals would omit real attributes.
+    fun attributesOf(binaryName: String): List<String> {
+        val internal = binaryName.replace('.', '/')
+        val collected = sortedMapOf<String, String>()
+
+        var current: String? = internal
+        var depth = 0
+        while (current != null && depth++ < 40) {
+            mergeDeclared(current, collected)
+            current = superclasses[current]
+        }
+        return collected.map { (name, type) -> "$name:$type" }
+    }
+
+    // A class may hand the argument map to a nested helper and let *it* do the reading, in which
+    // case the literals are recorded against the helper and the enclosing class looks like it
+    // accepts nothing. `EnumFieldType` is the case that forced this: `enumsConfig` and `enumName`
+    // are read in `EnumFieldType$EnumMapping`, so before this the catalog said `EnumFieldType`
+    // took no attributes at all -- and under the unknown-attribute rule that turns a correct
+    // `enumsConfig="..."` into a warning.
+    private fun mergeDeclared(owner: String, collected: MutableMap<String, String>) {
+        declaredAttributes[owner]?.forEach { (name, type) ->
+            collected[name] = GenerateSolrCatalogTask.mergeType(collected[name], type)
+        }
+        val nested = "$owner$"
+        for ((className, attributes) in declaredAttributes) {
+            if (!className.startsWith(nested)) continue
+            attributes.forEach { (name, type) ->
+                collected[name] = GenerateSolrCatalogTask.mergeType(collected[name], type)
+            }
+        }
+    }
+}
+
+/** Where Solr declares what a `<field>` accepts, in `FieldProperties`. */
+private const val fieldPropertiesClass = "org/apache/solr/schema/FieldProperties.class"
+
+/**
+ * Reads the attribute names `FieldProperties` accepts on a `<field>`: `propertyNames` is the
+ * parser's whole vocabulary, and `isPropertyIgnored` names the attributes it waves through without
+ * acting on -- `default`, and the two format selectors that only mean something on the type.
+ * Everything else on a `<field>` throws `Invalid field property` at core load.
+ *
+ * The names are read from the two places `FieldProperties` keeps them: `propertyNames` is filled
+ * in the static initialiser as one `ldc`/`aastore` pair per name -- nothing else in that
+ * initialiser stores a string into an array -- and `isPropertyIgnored` holds its names as the
+ * literals it compares against. Reading the strings out of exactly those two methods is the same
+ * bet the catalog makes everywhere: the bytecode cannot drift from what Solr does, where a copied
+ * list can.
+ */
+private object FieldPropertyExtractor {
+    fun extract(jars: List<File>): Set<String> {
+        val names = sortedSetOf<String>()
+        for (jar in jars) {
+            JarFile(jar).use { open ->
+                val entry = open.getJarEntry(fieldPropertiesClass) ?: return@use
+                open.getInputStream(entry).use { input ->
+                    ClassReader(input).accept(
+                        FieldPropertyClassVisitor(names),
+                        ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
+                    )
+                }
+            }
+        }
+        return names
+    }
+}
+
+/** Visits `<clinit>` (the `propertyNames` array) and `isPropertyIgnored`; nothing else stores a name. */
+private class FieldPropertyClassVisitor(private val names: MutableSet<String>) : ClassVisitor(Opcodes.ASM9) {
+    override fun visitMethod(
+        access: Int,
+        methodName: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: Array<out String>?,
+    ): MethodVisitor? {
+        val storesTheArray = methodName == "<clinit>"
+        val comparesIgnored = methodName == "isPropertyIgnored"
+        if (!storesTheArray && !comparesIgnored) return null
+        return FieldPropertyMethodVisitor(comparesIgnored, names)
+    }
+}
+
+private class FieldPropertyMethodVisitor(
+    private val comparesIgnored: Boolean,
+    private val names: MutableSet<String>,
+) : MethodVisitor(Opcodes.ASM9) {
+    private var pending: String? = null
+
+    override fun visitLdcInsn(value: Any?) {
+        if (value !is String) return
+        if (comparesIgnored) names += value else pending = value
+    }
+
+    override fun visitInsn(opcode: Int) {
+        if (opcode == Opcodes.AASTORE) {
+            pending?.let { names += it }
+            pending = null
         }
     }
 }
