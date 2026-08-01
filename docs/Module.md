@@ -120,6 +120,8 @@ Quick documentation on a schema element, on a field, and on its type.
 
 [What it answers that the Reference Guide
 cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetdocumentation).
+[Why it links to the guide rather than copying it, and why the generated catalog keeps only a
+one-sentence summary](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/faq.md).
 
 # Package org.apache.solr.ide.configset.hint
 
