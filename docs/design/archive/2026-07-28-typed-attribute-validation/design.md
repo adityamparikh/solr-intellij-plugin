@@ -1,4 +1,4 @@
-  # Typed attribute validation: catching `positionIncrementGap="foo"` and `maxGramSiz="15"`
+# Typed attribute validation: catching `positionIncrementGap="foo"` and `maxGramSiz="15"`
 
 ## Problem
 
