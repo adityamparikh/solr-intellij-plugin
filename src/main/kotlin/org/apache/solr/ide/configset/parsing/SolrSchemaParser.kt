@@ -43,6 +43,10 @@ object SolrSchemaParser {
             fieldTypes = readFieldTypes(root),
             copyFields = root.descendantsNamed("copyField").mapNotNull { readCopyField(it) },
             uniqueKey = root.descendantsNamed("uniqueKey").firstOrNull()?.textContent?.trim()?.takeIf { it.isNotEmpty() },
+            // Reported as absent when absent. Solr reads a missing attribute as 1.0, but making
+            // that substitution here would put a fact in the parser's output that the file does
+            // not contain; the model applies it instead.
+            schemaVersion = root.attributeOrNull("version"),
         )
     }
 

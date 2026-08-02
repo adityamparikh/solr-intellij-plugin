@@ -14,6 +14,7 @@ import org.apache.solr.ide.model.SolrMatchTrait
 import org.apache.solr.ide.model.SolrPrefixSupport
 import org.apache.solr.ide.model.SolrPropertyOrigin
 import org.apache.solr.ide.model.SolrReferenceGuide
+import org.apache.solr.ide.model.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 
@@ -37,9 +38,15 @@ object SolrFieldPresentation {
      * @param field the field to document
      * @param fieldType its type, or null when undeclared
      * @param version the Solr line this configset targets, for the guide link
+     * @param schemaVersion the schema's own declared version, which decides several defaults
      * @return HTML for the documentation popup
      */
-    fun fieldDocumentation(field: SolrField, fieldType: SolrFieldType?, version: SolrVersionSelection): String =
+    fun fieldDocumentation(
+        field: SolrField,
+        fieldType: SolrFieldType?,
+        version: SolrVersionSelection,
+        schemaVersion: SolrSchemaVersion,
+    ): String =
         buildString {
             append("<div class='definition'><pre>")
             append("field <b>${escape(field.name)}</b>")
@@ -61,7 +68,7 @@ object SolrFieldPresentation {
                 }
             }
 
-            append(propertyTable(field, fieldType))
+            append(propertyTable(field, fieldType, schemaVersion))
             append("</div>")
             append(guideLinks(version))
         }
@@ -72,6 +79,9 @@ object SolrFieldPresentation {
      * @param description what the element is, in general
      * @param specifics what this particular one does, or null when nothing specific can be said
      * @param version the Solr line this configset targets, for the guide link
+     * @param field the field this element declares, when it declares one
+     * @param fieldType that field's type, or null when undeclared
+     * @param schemaVersion the schema's own declared version, which decides several defaults
      * @return HTML for the popup
      */
     internal fun elementDocumentation(
@@ -80,6 +90,7 @@ object SolrFieldPresentation {
         version: SolrVersionSelection,
         field: SolrField? = null,
         fieldType: SolrFieldType? = null,
+        schemaVersion: SolrSchemaVersion,
     ): String = buildString {
         append("<div class='definition'><pre>&lt;${escape(description.tagName)}&gt;</pre></div>")
         append("<div class='content'>")
@@ -90,7 +101,7 @@ object SolrFieldPresentation {
         // The resolved configuration, on the element rather than only on its name. Hovering the tag
         // is the gesture a reader makes; requiring the caret to be inside the `name` quotes hid the
         // one answer no other tool can give behind the one gesture nobody guesses.
-        field?.let { append(propertyTable(it, fieldType)) }
+        field?.let { append(propertyTable(it, fieldType, schemaVersion)) }
         append("</div>")
         append(guideLinks(version))
     }
@@ -108,21 +119,26 @@ object SolrFieldPresentation {
      * @param property the property being hovered
      * @param effective its resolved value for the enclosing field, or null on a field type
      * @param version the Solr line this configset targets, for the guide link
+     * @param schemaVersion the schema's own declared version, which decides several defaults
      * @return HTML for the documentation popup
      */
     fun propertyDocumentation(
         property: SolrFieldProperty,
         effective: SolrEffectiveProperty?,
         version: SolrVersionSelection,
+        schemaVersion: SolrSchemaVersion,
     ): String = buildString {
         append("<div class='definition'><pre>${escape(property.name)}</pre></div>")
         append("<div class='content'>")
         append("<p>${escape(property.summary)}</p>")
         append("<table>")
         append("<tr><td>Accepts</td><td>${escape(property.validValues)}</td></tr>")
-        append("<tr><td>Solr default</td><td>${escape(property.defaultValue ?: DEPENDS_ON_TYPE)}</td></tr>")
+        append("<tr><td>Solr default</td><td>${escape(generalDefaultText(property))}</td></tr>")
         effective?.let {
-            append("<tr><td>Here</td><td><b>${escape(valueText(it))}</b> — ${escape(originText(it.origin))}</td></tr>")
+            append(
+                "<tr><td>Here</td><td><b>${escape(valueText(it))}</b> — " +
+                    "${escape(originText(it.origin, schemaVersion))}</td></tr>",
+            )
         }
         append("</table>")
         append("</div>")
@@ -290,18 +306,22 @@ object SolrFieldPresentation {
      * plausible value — `omitNorms` differs between primitive and text types, and asserting one
      * answer where Solr has two is how a plugin loses a user's trust.
      */
-    private fun propertyTable(field: SolrField, fieldType: SolrFieldType?): String = buildString {
+    private fun propertyTable(
+        field: SolrField,
+        fieldType: SolrFieldType?,
+        schemaVersion: SolrSchemaVersion,
+    ): String = buildString {
         append("<p><b>Properties</b></p><table>")
         append("<tr><th>Property</th><th>Value</th><th>From</th><th>Accepts</th><th>Meaning</th></tr>")
         // Declared values first: what the author actually wrote is what they came to check, and it
         // was previously indistinguishable from a default except by reading the middle column.
-        val ordered = SolrFieldProperties.effectiveFor(field, fieldType)
+        val ordered = SolrFieldProperties.effectiveFor(field, fieldType, schemaVersion)
             .sortedBy { if (it.origin == SolrPropertyOrigin.FIELD) 0 else 1 }
         for (effective in ordered) {
             val declared = effective.origin == SolrPropertyOrigin.FIELD
             append("<tr><td><code>${escape(effective.property.name)}</code></td>")
             append(if (declared) "<td><b>${escape(valueText(effective))}</b></td>" else "<td>${escape(valueText(effective))}</td>")
-            append("<td><i>${escape(originText(effective.origin))}</i></td>")
+            append("<td><i>${escape(originText(effective.origin, schemaVersion))}</i></td>")
             append("<td>${escape(effective.property.validValues)}</td>")
             append("<td>${escape(effective.property.summary)}</td></tr>")
         }
@@ -320,10 +340,37 @@ object SolrFieldPresentation {
      */
     private const val DEPENDS_ON_TYPE = "depends on the field type"
 
-    private fun originText(origin: SolrPropertyOrigin): String = when (origin) {
+    /**
+     * Solr's default for a property in general, before any particular schema is considered.
+     *
+     * A version-dependent default is stated with the version that decides it rather than collapsed
+     * into "depends on the field type", which would be the wrong reason: `uninvertible` does not
+     * depend on the type at all, it depends on one attribute on the root element.
+     */
+    private fun generalDefaultText(property: SolrFieldProperty): String {
+        property.defaultValue?.let { return it }
+        val range = property.defaultTrueWithin ?: return DEPENDS_ON_TYPE
+        return when {
+            range.from != null && range.below != null ->
+                "true from schema version ${range.from} up to ${range.below}, otherwise false"
+            range.from != null -> "true from schema version ${range.from}, false below it"
+            range.below != null -> "true below schema version ${range.below}, false from it"
+            else -> DEPENDS_ON_TYPE
+        }
+    }
+
+    /**
+     * Where a value came from, named so the reader knows what they would have to change.
+     *
+     * A version-dependent default names the version, because that is the actionable half: a reader
+     * seeing `uninvertible` true on a 1.6 schema is looking at a value they move by editing the
+     * root element, not one that is true of Solr as such.
+     */
+    private fun originText(origin: SolrPropertyOrigin, schemaVersion: SolrSchemaVersion): String = when (origin) {
         SolrPropertyOrigin.FIELD -> "on this field"
         SolrPropertyOrigin.FIELD_TYPE -> "from the field type"
         SolrPropertyOrigin.SOLR_DEFAULT -> "Solr default"
+        SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT -> "Solr default at schema version ${schemaVersion.label}"
         SolrPropertyOrigin.UNDETERMINED -> "see the guide"
     }
 

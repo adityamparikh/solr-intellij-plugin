@@ -530,6 +530,11 @@ anything a user can see — four steps of foundation had shipped with no exit to
 - `SolrConfigsetDocumentationProvider` and `SolrFieldPresentation` in
   `org.apache.solr.ide.configset.documentation` — action 2, including the Reference Guide
   link resolved against the configset's declared version.
+- Property defaults resolved against the schema's own `version` attribute, which Solr 9.7
+  made load-bearing when it flipped `uninvertible` and `docValues` at schema version 1.7.
+  A third version number, distinct from the Solr line and `luceneMatchVersion`; the
+  per-field-type half of those defaults is still unbuilt, and
+  [its design record](../../docs/design/pending/schema-version-defaults.md) scopes it.
 
 **Action 3 is what remains.** No intention exists yet: nothing in `src/main` implements
 `IntentionAction`, so the `_exact` companion and the EdgeNGram-backed `_prefix` field are

@@ -19,6 +19,15 @@ enum class SolrPropertyOrigin {
     /** Declared in neither, so Solr's own default applies. */
     SOLR_DEFAULT,
 
+    /**
+     * Declared in neither, and Solr's default for the version this schema declares applies.
+     *
+     * Distinct from [SOLR_DEFAULT], which is a default Solr has never made conditional. The
+     * difference is what the user would have to change: a value that holds *because the schema says
+     * 1.6* is one they can move by editing the root element, and saying so is most of the answer.
+     */
+    SCHEMA_VERSION_DEFAULT,
+
     /** Declared in neither, and Solr's default depends on the field type's implementing class. */
     UNDETERMINED,
 }
@@ -33,6 +42,10 @@ enum class SolrPropertyOrigin {
  * @property scope where the property may be written
  * @property closedValues the values it accepts when that set is closed and not boolean; empty when
  *   any value is legal, in which case nothing should be offered rather than a partial list
+ * @property defaultTrueWithin the schema versions over which this defaults to `true`, for the
+ *   properties Solr made conditional on the schema's declared version; null for the rest, which is
+ *   most of them. Set together with a null [defaultValue], since a property cannot both have one
+ *   default and have it depend on the version
  */
 data class SolrFieldProperty(
     val name: String,
@@ -41,6 +54,7 @@ data class SolrFieldProperty(
     val defaultValue: String?,
     val scope: SolrPropertyScope = SolrPropertyScope.FIELD_AND_TYPE,
     val closedValues: List<String> = emptyList(),
+    val defaultTrueWithin: SolrVersionRange? = null,
 ) {
 
     /**
@@ -129,6 +143,19 @@ data class SolrEffectiveProperty(
  * exactly the kind of confident wrong statement that gets a plugin distrusted, so this reports
  * [SolrPropertyOrigin.UNDETERMINED] and links to the guide instead.
  *
+ * **Others depend on the schema's declared version**, and those carry a [SolrVersionRange] instead
+ * of a flat default. `uninvertible` defaults true below schema version 1.7 and false from it;
+ * `useDocValuesAsStored` is the same shape around 1.6. This is a different dependency from the one
+ * above and answerable where that one is not — the schema states its version, so the plugin can
+ * resolve these outright rather than deferring to the guide.
+ *
+ * The rules stay hand-written beside the properties they qualify for the same reason the table is:
+ * there are a handful, the Reference Guide states them in prose, and they moved once between 2019
+ * and 2026. Recovering them from bytecode would mean interpreting branches on a float comparison,
+ * which is a materially different extractor from the literal-reading one the catalog generator has.
+ * The enumerative half — which of Solr's field-type classes carry which trait — is the generator's
+ * job, and is what would resolve the [SolrPropertyOrigin.UNDETERMINED] cases above.
+ *
  * It covers both Reference Guide tables: the field properties a `field` may carry and inherit, and
  * the general properties that only configure a `fieldType`. An earlier revision had only the first,
  * which left six properties invisible to documentation and completion alike.
@@ -149,7 +176,13 @@ object SolrFieldProperties {
             "true or false",
             null,
         ),
-        SolrFieldProperty("multiValued", "Whether one document may hold several values.", "true or false", "false"),
+        SolrFieldProperty(
+            "multiValued",
+            "Whether one document may hold several values.",
+            "true or false",
+            null,
+            defaultTrueWithin = SolrVersionRange(below = 1.1f),
+        ),
         SolrFieldProperty("required", "Whether a document lacking this field is rejected.", "true or false", "false"),
         SolrFieldProperty("default", "A value used when the document supplies none.", "any value of the type", null),
         SolrFieldProperty(
@@ -171,8 +204,20 @@ object SolrFieldProperties {
         SolrFieldProperty("termPayloads", "Whether payloads are stored in the term vector.", "true or false", "false"),
         SolrFieldProperty("sortMissingFirst", "Whether documents lacking this field sort first.", "true or false", "false"),
         SolrFieldProperty("sortMissingLast", "Whether documents lacking this field sort last.", "true or false", "false"),
-        SolrFieldProperty("uninvertible", "Whether the field may be un-inverted at query time when it has no doc values.", "true or false", "false"),
-        SolrFieldProperty("useDocValuesAsStored", "Whether doc values are returned as though the field were stored.", "true or false", "true"),
+        SolrFieldProperty(
+            "uninvertible",
+            "Whether the field may be un-inverted at query time when it has no doc values.",
+            "true or false",
+            null,
+            defaultTrueWithin = SolrVersionRange(below = 1.7f),
+        ),
+        SolrFieldProperty(
+            "useDocValuesAsStored",
+            "Whether doc values are returned as though the field were stored.",
+            "true or false",
+            null,
+            defaultTrueWithin = SolrVersionRange(from = 1.6f),
+        ),
         SolrFieldProperty("large", "Whether the value is lazily loaded and not cached above 512KB.", "true or false", "false"),
         SolrFieldProperty(
             "positionIncrementGap",
@@ -248,8 +293,12 @@ object SolrFieldProperties {
      * @param fieldType its type, or null when the type it names is not declared
      * @return one entry per known property, in Reference Guide order
      */
-    fun effectiveFor(field: SolrField, fieldType: SolrFieldType?): List<SolrEffectiveProperty> =
-        FOR_FIELD.map { property -> resolve(property, field, fieldType) }
+    fun effectiveFor(
+        field: SolrField,
+        fieldType: SolrFieldType?,
+        schemaVersion: SolrSchemaVersion,
+    ): List<SolrEffectiveProperty> =
+        FOR_FIELD.map { property -> resolve(property, field, fieldType, schemaVersion) }
 
     /**
      * One property's effective value for [field].
@@ -259,12 +308,24 @@ object SolrFieldProperties {
      * @param fieldType its type, or null when undeclared
      * @return the effective value and where it came from
      */
-    fun resolve(property: SolrFieldProperty, field: SolrField, fieldType: SolrFieldType?): SolrEffectiveProperty {
+    fun resolve(
+        property: SolrFieldProperty,
+        field: SolrField,
+        fieldType: SolrFieldType?,
+        schemaVersion: SolrSchemaVersion,
+    ): SolrEffectiveProperty {
         field.attributes[property.name]?.let {
             return SolrEffectiveProperty(property, it, SolrPropertyOrigin.FIELD)
         }
         fieldType?.attributes?.get(property.name)?.let {
             return SolrEffectiveProperty(property, it, SolrPropertyOrigin.FIELD_TYPE)
+        }
+        // Ahead of the flat default, and only reached when the file declares nothing: Solr's
+        // version-conditional branches all sit behind a "was it set explicitly?" guard, and the two
+        // branches above are that guard. By here the answer is no, so the comparison is all there is.
+        property.defaultTrueWithin?.let { range ->
+            val value = if (schemaVersion in range) "true" else "false"
+            return SolrEffectiveProperty(property, value, SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT)
         }
         return if (property.defaultValue != null) {
             SolrEffectiveProperty(property, property.defaultValue, SolrPropertyOrigin.SOLR_DEFAULT)

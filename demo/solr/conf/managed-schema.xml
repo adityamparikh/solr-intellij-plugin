@@ -7,6 +7,13 @@
   The dangling `manufacturer` copyField at the bottom is DELIBERATE and must not be fixed:
   it is the inspection demo. Several other deliberate defects live in the Java sources.
   See demo/README.md.
+
+  `version="1.6"` below is DELIBERATE too. Solr 9.7 introduced schema version 1.7, which
+  turned docValues on and uninvertible off by default and left every earlier schema alone —
+  and moving a schema up generally means re-indexing, so 1.6 is where a great many real
+  configsets still sit. Staying here is what makes the demo show a version-dependent default
+  being resolved against the file rather than asserted. Bumping it to 1.7 silently removes
+  that from the demo.
 -->
 <schema name="products" version="1.6">
 

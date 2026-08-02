@@ -131,6 +131,21 @@ class SolrSchemaParserTest {
     }
 
     @Test
+    fun `the schema version is read from the root element`() {
+        assertEquals("1.6", SolrSchemaParser.parse(schema).schemaVersion)
+    }
+
+    /**
+     * Absent is reported as absent, not as a guess. Solr reads a missing attribute as 1.0, but that
+     * substitution belongs to the model — the parser's contract is to say what the file says.
+     */
+    @Test
+    fun `a schema declaring no version reports none`() {
+        val versionless = "<schema name=\"products\"><field name=\"id\" type=\"string\"/></schema>"
+        assertNull(SolrSchemaParser.parse(versionless).schemaVersion)
+    }
+
+    @Test
     fun `the unique key is read`() {
         assertEquals("id", SolrSchemaParser.parse(schema).uniqueKey)
     }

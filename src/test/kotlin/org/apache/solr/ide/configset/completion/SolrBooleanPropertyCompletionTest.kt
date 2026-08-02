@@ -6,8 +6,13 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 /** Completion for the field properties that accept only `true` or `false`. */
 class SolrBooleanPropertyCompletionTest : SolrConfigsetTestCase() {
 
-    private val schema = """
-        <schema name="products">
+    /**
+     * The version is part of the fixture's meaning, not decoration: several properties default
+     * differently below schema version 1.7, so a fixture that omitted it would be read as 1.0 and
+     * would assert 2008's answers.
+     */
+    private fun schema(version: String = "1.7") = """
+        <schema name="products" version="$version">
           <fieldType name="string" class="solr.StrField"/>
           <field name="id" type="string"/>
           BODY
@@ -15,9 +20,19 @@ class SolrBooleanPropertyCompletionTest : SolrConfigsetTestCase() {
     """.trimIndent()
 
     private fun completionsFor(body: String): List<String> {
-        myFixture.configureByText("managed-schema.xml", schema.replace("BODY", body))
+        myFixture.configureByText("managed-schema.xml", schema().replace("BODY", body))
         myFixture.complete(CompletionType.BASIC)
         return myFixture.lookupElementStrings.orEmpty().sorted()
+    }
+
+    /** The values marked `default` for a property, on a schema declaring [version]. */
+    private fun markedDefaultsFor(body: String, version: String = "1.7"): List<String> {
+        myFixture.configureByText("managed-schema.xml", schema(version).replace("BODY", body))
+        myFixture.complete(CompletionType.BASIC)
+        return myFixture.lookupElements.orEmpty()
+            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
+            .filter { it.typeText == "default" }
+            .mapNotNull { it.itemText }
     }
 
     fun testEveryBooleanPropertyOffersTrueAndFalse() {
@@ -53,29 +68,38 @@ class SolrBooleanPropertyCompletionTest : SolrConfigsetTestCase() {
      * identical-looking values cannot answer it.
      */
     fun testTheDefaultValueIsMarked() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema.replace("BODY", """<field name="sku" type="string" indexed="<caret>"/>"""),
+        assertEquals(
+            "indexed defaults to true",
+            listOf("true"),
+            markedDefaultsFor("""<field name="sku" type="string" indexed="<caret>"/>"""),
         )
-        myFixture.complete(CompletionType.BASIC)
-        val marked = myFixture.lookupElements.orEmpty()
-            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
-            .filter { it.typeText == "default" }
-            .map { it.itemText }
-        assertEquals("indexed defaults to true", listOf("true"), marked)
     }
 
     fun testMultiValuedMarksFalseAsTheDefault() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema.replace("BODY", """<field name="sku" type="string" multiValued="<caret>"/>"""),
+        assertEquals(
+            "multiValued defaults to false",
+            listOf("false"),
+            markedDefaultsFor("""<field name="sku" type="string" multiValued="<caret>"/>"""),
         )
-        myFixture.complete(CompletionType.BASIC)
-        val marked = myFixture.lookupElements.orEmpty()
-            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
-            .filter { it.typeText == "default" }
-            .map { it.itemText }
-        assertEquals("multiValued defaults to false", listOf("false"), marked)
+    }
+
+    /**
+     * Solr 9.7 flipped `uninvertible` at schema version 1.7 and left earlier schemas alone, so the
+     * mark has to follow the file rather than name one answer. Marking `false` on a 1.6 configset
+     * would tell the reader that leaving the attribute off gets them a value it does not.
+     */
+    fun testUninvertibleMarksTheDefaultForTheDeclaredSchemaVersion() {
+        val body = """<field name="sku" type="string" uninvertible="<caret>"/>"""
+        assertEquals(
+            "below 1.7 a field is uninvertible unless it says otherwise",
+            listOf("true"),
+            markedDefaultsFor(body, version = "1.6"),
+        )
+        assertEquals(
+            "from 1.7 the default flipped",
+            listOf("false"),
+            markedDefaultsFor(body, version = "1.7"),
+        )
     }
 
     /**
@@ -83,14 +107,10 @@ class SolrBooleanPropertyCompletionTest : SolrConfigsetTestCase() {
      * false for text — neither value is marked. Marking one would assert something Solr does not.
      */
     fun testNothingIsMarkedWhenTheDefaultDependsOnTheFieldType() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema.replace("BODY", """<field name="sku" type="string" omitNorms="<caret>"/>"""),
+        assertEquals(
+            "omitNorms has no single default to claim",
+            emptyList<String>(),
+            markedDefaultsFor("""<field name="sku" type="string" omitNorms="<caret>"/>"""),
         )
-        myFixture.complete(CompletionType.BASIC)
-        val marked = myFixture.lookupElements.orEmpty()
-            .map { e -> com.intellij.codeInsight.lookup.LookupElementPresentation().also { e.renderElement(it) } }
-            .count { it.typeText == "default" }
-        assertEquals("omitNorms has no single default to claim", 0, marked)
     }
 }

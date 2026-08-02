@@ -92,7 +92,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
                 val field = model.fields[target.name]?.effective
                     ?: model.dynamicFields[target.name]?.effective?.field
                     ?: return null
-                SolrFieldPresentation.fieldDocumentation(field, model.typeOf(field), version)
+                SolrFieldPresentation.fieldDocumentation(field, model.typeOf(field), version, model.schemaVersion)
             }
             is Target.Type -> {
                 val type = model.fieldTypes[target.name]?.effective ?: return null
@@ -150,6 +150,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             version = versionOf(model),
             field = field,
             fieldType = field?.let { model.typeOf(it) },
+            schemaVersion = model.schemaVersion,
         )
     }
 
@@ -166,8 +167,11 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         val field = fieldDeclaredBy(tag, model)
         return SolrFieldPresentation.propertyDocumentation(
             property = property,
-            effective = field?.let { SolrFieldProperties.resolve(property, it, model.typeOf(it)) },
+            effective = field?.let {
+                SolrFieldProperties.resolve(property, it, model.typeOf(it), model.schemaVersion)
+            },
             version = versionOf(model),
+            schemaVersion = model.schemaVersion,
         )
     }
 
