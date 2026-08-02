@@ -980,10 +980,11 @@ action 2. What remains is the per-attribute hover and the factory-tag
 complete-configuration popup (actions 5 and 6). Both want the defaults-and-required column,
 and [Step 9](#step-9-factory-catalog-generator-in-progress) now carries it — so they are no
 longer blocked on the data, only unbuilt.
-Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup
-renders the catalog's kind, spellings and attributes plus the schema's own usage, and the
-Javadoc summary waits on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
-resolution.
+Quick documentation on `class` values now renders the full set [Step 9](#step-9-factory-catalog-generator-in-progress)
+can back: the catalog's kind, spellings and attributes, the schema's own usage, and the
+one-sentence Javadoc summary now that `-sources` resolution has landed there. That summary is
+a class-level sentence, not the Reference Guide's per-argument prose — a real gap the popup
+does not paper over, only narrow.
 
 **Actions:**
 1. Completion for field types, factories, their attributes, and field attributes.
