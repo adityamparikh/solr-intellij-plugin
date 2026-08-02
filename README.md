@@ -37,7 +37,7 @@ Captures come from the sandbox IDE running against `demo/`.
 ### What each field can actually match, inline
 
 <!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
-     Frame managed-schema.xml:40-46 so all six fields show at once. This is the lead image. -->
+     Frame managed-schema.xml:40-46 so all seven fields show at once. This is the lead image. -->
 
 > *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
 > read as whole-value and case-sensitive, `text_general` as tokenized and case-insensitive, and
@@ -75,6 +75,11 @@ never copied out of the Reference Guide it links to.
 > *Screenshot pending.* Attribute completion inside a `<field>` tag, each property carrying its
 > one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
 > marked `(default)`.
+
+Cross-file navigation and Find Usages are not shown here — they are gestures rather than states, and
+a still frame of a resolved reference looks like an ordinary editor. [The screenshot
+catalog](docs/screenshots.md) carries capture instructions for those too, for anyone assembling a
+talk or a marketplace listing.
 
 ## Planned scope
 

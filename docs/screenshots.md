@@ -58,9 +58,10 @@ in the sandbox. The demo project is built for this — several defects in it are
 beside its declaration, without a hover. This is the lead image for the README.
 
 **Capture** the field block at `managed-schema.xml:40-46` with no interaction at all — the hints
-render themselves. Frame all six fields so the contrast is visible in one shot: `id`/`sku`/`category`
-read as whole-value and case-sensitive, `description`/`text` as tokenized and case-insensitive, and
-`name_prefix` names EdgeNGram as the mechanism rather than claiming "prefix: true".
+render themselves. Frame all seven fields so the contrast is visible in one shot: `id`/`sku`/`category`
+read as whole-value and case-sensitive, `name`/`description`/`text` as tokenized and
+case-insensitive, and `name_prefix` names EdgeNGram as the mechanism rather than claiming
+"prefix: true".
 
 **Redo when** the hint wording changes, a new analysis capability is recognised, or the demo schema's
 field list changes.
@@ -121,7 +122,7 @@ until it is gone.
 
 ### 5. Completion over the schema's own vocabulary — `completion-field-properties.png`
 
-**Shows** attribute completion inside a `<field ` tag: the property table with each property's
+**Shows** attribute completion inside an opening `<field>` tag: the property table with each property's
 one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
 marked `(default)`.
 
@@ -144,7 +145,12 @@ open — `minGramSize` and `maxGramSize` should appear.
 
 **Redo when** the catalog gains columns — the same trigger as image 3, and for the same reason.
 
-**Verifies** CAT-2.
+**Exercises the path CAT-2 checks, with a different factory.** CAT-2 names
+`solr.WordDelimiterGraphFilterFactory`, which the demo configset does not declare — that check has
+you type the class first. A screenshot should not require editing the fixture, so this captures
+`EdgeNGramFilterFactory`, which the demo declares at line 32 and which reaches the editor by exactly
+the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
+to the demo, which is a fixture change and belongs to CAT-2, not here.
 
 ### 7. Find Usages on a field type — `find-usages-field-type.png`
 
@@ -152,7 +158,7 @@ open — `minGramSize` and `maxGramSize` should appear.
 one gesture.
 
 **Capture** caret on `text_general` in the `<fieldType name="text_general">` declaration
-(`managed-schema.xml:19`), press ⌥F7, frame the Find Usages tool window with its results.
+(`managed-schema.xml:15`), press ⌥F7, frame the Find Usages tool window with its results.
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 
