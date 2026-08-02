@@ -28,7 +28,19 @@ enum class SolrPropertyOrigin {
      */
     SCHEMA_VERSION_DEFAULT,
 
-    /** Declared in neither, and Solr's default depends on the field type's implementing class. */
+    /**
+     * Declared in neither, and Solr's default for this field type's class applies.
+     *
+     * The answer the plugin exists to give: `omitNorms` is true for a `solr.StrField` and false for
+     * a `solr.TextField`, and no external documentation can say which of those the field in front
+     * of the reader is.
+     */
+    FIELD_TYPE_DEFAULT,
+
+    /**
+     * Declared in neither, and Solr's default depends on a field type class the catalog does not
+     * know — a custom plugin type, or one from a Solr line this build has never seen.
+     */
     UNDETERMINED,
 }
 
@@ -46,6 +58,9 @@ enum class SolrPropertyOrigin {
  *   properties Solr made conditional on the schema's declared version; null for the rest, which is
  *   most of them. Set together with a null [defaultValue], since a property cannot both have one
  *   default and have it depend on the version
+ * @property typeDefault how the default is decided when it turns on the field type's class as well,
+ *   or null when it does not. Also set together with a null [defaultValue], and resolvable only
+ *   where the catalog knows the class the type names
  */
 data class SolrFieldProperty(
     val name: String,
@@ -55,6 +70,7 @@ data class SolrFieldProperty(
     val scope: SolrPropertyScope = SolrPropertyScope.FIELD_AND_TYPE,
     val closedValues: List<String> = emptyList(),
     val defaultTrueWithin: SolrVersionRange? = null,
+    val typeDefault: SolrTypeDefaultRule? = null,
 ) {
 
     /**
@@ -137,11 +153,11 @@ data class SolrEffectiveProperty(
  * classes, and these properties are read by `SchemaField` and `FieldType` from an argument map,
  * with defaults that live in branching code rather than in any enumerable structure.
  *
- * **Some defaults genuinely depend on the field type**, and those are recorded as null rather than
- * given a plausible value. `omitNorms` defaults true for primitive types and false for text;
- * `docValues` is documented as "true for most fields". Asserting one answer where Solr has two is
- * exactly the kind of confident wrong statement that gets a plugin distrusted, so this reports
- * [SolrPropertyOrigin.UNDETERMINED] and links to the guide instead.
+ * **Some defaults depend on the field type**, and those carry a [SolrTypeDefaultRule] rather than a
+ * value. `omitNorms` defaults true for primitive types and false for text; `docValues` turns on the
+ * class as well as the version. Both resolve once the catalog supplies the class's traits, and both
+ * report [SolrPropertyOrigin.UNDETERMINED] where it cannot — a type naming a class the catalog does
+ * not carry is exactly where asserting a default would be inventing one.
  *
  * **Others depend on the schema's declared version**, and those carry a [SolrVersionRange] instead
  * of a flat default. `uninvertible` defaults true below schema version 1.7 and false from it;
@@ -149,12 +165,12 @@ data class SolrEffectiveProperty(
  * above and answerable where that one is not — the schema states its version, so the plugin can
  * resolve these outright rather than deferring to the guide.
  *
- * The rules stay hand-written beside the properties they qualify for the same reason the table is:
- * there are a handful, the Reference Guide states them in prose, and they moved once between 2019
- * and 2026. Recovering them from bytecode would mean interpreting branches on a float comparison,
- * which is a materially different extractor from the literal-reading one the catalog generator has.
- * The enumerative half — which of Solr's field-type classes carry which trait — is the generator's
- * job, and is what would resolve the [SolrPropertyOrigin.UNDETERMINED] cases above.
+ * Both sets of rules stay hand-written beside the properties they qualify, for the same reason the
+ * table is: there are a handful, the Reference Guide states them in prose, and they moved once
+ * between 2019 and 2026. Recovering them from bytecode would mean interpreting branches on a float
+ * comparison, a materially different extractor from the literal-reading one the catalog generator
+ * has. The enumerative half — which of Solr's sixty-odd field-type classes carry which trait — is
+ * the generator's job, and arrives as [SolrTypeTrait] on the catalog entry.
  *
  * It covers both Reference Guide tables: the field properties a `field` may carry and inherit, and
  * the general properties that only configure a `fieldType`. An earlier revision had only the first,
@@ -175,6 +191,7 @@ object SolrFieldProperties {
             "Whether a column-oriented structure is built, used for sorting, faceting and grouping.",
             "true or false",
             null,
+            typeDefault = SolrTypeDefaultRule.DOC_VALUES,
         ),
         SolrFieldProperty(
             "multiValued",
@@ -190,6 +207,7 @@ object SolrFieldProperties {
             "Whether length normalisation and index-time boosts are discarded, saving memory.",
             "true or false",
             null,
+            typeDefault = SolrTypeDefaultRule.OMIT_NORMS,
         ),
         SolrFieldProperty(
             "omitTermFreqAndPositions",
@@ -297,8 +315,9 @@ object SolrFieldProperties {
         field: SolrField,
         fieldType: SolrFieldType?,
         schemaVersion: SolrSchemaVersion,
+        typeTraits: Set<SolrTypeTrait>? = null,
     ): List<SolrEffectiveProperty> =
-        FOR_FIELD.map { property -> resolve(property, field, fieldType, schemaVersion) }
+        FOR_FIELD.map { property -> resolve(property, field, fieldType, schemaVersion, typeTraits) }
 
     /**
      * One property's effective value for [field].
@@ -313,6 +332,7 @@ object SolrFieldProperties {
         field: SolrField,
         fieldType: SolrFieldType?,
         schemaVersion: SolrSchemaVersion,
+        typeTraits: Set<SolrTypeTrait>? = null,
     ): SolrEffectiveProperty {
         field.attributes[property.name]?.let {
             return SolrEffectiveProperty(property, it, SolrPropertyOrigin.FIELD)
@@ -326,6 +346,15 @@ object SolrFieldProperties {
         property.defaultTrueWithin?.let { range ->
             val value = if (schemaVersion in range) "true" else "false"
             return SolrEffectiveProperty(property, value, SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT)
+        }
+        // Null traits and empty traits are different answers, and conflating them is how this would
+        // start asserting things. Null means the catalog does not know the class the type names, so
+        // nothing can be said; empty means it does know it and the class carries no trait, which
+        // makes false a definite answer rather than a guess.
+        property.typeDefault?.let { rule ->
+            if (typeTraits == null) return SolrEffectiveProperty(property, null, SolrPropertyOrigin.UNDETERMINED)
+            val value = if (rule.holdsFor(typeTraits, schemaVersion)) "true" else "false"
+            return SolrEffectiveProperty(property, value, SolrPropertyOrigin.FIELD_TYPE_DEFAULT)
         }
         return if (property.defaultValue != null) {
             SolrEffectiveProperty(property, property.defaultValue, SolrPropertyOrigin.SOLR_DEFAULT)

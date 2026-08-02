@@ -113,6 +113,10 @@ data class SolrClassAttribute(
  * @property attributes the attributes this class reads, empty where none are known
  * @property summary a one-sentence summary of the class's own Javadoc, or null when the line's
  *   `-sources` artifacts did not resolve or carried none for this class
+ * @property traits what this class decides about its fields' property defaults; always empty for an
+ *   analysis factory, which has no defaults to decide. An empty set on a field type is a positive
+ *   answer — the class carries no trait — and is what makes a default resolvable as `false` rather
+ *   than left undetermined
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
@@ -120,6 +124,7 @@ data class SolrClassEntry(
     val shortName: String,
     val attributes: List<SolrClassAttribute> = emptyList(),
     val summary: String? = null,
+    val traits: Set<SolrTypeTrait> = emptySet(),
 ) {
 
     /** The attribute [name], or null when this class does not read one by that name. */
@@ -235,7 +240,12 @@ object SolrClassCatalog {
             // this line's `-sources` artifacts resolved but carried nothing for this class -- both
             // read as "nothing to show" rather than as an empty sentence.
             val summary = columns.getOrNull(4)?.takeIf { it.isNotBlank() }
-            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes, summary) }
+            // An unknown trait token is dropped rather than failing the entry: a catalog written by
+            // a newer build naming a trait this one has never heard of should cost that one trait.
+            val traits = columns.getOrNull(5).orEmpty()
+                .split(',')
+                .mapNotNullTo(mutableSetOf()) { SolrTypeTrait.forToken(it.trim()) }
+            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes, summary, traits) }
         }.toList()
     }
 }

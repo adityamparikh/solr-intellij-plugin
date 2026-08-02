@@ -143,6 +143,50 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         assertTrue("expected Solr's default: $doc", doc.contains("Solr default"))
     }
 
+    /**
+     * A schema whose two field types differ in exactly the way `omitNorms` turns on: `StrField`
+     * descends from `PrimitiveFieldType` and `TextField` does not.
+     */
+    private val typedSchema = """
+        <schema name="products" version="1.7">
+          <fieldType name="string" class="solr.StrField"/>
+          <fieldType name="text_general" class="solr.TextField"/>
+          <fieldType name="custom" class="com.example.MyFieldType"/>
+          <field name="sku" type="string"/>
+          <field name="body" type="text_general"/>
+          <field name="odd" type="custom"/>
+        </schema>
+    """.trimIndent()
+
+    /**
+     * **The answer the plugin exists to give.** The Reference Guide says `omitNorms` is true for
+     * primitive types and false for text; only this can say which one the field under the caret is.
+     */
+    fun testOmitNormsResolvesFromThePrimitiveFieldTypesClass() {
+        val doc = docAtCaret(caretInside("sku", text = typedSchema))
+        assertNotNull(doc)
+        assertTrue("expected a resolved omitNorms: $doc", doc!!.contains("omitNorms"))
+        assertTrue("expected it attributed to the class: $doc", doc.contains("Solr default for solr.StrField"))
+    }
+
+    /** The same property on a text type resolves the other way, from the same table. */
+    fun testOmitNormsResolvesFalseForATextFieldType() {
+        val doc = docAtCaret(caretInside("body", text = typedSchema))
+        assertNotNull(doc)
+        assertTrue("expected it attributed to the class: $doc", doc!!.contains("Solr default for solr.TextField"))
+    }
+
+    /**
+     * A class the catalog does not carry keeps the honest answer. A custom plugin type is exactly
+     * the case where claiming a default would be inventing one.
+     */
+    fun testAnUnknownFieldTypeClassLeavesTheDefaultUndetermined() {
+        val doc = docAtCaret(caretInside("odd", text = typedSchema))
+        assertNotNull(doc)
+        assertTrue("expected the undetermined wording: $doc", doc!!.contains("depends on the field type"))
+        assertFalse("nothing may be attributed to a class the catalog lacks: $doc", doc.contains("Solr default for"))
+    }
+
     /** And, on a field, what the value resolves to here and where it came from. */
     fun testAPropertyOnAFieldReportsItsEffectiveValueAndOrigin() {
         val doc = docAtCaret(caretInside("stored"))

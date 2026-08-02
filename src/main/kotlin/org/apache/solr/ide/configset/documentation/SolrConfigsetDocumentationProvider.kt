@@ -17,7 +17,9 @@ import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldProperty
+import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrReferenceGuide
+import org.apache.solr.ide.model.SolrTypeTrait
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
@@ -92,7 +94,10 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
                 val field = model.fields[target.name]?.effective
                     ?: model.dynamicFields[target.name]?.effective?.field
                     ?: return null
-                SolrFieldPresentation.fieldDocumentation(field, model.typeOf(field), version, model.schemaVersion)
+                val type = model.typeOf(field)
+                SolrFieldPresentation.fieldDocumentation(
+                    field, type, version, model.schemaVersion, traitsOf(type, version),
+                )
             }
             is Target.Type -> {
                 val type = model.fieldTypes[target.name]?.effective ?: return null
@@ -151,6 +156,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             field = field,
             fieldType = field?.let { model.typeOf(it) },
             schemaVersion = model.schemaVersion,
+            typeTraits = traitsOf(field?.let { model.typeOf(it) }, versionOf(model)),
         )
     }
 
@@ -168,10 +174,14 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         return SolrFieldPresentation.propertyDocumentation(
             property = property,
             effective = field?.let {
-                SolrFieldProperties.resolve(property, it, model.typeOf(it), model.schemaVersion)
+                val type = model.typeOf(it)
+                SolrFieldProperties.resolve(
+                    property, it, type, model.schemaVersion, traitsOf(type, versionOf(model)),
+                )
             },
             version = versionOf(model),
             schemaVersion = model.schemaVersion,
+            typeClassName = field?.let { model.typeOf(it) }?.className?.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -205,6 +215,21 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      * Only two of the spec's three sources are available: the configset's own declaration, and the
      * default. A connected server would outrank both, and will once the server reader lands.
      */
+    /**
+     * The catalog's traits for the class [fieldType] names, or null when nothing can be said.
+     *
+     * Null covers three cases that are all the same answer: no type was resolved, the type names no
+     * class, or the class is one the catalog does not carry — a custom plugin type. Returning an
+     * empty set for any of them would claim the class is known and carries no trait, which is what
+     * turns `omitNorms` into a confident `false` for a type nobody here has ever seen.
+     */
+    private fun traitsOf(fieldType: SolrFieldType?, version: SolrVersionSelection): Set<SolrTypeTrait>? {
+        val className = fieldType?.className?.takeIf { it.isNotEmpty() } ?: return null
+        return SolrClassCatalog.find(className, version)
+            ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
+            ?.traits
+    }
+
     private fun versionOf(model: SolrFieldModel): SolrVersionSelection =
         model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
             ?: SolrVersionSelection.DEFAULT

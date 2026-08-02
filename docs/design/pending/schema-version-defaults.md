@@ -59,12 +59,8 @@ the schema's own version in hand is the plugin's stated reason to exist.
 
 ## Non-goals
 
-- **Per-field-type defaults.** `omitNorms` (true for `PrimitiveFieldType` descendants) and `docValues`
-  (true at `1.7` for types whose `enableDocValuesByDefault()` returns true) also need the type's
-  *class*, which means a new catalog column. That is the next increment; this one leaves both
-  reporting `UNDETERMINED`, which is honest and is what they already do.
-- **The exotic types.** `RankField`, `DenseVectorField` and the spatial types tweak the property mask
-  unconditionally in their own `init`. Rare, additive later, and `UNDETERMINED` is safe meanwhile.
+- **`omitTermFreqAndPositions`.** Its `TextField` exception is a fourth trait for a property nobody
+  hovers. Additive whenever it earns its keep.
 - **Warning about an old schema version.** Deciding whether `1.6` is a problem is the user's call, and
   an inspection that fires on every pre-2024 configset would be noise.
 
@@ -100,13 +96,33 @@ Read from `FieldType.setArgs`, `TextField.init` and `PrimitiveFieldType.init`:
 | `uninvertible` | `< 1.7` | `false` |
 | `docValues` | `>= 1.7` **and** the type supports it | `false` |
 
-`docValues` stays `UNDETERMINED` in this increment: the version half is necessary but not sufficient,
-and asserting `true` at `1.7` for a `solr.TextField` — which does not get it — would be a new wrong
-answer in place of an honest silence. Same for `omitTermFreqAndPositions`, whose `TextField` exception
-needs the class.
+That leaves `uninvertible`, `useDocValuesAsStored` and `multiValued` answerable from the version
+alone, and `uninvertible` is the one that is actively wrong today.
 
-That leaves `uninvertible`, `useDocValuesAsStored` and `multiValued` fully answerable now, and
-`uninvertible` is the one that is actively wrong today.
+### The two that also need the type's class
+
+`omitNorms` and `docValues` need the field type's *class* as well as the version, so the version half
+alone cannot resolve them — asserting `docValues` true at `1.7` for a `solr.TextField`, which does not
+get it, would be a new wrong answer in place of an honest silence.
+
+The generator answers the class half as hierarchy questions and writes them to a `traits` column:
+
+| Trait | Means | Decides |
+|---|---|---|
+| `primitive` | descends `PrimitiveFieldType` | `omitNorms`, above version 1.4 |
+| `spatialPrefixTree` | descends `AbstractSpatialPrefixTreeFieldType` | `omitNorms`, at every version |
+| `sortableText` | descends `SortableTextField` | `docValues`, at every version |
+| `docValuesByDefault` | `enableDocValuesByDefault()` resolves true | `docValues`, from version 1.7 |
+
+The last is read from bytecode rather than derived from ancestry because `DenseVectorField` descends
+from `PrimitiveFieldType`, which returns true, and overrides it back to false — only the nearest
+declaration is the answer. `RankField` needs no special case for the same reason: it inherits the
+base's `false`, and its explicit clearing of the bit is redundant.
+
+**The distinction the whole thing rests on** is between *no traits* and *unknown class*. A type
+naming a class the catalog does not carry resolves to nothing at all and stays `UNDETERMINED`; a
+known class carrying no trait resolves to a definite `false`. Collapsing the two would make every
+custom plugin type report a confident wrong answer.
 
 ### Model changes
 
