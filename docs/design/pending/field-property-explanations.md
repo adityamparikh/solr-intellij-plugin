@@ -89,8 +89,8 @@ semantics rather than enumerating what exists, and it is hand-maintained on purp
 |---|---|---|
 | `indexed` | indexed | not indexed |
 | `stored` | stored | not stored |
-| `multiValued` | multi-valued | single-valued |
 | `docValues` | doc values | no doc values |
+| `multiValued` | multi-valued | single-valued |
 
 Longest phrase is fourteen characters. The declarative inlay renderer truncates any single text
 segment past thirty, which is why `SolrMatchInlayHintsProvider` already emits one segment per part;
@@ -104,8 +104,8 @@ The four above, which carry both registers:
 |---|---|---|
 | `indexed` | Can be searched, filtered and sorted on. | Cannot be searched or filtered — the value is carried but never queryable. |
 | `stored` | The original value is returned in results and available to highlighting. | The original value is not returned in results; it can be searched but not displayed. |
-| `multiValued` | One document may hold several values for this field. | One document may hold at most one value; a second causes an indexing error. |
 | `docValues` | A column store is built, so sorting, faceting, grouping and function queries are efficient. | No column store; sorting and faceting must un-invert the index at query time, or fail outright. |
+| `multiValued` | One document may hold several values for this field. | One document may hold at most one value; a second causes an indexing error. |
 
 The remaining thirteen booleans carry sentences only. Written in the same register — a consequence in
 the indicative, not a restatement of the attribute name:
@@ -172,13 +172,18 @@ Rendered against `demo/solr/conf/managed-schema.xml`, which declares `version="1
 <field name="category"    .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
 <field name="description" .../>   tokenised, case-insensitive, indexed, stored, no doc values, single-valued
 <field name="text"        .../>   tokenised, case-insensitive, indexed, not stored, no doc values, multi-valued
+<field name="notes"       .../>   indexed, stored, no doc values, single-valued
+<field name="legacy"      .../>   (no hint at all — `type="discontinued"` is not declared)
 ```
 
 **This is recorded rather than argued with.** Showing all four unconditionally means `indexed`
-appears on all seven lines and `single-valued` on six of them, so the match half — the output
-nothing else in the ecosystem produces — is often under half of each hint. That was the explicit
-call: full values inline, not only the surprising ones. Ordering match first is the mitigation, and
-it is the only one taken.
+appears on all eight hinted lines and `single-valued` on seven of them, so the match half — the
+output nothing else in the ecosystem produces — is often under half of each hint. That was the
+explicit call: full values inline, not only the surprising ones. Ordering match first is the
+mitigation, and it is the only one taken. `notes` and `legacy` are the two fields that push back on
+that call from opposite directions: `notes`' analyser chain is unrecognised, so it keeps the four
+property phrases and drops only the match claim; `legacy`'s type is undeclared, so it drops the
+hint entirely rather than guess at a default the missing type might have overridden.
 
 `doc values` on `id`/`sku`/`category` is the `string` fieldType's own doing, not the schema
 version's: it declares `docValues="true"` directly on the `fieldType` element, which resolution
@@ -186,13 +191,14 @@ reads before it ever reaches any class- or version-conditional default. `docValu
 `defaultTrueWithin` at all — a version-conditional tier only exists for it *inside*
 `SolrTypeDefaultRule.DOC_VALUES.holdsFor`, gated on the field type's class traits, not reached
 unless neither the field nor the fieldType declares the attribute. `name`, `name_prefix`,
-`description` and `text` are all `solr.TextField`, which the catalog records with no traits at
-all — not `docValuesByDefault`, not `sortableText` — so `holdsFor` is false regardless of schema
-version, and the demo's `version="1.6"` has nothing to do with why they read `no doc values`.
-Bumping the demo to `1.7` would not change them; only `id`/`sku`/`category`'s `docValues="true"`
-attribute, or a field type whose class the catalog marks `docValuesByDefault`, moves the needle.
-It is a fair advertisement for the popup, which names the field or fieldType attribute for the
-first three and the field type's class, origin `FIELD_TYPE_DEFAULT`, for the other four.
+`description`, `text` and `notes` are all `solr.TextField`, which the catalog records with no
+traits at all — not `docValuesByDefault`, not `sortableText` — so `holdsFor` is false regardless of
+schema version, and the demo's `version="1.6"` has nothing to do with why they read `no doc
+values`. Bumping the demo to `1.7` would not change them; only `id`/`sku`/`category`'s
+`docValues="true"` attribute, or a field type whose class the catalog marks `sortableText`, moves
+the needle unconditionally — a class marked only `docValuesByDefault` needs schema version 1.7 as
+well. It is a fair advertisement for the popup, which names the field or fieldType attribute for
+the first three and the field type's class, origin `FIELD_TYPE_DEFAULT`, for the other five.
 
 ### The popup
 

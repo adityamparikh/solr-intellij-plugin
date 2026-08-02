@@ -42,10 +42,11 @@ Captures come from the sandbox IDE running against `demo/`.
 > *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
 > read as whole-value and case-sensitive, `text_general` as tokenised and case-insensitive, and
 > `name_prefix` as prefix-capable. Beside the match claim, each hint also carries the storage shape
-> that decides whether a matched document can be returned at all — `indexed`, `stored`, `doc values`
-> or `no doc values`, `multi-valued` or `single-valued`. Two fields show what the hint does when it
-> cannot say everything: `notes` carries only the storage shape, because its analyser is
-> unrecognised, and `legacy` carries no hint at all, because its `type` is undeclared.
+> that decides whether a matched document can be returned at all — `indexed` or `not indexed`,
+> `stored` or `not stored`, `doc values` or `no doc values`, `multi-valued` or `single-valued`. Two
+> fields show what the hint does when it cannot say everything: `notes` carries only the storage
+> shape, because its analyser is unrecognised, and `legacy` carries no hint at all, because its
+> `type` is undeclared.
 
 ### Quick documentation on a field
 

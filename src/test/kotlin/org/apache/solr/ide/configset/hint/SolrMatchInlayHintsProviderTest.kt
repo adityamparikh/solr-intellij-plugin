@@ -18,8 +18,9 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  *
  * Driven through the collector with a recording sink rather than through the editor's inlay model.
  * The editor route asserts against a rendered presentation whose text is awkward to read back; this
- * asserts the decision the provider actually makes — *which elements produce a hint* — which is the
- * part that can be wrong. What the hint says is covered by `SolrFieldPresentationTest`.
+ * asserts the decision the provider actually makes — *which elements produce a hint* — as well as the
+ * exact text it renders. `SolrFieldPresentationTest` covers the documentation popup, the other surface
+ * built from the same model.
  */
 class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
 
@@ -121,7 +122,7 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
         return null
     }
 
-    fun testEveryClassifiableFieldGetsExactlyOneHint() {
+    fun testEveryFieldWithADeclaredTypeGetsExactlyOneHint() {
         assertEquals(listOf("sku", "name", "mystery", "opaque", "*_s"), hintedFields())
     }
 

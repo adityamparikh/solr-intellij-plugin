@@ -20,11 +20,14 @@ import org.apache.solr.ide.model.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**
- * Turns model facts into the text the editor shows.
+ * Turns model facts into the HTML the documentation popup shows.
  *
- * Shared by the inlay hints and the documentation popup on purpose: the two must never disagree
- * about what a field matches, and the surest way to guarantee that is for both to render the same
- * computed value rather than each phrasing it themselves.
+ * The inlay hints provider does not call this — it reads `SolrFieldProperties` and
+ * `SolrMatchCapability` directly to build its own short phrases — but both surfaces render the same
+ * underlying model, `SolrFieldProperties.meaning` and `SolrMatchAnalysis.of` chief among it. That
+ * shared table, not this class, is what keeps the popup and the hint from disagreeing about what a
+ * field matches or what a property's value means; this class only turns the popup's half of that
+ * table into markup.
  */
 object SolrFieldPresentation {
 
@@ -148,7 +151,7 @@ object SolrFieldPresentation {
                     "${escape(originText(it.origin, schemaVersion, typeClassName))}</td></tr>",
             )
             val meaning = meaningText(it)
-            if (meaning != property.summary) {
+            if (meaning != it.property.summary) {
                 append("<tr><td></td><td>${escape(meaning)}</td></tr>")
             }
         }

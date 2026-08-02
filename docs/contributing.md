@@ -64,8 +64,8 @@ application: it declares `org.apache.solr:solr-solrj` in its build, which passes
 gate, and it carries a real configset under `demo/solr/conf/`. So the plugin activates immediately
 and you can see the features working without building a fixture first.
 
-Open `demo/solr/conf/managed-schema.xml` and you should see inline hints beside each field saying
-what it can match. If you see nothing, the plugin has not activated; see [when nothing
+Open `demo/solr/conf/managed-schema.xml` and you should see inline hints beside its fields saying
+what each can match. If you see nothing, the plugin has not activated; see [when nothing
 activates](#when-nothing-activates).
 
 To point the sandbox somewhere else:

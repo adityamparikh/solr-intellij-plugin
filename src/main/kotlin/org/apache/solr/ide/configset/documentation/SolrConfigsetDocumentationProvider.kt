@@ -17,7 +17,6 @@ import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldProperty
-import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrReferenceGuide
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader

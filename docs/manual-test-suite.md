@@ -11,7 +11,7 @@ join this suite only when its code has shipped and there is something to press.
 1. `./gradlew runIde` — the sandbox opens `demo/`. Open `solr/conf/managed-schema.xml`.
 2. Uncheck every box from the previous pass (a pass is all-or-nothing; history lives in
    the [pass log](#pass-log), not in the boxes).
-3. Work top to bottom. The order matters: the zero-warning baseline comes first because
+3. Work top to bottom. The order matters: the baseline pass comes first because
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
