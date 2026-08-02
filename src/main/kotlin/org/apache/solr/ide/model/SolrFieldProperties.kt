@@ -45,6 +45,32 @@ enum class SolrPropertyOrigin {
 }
 
 /**
+ * What a boolean property's value means for a field, in the two registers the plugin renders.
+ *
+ * Two lengths rather than one because the two surfaces have incompatible budgets. The popup has
+ * room for a consequence in a full sentence; the inlay is beside the declaration and each phrase
+ * is its own segment against a 30-character renderer limit. Deriving one from the other would mean
+ * truncating a sentence, which is how a hint ends up saying "The original value is not retu…".
+ *
+ * Held here rather than in either feature's presentation code for the reason
+ * [org.apache.solr.ide.model.SolrMatchCapability.summary] already gives: the same field described
+ * two ways is two chances to be doubted.
+ *
+ * @property whenTrue the consequence of the value being `true`, as a sentence for the popup
+ * @property whenFalse the consequence of the value being `false`, as a sentence for the popup
+ * @property inlineWhenTrue the terse phrase shown inline when the value is `true`, or null for a
+ *   property that is explained on request but does not earn space beside every declaration
+ * @property inlineWhenFalse the terse phrase shown inline when the value is `false`, null on the
+ *   same terms — never null alone, since a property that speaks for one value must speak for both
+ */
+data class SolrPropertyMeaning(
+    val whenTrue: String,
+    val whenFalse: String,
+    val inlineWhenTrue: String? = null,
+    val inlineWhenFalse: String? = null,
+)
+
+/**
  * One property a `<field>` or `<fieldType>` may carry.
  *
  * @property name the attribute name as written in the schema
@@ -61,6 +87,8 @@ enum class SolrPropertyOrigin {
  * @property typeDefault how the default is decided when it turns on the field type's class as well,
  *   or null when it does not. Also set together with a null [defaultValue], and resolvable only
  *   where the catalog knows the class the type names
+ * @property meaning what each of its two values means for a field, or null where the property
+ *   takes something other than a boolean and so has no two consequences to state
  */
 data class SolrFieldProperty(
     val name: String,
@@ -71,6 +99,7 @@ data class SolrFieldProperty(
     val closedValues: List<String> = emptyList(),
     val defaultTrueWithin: SolrVersionRange? = null,
     val typeDefault: SolrTypeDefaultRule? = null,
+    val meaning: SolrPropertyMeaning? = null,
 ) {
 
     /**
@@ -184,14 +213,36 @@ object SolrFieldProperties {
 
     /** Every property this knows about, in the order the Reference Guide lists them. */
     val ALL: List<SolrFieldProperty> = listOf(
-        SolrFieldProperty("indexed", "Whether the field can be searched or sorted on.", "true or false", "true"),
-        SolrFieldProperty("stored", "Whether the original value can be returned in results.", "true or false", "true"),
+        SolrFieldProperty(
+            "indexed", "Whether the field can be searched or sorted on.", "true or false", "true",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Can be searched, filtered and sorted on.",
+                whenFalse = "Cannot be searched or filtered — the value is carried but never queryable.",
+                inlineWhenTrue = "indexed",
+                inlineWhenFalse = "not indexed",
+            ),
+        ),
+        SolrFieldProperty(
+            "stored", "Whether the original value can be returned in results.", "true or false", "true",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "The original value is returned in results and available to highlighting.",
+                whenFalse = "The original value is not returned in results; it can be searched but not displayed.",
+                inlineWhenTrue = "stored",
+                inlineWhenFalse = "not stored",
+            ),
+        ),
         SolrFieldProperty(
             "docValues",
             "Whether a column-oriented structure is built, used for sorting, faceting and grouping.",
             "true or false",
             null,
             typeDefault = SolrTypeDefaultRule.DOC_VALUES,
+            meaning = SolrPropertyMeaning(
+                whenTrue = "A column store is built, so sorting, faceting, grouping and function queries are efficient.",
+                whenFalse = "No column store; sorting and faceting must un-invert the index at query time, or fail outright.",
+                inlineWhenTrue = "doc values",
+                inlineWhenFalse = "no doc values",
+            ),
         ),
         SolrFieldProperty(
             "multiValued",
@@ -199,8 +250,20 @@ object SolrFieldProperties {
             "true or false",
             null,
             defaultTrueWithin = SolrVersionRange(below = 1.1f),
+            meaning = SolrPropertyMeaning(
+                whenTrue = "One document may hold several values for this field.",
+                whenFalse = "One document may hold at most one value; a second causes an indexing error.",
+                inlineWhenTrue = "multi-valued",
+                inlineWhenFalse = "single-valued",
+            ),
         ),
-        SolrFieldProperty("required", "Whether a document lacking this field is rejected.", "true or false", "false"),
+        SolrFieldProperty(
+            "required", "Whether a document lacking this field is rejected.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "A document lacking this field is rejected at index time.",
+                whenFalse = "A document may omit this field.",
+            ),
+        ),
         SolrFieldProperty("default", "A value used when the document supplies none.", "any value of the type", null),
         SolrFieldProperty(
             "omitNorms",
@@ -208,26 +271,80 @@ object SolrFieldProperties {
             "true or false",
             null,
             typeDefault = SolrTypeDefaultRule.OMIT_NORMS,
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Length normalisation and index-time boosts are discarded, saving memory; short and long values score alike.",
+                whenFalse = "Norms are kept, so shorter values score higher for the same match.",
+            ),
         ),
         SolrFieldProperty(
             "omitTermFreqAndPositions",
             "Whether term frequency and position data are discarded. Phrase queries stop working.",
             "true or false",
             null,
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Term frequency and position data are discarded. Phrase and proximity queries stop working on this field.",
+                whenFalse = "Frequencies and positions are kept, so phrase and proximity queries work.",
+            ),
         ),
-        SolrFieldProperty("omitPositions", "Whether positions are discarded while frequencies are kept.", "true or false", null),
-        SolrFieldProperty("termVectors", "Whether term vectors are stored, used by highlighting and more-like-this.", "true or false", "false"),
-        SolrFieldProperty("termPositions", "Whether positions are stored in the term vector.", "true or false", "false"),
-        SolrFieldProperty("termOffsets", "Whether offsets are stored in the term vector.", "true or false", "false"),
-        SolrFieldProperty("termPayloads", "Whether payloads are stored in the term vector.", "true or false", "false"),
-        SolrFieldProperty("sortMissingFirst", "Whether documents lacking this field sort first.", "true or false", "false"),
-        SolrFieldProperty("sortMissingLast", "Whether documents lacking this field sort last.", "true or false", "false"),
+        SolrFieldProperty(
+            "omitPositions", "Whether positions are discarded while frequencies are kept.", "true or false", null,
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Positions are discarded while frequencies are kept, so scoring still reflects repetition but phrase queries stop working.",
+                whenFalse = "Positions are kept, so phrase queries work.",
+            ),
+        ),
+        SolrFieldProperty(
+            "termVectors", "Whether term vectors are stored, used by highlighting and more-like-this.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Term vectors are stored, which highlighting and more-like-this can use instead of re-analysing the value.",
+                whenFalse = "No term vectors; highlighting re-analyses the stored value instead.",
+            ),
+        ),
+        SolrFieldProperty(
+            "termPositions", "Whether positions are stored in the term vector.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Positions are stored in the term vector.",
+                whenFalse = "The term vector carries no positions.",
+            ),
+        ),
+        SolrFieldProperty(
+            "termOffsets", "Whether offsets are stored in the term vector.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Offsets are stored in the term vector, which is what fast vector highlighting needs.",
+                whenFalse = "The term vector carries no offsets.",
+            ),
+        ),
+        SolrFieldProperty(
+            "termPayloads", "Whether payloads are stored in the term vector.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Payloads are stored in the term vector.",
+                whenFalse = "The term vector carries no payloads.",
+            ),
+        ),
+        SolrFieldProperty(
+            "sortMissingFirst", "Whether documents lacking this field sort first.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Documents lacking this field sort before all others, in either direction.",
+                whenFalse = "Documents lacking this field sort as though the value were lowest.",
+            ),
+        ),
+        SolrFieldProperty(
+            "sortMissingLast", "Whether documents lacking this field sort last.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Documents lacking this field sort after all others, in either direction.",
+                whenFalse = "Documents lacking this field sort as though the value were lowest.",
+            ),
+        ),
         SolrFieldProperty(
             "uninvertible",
             "Whether the field may be un-inverted at query time when it has no doc values.",
             "true or false",
             null,
             defaultTrueWithin = SolrVersionRange(below = 1.7f),
+            meaning = SolrPropertyMeaning(
+                whenTrue = "The field may be un-inverted at query time when it has no doc values — correct, but memory-hungry on a large index.",
+                whenFalse = "Sorting or faceting without doc values fails rather than silently building a field cache.",
+            ),
         ),
         SolrFieldProperty(
             "useDocValuesAsStored",
@@ -235,8 +352,18 @@ object SolrFieldProperties {
             "true or false",
             null,
             defaultTrueWithin = SolrVersionRange(from = 1.6f),
+            meaning = SolrPropertyMeaning(
+                whenTrue = "Doc values are returned in results as though the field were stored, so an fl naming it gets a value back.",
+                whenFalse = "Doc values are not returned; only a stored field appears in results.",
+            ),
         ),
-        SolrFieldProperty("large", "Whether the value is lazily loaded and not cached above 512KB.", "true or false", "false"),
+        SolrFieldProperty(
+            "large", "Whether the value is lazily loaded and not cached above 512KB.", "true or false", "false",
+            meaning = SolrPropertyMeaning(
+                whenTrue = "The value is loaded lazily and not held in the document cache above 512KB.",
+                whenFalse = "The value is loaded and cached like any other.",
+            ),
+        ),
         SolrFieldProperty(
             "positionIncrementGap",
             "Distance inserted between the values of a multi-valued field, so a phrase query cannot match across two of them.",

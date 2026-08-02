@@ -327,4 +327,68 @@ class SolrFieldPropertiesTest {
             SolrFieldProperties.byName("indexed")!!.closedValues.isEmpty(),
         )
     }
+
+    /** The four whose values are terse enough to state beside the declaration. */
+    private val inlineProperties = setOf("indexed", "stored", "multiValued", "docValues")
+
+    @Test
+    fun `every boolean property legal on a field states what its value means`() {
+        val missing = SolrFieldProperties.FOR_FIELD
+            .filter { it.valueType == SolrValueType.BOOLEAN && it.meaning == null }
+            .map { it.name }
+        assertEquals("every boolean needs a meaning", emptyList<String>(), missing)
+    }
+
+    /**
+     * A non-boolean has two values to state nothing about. `default` takes any value of the field's
+     * type, so a true/false consequence would be inventing a distinction Solr does not make.
+     */
+    @Test
+    fun `a property that is not a boolean carries no meaning`() {
+        assertNull(SolrFieldProperties.byName("default")!!.meaning)
+    }
+
+    @Test
+    fun `exactly the four storage-shape properties speak inline`() {
+        val inline = SolrFieldProperties.ALL
+            .filter { it.meaning?.inlineWhenTrue != null }
+            .map { it.name }
+            .toSet()
+        assertEquals(inlineProperties, inline)
+    }
+
+    /**
+     * The declarative renderer truncates any single segment past 30 characters, and each phrase
+     * arrives as its own segment. A phrase over budget renders as "no doc value…".
+     */
+    @Test
+    fun `no inline phrase exceeds the renderers segment budget`() {
+        val overBudget = SolrFieldProperties.ALL
+            .mapNotNull { it.meaning }
+            .flatMap { listOfNotNull(it.inlineWhenTrue, it.inlineWhenFalse) }
+            .filter { it.length > 30 }
+        assertEquals(emptyList<String>(), overBudget)
+    }
+
+    /**
+     * A half-populated pair renders a hint that states one value and says nothing for the other,
+     * which reads as a missing fact rather than as a deliberate silence.
+     */
+    @Test
+    fun `an inline phrase for one value implies one for the other`() {
+        val asymmetric = SolrFieldProperties.ALL
+            .filter { (it.meaning?.inlineWhenTrue == null) != (it.meaning?.inlineWhenFalse == null) }
+            .map { it.name }
+        assertEquals(emptyList<String>(), asymmetric)
+    }
+
+    /** Sentences are prose for a reader; a bare attribute name is a restatement, not an explanation. */
+    @Test
+    fun `every sentence is a sentence`() {
+        val malformed = SolrFieldProperties.ALL
+            .mapNotNull { p -> p.meaning?.let { p.name to it } }
+            .filter { (_, m) -> !m.whenTrue.endsWith(".") || !m.whenFalse.endsWith(".") }
+            .map { it.first }
+        assertEquals(emptyList<String>(), malformed)
+    }
 }
