@@ -1,6 +1,14 @@
 # Field Property Explanations Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Shipped. This is a historical record, not a plan to execute.** Several of the code
+> snippets below were wrong and were corrected during implementation — the phrase order,
+> a constructor argument, and a version-conditional default among them. **Read
+> [Corrections found during implementation](#corrections-found-during-implementation) at
+> the end before quoting anything above it.** Where this document and the code disagree,
+> the code is right.
+
+> **For agentic workers (historical):** this plan was executed with
+> superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Say what each field property's resolved value *means for this field* — as four terse phrases inline beside the declaration, and as full sentences in the documentation popup.
 
@@ -8,7 +16,7 @@
 
 **Tech Stack:** Kotlin, IntelliJ Platform Gradle Plugin, JUnit 4, `BasePlatformTestCase` for anything touching PSI.
 
-**Design record:** [`field-property-explanations.md`](field-property-explanations.md) in this directory. Read it before Task 1 — it argues the decisions this plan only executes.
+**Design record:** [`design.md`](design.md) beside this file. It argues the decisions this plan only executes, and it was kept correct as the corrections below accumulated — prefer it over this document wherever the two describe the same behaviour.
 
 ## Global Constraints
 
@@ -991,7 +999,9 @@ which is the case whose behaviour this change reverses."
 
 ## Corrections found during implementation
 
-Four errors surfaced while executing this plan, none of which changed the design — all are corrections to what the plan *said*, not to what shipped.
+Six errors surfaced while executing this plan, none of which changed the design — all are corrections to what the plan *said*, not to what shipped. Four are worth reading before you trust any code snippet above; the last two are staleness in the prose.
+
+**They share a shape.** Every one is a claim about a *resolved* value, written by reading the property table rather than by tracing `SolrFieldProperties.resolve` through its tiers. Resolution consults the field, then the field type, then a version-conditional default, then a class-trait rule — and a claim written from any single tier is wrong whenever an earlier one fires. That is the exact confusion this feature exists to end for users, and it caught the plan six times.
 
 1. **`SolrField`'s constructor was called positionally with the wrong third argument.** The plan's test snippet wrote `SolrField("sku", "string", mapOf(...))`, intending the map as the field's attributes. The third positional parameter is actually `indexed: Boolean?`; a map there does not compile. Fixed by passing `attributes = mapOf(...)` as a named argument.
 
@@ -1001,4 +1011,6 @@ Four errors surfaced while executing this plan, none of which changed the design
 
 4. **The plan did not anticipate that dropping the match-only silence rule would break `testEachHintSegmentFitsTheRenderersInlineBudget`.** That pre-existing test asserted a segment budget sized for a match-only hint; once storage-shape phrases render unconditionally, the longest hint is longer. The test was amended to size its budget against the new combined hint rather than loosened, so it still catches a genuine regression in segment length.
 
-A fifth issue, found while writing Task 5's documentation rather than while coding: the design record's own worked example (the "Rendered against `demo/solr/conf/managed-schema.xml`" block) claimed every one of the seven demo fields reads `no doc values`. That was never true of `id`, `sku` and `category` — the demo's `string` fieldType declares `docValues="true"` directly on the `fieldType` element, and `SolrFieldProperties.resolve` reads a fieldType-level attribute before it ever reaches the schema-version default that the design record's prose describes. Those three fields read `doc values`, not `no doc values`. Task 5 corrected the rendered block, the prose explaining it, and every other document that repeated the assumption.
+5. Found while writing Task 5's documentation rather than while coding: the design record's own worked example (the "Rendered against `demo/solr/conf/managed-schema.xml`" block) claimed every one of the seven demo fields reads `no doc values`. That was never true of `id`, `sku` and `category` — the demo's `string` fieldType declares `docValues="true"` directly on the `fieldType` element, and `SolrFieldProperties.resolve` reads a fieldType-level attribute before it ever reaches the schema-version default that the design record's prose describes. Those three fields read `doc values`, not `no doc values`. Task 5 corrected the rendered block, the prose explaining it, and every other document that repeated the assumption.
+
+6. **The plan says "all seven fields" in two places** — Task 4's sandbox check and Task 5's draft of the screenshot catalog entry. The demo schema declares **nine** after this branch: the human ruling on HINT-5 baked in `notes` (an unrecognisable tokenizer, so no match half) and `legacy` (an undeclared type, so no hint at all) rather than asking a tester to add and undo them each pass. The shipped documents count nine; only this plan still says seven.

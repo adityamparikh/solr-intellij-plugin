@@ -803,9 +803,8 @@ that is both.
 **What shipped:** all five actions. `SolrFieldProperties` in `org.apache.solr.ide.model`
 carries the meaning table; `SolrFieldPresentation.propertyTable` and
 `SolrConfigsetDocumentationProvider` render it in the popup; `SolrMatchInlayHintsProvider`
-renders it inline. [The design record](../../docs/design/pending/field-property-explanations.md)
-covers the phrasing and the silence rules in full; it stays in `pending/` rather than moving to
-`archive/` until this branch merges.
+renders it inline. [The design record](../../docs/design/archive/2026-08-02-field-property-explanations/design.md)
+covers the phrasing and the silence rules in full.
 
 **Success criteria:**
 - [x] The popup's Meaning cell states the consequence of the resolved value, for every
