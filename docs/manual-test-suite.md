@@ -17,7 +17,8 @@ join this suite only when its code has shipped and there is something to press.
 
 While the sandbox is open, capture anything [the screenshot catalog](screenshots.md) lists as
 outstanding — the gestures are the same ones, and a screenshot taken during a pass is evidence the
-check passed rather than a picture of an unverified claim.
+check passed rather than a picture of an unverified claim. **Six images are missing and one needs
+re-shooting**; the catalog's opening table names them and where each file goes.
 
 If every feature is dead at once, suspect the sandbox, not the plugin: delete
 `.intellijPlatform/sandbox/<project>/<IDE>/system-test` and relaunch — the full signature
@@ -98,8 +99,8 @@ gesture, caret placement, the Find Usages tool window.*
 ## 5. Quick documentation (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
-`SolrSchemaElementsTest`, `SolrReferenceGuideTest`. Manual adds: popup rendering, link
-clickability.*
+`SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrReferenceGuideTest`. Manual adds:
+popup rendering, link clickability.*
 
 - [ ] **DOC-1** — F1 on a field's `type` value shows the type, its analyzer chain, and
       what a field of it can match.
@@ -114,6 +115,23 @@ clickability.*
       configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
       the catalog's documentation column carries, where the line's `-sources` artifacts
       supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
+- [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
+      `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
+      and `useDocValuesAsStored` likewise. Both flip at a different version, so a table
+      that reports either as a flat Solr default has stopped reading the file.
+
+**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
+also carries each attribute's default and whether it is required, and no surface renders
+them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
+looking for `minGramSize` marked required is looking for something unbuilt, not something
+broken.
+
+**DOC-5 is the check that a version number in the file is being read.** Solr's field
+defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
+false from it, which is how Solr changed a default without breaking deployed schemas. The
+demo pins 1.6 deliberately and says so in a comment, so this check fails the moment the
+plugin starts answering from a constant instead. Bumping the demo to 1.7 removes the check
+rather than passing it.
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -150,11 +168,14 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       each property's summary, and **omits** attributes already present on the tag.
 - [ ] **COMP-3** — `fieldType` general properties complete (`positionIncrementGap`,
       `synonymQueryStyle`, `enableGraphQueries`…), documented like field properties.
-- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked `(default)`,
+- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked as the default,
       whichever it is — `indexed` marks `true`, `multiValued` marks `false`; properties
       whose default depends on the field type stay unmarked.
 - [ ] **COMP-5** — A field's `type=` offers the declared types; a `copyField`'s two ends
       offer the declared fields; `<analyzer type=` offers `index`/`query`.
+- [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default
+      and `useDocValuesAsStored=` does too. Both are the opposite on a 1.7 schema, so this
+      is the same claim DOC-5 makes, in the surface where a reader meets it first.
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -190,12 +211,25 @@ finding one alive means the suite is behind, not that something is wrong:
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
 - `solrconfig.xml`'s own structure: element completion and validation
+- `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
+  guide* today, which is the honest answer while the catalog cannot say which traits a
+  type carries — DOC-5's version resolution settles a different pair of properties
+- The four inspections the plan lists and has not built: a relevance parameter naming a
+  non-indexed field, an unused field type, a known-bad analyzer chain ordering, and a
+  configuration element removed in the targeted Solr line. The five that exist are
+  INSP-1 through INSP-6 above
 
 ## Pass log
 
 One row per completed pass. Scope names what was skipped and why, if anything.
 
+**A pass is all-or-nothing, and so is its row.** A row left at *in progress* is not a
+partial result — it is a pass whose outcome nobody knows, which is the same evidence as no
+pass at all. The two below are recorded as unfinished rather than deleted, because knowing
+a pass was started and abandoned is worth more than a gap.
+
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
-| 2026-07-30 | e4a35ac | | full suite | *in progress* | first pass with this document |
-| 2026-08-01 | a2e0bc5 | | full suite | *in progress* | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
+| 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
