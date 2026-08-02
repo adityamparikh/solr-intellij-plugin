@@ -316,12 +316,18 @@ Mapped to the requirements in the
 [specification](../specs/0002-solr-intellij-plugin.md). Phase 1 is pure static
 analysis — no Solr connection, no network.
 
-### 5.1 Phase 1 — committed
+### 5.1 Scope, per file
 
-| File | Coverage | Requirements |
-|---|---|---|
-| `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, factory classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes | S1–S9 |
-| `solrconfig.xml` | **Reference and inspection coverage.** Request-handler params (`df`, `qf`, spellcheck/highlight/facet fields) resolve to schema fields; inspections flag handlers referencing nonexistent fields and `qf`/`df` pointing at non-indexed fields; `<schemaFactory>` is read to determine schema provenance | S2, S4, S8 |
+**What is built and in what order is the
+[plan's](../specs/plans/0002-solr-intellij-plugin-plan.md) to say, and this table
+does not repeat it.** Scope does not change from step to step and position does,
+so a copy of the status here would be wrong within a release while the shape
+below stays correct.
+
+| File | Scope |
+|---|---|
+| `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, factory classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes |
+| `solrconfig.xml` | **Reference and inspection coverage.** Request-handler params (`df`, `qf`, spellcheck/highlight/facet fields) resolve to schema fields; inspections flag handlers referencing nonexistent fields and `qf`/`df` pointing at non-indexed fields |
 
 The asymmetry is deliberate. In `solrconfig.xml` the plugin targets the
 *cross-file boundary* — the string parameters that name schema fields — because
@@ -337,37 +343,34 @@ of `solr.xml` — none of which changes how completion, references, rename or
 inspections behave. Scoping Phase 1 to one mode would cost users and save no
 implementation work.
 
-### 5.2 Behavior against a managed schema — the plugin is API-first
+### 5.2 Behavior against a managed schema — the file is edited, always
 
-Requirements S8 and S9. The plugin classifies each configset by reading
-`<schemaFactory>`, and the classification gates **writes only**.
+**The plugin does not classify schema files, and no write is ever refused.** A
+rename, a quick-fix and an intention all edit the file in front of the user,
+whether the schema is classic, pinned, or opens with Solr's *do not edit it by
+hand* banner.
 
-**Read-side features are never affected.** Completion, navigation, Find Usages,
-inspections, match-capability hints and documentation behave identically whether
-the schema is classic, pinned, or API-managed. The file is still what sits in
-ZooKeeper, still what appears in the pull request, and still what someone opens
-when a query returns nothing.
+An earlier version of this document described the opposite: a classification
+read out of `<schemaFactory>`, cached, with five fallback cases, and write
+gating built on top of it that answered a managed schema by putting a `curl`
+command carrying a placeholder URL on the clipboard instead of applying the
+edit. That existed because the plugin was offline, and a fake URL was the only
+alternative it could offer. It is deleted. The question it answered — *am I
+allowed to write here* — is not one worth asking.
 
-**Write-side features take a position.** Where the schema is Solr-managed, the
-plugin's default answer to a write is *use the Schema API*, not *edit the file*:
+**Reading was never affected either way.** Completion, navigation, Find Usages,
+inspections, match-capability hints and documentation behave identically for
+every schema. The file is still what sits in ZooKeeper, still what appears in
+the pull request, and still what someone opens when a query returns nothing.
 
-| Schema | Rename (S3) and quick-fixes (S6) |
-|---|---|
-| Managed and mutable | **Default:** render the edit as a Schema API JSON payload and `curl` command on the clipboard. **Secondary:** edit the file directly, after a warning that Solr may overwrite it |
-| Managed, `mutable="false"` | Edit the file. No API is available; no warning |
-| Classic (`schema.xml`) | Edit the file. No API is available; no warning |
+**What replaces the gate is disagreement, shown rather than prevented.** A
+connected server makes the repository-versus-deployed comparison a thing the
+plugin can display, and applying a change through the Schema API a real action
+rather than an apology for one. Drift between Git and ZooKeeper was the actual
+risk the gating was reaching for, and it is better addressed by showing it.
 
-Because Phase 1 is offline, the generated request carries a placeholder
-collection URL (`http://localhost:8983/solr/<collection>/schema`). Phase 2
-substitutes a configured connection; Phase 4 may execute the request directly.
-Payload generation itself is pure text generation and needs no network.
-
-**This is not a blanket "never edit XML" stance,** and the distinction matters.
-Teams running `mutable="false"` or `ClassicIndexSchemaFactory` have chosen
-file-as-source-of-truth precisely so the configset stays reviewable in Git and
-deployable by CI. Steering *them* to the Schema API would bypass their review
-process and create drift between Git and ZooKeeper. The redirect is conditional
-on provenance for exactly that reason.
+The [specification](../specs/0002-solr-intellij-plugin.md) argues this out under
+"What this replaces".
 
 **The stance stops at the Schema API.** It does not extend to `solrconfig.xml`
 and the Config API. The Config API's coverage is partial, and what it does cover
@@ -422,10 +425,10 @@ argues the other way.
 
 **Resource file references.** Analyzer chains name `.txt` resources as string
 attributes (`synonyms="synonyms.txt"`), and a filter pointing at a missing file
-fails at core load. That is the same dangling-reference class of error S2 and S4
-already target between XML files, and the same reference infrastructure would
-resolve it. The three supporting XML files in §2.3 are referenced the same way.
-Neither is in S1–S9 today.
+fails at core load. That is the same dangling-reference class of error the
+handler-parameter inspections already target between XML files, and the same
+reference infrastructure would resolve it. The three supporting XML files in
+§2.3 are referenced the same way. Neither is in scope today.
 
 ---
 

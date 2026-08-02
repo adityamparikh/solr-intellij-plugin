@@ -19,15 +19,10 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 **Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
 purpose.**
 
-The configuration-files surface is largely built: the plugin detects configsets, parses them into a
-field model, and uses it for inspections with quick-fixes, completion, cross-file navigation, quick
-documentation, and inline hints saying what each field can actually match. The server surface exists
-only as stored connection settings — nothing talks to a Solr server yet — and the Java/Kotlin code
-surface is unbuilt.
-
 **The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
-is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
-much of which is still ahead.
+is done**, step by step, and is the only file that says so — a summary here would go stale on the
+next merged step while the plan stayed correct. The
+[specification](specs/0002-solr-intellij-plugin.md) describes intent, much of which is still ahead.
 
 ## What it looks like today
 
@@ -120,9 +115,10 @@ covers.
 ## Supported Solr versions
 
 The plugin supports the Solr release lines that Apache Solr has **not** declared end-of-life; when
-Solr declares a line EOL, the plugin drops it in its next release. The
-[specification](specs/0002-solr-intellij-plugin.md) names the current lines, and is the one place
-they are written down — a compatibility matrix ships with the first release.
+Solr declares a line EOL, the plugin drops it in its next release. The lines themselves are declared
+once, as `supportedSolrLines` in [`build.gradle.kts`](build.gradle.kts) — the build resolves each
+one's artifacts to generate the class catalog, so that map is the only place they can be written
+down without drifting. A compatibility matrix ships with the first release.
 
 ## Documentation
 

@@ -249,8 +249,9 @@ popup, against the demo configset's declared Solr line.*
 ## Not yet in the suite
 
 Checks join a section above when their feature ships; **which features those are is the
-plan's to say**, not this file's. As of the last pass, the gestures below do nothing —
-finding one alive means the suite is behind, not that something is wrong:
+[plan's](../specs/plans/0002-solr-intellij-plugin-plan.md) to say**, not this file's. The
+list below is what the suite does not yet cover, and says nothing about what is built —
+finding one of these gestures alive means the suite is behind, not that something is wrong:
 
 - Alt-Enter intentions generating an `_exact`/`_prefix` companion field
 - Rename refactoring on fields and field types
