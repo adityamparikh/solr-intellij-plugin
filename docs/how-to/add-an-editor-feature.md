@@ -326,5 +326,6 @@ settings tree. The other four contributors have no such toggle.
 
 Repository-specific: **say nothing when unsure.** An inlay is unsolicited — it appears without the
 user asking — so a wrong claim is worse than a missing one, and this is the output most likely to be
-quoted back at you. The existing provider stays silent where the analysis is not confident, and where
-a field names a type the configset does not declare.
+quoted back at you. The existing provider stays silent where a field names a type the configset does
+not declare; where the analysis is not confident it drops the match half and shows the storage shape
+alone.

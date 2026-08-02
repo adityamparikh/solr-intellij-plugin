@@ -32,7 +32,7 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
  * attributed to Solr when the type that might have overridden it does not exist.
  *
  * Where [org.apache.solr.ide.model.SolrMatchAnalysis] is not confident the match half is dropped and
- * the storage shape stands alone. An unrecognized factory means the chain was not fully understood,
+ * the storage shape stands alone. An unrecognised factory means the chain was not fully understood,
  * and a wrong claim about what a field matches is worse than no claim — but it says nothing about
  * `stored` or `multiValued`, and withholding those was withholding a fact the plugin is certain of.
  */
@@ -114,7 +114,7 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
          * inventing one. That silence is per property, because that is the granularity the
          * underlying facts have.
          */
-        private fun storageShape(field: SolrField, fieldType: SolrFieldType?, model: SolrFieldModel): List<String> {
+        private fun storageShape(field: SolrField, fieldType: SolrFieldType, model: SolrFieldModel): List<String> {
             val traits = model.traitsOf(fieldType)
             return SolrFieldProperties.FOR_FIELD.mapNotNull { property ->
                 val meaning = property.meaning ?: return@mapNotNull null
