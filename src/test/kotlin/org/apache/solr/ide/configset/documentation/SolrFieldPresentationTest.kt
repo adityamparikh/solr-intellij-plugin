@@ -6,6 +6,7 @@ import org.apache.solr.ide.model.SolrClassAttribute
 import org.apache.solr.ide.model.SolrClassEntry
 import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrValueType
@@ -245,5 +246,79 @@ class SolrFieldPresentationTest {
         val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
         assertTrue("strFieldEntry carries no summary", strFieldEntry.summary == null)
         assertFalse("no empty <p></p> for a missing summary", html.contains("<p></p>"))
+    }
+
+    // --- the meaning of a property's resolved value ----------------------------------------------
+
+    @Test
+    fun `the property table states the consequence of the value that is in effect`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "false"))
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue(
+            "the false consequence must be stated",
+            "The original value is not returned in results" in html,
+        )
+        assertFalse(
+            "the true consequence must not appear for a false value",
+            "The original value is returned in results" in html,
+        )
+    }
+
+    @Test
+    fun `the opposite value gets the opposite sentence`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "true"))
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue("The original value is returned in results" in html)
+    }
+
+    /**
+     * An undetermined value has no consequence to state, and picking one of the two would be exactly
+     * the confident wrong answer the null value exists to avoid. The neutral summary is the fallback.
+     */
+    @Test
+    fun `an undetermined value falls back to the value-neutral summary`() {
+        val unknownType = SolrFieldType("mystery", "com.example.MysteryFieldType")
+        val field = SolrField("odd", "mystery")
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, unknownType, SolrVersionSelection.DEFAULT, modernSchema, typeTraits = null,
+        )
+        assertTrue(
+            "the neutral summary must stand in",
+            "Whether a column-oriented structure is built" in html,
+        )
+        assertFalse("no column store claim either way", "A column store is built" in html)
+        assertFalse("no column store claim either way", "No column store;" in html)
+    }
+
+    @Test
+    fun `hovering a property attribute states the consequence under its resolved value`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "false"))
+        val property = SolrFieldProperties.byName("stored")!!
+        val html = SolrFieldPresentation.propertyDocumentation(
+            property = property,
+            effective = SolrFieldProperties.resolve(property, field, stringType, modernSchema),
+            version = SolrVersionSelection.DEFAULT,
+            schemaVersion = modernSchema,
+        )
+        assertTrue("The original value is not returned in results" in html)
+    }
+
+    /**
+     * On a fieldType there is no field to resolve against, so there is no value and no consequence.
+     * The general half — summary, accepted values, Solr's default — is all a type can be told.
+     */
+    @Test
+    fun `hovering a property on a field type states no consequence`() {
+        val html = SolrFieldPresentation.propertyDocumentation(
+            property = SolrFieldProperties.byName("stored")!!,
+            effective = null,
+            version = SolrVersionSelection.DEFAULT,
+            schemaVersion = modernSchema,
+        )
+        assertFalse("The original value is" in html)
     }
 }
