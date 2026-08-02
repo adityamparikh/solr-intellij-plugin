@@ -127,4 +127,110 @@ class GenerateSolrCatalogTaskTest {
         )
         assertFalse(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)I"))
     }
+
+    // --- the documentation column: reading a class's own Javadoc from a -sources jar --------------
+
+    /** The ordinary shape: a class comment directly above `public class X`. */
+    @Test
+    fun `a class comment is found above its declaration`() {
+        val source = """
+            package org.example;
+
+            /**
+             * Creates new instances of EdgeNGramTokenFilter.
+             */
+            public class EdgeNGramFilterFactory extends TokenFilterFactory {
+            }
+        """.trimIndent()
+        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "EdgeNGramFilterFactory")
+        assertTrue(comment != null && comment.contains("Creates new instances"))
+    }
+
+    /** An annotation between the comment and the declaration does not hide it. */
+    @Test
+    fun `an annotated class still finds its comment`() {
+        val source = """
+            /**
+             * Filters LowerCase.
+             */
+            @Deprecated
+            public final class LowerCaseFilterFactory extends TokenFilterFactory {
+            }
+        """.trimIndent()
+        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "LowerCaseFilterFactory")
+        assertTrue(comment != null && comment.contains("Filters LowerCase"))
+    }
+
+    /** A class with no comment above it is absent, not an empty string. */
+    @Test
+    fun `a class with no comment reads as absent`() {
+        val source = "public class NoComment extends TokenFilterFactory {\n}"
+        assertEquals(null, GenerateSolrCatalogTask.classJavadocComment(source, "NoComment"))
+    }
+
+    /**
+     * A one-line comment with no sentence-ending period reads in full, rather than being
+     * discarded for lacking one. This is the common shape for a factory's class comment.
+     */
+    @Test
+    fun `a comment with no period is kept whole`() {
+        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
+            " * Creates new instances of EdgeNGramTokenFilter\n",
+        )
+        assertEquals("Creates new instances of EdgeNGramTokenFilter", summary)
+    }
+
+    /** Only the first sentence survives when there is more than one. */
+    @Test
+    fun `only the first sentence is kept`() {
+        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
+            " * Splits words. See the example below for details.\n",
+        )
+        assertEquals("Splits words.", summary)
+    }
+
+    /** A block tag ends the summary; nothing after `@since` or `@param` belongs in one sentence. */
+    @Test
+    fun `a block tag ends the summary`() {
+        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
+            " * Splits words on case change\n * @since 4.0\n * @lucene.spi {@value #NAME}\n",
+        )
+        assertEquals("Splits words on case change", summary)
+    }
+
+    /** `{@link}` resolves to a plain label, with or without an explicit one. */
+    @Test
+    fun `a link tag reads as its label`() {
+        assertEquals(
+            "Creates new instances of EdgeNGramTokenFilter.",
+            GenerateSolrCatalogTask.summarizeJavadocComment(
+                " * Creates new instances of {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter}.\n",
+            ),
+        )
+        assertEquals(
+            "See the ngram filter.",
+            GenerateSolrCatalogTask.summarizeJavadocComment(
+                " * See the {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter ngram filter}.\n",
+            ),
+        )
+    }
+
+    /** `{@code}` reads as its plain content, and an HTML tag is stripped rather than shown raw. */
+    @Test
+    fun `code tags and HTML markup are reduced to plain text`() {
+        assertEquals(
+            "Reads the minGramSize argument.",
+            GenerateSolrCatalogTask.summarizeJavadocComment(" * Reads the {@code minGramSize} argument.\n"),
+        )
+        assertEquals(
+            "A filter factory for this.",
+            GenerateSolrCatalogTask.summarizeJavadocComment(" * A <b>filter factory</b> for this.\n"),
+        )
+    }
+
+    /** An empty comment, or one that is only whitespace and stars, summarizes to nothing. */
+    @Test
+    fun `a blank comment summarizes to nothing`() {
+        assertEquals(null, GenerateSolrCatalogTask.summarizeJavadocComment(" *\n * \n"))
+    }
 }

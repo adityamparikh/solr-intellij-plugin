@@ -191,4 +191,23 @@ class SolrFieldPresentationTest {
         assertTrue(html.contains("In this configset:"))
         assertTrue(html.contains("<code>string</code>"))
     }
+
+    /** The one-sentence Javadoc summary, when the catalog carries one. */
+    @Test
+    fun `a class popup shows its documentation summary when the catalog carries one`() {
+        val html = SolrFieldPresentation.classDocumentation(
+            edgeNGramEntry.copy(summary = "Creates new instances of EdgeNGramTokenFilter."),
+            null,
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("Creates new instances of EdgeNGramTokenFilter."))
+    }
+
+    /** No `-sources` documentation for this class is no paragraph, not an empty one. */
+    @Test
+    fun `a class with no summary shows no documentation paragraph`() {
+        val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
+        assertTrue("strFieldEntry carries no summary", strFieldEntry.summary == null)
+        assertFalse("no empty <p></p> for a missing summary", html.contains("<p></p>"))
+    }
 }

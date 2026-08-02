@@ -1,6 +1,10 @@
 import java.io.File
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.apache.solr.ide.build.GenerateSolrCatalogTask
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedArtifactResult
+import org.gradle.jvm.JvmLibrary
+import org.gradle.language.base.artifact.SourcesArtifact
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -173,12 +177,42 @@ supportedSolrLines.forEach { (line, version) ->
     dependencies.add(configuration.name, "org.apache.solr:solr-analysis-extras:$version")
 }
 
+/**
+ * Resolves the `-sources` jar for every component already resolved into [configuration], for the
+ * catalog's documentation column.
+ *
+ * `ArtifactResolutionQuery` has no lazy, task-execution-time form the configuration cache accepts —
+ * it always reaches for the live `DependencyHandler` — so, unlike the artifacts themselves, this
+ * runs here, eagerly, at configuration time, rather than through the task's own lazy
+ * `ConfigurableFileCollection`. That is what keeps it affordable rather than merely correct: a
+ * configuration-cache hit skips the configuration phase entirely, so this resolves once per cache
+ * entry and not on every invocation that happens to need the catalog.
+ *
+ * A component with no published sources — Solr's own transitive dependencies chief among them —
+ * is silently absent from the result, the same decline-rather-than-guess rule the generator's
+ * attribute pass already follows.
+ */
+fun resolveSources(configuration: Configuration): List<File> {
+    val components = configuration.incoming.resolutionResult.allComponents
+        .mapNotNull { it.id as? ModuleComponentIdentifier }
+    val resolved = dependencies.createArtifactResolutionQuery()
+        .forComponents(components)
+        .withArtifacts(JvmLibrary::class.java, SourcesArtifact::class.java)
+        .execute()
+    return resolved.resolvedComponents.flatMap { component ->
+        component.getArtifacts(SourcesArtifact::class.java)
+            .filterIsInstance<ResolvedArtifactResult>()
+            .map { it.file }
+    }
+}
+
 val generateSolrCatalog = tasks.register<GenerateSolrCatalogTask>("generateSolrCatalog") {
     group = "build"
     description = "Reads each supported Solr line's artifacts into the shipped class catalog."
     outputDirectory = layout.buildDirectory.dir("generated/solr-catalog-resources")
     supportedSolrLines.forEach { (line, version) ->
-        solrLine(line, version, configurations.named("solrArtifacts$line"))
+        val configuration = configurations.named("solrArtifacts$line").get()
+        solrLine(line, version, configuration, resolveSources(configuration))
     }
 }
 
