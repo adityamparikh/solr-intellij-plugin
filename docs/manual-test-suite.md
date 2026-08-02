@@ -48,17 +48,19 @@ be retired from here, not accumulated.
 *Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
 analysis pass over the real demo files, all inspections at once.*
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly one** warning: the
-      planted dangling `manufacturer` copyField at the bottom, which is the inspection
-      demo and must not be fixed. Nothing else in the file is underlined.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** warnings: the
+      planted dangling `manufacturer` copyField near the bottom, and the planted undeclared
+      `type="discontinued"` on the `legacy` field — both the inspection demo and both must
+      not be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
-This is the suite's most important check, and the count is the whole of it: one report,
-on the one defect the fixture plants deliberately. Solr configuration is full of syntax
-that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a second underline
-is a false positive, and a false positive on a correct file is a bug, never noise.
+This is the suite's most important check, and the count is the whole of it: two reports,
+on the two defects the fixture plants deliberately, and no more. Solr configuration is full
+of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
+underline is a false positive, and a false positive on a correct file is a bug, never noise.
 `DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
-committed demo configset is dangling, and which one it is.
+committed demo configset is dangling and exactly one field names an undeclared type, and
+which ones they are.
 
 ## 3. Match-capability inlay hints (HINT)
 
@@ -77,9 +79,10 @@ placement and readability of the rendered hint.*
       `indexed, not stored, no doc values, single-valued`.
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
-- [ ] **HINT-5** — A field whose analyser chain contains an unrecognised factory shows
-      the storage-shape phrases and no match claim; a field whose `type` is undeclared
-      shows no hint at all.
+- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyser names the unrecognised
+      `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
+      `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
+      the schema does not declare) shows no hint at all.
 
 ## 4. Navigation and Find Usages (NAV)
 
@@ -142,7 +145,8 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — Undo everything: both files return to zero warnings.
+- [ ] **INSP-7** — Undo everything: `solrconfig.xml` returns to zero warnings and
+      `managed-schema.xml` returns to the BASE-1 baseline of exactly two.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 

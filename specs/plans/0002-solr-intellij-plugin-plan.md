@@ -75,6 +75,10 @@ it whole, and the gutter action goes with the Server track.
 - [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
   — likewise added late; belongs beside the two above. Its field half needs only the
   property table; its factory half waits on the catalog carrying defaults.
+- [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
+  — likewise added late; belongs beside the three above. Extends the match-hint provider
+  and the documentation provider both, so it needs the property table plus the two steps
+  that already extend them.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
   — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)

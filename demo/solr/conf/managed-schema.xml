@@ -14,6 +14,15 @@
   configsets still sit. Staying here is what makes the demo show a version-dependent default
   being resolved against the file rather than asserted. Bumping it to 1.7 silently removes
   that from the demo.
+
+  `notes` (type `custom_text`) and `legacy` (type `discontinued`), near the end of the field
+  list, are DELIBERATE too, and demonstrate the inlay hint's two different silences. `notes`
+  hits an analyser chain the plugin does not recognise, so its hint keeps the storage-shape
+  phrases and drops only the match claim. `legacy` names a type the schema never declares, so
+  its hint drops everything — resolution has no field type to fall back on, and guessing would
+  attribute a default to Solr that the missing type might have overridden. `legacy` is also a
+  second reportable finding beside the dangling copyField below; see the manual test suite's
+  BASE-1.
 -->
 <schema name="products" version="1.6">
 
@@ -44,6 +53,16 @@
     </analyzer>
   </fieldType>
 
+  <!-- DELIBERATE: com.example.MyTokenizerFactory does not exist. This is what an unrecognised
+       analyser chain looks like to the inlay hint: `notes` below keeps its storage-shape
+       phrases and drops only the match claim, because storage properties never depended on
+       understanding the chain. -->
+  <fieldType name="custom_text" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="com.example.MyTokenizerFactory"/>
+    </analyzer>
+  </fieldType>
+
   <field name="id"          type="string"       indexed="true"  stored="true" required="true"/>
   <field name="sku"         type="string"       indexed="true"  stored="true"/>
   <field name="name"        type="text_general" indexed="true"  stored="true"/>
@@ -51,6 +70,11 @@
   <field name="category"    type="string"       indexed="true"  stored="true"/>
   <field name="description" type="text_general" indexed="true"  stored="true"/>
   <field name="text"        type="text_general" indexed="true"  stored="false" multiValued="true"/>
+  <field name="notes"       type="custom_text"  indexed="true"  stored="true"/>
+  <!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike
+       `notes` above, resolution has no field type to fall back on at all here, so the inlay
+       hint stays silent rather than guessing at a default the type might have overridden. -->
+  <field name="legacy"      type="discontinued" indexed="true"  stored="true"/>
 
   <uniqueKey>id</uniqueKey>
 

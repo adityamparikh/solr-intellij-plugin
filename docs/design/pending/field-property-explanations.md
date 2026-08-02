@@ -182,11 +182,17 @@ it is the only one taken.
 
 `doc values` on `id`/`sku`/`category` is the `string` fieldType's own doing, not the schema
 version's: it declares `docValues="true"` directly on the `fieldType` element, which resolution
-reads before it ever reaches the version-conditional default. `name`, `name_prefix`, `description`
-and `text` carry no such declaration on `text_general`/`text_prefix`, so those four fall through to
-the version rule, and the demo's `version="1.6"` — deliberately below the `1.7` the general rule
-needs — is why they read `no doc values`. It is a fair advertisement for the popup, which names
-whichever of the fieldType or the schema version actually decided it.
+reads before it ever reaches any class- or version-conditional default. `docValues` carries no
+`defaultTrueWithin` at all — a version-conditional tier only exists for it *inside*
+`SolrTypeDefaultRule.DOC_VALUES.holdsFor`, gated on the field type's class traits, not reached
+unless neither the field nor the fieldType declares the attribute. `name`, `name_prefix`,
+`description` and `text` are all `solr.TextField`, which the catalog records with no traits at
+all — not `docValuesByDefault`, not `sortableText` — so `holdsFor` is false regardless of schema
+version, and the demo's `version="1.6"` has nothing to do with why they read `no doc values`.
+Bumping the demo to `1.7` would not change them; only `id`/`sku`/`category`'s `docValues="true"`
+attribute, or a field type whose class the catalog marks `docValuesByDefault`, moves the needle.
+It is a fair advertisement for the popup, which names the field or fieldType attribute for the
+first three and the field type's class, origin `FIELD_TYPE_DEFAULT`, for the other four.
 
 ### The popup
 

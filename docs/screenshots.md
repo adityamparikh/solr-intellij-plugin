@@ -55,19 +55,24 @@ in the sandbox. The demo project is built for this — several defects in it are
 ### 1. Match-capability hints — `hints-match-capability.png`
 
 **Shows** the feature nothing else in the ecosystem does — what each field can *actually* match —
-and, beside it, the storage shape that decides whether a matched document can be returned at all.
-Inline, without a hover. This is the lead image for the README.
+and, beside it, the storage shape that decides whether a matched document can be returned at all,
+including the two shapes that silence part or all of the hint. Inline, without a hover. This is
+the lead image for the README.
 
-**Capture** the field block at `managed-schema.xml:47-53` with no interaction at all — the hints
-render themselves. Frame all seven fields so both contrasts are visible in one shot: `id`/`sku`/
+**Capture** the field block at `managed-schema.xml:66-77` with no interaction at all — the hints
+render themselves. Frame all nine fields so every contrast is visible in one shot: `id`/`sku`/
 `category` read as whole-value and case-sensitive, `name`/`description`/`text` as tokenised and
-case-insensitive, `name_prefix` as prefix-capable; and `name_prefix`/`text` read as `not stored`
-where the rest read `stored`, with `text` alone reading `multi-valued`.
+case-insensitive, `name_prefix` as prefix-capable; `name_prefix`/`text` read as `not stored`
+where the rest read `stored`, with `text` alone reading `multi-valued`; `notes` carries only the
+storage-shape phrases, with no match claim, because its analyser names a factory the plugin does
+not recognise; and `legacy` carries no hint at all, because its `type` is undeclared. `legacy`
+will also show the undeclared-field-type inspection's underline in frame — that is correct and
+not something to crop out; see BASE-1.
 
 **Redo when** the hint wording changes, a property's inline phrase changes, a new analysis
 capability is recognised, or the demo schema's field list changes.
 
-**Verifies** HINT-1 through HINT-4.
+**Verifies** HINT-1 through HINT-5.
 
 ### 2. Quick documentation on a field — `quick-doc-field.png` ✅ captured
 
@@ -76,7 +81,7 @@ capability is recognised, or the demo schema's field list changes.
 **Shows** the question the Reference Guide cannot answer: each property's value *and where it came
 from* — this field, its type, or Solr's default.
 
-**Capture** caret inside `name="category"` at `managed-schema.xml:51`, press F1. Crop to the popup.
+**Capture** caret inside `name="category"` at `managed-schema.xml:70`, press F1. Crop to the popup.
 
 **Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
 `From` column's wording changes.
@@ -93,7 +98,7 @@ class, the one-sentence Javadoc summary, the attributes read from constructor by
 constructed Reference Guide link.
 
 **Capture** caret inside any `class="solr.…"` value — `solr.StandardTokenizerFactory` at
-`managed-schema.xml:30` is the clearest — press F1.
+`managed-schema.xml:33` is the clearest — press F1.
 
 **Redo when** the catalog's columns change. **This one is outstanding now:** the existing image
 predates `feat/catalog-attribute-defaults`, so its `Accepts` table shows attribute names and value
@@ -107,7 +112,7 @@ types but no defaults or required markers. Re-shoot after that branch builds.
 the closest spelling first — the plugin catching the failure that would otherwise surface only at
 core reload.
 
-**Capture** `managed-schema.xml:54` carries a **deliberate** dangling `manufacturer` copyField that
+**Capture** `managed-schema.xml:85` carries a **deliberate** dangling `manufacturer` copyField that
 the demo's header comment says must not be fixed, so no editing is needed. Put the caret on
 `manufacturer`, press Alt-Enter, and frame both the underline and the open menu. Undo nothing —
 there is nothing to undo.
@@ -116,10 +121,14 @@ there is nothing to undo.
 
 **Verifies** INSP-1.
 
-**The count is the claim.** `DemoConfigsetTest` pins that exactly one reference in the committed demo
-configset is dangling, and which one — so a correct capture shows this underline and no other. A
-second underline anywhere in frame is a false positive, and the screenshot should not be published
-until it is gone.
+**The count is the claim, and the demo schema now plants two.** `DemoConfigsetTest` pins that
+exactly one reference in the committed demo configset is dangling and exactly one field names an
+undeclared type — the dangling `manufacturer` copyField this entry captures, and the `legacy`
+field's undeclared type, which is `legacy`'s own defect and belongs to image 1, not this one. A
+correct capture of this entry frames the `manufacturer` underline and, if `legacy` falls in the
+same frame, its underline too — but no underline this pass did not already know about. A third
+kind of underline anywhere in frame is a false positive, and the screenshot should not be
+published until it is gone.
 
 ### 5. Completion over the schema's own vocabulary — `completion-field-properties.png`
 
@@ -127,7 +136,7 @@ until it is gone.
 one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
 marked `(default)`.
 
-**Capture** put the caret after `stored="true"` on `managed-schema.xml:51`, type a space, and let
+**Capture** put the caret after `stored="true"` on `managed-schema.xml:70`, type a space, and let
 completion open. Frame enough of the list to show the summaries and at least one `(default)` marker.
 Undo the space afterwards.
 
@@ -141,7 +150,7 @@ Undo the space afterwards.
 attributes, read from its constructor bytecode at build time.
 
 **Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
-`managed-schema.xml:32`, put the caret after the class attribute, type a space, and let completion
+`managed-schema.xml:48`, put the caret after the class attribute, type a space, and let completion
 open — `minGramSize` and `maxGramSize` should appear.
 
 **Redo when** the catalog gains columns — the same trigger as image 3, and for the same reason.
@@ -149,7 +158,7 @@ open — `minGramSize` and `maxGramSize` should appear.
 **Exercises the path CAT-2 checks, with a different factory.** CAT-2 names
 `solr.WordDelimiterGraphFilterFactory`, which the demo configset does not declare — that check has
 you type the class first. A screenshot should not require editing the fixture, so this captures
-`EdgeNGramFilterFactory`, which the demo declares at line 32 and which reaches the editor by exactly
+`EdgeNGramFilterFactory`, which the demo declares at line 48 and which reaches the editor by exactly
 the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
 to the demo, which is a fixture change and belongs to CAT-2, not here.
 
@@ -159,7 +168,7 @@ to the demo, which is a fixture change and belongs to CAT-2, not here.
 one gesture.
 
 **Capture** caret on `text_general` in the `<fieldType name="text_general">` declaration
-(`managed-schema.xml:15`), press ⌥F7, frame the Find Usages tool window with its results.
+(`managed-schema.xml:31`), press ⌥F7, frame the Find Usages tool window with its results.
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 

@@ -14,6 +14,8 @@ something true to say.
 | Where | What | Why it is here |
 |---|---|---|
 | `solr/conf/managed-schema.xml` | `copyField source="manufacturer"` — no such field | Dangling reference inspection |
+| `solr/conf/managed-schema.xml` | field `legacy` has `type="discontinued"` — no such type | Undeclared field type inspection |
+| `solr/conf/managed-schema.xml` | field `notes` has type `custom_text`, whose analyser names `com.example.MyTokenizerFactory` — not a real factory | The match-hint's unrecognised-chain silence, distinct from `legacy`'s undeclared-type silence |
 | `src/main/java/.../ProductSearch.java` | `categry:books` — typo for `category` | Field name checked from code |
 | `src/main/java/.../ProductSearch.java` | `price` in `setFields` — never existed | Same, in a different argument |
 | `src/main/java/.../Product.java` | `@Field("prce")` — typo | Same, in an annotation rather than a literal |

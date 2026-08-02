@@ -38,7 +38,7 @@ class DemoConfigsetTest {
     @Test
     fun `every field in the demo schema is read`() {
         assertEquals(
-            setOf("id", "sku", "name", "name_prefix", "category", "description", "text"),
+            setOf("id", "sku", "name", "name_prefix", "category", "description", "text", "notes", "legacy"),
             model.fields.keys,
         )
         assertEquals("id", model.uniqueKey!!.effective)
@@ -121,11 +121,32 @@ class DemoConfigsetTest {
     }
 
     /**
-     * The demo's opening, as the inspection sees it. Demo step 25 puts this underline on screen, so
-     * it is worth pinning that exactly one thing in the committed fixture is reportable — and which.
+     * The two planted silences the inlay hint shows, pinned at the model level rather than through
+     * the hint provider — [SolrMatchInlayHintsProviderTest][org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProviderTest]
+     * covers the rendering. `notes`' analyser names a factory the plugin does not recognise, so match
+     * analysis must not be confident about it; `legacy` names a type the schema never declares, so it
+     * has no field type to analyse at all.
      */
     @Test
-    fun `exactly one reference in the demo configset is dangling`() {
+    fun `notes and legacy demonstrate the hint's two different silences`() {
+        val notesType = model.typeOf(model.resolve("notes")!!)
+        assertNotNull("notes must resolve to the custom_text field type", notesType)
+        val notes = SolrMatchAnalysis.of(notesType!!)
+        assertTrue("an unrecognised factory must not be classified confidently", !notes.confident)
+
+        assertNull("legacy's type is undeclared, so it has no field type to resolve", model.typeOf(model.resolve("legacy")!!))
+    }
+
+    /**
+     * The demo's opening, as the inspections see it. Demo step 25 puts the dangling-copyField
+     * underline on screen; `legacy`'s undeclared type is the fixture's second planted finding, added
+     * for [SolrMatchInlayHintsProvider][org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider]'s
+     * two different silences. Worth pinning that exactly these two things in the committed fixture
+     * are reportable — and which, so a third finding anywhere else is caught here rather than on
+     * stage.
+     */
+    @Test
+    fun `exactly two things in the demo configset are reportable`() {
         val danglingCopyFields = model.copyFields.map { it.effective }
             .filter { '*' !in it.source && model.resolve(it.source) == null }
             .map { it.source }
@@ -133,7 +154,8 @@ class DemoConfigsetTest {
 
         val undeclaredTypes = model.fields.values.map { it.effective }
             .filter { it.type.isNotEmpty() && !model.fieldTypes.containsKey(it.type) }
-        assertTrue("every demo field names a declared type: ${'$'}undeclaredTypes", undeclaredTypes.isEmpty())
+            .map { it.name }
+        assertEquals(listOf("legacy"), undeclaredTypes)
 
         val unknownReferences = model.fieldReferences
             .filter { it.fieldName != "score" && model.resolve(it.fieldName) == null }
