@@ -158,6 +158,20 @@ class SolrFieldPropertiesTest {
         assertEquals("true", resolve("multiValued", version = SolrSchemaVersion.of(null)).value)
     }
 
+    /**
+     * Solr turned this *off* at schema version 1.4, so the pre-1.4 answer is the surprising one and
+     * the one a reader of an old schema most needs. Reporting a flat `false` everywhere would have
+     * described the field as querying one way while Solr queried it the other.
+     */
+    @Test
+    fun `autoGeneratePhraseQueries defaults true below schema version 1_4 and false from it`() {
+        val below = resolve("autoGeneratePhraseQueries", version = SolrSchemaVersion.of("1.3"))
+        assertEquals("true", below.value)
+        assertEquals(SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT, below.origin)
+
+        assertEquals("false", resolve("autoGeneratePhraseQueries", version = SolrSchemaVersion.of("1.4")).value)
+    }
+
     /** A version rule is a *default*, so anything written in the file still outranks it. */
     @Test
     fun `a declared value still wins over a version-dependent default`() {

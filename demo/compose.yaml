@@ -13,7 +13,10 @@
 # instead, and getting your configset onto the server is itself a demo step: upload, then reload.
 services:
   solr:
-    image: solr:10
+    # Pinned to the exact release the catalog is generated from — `supportedSolrLines` in
+    # build.gradle.kts names 10.0.0. A floating `solr:10` would silently drift onto a later 10.x
+    # while the plugin's vocabulary stayed put, and the demo's whole point is comparing the two.
+    image: solr:10.0.0
     container_name: solr-demo
     ports:
       - "8983:8983"

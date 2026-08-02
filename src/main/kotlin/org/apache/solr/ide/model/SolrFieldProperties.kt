@@ -248,8 +248,9 @@ object SolrFieldProperties {
             "autoGeneratePhraseQueries",
             "Whether adjacent terms are turned into a phrase query automatically.",
             "true or false",
-            "false",
+            null,
             SolrPropertyScope.TYPE_ONLY,
+            defaultTrueWithin = SolrVersionRange(below = 1.4f),
         ),
         SolrFieldProperty(
             "synonymQueryStyle",

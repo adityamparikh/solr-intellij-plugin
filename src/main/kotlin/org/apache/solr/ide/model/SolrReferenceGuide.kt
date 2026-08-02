@@ -46,7 +46,7 @@ object SolrReferenceGuide {
     fun analyzerComponentPage(className: String, version: SolrVersionSelection): String? {
         val simpleName = className.substringAfterLast('.')
         val page = when {
-            simpleName.endsWith("CharFilterFactory") -> "char-filter-factories"
+            simpleName.endsWith("CharFilterFactory") -> "charfilterfactories"
             simpleName.endsWith("TokenizerFactory") -> "tokenizers"
             simpleName.endsWith("FilterFactory") -> "filters"
             else -> return null

@@ -4,6 +4,7 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.ElementManipulators
+import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import org.apache.solr.ide.SolrBundle
 
@@ -31,15 +32,25 @@ internal class SolrReplaceNameQuickFix(
     override fun getFamilyName(): String = familyText
 
     /**
-     * Substitutes the replacement into the attribute value the problem was reported on.
+     * Substitutes the replacement into whichever half of the attribute the problem was reported on.
      *
-     * Writes through `ElementManipulators` rather than editing text directly, so the quotes and
-     * escaping stay the platform's business and the result is guaranteed to be a well-formed
-     * attribute.
+     * **Both halves, because the inspections report on both.** A wrong *value* is reported on the
+     * value element, and a wrong *name* on the name element — [SolrUnknownAttributeInspection]
+     * deliberately underlines the name so it does not point at the half that is correct. Handling
+     * only the value made every fix that inspection offered a no-op: the menu listed the right
+     * spellings, and choosing one changed nothing.
+     *
+     * The value is written through `ElementManipulators`, so the quotes and escaping stay the
+     * platform's business. A name has no manipulator registered and goes through
+     * [XmlAttribute.setName], which is the same call rename uses. The value case is tested first
+     * because an attribute value's parent is an attribute too, and asking about the parent first
+     * would rewrite the name whenever the value was meant.
      */
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val value = descriptor.psiElement as? XmlAttributeValue ?: return
-        ElementManipulators.handleContentChange(value, replacement)
+        when (val element = descriptor.psiElement) {
+            is XmlAttributeValue -> ElementManipulators.handleContentChange(element, replacement)
+            else -> (element.parent as? XmlAttribute)?.name = replacement
+        }
     }
 
     /** Fixes are computed from the model, which is not modified, so a preview needs no special case. */
