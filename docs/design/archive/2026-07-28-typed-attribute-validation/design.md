@@ -180,7 +180,7 @@ A field type delegates to classes its own configuration names. `providerClass` s
 `ExchangeRateProvider` that reads `currencyConfig`, and no walk — up the superclass chain, sideways
 into nested classes, anywhere — reaches a collaborator chosen at runtime. Solr's own
 `sample_techproducts_configs` writes `currencyConfig="currency.xml"`, and that configset is the
-fixture the golden-file gate in [CI gates](../../../specs/plans/0002-solr-intellij-plugin-plan.md)
+fixture the golden-file gate in [CI gates](../../../../specs/plans/0002-solr-intellij-plugin-plan.md)
 is built on. Treating a field type's attribute list as complete would have underlined a file Solr
 ships, and failed the gate this work has to pass.
 
