@@ -37,7 +37,7 @@ Captures come from the sandbox IDE running against `demo/`.
 ### What each field can actually match, inline
 
 <!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
-     Frame managed-schema.xml:40-46 so all seven fields show at once. This is the lead image. -->
+     Frame managed-schema.xml:47-53 so all seven fields show at once. This is the lead image. -->
 
 > *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
 > read as whole-value and case-sensitive, `text_general` as tokenized and case-insensitive, and
@@ -48,8 +48,13 @@ Captures come from the sandbox IDE running against `demo/`.
 ![Quick documentation for the field category: a properties table giving each property's value, where
 that value came from, what it accepts, and what it means](docs/images/quick-doc-field.png)
 
-Every property's value **and where it came from** — this field, its type, or Solr's default. That
-last column is the one the Reference Guide cannot have, because it is about your schema.
+Every property's value **and where it came from** — this field, its type, Solr's default, or Solr's
+default *at the schema version this file declares*, since several of them changed with it. That
+column is the one the Reference Guide cannot have, because it is about your schema.
+
+<!-- RE-SHOOT: the image above predates the schema-version resolution and crops `uninvertible` off
+     the bottom. Screenshot catalog entry 2 has the framing; wait for the field-type-class
+     resolution of omitNorms/docValues to land first. -->
 
 ### Quick documentation on a class value
 
@@ -62,7 +67,7 @@ never copied out of the Reference Guide it links to.
 ### An inspection catching what fails only at core reload
 
 <!-- SCREENSHOT PENDING: inspection-copyfield-quickfix.png — screenshot catalog entry 4.
-     managed-schema.xml:54 ships a deliberate dangling copyField; Alt-Enter on it. -->
+     managed-schema.xml:61 ships a deliberate dangling copyField; Alt-Enter on it. -->
 
 > *Screenshot pending.* A `copyField` pointing at a field no longer declared, underlined in the
 > editor, with Alt-Enter offering the declared fields closest-spelling-first.

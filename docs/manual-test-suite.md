@@ -15,9 +15,16 @@ join this suite only when its code has shipped and there is something to press.
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
-While the sandbox is open, capture anything [the screenshot catalog](screenshots.md) lists as
-outstanding — the gestures are the same ones, and a screenshot taken during a pass is evidence the
-check passed rather than a picture of an unverified claim.
+**The 📸 items are screenshots, and they are checkboxes like everything else.** Each one sits
+beside the check whose gesture produces it, names the file to save and where, and links to
+[the screenshot catalog](screenshots.md) for the framing and the reason. A screenshot taken during
+a pass is evidence the check passed; one taken outside a pass is a picture of an unverified claim.
+Six images are missing and one needs re-shooting — the catalog's opening table is the summary view
+if you would rather work from that.
+
+**Save every image to `docs/images/`, named exactly as the check reads.** The README and the FAQ
+already reference those paths, so a correctly named file lands in the prose with no further edit.
+Hand over the plain captures only; the `-annotated` pairs are produced from them afterwards.
 
 If every feature is dead at once, suspect the sandbox, not the plugin: delete
 `.intellijPlatform/sandbox/<project>/<IDE>/system-test` and relaunch — the full signature
@@ -73,6 +80,9 @@ placement and readability of the rendered hint.*
       hint names EdgeNGram as the mechanism rather than saying "prefix: true".
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
+- [ ] 📸 **Capture `docs/images/hints-match-capability.png`** — the field block at lines
+      47-53, all seven fields in one frame, no interaction.
+      [Catalog entry 1](screenshots.md#1-match-capability-hints--hints-match-capabilitypng).
 
 ## 4. Navigation and Find Usages (NAV)
 
@@ -94,12 +104,21 @@ gesture, caret placement, the Find Usages tool window.*
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
+- [ ] 📸 **Capture `docs/images/find-usages-field-type.png`** at NAV-3 — the Find Usages
+      tool window with its results.
+      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--find-usages-field-typepng).
+- [ ] 📸 **Capture `docs/images/nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
+      `name` in `solrconfig.xml:28`, framing the navigation tooltip.
+      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--nav-solrconfig-field-referencepng).
+- [ ] 📸 *Optional:* **`docs/images/nav-resource-file.png`** at NAV-5 — Cmd+hover
+      `words="stopwords.txt"` at `managed-schema.xml:25`.
+      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--nav-resource-filepng-optional).
 
 ## 5. Quick documentation (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
-`SolrSchemaElementsTest`, `SolrReferenceGuideTest`. Manual adds: popup rendering, link
-clickability.*
+`SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrFieldPropertiesTest`,
+`SolrReferenceGuideTest`. Manual adds: popup rendering, link clickability.*
 
 - [ ] **DOC-1** — F1 on a field's `type` value shows the type, its analyzer chain, and
       what a field of it can match.
@@ -114,6 +133,41 @@ clickability.*
       configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
       the catalog's documentation column carries, where the line's `-sources` artifacts
       supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
+- [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
+      `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
+      and `useDocValuesAsStored` likewise.
+- [ ] **DOC-6** — Change the root element to `version="1.7"`, re-open the same popup:
+      `uninvertible` now reports **false**, `useDocValuesAsStored` stays true, and both
+      origins name 1.7. **Undo, and confirm the values return.** One side alone proves
+      nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
+      check.
+- [ ] 📸 **Re-capture `docs/images/quick-doc-field.png`** at DOC-1 — caret inside
+      `name="category"` at line 51, F1, cropped to the popup **including the
+      `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
+      the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
+      arrival if taken before that lands.
+      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--quick-doc-fieldpng).
+      DOC-4's `quick-doc-class.png` is current and needs nothing.
+
+**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
+also carries each attribute's default and whether it is required, and no surface renders
+them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
+looking for `minGramSize` marked required is looking for something unbuilt, not something
+broken.
+
+**DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
+defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
+false from it, which is how Solr changed a default without breaking deployed schemas. A
+provider that ignores the version entirely still passes DOC-5, because 1.6 is where the
+demo sits — only DOC-6's flip distinguishes reading the file from hard-coding its answer.
+`SolrFieldPropertiesTest` and `SolrBooleanPropertyCompletionTest` already assert both
+sides headlessly; what these two add is that the popup and the completion list render what
+resolution decided, which no fixture can see.
+
+DOC-6 edits the demo, so it belongs with the INSP checks in ending on an undo. The demo
+stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 would not
+break these checks so much as delete DOC-5, leaving the suite testing one side of a
+boundary again.
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -126,6 +180,10 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 
 - [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
       and Alt-Enter offers the declared fields, closest spelling first.
+- [ ] 📸 **Capture `docs/images/inspection-copyfield-quickfix.png`** — use the *planted*
+      `manufacturer` rule at line 61 rather than the edit INSP-1 makes, so the image needs
+      no undo. Frame the underline and the open Alt-Enter menu.
+      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
       declared types; applying one produces a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
@@ -135,7 +193,10 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — Undo everything: both files return to zero warnings.
+- [ ] **INSP-7** — Undo everything, including DOC-6's version edit: both files return to
+      their BASE counts — **one** warning in `managed-schema.xml`, zero in
+      `solrconfig.xml`. Not zero and zero; the planted `manufacturer` rule is part of the
+      baseline and stays underlined.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -150,11 +211,19 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       each property's summary, and **omits** attributes already present on the tag.
 - [ ] **COMP-3** — `fieldType` general properties complete (`positionIncrementGap`,
       `synonymQueryStyle`, `enableGraphQueries`…), documented like field properties.
-- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked `(default)`,
+- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked as the default,
       whichever it is — `indexed` marks `true`, `multiValued` marks `false`; properties
       whose default depends on the field type stay unmarked.
 - [ ] **COMP-5** — A field's `type=` offers the declared types; a `copyField`'s two ends
       offer the declared fields; `<analyzer type=` offers `index`/`query`.
+- [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default.
+      Change the root element to `version="1.7"` and it marks **false** instead; undo. Same
+      claim as DOC-5 and DOC-6, in the surface where a reader meets it first, and the same
+      reason for testing both sides.
+- [ ] 📸 **Capture `docs/images/completion-field-properties.png`** — caret after
+      `stored="true"` on line 51, type a space, frame the summaries and at least one
+      default marker. Undo the space afterwards.
+      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--completion-field-propertiespng).
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -169,6 +238,11 @@ popup, against the demo configset's declared Solr line.*
       factory's own attributes — `generateWordParts`, `catenateAll`,
       `splitOnCaseChange` among them. This is the check that proves the
       constructor-bytecode pass reached the editor.
+- [ ] 📸 **Capture `docs/images/completion-factory-attributes.png`** — not from CAT-2,
+      which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
+      filter at line 39, caret after the class attribute, space, and frame `minGramSize`
+      and `maxGramSize`. Same bytecode route, no fixture edit.
+      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--completion-factory-attributespng).
 
 ---
 
@@ -190,12 +264,29 @@ finding one alive means the suite is behind, not that something is wrong:
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
 - `solrconfig.xml`'s own structure: element completion and validation
+- `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
+  guide* today, which is the honest answer while the catalog cannot say which traits a
+  type carries — DOC-5's version resolution settles a different pair of properties
+- The four inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: a relevance parameter naming a non-indexed field, an unused field
+  type, a known-bad analyzer chain ordering, and a configuration element removed in the
+  targeted Solr line. **Do not read INSP's length as an inspection count** — five
+  inspection classes exist, and the six INSP checks above are scenarios over them:
+  INSP-1 and INSP-3 are both the dangling-`copyField` inspection, once on a written edit
+  and once on a live deletion, and INSP-7 restores the baseline rather than testing
+  anything
 
 ## Pass log
 
-One row per completed pass. Scope names what was skipped and why, if anything.
+One row per pass, finished or not. Scope names what was skipped and why, if anything.
+
+**A pass is all-or-nothing, and so is its row.** A row left at *in progress* is not a
+partial result — it is a pass whose outcome nobody knows, which is the same evidence as no
+pass at all. The two below are recorded as unfinished rather than deleted, because knowing
+a pass was started and abandoned is worth more than a gap.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
-| 2026-07-30 | e4a35ac | | full suite | *in progress* | first pass with this document |
-| 2026-08-01 | a2e0bc5 | | full suite | *in progress* | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
+| 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
