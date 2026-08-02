@@ -15,10 +15,16 @@ join this suite only when its code has shipped and there is something to press.
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
-While the sandbox is open, capture anything [the screenshot catalog](screenshots.md) lists as
-outstanding — the gestures are the same ones, and a screenshot taken during a pass is evidence the
-check passed rather than a picture of an unverified claim. **Six images are missing and one needs
-re-shooting**; the catalog's opening table names them and where each file goes.
+**The 📸 items are screenshots, and they are checkboxes like everything else.** Each one sits
+beside the check whose gesture produces it, names the file to save and where, and links to
+[the screenshot catalog](screenshots.md) for the framing and the reason. A screenshot taken during
+a pass is evidence the check passed; one taken outside a pass is a picture of an unverified claim.
+Six images are missing and one needs re-shooting — the catalog's opening table is the summary view
+if you would rather work from that.
+
+**Save every image to `docs/images/`, named exactly as the check reads.** The README and the FAQ
+already reference those paths, so a correctly named file lands in the prose with no further edit.
+Hand over the plain captures only; the `-annotated` pairs are produced from them afterwards.
 
 If every feature is dead at once, suspect the sandbox, not the plugin: delete
 `.intellijPlatform/sandbox/<project>/<IDE>/system-test` and relaunch — the full signature
@@ -74,6 +80,9 @@ placement and readability of the rendered hint.*
       hint names EdgeNGram as the mechanism rather than saying "prefix: true".
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
+- [ ] 📸 **Capture `docs/images/hints-match-capability.png`** — the field block at lines
+      47-53, all seven fields in one frame, no interaction.
+      [Catalog entry 1](screenshots.md#1-match-capability-hints--hints-match-capabilitypng).
 
 ## 4. Navigation and Find Usages (NAV)
 
@@ -95,6 +104,15 @@ gesture, caret placement, the Find Usages tool window.*
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
+- [ ] 📸 **Capture `docs/images/find-usages-field-type.png`** at NAV-3 — the Find Usages
+      tool window with its results.
+      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--find-usages-field-typepng).
+- [ ] 📸 **Capture `docs/images/nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
+      `name` in `solrconfig.xml:28`, framing the navigation tooltip.
+      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--nav-solrconfig-field-referencepng).
+- [ ] 📸 *Optional:* **`docs/images/nav-resource-file.png`** at NAV-5 — Cmd+hover
+      `words="stopwords.txt"` at `managed-schema.xml:25`.
+      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--nav-resource-filepng-optional).
 
 ## 5. Quick documentation (DOC)
 
@@ -119,6 +137,13 @@ popup rendering, link clickability.*
       `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
       and `useDocValuesAsStored` likewise. Both flip at a different version, so a table
       that reports either as a flat Solr default has stopped reading the file.
+- [ ] 📸 **Re-capture `docs/images/quick-doc-field.png`** at DOC-1 — caret inside
+      `name="category"` at line 51, F1, cropped to the popup **including the
+      `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
+      the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
+      arrival if taken before that lands.
+      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--quick-doc-fieldpng).
+      DOC-4's `quick-doc-class.png` is current and needs nothing.
 
 **DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
 also carries each attribute's default and whether it is required, and no surface renders
@@ -144,6 +169,10 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 
 - [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
       and Alt-Enter offers the declared fields, closest spelling first.
+- [ ] 📸 **Capture `docs/images/inspection-copyfield-quickfix.png`** — use the *planted*
+      `manufacturer` rule at line 61 rather than the edit INSP-1 makes, so the image needs
+      no undo. Frame the underline and the open Alt-Enter menu.
+      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
       declared types; applying one produces a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
@@ -176,6 +205,10 @@ the user meets it — ordering, summaries, what the platform mixes in.*
 - [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default
       and `useDocValuesAsStored=` does too. Both are the opposite on a 1.7 schema, so this
       is the same claim DOC-5 makes, in the surface where a reader meets it first.
+- [ ] 📸 **Capture `docs/images/completion-field-properties.png`** — caret after
+      `stored="true"` on line 51, type a space, frame the summaries and at least one
+      default marker. Undo the space afterwards.
+      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--completion-field-propertiespng).
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -190,6 +223,11 @@ popup, against the demo configset's declared Solr line.*
       factory's own attributes — `generateWordParts`, `catenateAll`,
       `splitOnCaseChange` among them. This is the check that proves the
       constructor-bytecode pass reached the editor.
+- [ ] 📸 **Capture `docs/images/completion-factory-attributes.png`** — not from CAT-2,
+      which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
+      filter at line 39, caret after the class attribute, space, and frame `minGramSize`
+      and `maxGramSize`. Same bytecode route, no fixture edit.
+      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--completion-factory-attributespng).
 
 ---
 
