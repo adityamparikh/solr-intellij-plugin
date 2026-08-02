@@ -268,13 +268,16 @@ Some triggers hit several at once. When one of these lands, re-shoot the images 
 | A popup or completion list starts rendering a catalog fact it did not before | 3, 6 |
 | Supported Solr lines change | 2, 3 — the Reference Guide link names the version |
 | Field property vocabulary, or how a default is resolved, changes | 2, 5 |
-| Demo configset's fields, types **or schema `version`** change | 1, 2, 5, 7, 8 |
+| Demo configset's fields or types change | 1, 2, 5, 7, 8 |
+| Demo configset's schema `version` changes | 2, 5 |
 | IntelliJ platform restyles popups, completion or inlays | all of them |
 
 The last row is the one that goes unnoticed. A platform version bump can restyle every popup in this
 catalog without a single line of plugin code changing, so a major IDE upgrade is a screenshot-review
 trigger in its own right.
 
-The fourth row gained a member. The demo's `version="1.6"` is a fixture value in exactly the way its
-field list is: it decides what the property table reports and what completion marks as the default,
-so editing it changes two images rather than only the file.
+The schema `version` earns a row of its own rather than joining the one above it. It is a fixture
+value in exactly the way the field list is — editing it changes what the images show, not merely
+what the file says — but it reaches a narrower set: the property table and the marked default read
+it, and the inlay hints, Find Usages and `solrconfig.xml` navigation do not. Folding it into the
+fields-and-types row would call for three re-captures that nothing in them would change.

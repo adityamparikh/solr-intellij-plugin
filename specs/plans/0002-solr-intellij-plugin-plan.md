@@ -74,8 +74,8 @@ it whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
-- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; three of six
-  inspections shipped, three remain and one of those waits on the catalog
+- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; three of seven
+  inspections shipped, four remain and one of those waits on the catalog
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**;
   only action 3 remains, the `_exact` and `_prefix` intentions, and nothing in `src/main`
   implements `IntentionAction` yet
@@ -495,9 +495,12 @@ and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-fin
 Where the zero-false-positive requirement gets teeth.
 
 **Actions:**
-1. Implement: dangling `copyField` source or target; handler naming a nonexistent field;
-   relevance parameters on non-indexed fields; unused field types; known-bad analyzer
-   chain orderings; configuration elements removed in the targeted Solr line.
+1. Implement: dangling `copyField` source or target; a field naming an undeclared field
+   type; handler naming a nonexistent field; relevance parameters on non-indexed fields;
+   unused field types; known-bad analyzer chain orderings; configuration elements removed
+   in the targeted Solr line. **Seven, not the six an earlier revision listed** — the
+   undeclared-field-type check shipped and was recorded in the success criteria without
+   ever joining this list, so the two counts disagreed and the criteria were right.
 2. A description file per inspection, written as user-facing prose — it is also the
    published catalog entry.
 3. Test each on both flagged and clean fixtures.
@@ -507,15 +510,21 @@ than as one change. Taken before [references and navigation](#step-5-references-
 which this step nominally depends on: that dependency holds only for inspections written as
 unresolved-reference checks, and these are driven off the field model instead.
 
-**What shipped so far:** three of the six inspections action 1 names, each with its
+**What shipped so far:** three of the seven inspections action 1 names, each with its
 description file and its flagged and clean fixtures — `SolrDanglingCopyFieldInspection`,
 `SolrUnknownFieldTypeInspection` and `SolrUnknownFieldReferenceInspection`. Two more
 inspections exist in the same package and belong to
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
 rather than here: `SolrUnknownAttributeInspection` and `SolrInvalidAttributeValueInspection`
-are catalog-backed and validate an attribute rather than a reference. Counting five
-registered inspections against this step's six overstates it by two and understates the
-three still to come.
+are catalog-backed and validate an attribute rather than a reference.
+
+**Three numbers describe this step and none of them is the same number.** Seven inspections
+are planned here and three are built. Five inspection classes are registered in
+`plugin.xml`, because two of them belong to another step. Six of
+[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise those five, since
+the dangling-`copyField` inspection gets a second check for reacting to a live edit, and a
+seventh restores the baseline. Read a count against what it counts; "five inspections
+exist" is true and says nothing about this step's progress.
 
 **Success criteria:**
 - [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.

@@ -117,8 +117,8 @@ gesture, caret placement, the Find Usages tool window.*
 ## 5. Quick documentation (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
-`SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrReferenceGuideTest`. Manual adds:
-popup rendering, link clickability.*
+`SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrFieldPropertiesTest`,
+`SolrReferenceGuideTest`. Manual adds: popup rendering, link clickability.*
 
 - [ ] **DOC-1** — F1 on a field's `type` value shows the type, its analyzer chain, and
       what a field of it can match.
@@ -135,8 +135,12 @@ popup rendering, link clickability.*
       supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
 - [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
       `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
-      and `useDocValuesAsStored` likewise. Both flip at a different version, so a table
-      that reports either as a flat Solr default has stopped reading the file.
+      and `useDocValuesAsStored` likewise.
+- [ ] **DOC-6** — Change the root element to `version="1.7"`, re-open the same popup:
+      `uninvertible` now reports **false**, `useDocValuesAsStored` stays true, and both
+      origins name 1.7. **Undo, and confirm the values return.** One side alone proves
+      nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
+      check.
 - [ ] 📸 **Re-capture `docs/images/quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 51, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
@@ -151,12 +155,19 @@ them yet — the per-attribute hover that will is in *Not yet in the suite* belo
 looking for `minGramSize` marked required is looking for something unbuilt, not something
 broken.
 
-**DOC-5 is the check that a version number in the file is being read.** Solr's field
+**DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
-false from it, which is how Solr changed a default without breaking deployed schemas. The
-demo pins 1.6 deliberately and says so in a comment, so this check fails the moment the
-plugin starts answering from a constant instead. Bumping the demo to 1.7 removes the check
-rather than passing it.
+false from it, which is how Solr changed a default without breaking deployed schemas. A
+provider that ignores the version entirely still passes DOC-5, because 1.6 is where the
+demo sits — only DOC-6's flip distinguishes reading the file from hard-coding its answer.
+`SolrFieldPropertiesTest` and `SolrBooleanPropertyCompletionTest` already assert both
+sides headlessly; what these two add is that the popup and the completion list render what
+resolution decided, which no fixture can see.
+
+DOC-6 edits the demo, so it belongs with the INSP checks in ending on an undo. The demo
+stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 would not
+break these checks so much as delete DOC-5, leaving the suite testing one side of a
+boundary again.
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -182,7 +193,10 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — Undo everything: both files return to zero warnings.
+- [ ] **INSP-7** — Undo everything, including DOC-6's version edit: both files return to
+      their BASE counts — **one** warning in `managed-schema.xml`, zero in
+      `solrconfig.xml`. Not zero and zero; the planted `manufacturer` rule is part of the
+      baseline and stays underlined.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -202,9 +216,10 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       whose default depends on the field type stay unmarked.
 - [ ] **COMP-5** — A field's `type=` offers the declared types; a `copyField`'s two ends
       offer the declared fields; `<analyzer type=` offers `index`/`query`.
-- [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default
-      and `useDocValuesAsStored=` does too. Both are the opposite on a 1.7 schema, so this
-      is the same claim DOC-5 makes, in the surface where a reader meets it first.
+- [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default.
+      Change the root element to `version="1.7"` and it marks **false** instead; undo. Same
+      claim as DOC-5 and DOC-6, in the surface where a reader meets it first, and the same
+      reason for testing both sides.
 - [ ] 📸 **Capture `docs/images/completion-field-properties.png`** — caret after
       `stored="true"` on line 51, type a space, frame the summaries and at least one
       default marker. Undo the space afterwards.
@@ -252,14 +267,18 @@ finding one alive means the suite is behind, not that something is wrong:
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The four inspections the plan lists and has not built: a relevance parameter naming a
-  non-indexed field, an unused field type, a known-bad analyzer chain ordering, and a
-  configuration element removed in the targeted Solr line. The five that exist are
-  INSP-1 through INSP-6 above
+- The four inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: a relevance parameter naming a non-indexed field, an unused field
+  type, a known-bad analyzer chain ordering, and a configuration element removed in the
+  targeted Solr line. **Do not read INSP's length as an inspection count** — five
+  inspection classes exist, and the six INSP checks above are scenarios over them:
+  INSP-1 and INSP-3 are both the dangling-`copyField` inspection, once on a written edit
+  and once on a live deletion, and INSP-7 restores the baseline rather than testing
+  anything
 
 ## Pass log
 
-One row per completed pass. Scope names what was skipped and why, if anything.
+One row per pass, finished or not. Scope names what was skipped and why, if anything.
 
 **A pass is all-or-nothing, and so is its row.** A row left at *in progress* is not a
 partial result — it is a pass whose outcome nobody knows, which is the same evidence as no
