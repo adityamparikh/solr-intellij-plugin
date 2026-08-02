@@ -363,11 +363,13 @@ inspections, match-capability hints and documentation behave identically for
 every schema. The file is still what sits in ZooKeeper, still what appears in
 the pull request, and still what someone opens when a query returns nothing.
 
-**What replaces the gate is disagreement, shown rather than prevented.** A
-connected server makes the repository-versus-deployed comparison a thing the
-plugin can display, and applying a change through the Schema API a real action
-rather than an apology for one. Drift between Git and ZooKeeper was the actual
-risk the gating was reaching for, and it is better addressed by showing it.
+**What replaces the gate is disagreement, shown rather than prevented — and only
+the deletion is Phase 1.** Files are edited directly now; Phase 1 never contacts a
+server, so it neither compares against one nor applies anything to it. The
+comparison this argument leans on arrives with the connected surfaces in §5.3,
+where Phase 4 closes the file-versus-ZooKeeper gap. Drift between Git and
+ZooKeeper was the actual risk the gating was reaching for — but refusing writes in
+the meantime would not have prevented that drift, only hidden the edit that caused it.
 
 The [specification](../specs/0002-solr-intellij-plugin.md) argues this out under
 "What this replaces".

@@ -13,5 +13,5 @@ overall spec and plan in `specs/`, which cover the whole plugin.
 `specs/0002-solr-intellij-plugin.md` owns current intent, and
 `specs/plans/0002-solr-intellij-plugin-plan.md` alone owns implementation status and
 order — including for the features described here. A record moves from `pending/` to
-`archive/` when its feature merges; that move follows the plan rather than reporting it,
+`archive/` when its feature ships; that move follows the plan rather than reporting it,
 so the directory a record sits in is not a second place to read status from.
