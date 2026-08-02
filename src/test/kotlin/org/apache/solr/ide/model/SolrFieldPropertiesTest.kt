@@ -185,6 +185,95 @@ class SolrFieldPropertiesTest {
         assertEquals(SolrPropertyOrigin.UNDETERMINED, docValues.origin)
     }
 
+    // --- defaults that follow the field type's class ------------------------------------------
+
+    private fun resolveWithTraits(
+        name: String,
+        traits: Set<SolrTypeTrait>?,
+        version: String = "1.7",
+    ) = SolrFieldProperties.resolve(
+        SolrFieldProperties.byName(name)!!,
+        SolrField("x", "string"),
+        null,
+        SolrSchemaVersion.of(version),
+        traits,
+    )
+
+    /**
+     * The `omitNorms` case the KDoc has always used as its example of an unanswerable default. It
+     * is answerable once the type's class is known: primitive types get it, text types do not.
+     */
+    @Test
+    fun `omitNorms resolves from the field type's traits`() {
+        val primitive = resolveWithTraits("omitNorms", setOf(SolrTypeTrait.PRIMITIVE))
+        assertEquals("true", primitive.value)
+        assertEquals(SolrPropertyOrigin.FIELD_TYPE_DEFAULT, primitive.origin)
+
+        val text = resolveWithTraits("omitNorms", emptySet())
+        assertEquals("false", text.value)
+        assertEquals(SolrPropertyOrigin.FIELD_TYPE_DEFAULT, text.origin)
+    }
+
+    /** `PrimitiveFieldType.init` only sets it above schema version 1.4. */
+    @Test
+    fun `omitNorms on a primitive type still respects the schema version`() {
+        assertEquals("false", resolveWithTraits("omitNorms", setOf(SolrTypeTrait.PRIMITIVE), version = "1.4").value)
+        assertEquals("true", resolveWithTraits("omitNorms", setOf(SolrTypeTrait.PRIMITIVE), version = "1.5").value)
+    }
+
+    /** A spatial prefix-tree type sets it in `init` regardless of version. */
+    @Test
+    fun `omitNorms is on for a spatial prefix tree type at any version`() {
+        assertEquals("true", resolveWithTraits("omitNorms", setOf(SolrTypeTrait.SPATIAL_PREFIX_TREE), version = "1.0").value)
+    }
+
+    /**
+     * **The distinction the whole thing rests on.** No traits means the type declares no class the
+     * catalog knows — a custom plugin type — and that is not the same as a known type with no
+     * traits. The first must stay undetermined; the second is a definite false.
+     */
+    @Test
+    fun `an unknown field type class leaves the default undetermined`() {
+        val unknown = resolveWithTraits("omitNorms", null)
+        assertNull(unknown.value)
+        assertEquals(SolrPropertyOrigin.UNDETERMINED, unknown.origin)
+    }
+
+    @Test
+    fun `docValues resolves from the traits and the schema version together`() {
+        assertEquals("true", resolveWithTraits("docValues", setOf(SolrTypeTrait.DOC_VALUES_BY_DEFAULT)).value)
+        assertEquals(
+            "the general rule only applies from 1.7",
+            "false",
+            resolveWithTraits("docValues", setOf(SolrTypeTrait.DOC_VALUES_BY_DEFAULT), version = "1.6").value,
+        )
+    }
+
+    /**
+     * `SortableTextField.init` sets DOC_VALUES outside the version gate in `setArgs`, so it has doc
+     * values even on a schema too old for the general rule. Applying the gate to it would report
+     * false for a type that has them.
+     */
+    @Test
+    fun `a sortable text type has doc values below the version the general rule needs`() {
+        val traits = setOf(SolrTypeTrait.SORTABLE_TEXT, SolrTypeTrait.DOC_VALUES_BY_DEFAULT)
+        assertEquals("true", resolveWithTraits("docValues", traits, version = "1.6").value)
+    }
+
+    @Test
+    fun `a value declared in the file still wins over a type-derived default`() {
+        val declared = SolrField("x", "string", attributes = mapOf("omitNorms" to "false"))
+        val resolved = SolrFieldProperties.resolve(
+            SolrFieldProperties.byName("omitNorms")!!,
+            declared,
+            null,
+            SolrSchemaVersion.of("1.7"),
+            setOf(SolrTypeTrait.PRIMITIVE),
+        )
+        assertEquals("false", resolved.value)
+        assertEquals(SolrPropertyOrigin.FIELD, resolved.origin)
+    }
+
     // --- the two scopes ---------------------------------------------------------------------
 
     /**
