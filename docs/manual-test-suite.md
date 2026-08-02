@@ -54,7 +54,7 @@ on the one defect the fixture plants deliberately. Solr configuration is full of
 that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a second underline
 is a false positive, and a false positive on a correct file is a bug, never noise.
 `DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
-committed demo configset is dangling, and which one.
+committed demo configset is dangling, and which one it is.
 
 ## 3. Match-capability inlay hints (HINT)
 
