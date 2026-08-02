@@ -35,9 +35,11 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
           <fieldType name="custom" class="solr.TextField">
             <analyzer type="index"><tokenizer class="com.example.MysteryTokenizerFactory"/></analyzer>
           </fieldType>
+          <fieldType name="unknown_class" class="com.example.MysteryFieldType"/>
           <field name="sku" type="string"/>
           <field name="name" type="text_general"/>
           <field name="mystery" type="custom"/>
+          <field name="opaque" type="unknown_class"/>
           <field name="orphan" type="undeclared"/>
           <dynamicField name="*_s" type="string"/>
         </schema>
@@ -103,8 +105,24 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
         return hinted
     }
 
+    /** The hint text for one field, reassembled from its segments, or null if it got no hint. */
+    private fun hintFor(name: String, text: String = schema): String? {
+        myFixture.addFileToProject("core/conf/solrconfig.xml", "<config/>")
+        myFixture.configureByText("managed-schema.xml", text)
+        val collector = SolrMatchInlayHintsProvider().createCollector(myFixture.file, myFixture.editor)
+            ?: return null
+        for (tag in PsiTreeUtil.findChildrenOfType(myFixture.file, XmlTag::class.java)) {
+            if (tag.getAttributeValue("name") != name) continue
+            val sink = RecordingSink()
+            (collector as SharedBypassCollector).collectFromElement(tag, sink)
+            if (sink.presentations.isEmpty()) return null
+            return sink.trees.single().joinToString("")
+        }
+        return null
+    }
+
     fun testEveryClassifiableFieldGetsExactlyOneHint() {
-        assertEquals(listOf("sku", "name", "*_s"), hintedFields())
+        assertEquals(listOf("sku", "name", "mystery", "opaque", "*_s"), hintedFields())
     }
 
     /** A dynamic field's type decides what it matches exactly as a declared field's does. */
@@ -113,14 +131,61 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
     }
 
     /**
-     * The refusals, and the reason this is worth a test: an unrecognised factory means the chain was
-     * not understood, and an undeclared type means the schema is wrong in a way an inspection should
-     * report. Neither is something to paper over with an approximate hint.
+     * The refusal that survives, at the level of which fields get a hint at all. The unconfident case
+     * has moved to testAnUnrecognisedFactorySilencesOnlyTheMatchHalf.
      */
-    fun testNoHintWhereTheAnalysisIsNotConfidentOrTheTypeIsUndeclared() {
-        val hinted = hintedFields()
-        assertFalse("an unrecognised factory must silence the hint", "mystery" in hinted)
-        assertFalse("an undeclared type must silence the hint", "orphan" in hinted)
+    fun testNoHintWhereTheTypeIsUndeclared() {
+        assertFalse("an undeclared type must silence the hint", "orphan" in hintedFields())
+    }
+
+    /**
+     * Match first, then storage shape, and the four storage phrases in Reference Guide order
+     * (`indexed`, `stored`, `docValues`, `multiValued`) — the match half is the output nothing else
+     * produces.
+     *
+     * `no doc values` because this fixture's `<schema>` declares no `version`, so
+     * [SolrSchemaVersion.ASSUMED] — 1.0 — applies, and the `docValues` default turns on 1.7. That is
+     * Solr's own reading of a versionless schema, and the fixture is left that way deliberately.
+     *
+     * `multi-valued`, for the same reason: `multiValued`'s own default is version-conditional too —
+     * true below schema version 1.1 — so the same versionless schema that turns doc values off turns
+     * this on. See `SolrFieldPropertiesTest` for the same default asserted directly.
+     */
+    fun testHintStatesMatchCapabilityThenStorageShape() {
+        assertEquals(
+            "whole value, case-sensitive, indexed, stored, no doc values, multi-valued",
+            hintFor("sku"),
+        )
+    }
+
+    /**
+     * The behaviour change. An unrecognised factory means the analyser chain was not understood; it
+     * says nothing about stored or multiValued, which are read from attributes and defaults. Withholding
+     * them was withholding a fact the plugin is certain of.
+     */
+    fun testAnUnrecognisedFactorySilencesOnlyTheMatchHalf() {
+        assertEquals("indexed, stored, no doc values, multi-valued", hintFor("mystery"))
+    }
+
+    /**
+     * The refusal that survives. Property resolution is three-tier — field, then field type, then
+     * Solr's default — and an undeclared type removes the middle tier without removing the
+     * fall-through, so `stored` would resolve to true and be attributed to a Solr default that the
+     * missing type might have overridden. A missing type is an inspection's finding.
+     */
+    fun testAnUndeclaredTypeStillSilencesTheHintEntirely() {
+        assertNull(hintFor("orphan"))
+    }
+
+    /**
+     * Per-property silence. The catalog does not carry this class, so docValues has no answer — but
+     * indexed, stored and multiValued never depended on the class at all.
+     */
+    fun testAPropertyWithNoAnswerContributesNoPhrase() {
+        val hint = hintFor("opaque")
+        assertNotNull(hint)
+        assertTrue("indexed, stored, multi-valued" in hint!!)
+        assertFalse("no doc values claim either way", "doc values" in hint)
     }
 
     /** Field *types* are not fields, and must not attract a hint of their own. */
@@ -143,6 +208,10 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
      * `PresentationTreeBuilderImpl.MAX_SEGMENT_TEXT_LENGTH`, 30 characters — so the longest
      * summary must arrive as several short segments that reconstruct it exactly. One segment
      * carrying the whole summary renders on screen as "tokenised, case-insensitive,…".
+     *
+     * `no doc values, multi-valued` for the same version-default reason as
+     * `testHintStatesMatchCapabilityThenStorageShape`: this fixture's `<schema>` declares no
+     * `version` either, so [SolrSchemaVersion.ASSUMED] governs both properties' defaults.
      */
     fun testEachHintSegmentFitsTheRenderersInlineBudget() {
         myFixture.addFileToProject("core/conf/solrconfig.xml", "<config/>")
@@ -168,7 +237,10 @@ class SolrMatchInlayHintsProviderTest : SolrConfigsetTestCase() {
         }
 
         val segments = sink.trees.single()
-        assertEquals("tokenised, case-insensitive, prefix-capable", segments.joinToString(""))
+        assertEquals(
+            "tokenised, case-insensitive, prefix-capable, indexed, stored, no doc values, multi-valued",
+            segments.joinToString(""),
+        )
         for (segment in segments) {
             assertTrue(
                 "'$segment' (${segment.length} chars) exceeds the renderer's 30-character segment budget",

@@ -14,6 +14,8 @@ import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrMatchAnalysis
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
@@ -25,9 +27,14 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
  * who does not already suspect their field cannot match a prefix will never hover over it to find
  * out. The hint has to be present without being asked for.
  *
- * Nothing is shown where [org.apache.solr.ide.model.SolrMatchAnalysis] is not confident. An
- * unrecognized factory means the chain was not fully understood, and a wrong claim about what a
- * field matches is worse than no claim — this is the output most likely to be quoted back.
+ * Nothing is shown where the field's type is undeclared: property resolution is three-tier, and a
+ * missing type removes the middle tier without removing the fall-through, so every default would be
+ * attributed to Solr when the type that might have overridden it does not exist.
+ *
+ * Where [org.apache.solr.ide.model.SolrMatchAnalysis] is not confident the match half is dropped and
+ * the storage shape stands alone. An unrecognized factory means the chain was not fully understood,
+ * and a wrong claim about what a field matches is worse than no claim — but it says nothing about
+ * `stored` or `multiValued`, and withholding those was withholding a fact the plugin is certain of.
  */
 class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
 
@@ -64,7 +71,7 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
                 ?: model.dynamicFields[fieldName]?.effective?.field
                 ?: return
 
-            val parts = hintFor(field, model.typeOf(field)) ?: return
+            val parts = hintFor(field, model.typeOf(field), model)?.takeIf { it.isNotEmpty() } ?: return
             sink.addPresentation(
                 position = InlineInlayPosition(element.textRange.endOffset, relatedToPrevious = true),
                 payloads = null,
@@ -82,15 +89,42 @@ class SolrMatchInlayHintsProvider : InlayHintsProvider, DumbAware {
         /**
          * The hint for a field as its summary parts, or null when nothing should be said.
          *
-         * Null in two cases, both deliberate. An undeclared field type means the schema is wrong in
-         * a way an inspection should report rather than a hint should paper over. An unconfident
-         * analysis means a factory in the chain was not recognised, and a wrong claim about what a
-         * field matches is worse than no claim.
+         * Null only where the field type is undeclared. Property resolution is three-tier — field,
+         * then field type, then Solr's default — and an undeclared type removes the middle tier
+         * without removing the fall-through, so every default would be attributed to Solr when the
+         * type that might have overridden it simply does not exist. That is an inspection's finding,
+         * not a hint's.
+         *
+         * An unrecognised factory is a different case and no longer silences anything but the match
+         * half: property values are read from attributes and from version and class defaults, and
+         * never depended on the analyser chain.
          */
-        private fun hintFor(field: SolrField, fieldType: SolrFieldType?): List<String>? {
+        private fun hintFor(field: SolrField, fieldType: SolrFieldType?, model: SolrFieldModel): List<String>? {
             if (fieldType == null) return null
             val capability = SolrMatchAnalysis.of(fieldType)
-            return if (capability.confident) capability.summaryParts else null
+            val match = if (capability.confident) capability.summaryParts else emptyList()
+            return match + storageShape(field, fieldType, model)
+        }
+
+        /**
+         * The four storage-shape phrases, in the order the Reference Guide lists the properties.
+         *
+         * A property with no answer contributes nothing rather than a guess — the catalog not
+         * carrying a type's class is exactly where asserting a `docValues` default would be
+         * inventing one. That silence is per property, because that is the granularity the
+         * underlying facts have.
+         */
+        private fun storageShape(field: SolrField, fieldType: SolrFieldType?, model: SolrFieldModel): List<String> {
+            val traits = model.traitsOf(fieldType)
+            return SolrFieldProperties.FOR_FIELD.mapNotNull { property ->
+                val meaning = property.meaning ?: return@mapNotNull null
+                if (meaning.inlineWhenTrue == null) return@mapNotNull null
+                when (SolrFieldProperties.resolve(property, field, fieldType, model.schemaVersion, traits).value) {
+                    "true" -> meaning.inlineWhenTrue
+                    "false" -> meaning.inlineWhenFalse
+                    else -> null
+                }
+            }
         }
 
     }
