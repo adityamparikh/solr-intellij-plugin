@@ -537,7 +537,8 @@ anything a user can see — four steps of foundation had shipped with no exit to
   the catalog generator reads out of each type's ancestry. A class the catalog does not
   carry still reports undetermined, which is what keeps a custom plugin type from being
   given a default it does not have.
-  [The design record](../../docs/design/pending/schema-version-defaults.md) covers both.
+  [The design record](../../docs/design/archive/2026-08-02-schema-version-defaults/design.md)
+  covers both.
 
 **Action 3 is what remains.** No intention exists yet: nothing in `src/main` implements
 `IntentionAction`, so the `_exact` companion and the EdgeNGram-backed `_prefix` field are

@@ -78,8 +78,8 @@ which has a page enumerating exactly which types gain docValues at `1.7`. They c
 The alternative — recovering them from bytecode — means teaching the catalog generator to interpret
 branches on a float comparison, which is a materially different and hackier extractor than the
 literal-reading one that exists. The generator's job is the enumerative half: which of ~60 field-type
-classes have which trait. That half is the next increment and does not need branch interpretation
-either, because `ClassHierarchy` already answers both questions it asks.
+classes have which trait. That half shipped as a second increment and needed no branch interpretation
+either, because `ClassHierarchy` already answered both questions it asks.
 
 The split to hold: **semantics are hand-written where they are few and documented; enumerations are
 generated.** That is the line the project already draws.
