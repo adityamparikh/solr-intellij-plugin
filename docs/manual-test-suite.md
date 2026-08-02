@@ -107,8 +107,9 @@ clickability.*
       which field is the unique key and of what type, how many fields use a type).
 - [ ] **DOC-4** — A `class=` value answers on hover — `solr.WordDelimiterGraphFilterFactory`
       shows what kind of class it is, both spellings, the attributes it reads, how this
-      configset uses it, and a Reference Guide link. Javadoc prose is expected to be
-      absent until the catalog carries a documentation column.
+      configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
+      the catalog's documentation column carries, where the line's `-sources` artifacts
+      supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -178,8 +179,6 @@ finding one alive means the suite is behind, not that something is wrong:
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Javadoc prose inside the `class=` hover (DOC-4 shows structure and links today) — waits
-  on the catalog's `-sources` documentation column
 - Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
   default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown
