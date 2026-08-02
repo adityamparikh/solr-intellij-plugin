@@ -14,10 +14,13 @@ connection, and Java/Kotlin code support, unified by one field model.
 are. Foundation is built apart from its settings page. Of the three tracks the work then
 splits into, only the Editor one has moved, and what it built is real rather than
 scaffolding: a configset parses into a field model, and that model reaches the screen as
-match-capability inlay hints, quick documentation on schema elements and field types, three
-inspections that offer the valid names rather than only reporting the invalid one, and
-completion for the schema's own vocabulary. The generated catalog now carries each class's
-attributes as well as its name.
+match-capability inlay hints, quick documentation on schema elements, field types and
+`class` values, five inspections — several of them offering the valid names rather than
+only reporting the invalid one — and completion for both the schema's own vocabulary and
+the catalog's classes and factory attributes. The generated catalog now carries each
+class's attributes with their value types — and, where the bytecode proves them, their
+literal defaults and required markers — and covers the field-type classes as well as
+the factories.
 
 **The Server and Code tracks have not started**, which is two of the spec's three pillars.
 `server/` holds `SolrConnectionSettings` and nothing else — no HTTP client, no tool window,
@@ -76,7 +79,7 @@ it whole, and the gutter action goes with the Server track.
   — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-in-progress) — **in progress**
-- [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation)
+- [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) — **in progress**
 
 ### Server track
 
@@ -104,10 +107,11 @@ it whole, and the gutter action goes with the Server track.
 - [x] Solr and Lucene artifacts resolvable from Maven Central for both supported lines —
       verified: Solr 10.0.0 with Lucene 10.3.2, Solr 9.10.1 with Lucene 9.12.3. Needed by
       [the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
-- [ ] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
+- [x] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
       catalog without documentation text. Needed by
       [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which cannot
-      recover documentation from a compiled jar.
+      recover documentation from a compiled jar. **Verified resolvable for both lines**, and
+      wired in: see Step 9 for what a resolved `-sources` jar can and cannot supply.
 - [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
       ships, vendored verbatim under `src/test/testData/configsets/<name>/conf/` and
       recording the Solr release they came from. The gate asserts *clean against what Solr
@@ -582,7 +586,7 @@ with no Alt-Enter is more frustrating than no underline.
    than restated.
 4. Nothing here needs [the factory catalog](#step-9-factory-catalog-generator-in-progress). The
    catalog-backed half of documentation and completion stays in
-   [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
+   [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress).
 
 **What shipped:**
 - `SolrSchemaElements` — a description per recognized tag plus the configset-specific
@@ -623,7 +627,7 @@ exists can type it, and someone who does not will never meet it in a file that d
 already use it.
 
 **A mis-filing this corrects.** Field attribute completion sits in
-[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation),
+[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress),
 which waits on [the factory catalog](#step-9-factory-catalog-generator-in-progress). Only *factory*
 attributes need the catalog; *field* attributes come from the property table, which exists.
 The dependency was wrong, and a feature was parked behind something it never needed.
@@ -643,7 +647,7 @@ The dependency was wrong, and a feature was parked behind something it never nee
    an attribute cannot be written twice, and offering it is offering an error.
 4. Attribute-value completion where the set is closed and is not boolean: `analyzer`'s
    `type`, and `synonymQueryStyle`. Positions where any value is legal stay untouched, as
-   [completion](#step-10-completion-validation-and-quick-documentation) already requires.
+   [completion](#step-10-completion-validation-and-quick-documentation-in-progress) already requires.
 
 **What shipped:** all four actions, in `SolrConfigsetCompletionContributor` against the
 widened `SolrFieldProperties`, covered by `SolrSchemaVocabularyCompletionTest`.
@@ -652,7 +656,7 @@ widened `SolrFieldProperties`, covered by `SolrSchemaVocabularyCompletionTest`.
 `solr.` implementations for a `fieldType`, a tokenizer and a filter, and asserting the
 offered set follows the declared Solr line, belong to
 [the factory catalog generator](#step-9-factory-catalog-generator-in-progress) and
-[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation).
+[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress).
 They arrived early and share a file with this step's work; read them against those steps,
 not this one, or this step will look larger than it was.
 
@@ -812,31 +816,56 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
    all is that the list is too large to maintain by hand.
 
 **What shipped so far:**
-- The Gradle task, reading Solr and Lucene per line with ASM and emitting
-  `solr-catalog/solr-<line>.tsv` onto the plugin classpath — 198 entries for Solr 10, of
-  which 166 carry attribute names. Actions 1 and 2, less the documentation source.
+- The catalog generator, now living in `buildSrc` and split into a scanner, a hierarchy
+  builder, an attribute extractor and a documentation extractor, reading Solr and Lucene
+  per line with ASM and emitting `solr-catalog/solr-<line>.tsv` onto the plugin classpath.
+  Actions 1, 2 and 4.
+- The documentation source: `-sources` artifacts resolved for both supported lines via
+  Gradle's `ArtifactResolutionQuery`, and a class's own class-level Javadoc comment reduced
+  to its first sentence — the same convention the `javadoc` tool's own overview tables use —
+  with `{@link}` and `{@code}` resolved to plain text and HTML markup stripped. That query
+  has no lazy, task-execution-time form the configuration cache accepts, so it runs eagerly
+  in the build script at configuration time rather than through the task's own lazy file
+  collections; a configuration-cache hit skips the configuration phase entirely, so this
+  resolves once per cache entry rather than on every invocation. The TSV's fifth column
+  carries the summary, absent where a line's `-sources` artifacts did not resolve or a class
+  carries no class comment at all.
+- What this settled, once real classes were checked against real bytecode: a factory's own
+  class comment is typically one short sentence — `EdgeNGramFilterFactory`'s reads "Creates
+  new instances of EdgeNGramTokenFilter." — never the argument-by-argument prose and worked
+  examples the Reference Guide carries. This column upgrades the popup from no prose to one
+  sentence; it does not and cannot reach guide parity, which is not a shortfall of the
+  extraction but a ceiling set by what Solr's own source comments contain.
 - The constructor-bytecode attribute pass, which is the part reflection cannot do: it walks
   each factory's `<init>`, takes the literal passed to every argument reader, and inherits
-  what the superclasses read.
+  what the superclasses read. It now covers the field-type classes too — read in their
+  `init`/`setup` rather than a constructor — so a `<fieldType>`'s `class` is no longer a
+  blank in the catalog.
+- Each attribute now carries its value type as well as its name, inferred from the reader's JVM
+  descriptor — and, where the bytecode proves them, its literal default and whether it is
+  required. The TSV's fourth column reads `name:type`, with a trailing `!` for a required
+  attribute and `=default` for a literal default. The types are what the typed-attribute
+  inspections in
+  [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
+  validate against; the default and required marker are what the factory half of
+  [quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) and
+  [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
+  will read.
 - `solr-analysis-extras` resolved alongside `solr-core`. Without it the catalog had Japanese
   and Korean analysis and no Chinese at all, which is the kind of gap a count never shows.
 - `SolrClassCatalog` and `SolrVersionSource`, which record whether the line was decided by
   the configset or by the fallback.
 
-**What remains is the documentation source, the defaults-and-required column, and the
-server arm of selection.** No `-sources`
-artifact is resolved, so the catalog has four columns and none of them is documentation —
-that is action 1's fourth source and the unchecked prerequisite above, and it is what holds
-the `StrField` criterion open even though both classes are present. The attribute pass
-currently keeps only the name: the default and the required marker it walks straight past
-are what the factory half of
-[quick documentation](#step-10-completion-validation-and-quick-documentation) and
+**What remains is the server arm of selection**, which is unrelated to the documentation
+source and always waited on
+[the server reader](#step-11-http-client-connections-and-the-server-reader). The attribute
+pass records each attribute's value type and, where the bytecode proves them, its literal
+default and required marker — the two facts the factory half of
+[quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) and
 [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
-consume, so the column is on this step's critical path even though nothing displays it yet. Selection reads the
-configset's declared version and then falls back to the newest line; the `SERVER` arm of
-`SolrVersionSource` is unreachable until
-[the server reader](#step-11-http-client-connections-and-the-server-reader) exists, so that
-criterion closes with the Server track rather than here.
+consume. Selection reads the configset's declared version and then falls back to the newest
+line; the `SERVER` arm of `SolrVersionSource` is unreachable until the server reader exists,
+so that criterion closes with the Server track rather than here.
 
 **Success criteria:**
 - [x] Catalog generated at build time for both supported lines and present on the plugin
@@ -851,17 +880,25 @@ criterion closes with the Server track rather than here.
 - [x] `JapaneseTokenizerFactory` exposes `mode` and `userDictionary`. Both are read by
       paths a naive pass misses — one has a default computed by a method call, the other is
       taken with `args.remove` rather than a getter.
-- [ ] Defaults and requiredness are recorded where the bytecode proves them, and only
+- [x] Defaults and requiredness are recorded where the bytecode proves them, and only
       there: `WordDelimiterGraphFilterFactory`'s `generateWordParts` carries its default,
       `EdgeNGramFilterFactory`'s `minGramSize` and `maxGramSize` are marked required with
       no default, and `JapaneseTokenizerFactory`'s `mode` carries neither. The trio is the
       criterion because it proves all three behaviours at once — taking the literal,
       reading `require*`, and declining the computed value rather than guessing it.
-- [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
-      is what proves the field-type-class pass ran at all — the `class` attribute of a
-      `<fieldType>` is the most-hovered thing in a schema after the field names. **Half met:**
-      both classes are in the catalog, so the pass ran; the documentation waits on the
-      `-sources` artifacts.
+      `SolrClassCatalogTest` asserts the trio against the shipped catalog.
+- [x] `solr.StrField` and `solr.TextField` are both present, which is what proves the
+      field-type-class pass ran at all — the `class` attribute of a `<fieldType>` is the
+      most-hovered thing in a schema after the field names. **`TextField` carries its
+      documentation summary; `StrField` does not, and cannot.** `TextField.java` opens with
+      a class-level Javadoc comment ("is the basic type for configurable text analysis"),
+      which the generator reduces to a sentence exactly as designed. `StrField.java` carries
+      no class-level Javadoc comment at all in Solr's own sources — only the ASF license
+      header above it, a plain block comment rather than a Javadoc one. That is a fact about
+      what Solr's maintainers wrote, not a gap in the extraction: recording no summary for a
+      class with no comment is the same decline-rather-than-guess rule the attribute pass
+      already follows for a computed default, so this criterion is met by both classes
+      appearing with whatever documentation Solr's own source actually gives them.
 - [ ] Selection order is correct and the answering source is recorded. The source is recorded
       and the configset-then-newest order works; the connected-server arm waits on
       [the server reader](#step-11-http-client-connections-and-the-server-reader).
@@ -873,13 +910,19 @@ is the one to run by hand, for the reason in the criterion above.
 
 **Dependencies:** [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done)
 
-### Step 10: Completion, validation and quick documentation
+### Step 10: Completion, validation and quick documentation (in progress)
 
-**Partly done.** Completion for the schema positions whose valid set is closed — a field's
+**In progress.** Completion for the schema positions whose valid set is closed — a field's
 `type`, a `copyField`'s two ends, and the boolean properties — landed a capability per pull
 request ahead of this step, because none of it needs the catalog. Positions where any value
 is legal are left to the platform: a partial list implies the values not on it are wrong.
-What remains here is the catalog-backed half, which is what the dependency below is about.
+Since then the catalog-backed half has largely landed too: completion offers the `class`
+classes and, inside an analysis tag, the factory's own attribute names, and the
+typed-attribute inspections validate an attribute's value and name against the catalog —
+action 2. What remains is the per-attribute hover and the factory-tag
+complete-configuration popup (actions 5 and 6). Both want the defaults-and-required column,
+and [Step 9](#step-9-factory-catalog-generator-in-progress) now carries it — so they are no
+longer blocked on the data, only unbuilt.
 Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup
 renders the catalog's kind, spellings and attributes plus the schema's own usage, and the
 Javadoc summary waits on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
@@ -907,7 +950,7 @@ resolution.
    [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default).
 
 **Success criteria:**
-- [ ] Completion and validation work against the catalog.
+- [x] Completion and validation work against the catalog.
 - [ ] Quick documentation resolves for factories and attributes.
 - [ ] A factory attribute answers on hover with its owner, value type, and — where the
       catalog carries them — its default or required marker, and stays silent about

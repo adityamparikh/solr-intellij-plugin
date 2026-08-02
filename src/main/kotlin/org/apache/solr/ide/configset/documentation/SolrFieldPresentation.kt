@@ -168,11 +168,15 @@ object SolrFieldPresentation {
     /**
      * The documentation popup for a class named in a `class` attribute.
      *
-     * What it renders is what the generated catalog and the model can vouch for: the kind of
-     * class, both of its spellings, the attributes its constructor actually reads, and what this
-     * schema declared with it. There is deliberately no prose paragraph yet — that column joins
-     * the catalog when the `-sources` artifacts are resolved, and inventing one meanwhile would
-     * be asserting something no source states.
+     * What it renders is what the generated catalog and the model can vouch for: a one-sentence
+     * summary of the class's own Javadoc where the line's `-sources` artifacts carried one, the
+     * kind of class, both of its spellings, the attributes its constructor actually reads, and
+     * what this schema declared with it. **The summary is not a substitute for the Reference
+     * Guide.** A factory's class comment is typically one sentence — "Creates new instances of
+     * `EdgeNGramTokenFilter`" — while the guide page carries per-argument descriptions, defaults
+     * in words and worked examples; the summary is the honest, mechanically sourced fraction of
+     * that available without hand-copying the guide, which [SolrReferenceGuide] already argues
+     * against.
      *
      * @param entry the catalog entry for the class
      * @param specifics what this schema does with it, or null when nothing specific is known
@@ -189,6 +193,10 @@ object SolrFieldPresentation {
         append("\n${escape(entry.className)}")
         append("</pre></div>")
         append("<div class='content'>")
+        // Not escaped: a Javadoc summary is prose the generator extracted from Solr's own sources,
+        // not markup a configset could inject — the same reasoning that leaves the specifics
+        // paragraph below unescaped, applied to a different source of trusted text.
+        entry.summary?.let { append("<p>${it}</p>") }
         if (entry.attributes.isNotEmpty()) {
             append("<p><b>Accepts</b></p><table>")
             for (attribute in entry.attributes) {

@@ -80,6 +80,7 @@ they are written down — a compatibility matrix ships with the first release.
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
 | [Platform mechanisms](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are, and what this plugin decided |
 | [Plugin development tutorial](docs/modern-intellij-plugin-development.md) | Building this kind of plugin from scratch, using this project as the worked example |
+| [FAQ](docs/faq.md) | Why quick documentation links rather than copies, and why it can't rely on a live sources-jar lookup |
 | [CLAUDE.md](CLAUDE.md) | Repository orientation — build gates, architecture, conventions |
 
 ## Building from source
