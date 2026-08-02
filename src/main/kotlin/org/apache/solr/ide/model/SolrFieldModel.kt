@@ -73,6 +73,8 @@ data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
  * @property uniqueKey the `uniqueKey` declaration, or null if the configset declares none
  * @property fieldReferences field names referenced from `solrconfig.xml`
  * @property luceneMatchVersion the version the configset declares it targets, or null
+ * @property schemaVersion the schema's declared `version`, resolved through Solr's own fallback, so
+ *   a schema declaring none reports [SolrSchemaVersion.ASSUMED] rather than null
  */
 class SolrFieldModel(
     val fields: Map<String, SolrFact<SolrField>> = emptyMap(),
@@ -82,6 +84,7 @@ class SolrFieldModel(
     val uniqueKey: SolrFact<String>? = null,
     val fieldReferences: List<SolrFieldReference> = emptyList(),
     val luceneMatchVersion: String? = null,
+    val schemaVersion: SolrSchemaVersion = SolrSchemaVersion.ASSUMED,
 ) {
 
     /**
@@ -163,6 +166,10 @@ class SolrFieldModel(
                 },
                 fieldReferences = repo.fieldReferences,
                 luceneMatchVersion = repo.luceneMatchVersion,
+                // The repository half decides: the schema version is a property of the file the
+                // user is editing, and a server reports its resolved configuration rather than the
+                // declaration that produced it.
+                schemaVersion = SolrSchemaVersion.of(repo.schemaVersion),
             )
         }
 

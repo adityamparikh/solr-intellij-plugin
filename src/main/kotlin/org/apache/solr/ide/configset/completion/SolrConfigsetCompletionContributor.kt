@@ -21,6 +21,7 @@ import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.model.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.documentation.SolrSchemaElements
@@ -95,7 +96,8 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
         // Every remaining answerable position is a property of a field or of a type. Scoping it to
         // those two tags is what keeps `<copyField synonymQueryStyle="">` — which means nothing —
         // from being offered the three values a field type would accept there.
-        tagName in SolrSchemaTags.FIELD || tagName in SolrSchemaTags.FIELD_TYPE -> propertyValues(attributeName)
+        tagName in SolrSchemaTags.FIELD || tagName in SolrSchemaTags.FIELD_TYPE ->
+            propertyValues(attributeName, model.schemaVersion)
         else -> emptyList()
     }
 
@@ -158,11 +160,17 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
      *
      * Where the default depends on the field type — `omitNorms` is true for primitive types and
      * false for text — nothing is marked, because marking one would assert something Solr does not.
+     *
+     * Where it depends on the schema's declared version, the mark follows *this* schema: on a 1.6
+     * configset `uninvertible` marks `true`, because that is the value the reader would get by
+     * leaving the attribute off the file in front of them.
      */
-    private fun propertyValues(attributeName: String): List<LookupElement> {
+    private fun propertyValues(attributeName: String, schemaVersion: SolrSchemaVersion): List<LookupElement> {
         val property = SolrFieldProperties.byName(attributeName) ?: return emptyList()
+        val default = property.defaultValue
+            ?: property.defaultTrueWithin?.let { if (schemaVersion in it) "true" else "false" }
         return property.offerableValues.map { value ->
-            val isDefault = value == property.defaultValue
+            val isDefault = value == default
             LookupElementBuilder.create(value)
                 .withTypeText(if (isDefault) DEFAULT_LABEL else null)
                 .withBoldness(isDefault)

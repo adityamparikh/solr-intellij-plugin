@@ -26,8 +26,12 @@ class SolrFieldPropertiesTest {
         attributes = mapOf("indexed" to "true", "stored" to "false"),
     )
 
-    private fun resolve(name: String, field: SolrField = this.field, type: SolrFieldType? = stringType) =
-        SolrFieldProperties.resolve(SolrFieldProperties.byName(name)!!, field, type)
+    private fun resolve(
+        name: String,
+        field: SolrField = this.field,
+        type: SolrFieldType? = stringType,
+        version: SolrSchemaVersion = SolrSchemaVersion.of("1.7"),
+    ) = SolrFieldProperties.resolve(SolrFieldProperties.byName(name)!!, field, type, version)
 
     @Test
     fun `a property declared on the field comes from the field`() {
@@ -52,11 +56,12 @@ class SolrFieldPropertiesTest {
         assertEquals(SolrPropertyOrigin.FIELD, docValues.origin)
     }
 
+    /** `required` is one of the defaults Solr has never made conditional on the schema version. */
     @Test
     fun `a property declared nowhere falls back to Solr's default`() {
-        val multiValued = resolve("multiValued")
-        assertEquals("false", multiValued.value)
-        assertEquals(SolrPropertyOrigin.SOLR_DEFAULT, multiValued.origin)
+        val required = resolve("required")
+        assertEquals("false", required.value)
+        assertEquals(SolrPropertyOrigin.SOLR_DEFAULT, required.origin)
     }
 
     /**
@@ -84,7 +89,7 @@ class SolrFieldPropertiesTest {
         val indexed = resolve("indexed", type = null)
         assertEquals("true", indexed.value)
         assertEquals(SolrPropertyOrigin.FIELD, indexed.origin)
-        assertEquals(SolrPropertyOrigin.SOLR_DEFAULT, resolve("multiValued", type = null).origin)
+        assertEquals(SolrPropertyOrigin.SOLR_DEFAULT, resolve("required", type = null).origin)
     }
 
     @Test
@@ -109,12 +114,75 @@ class SolrFieldPropertiesTest {
     @Test
     fun `every property a field can carry resolves for a bare field`() {
         val bare = SolrField("x", "string")
-        val resolved = SolrFieldProperties.effectiveFor(bare, null)
+        val resolved = SolrFieldProperties.effectiveFor(bare, null, SolrSchemaVersion.of("1.7"))
         assertEquals(SolrFieldProperties.FOR_FIELD.size, resolved.size)
         assertTrue(
             "a bare field takes everything from defaults or leaves it undetermined",
-            resolved.all { it.origin == SolrPropertyOrigin.SOLR_DEFAULT || it.origin == SolrPropertyOrigin.UNDETERMINED },
+            resolved.all {
+                it.origin == SolrPropertyOrigin.SOLR_DEFAULT ||
+                    it.origin == SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT ||
+                    it.origin == SolrPropertyOrigin.UNDETERMINED
+            },
         )
+    }
+
+    // --- defaults that follow the schema version ---------------------------------------------
+
+    /**
+     * The case that prompted all of this. Solr 9.7 flipped `uninvertible` at schema version 1.7, and
+     * left every earlier schema alone — so the same field in the same Solr answers differently
+     * depending on one attribute on the root element.
+     */
+    @Test
+    fun `uninvertible defaults true below schema version 1_7 and false from it`() {
+        val below = resolve("uninvertible", version = SolrSchemaVersion.of("1.6"))
+        assertEquals("true", below.value)
+        assertEquals(SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT, below.origin)
+
+        val from = resolve("uninvertible", version = SolrSchemaVersion.of("1.7"))
+        assertEquals("false", from.value)
+        assertEquals(SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT, from.origin)
+    }
+
+    @Test
+    fun `useDocValuesAsStored defaults false below schema version 1_6 and true from it`() {
+        assertEquals("false", resolve("useDocValuesAsStored", version = SolrSchemaVersion.of("1.5")).value)
+        assertEquals("true", resolve("useDocValuesAsStored", version = SolrSchemaVersion.of("1.6")).value)
+    }
+
+    /** Below 1.1 every field was multi-valued, which is what a schema with no `version` declares. */
+    @Test
+    fun `multiValued follows the schema version too`() {
+        assertEquals("true", resolve("multiValued", version = SolrSchemaVersion.of("1.0")).value)
+        assertEquals("false", resolve("multiValued", version = SolrSchemaVersion.of("1.7")).value)
+        assertEquals("true", resolve("multiValued", version = SolrSchemaVersion.of(null)).value)
+    }
+
+    /** A version rule is a *default*, so anything written in the file still outranks it. */
+    @Test
+    fun `a declared value still wins over a version-dependent default`() {
+        val declared = field.copy(attributes = field.attributes + ("uninvertible" to "false"))
+        val resolved = resolve("uninvertible", declared, version = SolrSchemaVersion.of("1.6"))
+        assertEquals("false", resolved.value)
+        assertEquals(SolrPropertyOrigin.FIELD, resolved.origin)
+
+        val onType = stringType.copy(attributes = stringType.attributes + ("uninvertible" to "false"))
+        val fromType = resolve("uninvertible", type = onType, version = SolrSchemaVersion.of("1.6"))
+        assertEquals("false", fromType.value)
+        assertEquals(SolrPropertyOrigin.FIELD_TYPE, fromType.origin)
+    }
+
+    /**
+     * `docValues` needs the field type's class as well as the version — at 1.7 a `solr.StrField`
+     * gains it and a `solr.TextField` does not — so the version alone must not resolve it. Asserting
+     * one answer here would swap an honest silence for a new wrong statement.
+     */
+    @Test
+    fun `docValues stays undetermined even at a version that would enable it`() {
+        val bare = SolrField("x", "string")
+        val docValues = resolve("docValues", bare, type = null, version = SolrSchemaVersion.of("1.7"))
+        assertNull(docValues.value)
+        assertEquals(SolrPropertyOrigin.UNDETERMINED, docValues.origin)
     }
 
     // --- the two scopes ---------------------------------------------------------------------
@@ -147,7 +215,9 @@ class SolrFieldPropertiesTest {
     /** A field's property table must not offer values it cannot carry. */
     @Test
     fun `type-only properties are absent from a field's effective properties`() {
-        val resolved = SolrFieldProperties.effectiveFor(SolrField("x", "string"), null).map { it.property.name }
+        val resolved = SolrFieldProperties
+            .effectiveFor(SolrField("x", "string"), null, SolrSchemaVersion.of("1.7"))
+            .map { it.property.name }
         assertTrue("positionIncrementGap" !in resolved)
         assertTrue("indexed" in resolved)
     }
