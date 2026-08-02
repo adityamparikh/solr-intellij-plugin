@@ -111,12 +111,15 @@ data class SolrClassAttribute(
  * @property className the fully qualified name, as reflection sees it
  * @property shortName the `solr.`-prefixed form a configset normally uses
  * @property attributes the attributes this class reads, empty where none are known
+ * @property summary a one-sentence summary of the class's own Javadoc, or null when the line's
+ *   `-sources` artifacts did not resolve or carried none for this class
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
     val className: String,
     val shortName: String,
     val attributes: List<SolrClassAttribute> = emptyList(),
+    val summary: String? = null,
 ) {
 
     /** The attribute [name], or null when this class does not read one by that name. */
@@ -228,7 +231,11 @@ object SolrClassCatalog {
                 .split(',')
                 .filter { it.isNotBlank() }
                 .map { SolrClassAttribute.parse(it) }
-            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes) }
+            // Absent on a catalog generated before the documentation column existed, and blank when
+            // this line's `-sources` artifacts resolved but carried nothing for this class -- both
+            // read as "nothing to show" rather than as an empty sentence.
+            val summary = columns.getOrNull(4)?.takeIf { it.isNotBlank() }
+            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes, summary) }
         }.toList()
     }
 }

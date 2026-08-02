@@ -461,6 +461,59 @@ class SolrClassCatalogTest {
         }
     }
 
+    // --- the documentation column -------------------------------------------------------------
+
+    /**
+     * The class this generator's `-sources` pass proves works: `EdgeNGramFilterFactory`'s own
+     * class comment is a single short sentence, exactly the shape the summary extraction targets.
+     */
+    @Test
+    fun `a factory with a class comment carries a documentation summary`() {
+        val entry = SolrClassCatalog.find("solr.EdgeNGramFilterFactory", latest)
+        assertNotNull(entry)
+        assertEquals("Creates new instances of EdgeNGramTokenFilter.", entry!!.summary)
+    }
+
+    /**
+     * `StrField` carries no class-level Javadoc comment at all in Solr's own sources — only a
+     * plain block comment above it, the ASF license header, which a Javadoc comment's extra
+     * leading star tells apart. A summary is absent here for the same reason a computed default
+     * is absent elsewhere: there is nothing to report, so nothing is guessed.
+     */
+    @Test
+    fun `a class with no Javadoc comment carries no summary`() {
+        val entry = SolrClassCatalog.find("solr.StrField", latest)
+        assertNotNull(entry)
+        assertNull(entry!!.summary)
+    }
+
+    /** A row with no fifth column at all — an older catalog — reads as no summary, not a blank one. */
+    @Test
+    fun `a row without a documentation column has no summary`() {
+        val entry = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tminGramSize:int"),
+        ).single()
+        assertNull(entry.summary)
+    }
+
+    /** A trailing empty documentation column is no summary, the same rule the attributes follow. */
+    @Test
+    fun `a blank documentation column has no summary`() {
+        val entry = SolrClassCatalog.parse(
+            sequenceOf("tokenFilter\torg.example.F\tsolr.F\tminGramSize:int\t"),
+        ).single()
+        assertNull(entry.summary)
+    }
+
+    /** A generated summary reads through, verbatim. */
+    @Test
+    fun `a documentation column parses into the summary`() {
+        val entry = SolrClassCatalog.parse(
+            sequenceOf("tokenizer\torg.example.T\tsolr.T\t\tCreates new instances of T."),
+        ).single()
+        assertEquals("Creates new instances of T.", entry.summary)
+    }
+
     @Test
     fun `every schema element carrying a class maps to its kind`() {
         assertEquals(SolrClassKind.FIELD_TYPE, SolrClassKind.forTag("fieldType"))

@@ -107,10 +107,11 @@ it whole, and the gutter action goes with the Server track.
 - [x] Solr and Lucene artifacts resolvable from Maven Central for both supported lines —
       verified: Solr 10.0.0 with Lucene 10.3.2, Solr 9.10.1 with Lucene 9.12.3. Needed by
       [the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
-- [ ] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
+- [x] Solr's `-sources` artifacts resolvable for both lines, or a decision to ship the
       catalog without documentation text. Needed by
       [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which cannot
-      recover documentation from a compiled jar.
+      recover documentation from a compiled jar. **Verified resolvable for both lines**, and
+      wired in: see Step 9 for what a resolved `-sources` jar can and cannot supply.
 - [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr
       ships, vendored verbatim under `src/test/testData/configsets/<name>/conf/` and
       recording the Solr release they came from. The gate asserts *clean against what Solr
@@ -816,9 +817,25 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 
 **What shipped so far:**
 - The catalog generator, now living in `buildSrc` and split into a scanner, a hierarchy
-  builder and an attribute extractor, reading Solr and Lucene per line with ASM and emitting
-  `solr-catalog/solr-<line>.tsv` onto the plugin classpath. Actions 1 and 2, less the
-  documentation source.
+  builder, an attribute extractor and a documentation extractor, reading Solr and Lucene
+  per line with ASM and emitting `solr-catalog/solr-<line>.tsv` onto the plugin classpath.
+  Actions 1, 2 and 4.
+- The documentation source: `-sources` artifacts resolved for both supported lines via
+  Gradle's `ArtifactResolutionQuery`, and a class's own class-level Javadoc comment reduced
+  to its first sentence — the same convention the `javadoc` tool's own overview tables use —
+  with `{@link}` and `{@code}` resolved to plain text and HTML markup stripped. That query
+  has no lazy, task-execution-time form the configuration cache accepts, so it runs eagerly
+  in the build script at configuration time rather than through the task's own lazy file
+  collections; a configuration-cache hit skips the configuration phase entirely, so this
+  resolves once per cache entry rather than on every invocation. The TSV's fifth column
+  carries the summary, absent where a line's `-sources` artifacts did not resolve or a class
+  carries no class comment at all.
+- What this settled, once real classes were checked against real bytecode: a factory's own
+  class comment is typically one short sentence — `EdgeNGramFilterFactory`'s reads "Creates
+  new instances of EdgeNGramTokenFilter." — never the argument-by-argument prose and worked
+  examples the Reference Guide carries. This column upgrades the popup from no prose to one
+  sentence; it does not and cannot reach guide parity, which is not a shortfall of the
+  extraction but a ceiling set by what Solr's own source comments contain.
 - The constructor-bytecode attribute pass, which is the part reflection cannot do: it walks
   each factory's `<init>`, takes the literal passed to every argument reader, and inherits
   what the superclasses read. It now covers the field-type classes too — read in their
@@ -839,19 +856,16 @@ Renaming a field updates its copy rules *and* the `qf` line in `solrconfig.xml`.
 - `SolrClassCatalog` and `SolrVersionSource`, which record whether the line was decided by
   the configset or by the fallback.
 
-**What remains is the documentation source and the server arm of selection.** No `-sources`
-artifact is resolved, so the catalog has no documentation column —
-that is action 1's fourth source and the unchecked prerequisite above, and it is what holds
-the `StrField` criterion open even though both classes are present. The attribute pass now
-records each attribute's value type and, where the bytecode proves them, its literal default and
-required marker — the two facts the factory half of
+**What remains is the server arm of selection**, which is unrelated to the documentation
+source and always waited on
+[the server reader](#step-11-http-client-connections-and-the-server-reader). The attribute
+pass records each attribute's value type and, where the bytecode proves them, its literal
+default and required marker — the two facts the factory half of
 [quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) and
 [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
-consume, so that column is no longer the thing holding them open. Selection reads the
-configset's declared version and then falls back to the newest line; the `SERVER` arm of
-`SolrVersionSource` is unreachable until
-[the server reader](#step-11-http-client-connections-and-the-server-reader) exists, so that
-criterion closes with the Server track rather than here.
+consume. Selection reads the configset's declared version and then falls back to the newest
+line; the `SERVER` arm of `SolrVersionSource` is unreachable until the server reader exists,
+so that criterion closes with the Server track rather than here.
 
 **Success criteria:**
 - [x] Catalog generated at build time for both supported lines and present on the plugin
@@ -873,11 +887,18 @@ criterion closes with the Server track rather than here.
       criterion because it proves all three behaviours at once — taking the literal,
       reading `require*`, and declining the computed value rather than guessing it.
       `SolrClassCatalogTest` asserts the trio against the shipped catalog.
-- [ ] `solr.StrField` and `solr.TextField` are both present with their documentation, which
-      is what proves the field-type-class pass ran at all — the `class` attribute of a
-      `<fieldType>` is the most-hovered thing in a schema after the field names. **Half met:**
-      both classes are in the catalog, so the pass ran; the documentation waits on the
-      `-sources` artifacts.
+- [x] `solr.StrField` and `solr.TextField` are both present, which is what proves the
+      field-type-class pass ran at all — the `class` attribute of a `<fieldType>` is the
+      most-hovered thing in a schema after the field names. **`TextField` carries its
+      documentation summary; `StrField` does not, and cannot.** `TextField.java` opens with
+      a class-level Javadoc comment ("is the basic type for configurable text analysis"),
+      which the generator reduces to a sentence exactly as designed. `StrField.java` carries
+      no class-level Javadoc comment at all in Solr's own sources — only the ASF license
+      header above it, a plain block comment rather than a Javadoc one. That is a fact about
+      what Solr's maintainers wrote, not a gap in the extraction: recording no summary for a
+      class with no comment is the same decline-rather-than-guess rule the attribute pass
+      already follows for a computed default, so this criterion is met by both classes
+      appearing with whatever documentation Solr's own source actually gives them.
 - [ ] Selection order is correct and the answering source is recorded. The source is recorded
       and the configset-then-newest order works; the connected-server arm waits on
       [the server reader](#step-11-http-client-connections-and-the-server-reader).
