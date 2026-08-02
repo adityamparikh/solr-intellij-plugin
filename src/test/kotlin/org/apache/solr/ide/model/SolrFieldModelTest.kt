@@ -1,6 +1,7 @@
 package org.apache.solr.ide.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -196,5 +197,56 @@ class SolrFieldModelTest {
         )
         assertEquals(1, model.fieldReferences.size)
         assertEquals("name", model.fieldReferences.single().fieldName)
+    }
+
+    // --- solr version and type traits ---------------------------------------------------------
+
+    @Test
+    fun `the solr line is derived from the configsets luceneMatchVersion`() {
+        val model = SolrFieldModel(luceneMatchVersion = "9.8.0")
+        assertEquals(SolrVersionSelection.fromLuceneMatchVersion("9.8.0"), model.solrVersion)
+    }
+
+    @Test
+    fun `a configset declaring no luceneMatchVersion falls back to the default line`() {
+        assertEquals(SolrVersionSelection.DEFAULT, SolrFieldModel().solrVersion)
+    }
+
+    @Test
+    fun `a known field type class yields the catalogs traits for it`() {
+        val model = SolrFieldModel(luceneMatchVersion = "10.0.0")
+        val traits = model.traitsOf(SolrFieldType("string", "solr.StrField"))
+        assertNotNull("solr.StrField is in the catalog", traits)
+    }
+
+    /**
+     * The distinction the whole trait resolution rests on. An empty set says "known class, no traits",
+     * which makes a type-dependent default a definite false. Null says nothing is known. Collapsing
+     * the two makes every custom plugin type report a confident wrong omitNorms.
+     */
+    @Test
+    fun `a class the catalog does not carry yields null rather than no traits`() {
+        val model = SolrFieldModel(luceneMatchVersion = "10.0.0")
+        assertNull(model.traitsOf(SolrFieldType("mystery", "com.example.MysteryFieldType")))
+    }
+
+    @Test
+    fun `a type naming no class at all yields null`() {
+        assertNull(SolrFieldModel().traitsOf(SolrFieldType("nameless", "")))
+    }
+
+    @Test
+    fun `no type at all yields null`() {
+        assertNull(SolrFieldModel().traitsOf(null))
+    }
+
+    /**
+     * A tokenizer factory is in the catalog but is not a field type, and its traits are meaningless
+     * as a field's. Reading them would attribute a tokenizer's properties to a field.
+     */
+    @Test
+    fun `a class that is in the catalog but is not a field type yields null`() {
+        val model = SolrFieldModel(luceneMatchVersion = "10.0.0")
+        assertNull(model.traitsOf(SolrFieldType("wrong", "solr.StandardTokenizerFactory")))
     }
 }

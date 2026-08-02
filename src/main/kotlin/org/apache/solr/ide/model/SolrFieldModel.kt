@@ -99,6 +99,34 @@ class SolrFieldModel(
     fun typeOf(field: SolrField): SolrFieldType? = fieldTypes[field.type]?.effective
 
     /**
+     * The Solr line this configset targets, for reading the generated class catalog.
+     *
+     * Only two of the spec's three sources are available here: the configset's own declaration, and
+     * the default. A connected server would outrank both, and will once the server reader lands.
+     */
+    val solrVersion: SolrVersionSelection
+        get() = luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
+            ?: SolrVersionSelection.DEFAULT
+
+    /**
+     * The catalog's traits for the class [fieldType] names, or null when nothing can be said.
+     *
+     * Null covers three cases that are all the same answer: no type was resolved, the type names no
+     * class, or the class is one the catalog does not carry — a custom plugin type. Returning an
+     * empty set for any of them would claim the class is known and carries no trait, which is what
+     * turns `omitNorms` into a confident `false` for a type nobody here has ever seen.
+     *
+     * @param fieldType the type whose class to look up, or null
+     * @return its traits, or null when the class is not one the catalog carries
+     */
+    fun traitsOf(fieldType: SolrFieldType?): Set<SolrTypeTrait>? {
+        val className = fieldType?.className?.takeIf { it.isNotEmpty() } ?: return null
+        return SolrClassCatalog.find(className, solrVersion)
+            ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
+            ?.traits
+    }
+
+    /**
      * The declaration supplying [fieldName], whether declared outright or matched dynamically.
      *
      * Declared fields win over dynamic ones, and among competing dynamic patterns the longest

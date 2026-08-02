@@ -19,7 +19,6 @@ import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldProperty
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrReferenceGuide
-import org.apache.solr.ide.model.SolrTypeTrait
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
@@ -87,7 +86,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
 
         val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
         val model = SolrConfigsetReader.getInstance(file.project).modelFor(configset)
-        val version = versionOf(model)
+        val version = model.solrVersion
 
         return when (val target = documentedTarget(value)) {
             is Target.Field -> {
@@ -96,7 +95,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
                     ?: return null
                 val type = model.typeOf(field)
                 SolrFieldPresentation.fieldDocumentation(
-                    field, type, version, model.schemaVersion, traitsOf(type, version),
+                    field, type, version, model.schemaVersion, model.traitsOf(type),
                 )
             }
             is Target.Type -> {
@@ -129,7 +128,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         val file = value.containingFile ?: return null
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
         val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
-        val version = versionOf(SolrConfigsetReader.getInstance(file.project).modelFor(configset))
+        val version = SolrConfigsetReader.getInstance(file.project).modelFor(configset).solrVersion
         return when (val target = documentedTarget(value)) {
             is Target.Field -> listOf(SolrReferenceGuide.fieldPropertiesPage(version))
             is Target.Type -> listOf(SolrReferenceGuide.fieldTypesPage(version))
@@ -152,11 +151,11 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         return SolrFieldPresentation.elementDocumentation(
             description = description,
             specifics = SolrSchemaElements.specifics(tag.name, attributes, model),
-            version = versionOf(model),
+            version = model.solrVersion,
             field = field,
             fieldType = field?.let { model.typeOf(it) },
             schemaVersion = model.schemaVersion,
-            typeTraits = traitsOf(field?.let { model.typeOf(it) }, versionOf(model)),
+            typeTraits = model.traitsOf(field?.let { model.typeOf(it) }),
         )
     }
 
@@ -176,10 +175,10 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             effective = field?.let {
                 val type = model.typeOf(it)
                 SolrFieldProperties.resolve(
-                    property, it, type, model.schemaVersion, traitsOf(type, versionOf(model)),
+                    property, it, type, model.schemaVersion, model.traitsOf(type),
                 )
             },
-            version = versionOf(model),
+            version = model.solrVersion,
             schemaVersion = model.schemaVersion,
             typeClassName = field?.let { model.typeOf(it) }?.className?.takeIf { it.isNotEmpty() },
         )
@@ -208,31 +207,6 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
         return SolrConfigsetReader.getInstance(file.project).modelFor(configset)
     }
-
-    /**
-     * The Solr line this configset targets.
-     *
-     * Only two of the spec's three sources are available: the configset's own declaration, and the
-     * default. A connected server would outrank both, and will once the server reader lands.
-     */
-    /**
-     * The catalog's traits for the class [fieldType] names, or null when nothing can be said.
-     *
-     * Null covers three cases that are all the same answer: no type was resolved, the type names no
-     * class, or the class is one the catalog does not carry — a custom plugin type. Returning an
-     * empty set for any of them would claim the class is known and carries no trait, which is what
-     * turns `omitNorms` into a confident `false` for a type nobody here has ever seen.
-     */
-    private fun traitsOf(fieldType: SolrFieldType?, version: SolrVersionSelection): Set<SolrTypeTrait>? {
-        val className = fieldType?.className?.takeIf { it.isNotEmpty() } ?: return null
-        return SolrClassCatalog.find(className, version)
-            ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
-            ?.traits
-    }
-
-    private fun versionOf(model: SolrFieldModel): SolrVersionSelection =
-        model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
 
     private fun documentedTarget(value: XmlAttributeValue): Target? {
         val attribute = value.parentOfType<XmlAttribute>() ?: return null
