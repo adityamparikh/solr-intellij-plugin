@@ -46,30 +46,60 @@ enum class SolrClassKind(internal val token: String) {
 /**
  * One attribute a class reads, and what kind of value it accepts.
  *
+ * **[defaultValue] and [required] are recorded only where the bytecode proves them**, for the same
+ * reason [valueType] is: a factory reads a literal default beside the attribute name — `getInt(args,
+ * "generateWordParts", 1)` — and marks an attribute required by reading it with `requireInt` rather
+ * than `getInt`. A default computed at runtime is recorded as absent rather than guessed, so a value
+ * the plugin shows on hover is one Solr would genuinely fall back to. The pair is what the factory
+ * half of quick documentation and the restates-the-default inspection consume.
+ *
  * @property name the attribute name as a configset writes it
  * @property valueType what the class does with the value
+ * @property defaultValue the value Solr uses when the attribute is absent, or null when none is
+ *   declared or the default is computed rather than literal
+ * @property required whether Solr rejects the class when the attribute is absent
  */
 data class SolrClassAttribute(
     val name: String,
     val valueType: SolrValueType = SolrValueType.FREE,
+    val defaultValue: String? = null,
+    val required: Boolean = false,
 ) {
 
     /** Service lookup for the token spellings the generated catalog uses. */
     companion object {
 
         /**
-         * Reads one `name:type` entry as the generated catalog writes it.
+         * Reads one attribute entry as the generated catalog writes it.
          *
-         * An entry with no `:` reads as [SolrValueType.FREE], so a catalog generated before types
-         * existed degrades to "no value checking" rather than to an exception.
+         * The grammar is `name:type`, optionally carrying one of two mutually exclusive markers: a
+         * trailing `!` for a required attribute (`minGramSize:int!`), or `=` and a literal default
+         * (`generateWordParts:int=1`). A required attribute never carries a default, because the
+         * reader that marks it required — `requireInt` — takes none.
+         *
+         * An entry with no `:` reads as [SolrValueType.FREE] and no default, so a catalog generated
+         * before types or defaults existed degrades to "no value checking" rather than to an
+         * exception.
          *
          * @param entry one comma-separated attribute from the catalog's fourth column
          * @return the parsed attribute
          */
         fun parse(entry: String): SolrClassAttribute {
             val name = entry.substringBefore(':')
-            val token = entry.substringAfter(':', "")
-            return SolrClassAttribute(name, SolrValueType.forToken(token))
+            val rest = entry.substringAfter(':', "")
+            return when {
+                '=' in rest -> SolrClassAttribute(
+                    name,
+                    SolrValueType.forToken(rest.substringBefore('=')),
+                    defaultValue = rest.substringAfter('='),
+                )
+                rest.endsWith('!') -> SolrClassAttribute(
+                    name,
+                    SolrValueType.forToken(rest.dropLast(1)),
+                    required = true,
+                )
+                else -> SolrClassAttribute(name, SolrValueType.forToken(rest))
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 package org.apache.solr.ide.build
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -97,5 +99,32 @@ class GenerateSolrCatalogTaskTest {
     @Test
     fun `an unterminated reference type ends the count`() {
         assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/lang/String"))
+    }
+
+    /**
+     * A third parameter after the (Map, String) prefix is the default slot. `get(args, name, def)`
+     * and `getInt(args, name, 1)` each have one; the default text is then read from the operand
+     * pushed into it.
+     */
+    @Test
+    fun `a third parameter is a default slot`() {
+        assertTrue(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;I)I"))
+        assertTrue(
+            GenerateSolrCatalogTask.hasDefaultParameter(
+                "(Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+            ),
+        )
+    }
+
+    /**
+     * A reader that takes only the map and a name has no default: a plain `get(args, name)`, and
+     * every `require*` reader — which is what keeps a required attribute from also carrying one.
+     */
+    @Test
+    fun `a two-parameter reader has no default slot`() {
+        assertFalse(
+            GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"),
+        )
+        assertFalse(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)I"))
     }
 }
