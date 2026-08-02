@@ -234,8 +234,13 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
         // catalog writes is a top-level class, so a nested class's own comment -- read differently,
         // and attributed to a different name -- never needs to be told apart from it.
         internal fun classJavadocComment(source: String, simpleName: String): String? {
+            // `(?:(?!\*/).)*?` rather than `.*?`: a lazy `.*?` under DOT_MATCHES_ALL still
+            // backtracks across an intervening `*/` when that is what lets the rest of the pattern
+            // match, so a file declaring a commented package-private class ahead of its public one
+            // would hand the earlier class's comment to the later one. Refusing to cross a
+            // terminator keeps each match inside a single comment block.
             val declaration = Regex(
-                "/\\*\\*(.*?)\\*/\\s*(?:@\\w+(?:\\([^)]*\\))?\\s*)*" +
+                "/\\*\\*((?:(?!\\*/).)*?)\\*/\\s*(?:@\\w+(?:\\([^)]*\\))?\\s*)*" +
                     "(?:public\\s+|final\\s+|abstract\\s+|static\\s+)*class\\s+${Regex.escape(simpleName)}\\b",
                 RegexOption.DOT_MATCHES_ALL,
             )

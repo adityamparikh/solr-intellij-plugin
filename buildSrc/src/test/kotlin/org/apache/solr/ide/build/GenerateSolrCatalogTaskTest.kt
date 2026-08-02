@@ -161,6 +161,33 @@ class GenerateSolrCatalogTaskTest {
         assertTrue(comment != null && comment.contains("Filters LowerCase"))
     }
 
+    /**
+     * A commented type ahead of the target keeps its own comment. A lazy `.*?` still backtracks
+     * across an intervening comment terminator when that is what lets the rest of the pattern
+     * match, so this file shape used to hand the helper's comment to the factory.
+     */
+    @Test
+    fun `an earlier commented class does not lend its comment to a later one`() {
+        val source = """
+            package org.example;
+
+            /**
+             * A helper nobody asked about.
+             */
+            class Helper {
+            }
+
+            /**
+             * Creates new instances of NGramTokenFilter.
+             */
+            public class NGramFilterFactory extends TokenFilterFactory {
+            }
+        """.trimIndent()
+        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "NGramFilterFactory")
+        assertTrue("read the wrong class's comment: $comment", comment != null && comment.contains("NGramTokenFilter"))
+        assertTrue("leaked the earlier comment: $comment", comment != null && !comment.contains("helper"))
+    }
+
     /** A class with no comment above it is absent, not an empty string. */
     @Test
     fun `a class with no comment reads as absent`() {
