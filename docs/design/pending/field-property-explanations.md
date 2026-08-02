@@ -165,24 +165,28 @@ finding; the hint stays out of its way.
 Rendered against `demo/solr/conf/managed-schema.xml`, which declares `version="1.6"`:
 
 ```
-<field name="id"          .../>   whole value, case-sensitive, indexed, stored, single-valued, no doc values
-<field name="sku"         .../>   whole value, case-sensitive, indexed, stored, single-valued, no doc values
-<field name="name"        .../>   tokenised, case-insensitive, indexed, stored, single-valued, no doc values
-<field name="name_prefix" .../>   tokenised, case-insensitive, prefix-capable, indexed, not stored, single-valued, no doc values
-<field name="category"    .../>   whole value, case-sensitive, indexed, stored, single-valued, no doc values
-<field name="description" .../>   tokenised, case-insensitive, indexed, stored, single-valued, no doc values
-<field name="text"        .../>   tokenised, case-insensitive, indexed, not stored, multi-valued, no doc values
+<field name="id"          .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
+<field name="sku"         .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
+<field name="name"        .../>   tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+<field name="name_prefix" .../>   tokenised, case-insensitive, prefix-capable, indexed, not stored, no doc values, single-valued
+<field name="category"    .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
+<field name="description" .../>   tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+<field name="text"        .../>   tokenised, case-insensitive, indexed, not stored, no doc values, multi-valued
 ```
 
-**This is recorded rather than argued with.** Showing all four unconditionally means `indexed,
-single-valued, no doc values` repeats on six of seven lines, and the match half — the output nothing
-else in the ecosystem produces — is now under half of each hint. That was the explicit call: full
-values inline, not only the surprising ones. Ordering match first is the mitigation, and it is the
-only one taken.
+**This is recorded rather than argued with.** Showing all four unconditionally means `indexed`
+appears on all seven lines and `single-valued` on six of them, so the match half — the output
+nothing else in the ecosystem produces — is often under half of each hint. That was the explicit
+call: full values inline, not only the surprising ones. Ordering match first is the mitigation, and
+it is the only one taken.
 
-`no doc values` on every line is correct and is the schema version's doing, not the plugin's: the
-`docValues` default turns on `>= 1.7`, and the demo declares `1.6` deliberately so the interesting
-branch is exercised. It is a fair advertisement for the popup, which names the version as the reason.
+`doc values` on `id`/`sku`/`category` is the `string` fieldType's own doing, not the schema
+version's: it declares `docValues="true"` directly on the `fieldType` element, which resolution
+reads before it ever reaches the version-conditional default. `name`, `name_prefix`, `description`
+and `text` carry no such declaration on `text_general`/`text_prefix`, so those four fall through to
+the version rule, and the demo's `version="1.6"` — deliberately below the `1.7` the general rule
+needs — is why they read `no doc values`. It is a fair advertisement for the popup, which names
+whichever of the fieldType or the schema version actually decided it.
 
 ### The popup
 

@@ -54,17 +54,18 @@ in the sandbox. The demo project is built for this — several defects in it are
 
 ### 1. Match-capability hints — `hints-match-capability.png`
 
-**Shows** the feature nothing else in the ecosystem does: what each field can *actually* match, inline
-beside its declaration, without a hover. This is the lead image for the README.
+**Shows** the feature nothing else in the ecosystem does — what each field can *actually* match —
+and, beside it, the storage shape that decides whether a matched document can be returned at all.
+Inline, without a hover. This is the lead image for the README.
 
-**Capture** the field block at `managed-schema.xml:40-46` with no interaction at all — the hints
-render themselves. Frame all seven fields so the contrast is visible in one shot: `id`/`sku`/`category`
-read as whole-value and case-sensitive, `name`/`description`/`text` as tokenized and
-case-insensitive, and `name_prefix` names EdgeNGram as the mechanism rather than claiming
-"prefix: true".
+**Capture** the field block at `managed-schema.xml:47-53` with no interaction at all — the hints
+render themselves. Frame all seven fields so both contrasts are visible in one shot: `id`/`sku`/
+`category` read as whole-value and case-sensitive, `name`/`description`/`text` as tokenised and
+case-insensitive, `name_prefix` as prefix-capable; and `name_prefix`/`text` read as `not stored`
+where the rest read `stored`, with `text` alone reading `multi-valued`.
 
-**Redo when** the hint wording changes, a new analysis capability is recognised, or the demo schema's
-field list changes.
+**Redo when** the hint wording changes, a property's inline phrase changes, a new analysis
+capability is recognised, or the demo schema's field list changes.
 
 **Verifies** HINT-1 through HINT-4.
 
@@ -75,7 +76,7 @@ field list changes.
 **Shows** the question the Reference Guide cannot answer: each property's value *and where it came
 from* — this field, its type, or Solr's default.
 
-**Capture** caret inside `name="category"` at `managed-schema.xml:44`, press F1. Crop to the popup.
+**Capture** caret inside `name="category"` at `managed-schema.xml:51`, press F1. Crop to the popup.
 
 **Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
 `From` column's wording changes.
@@ -126,7 +127,7 @@ until it is gone.
 one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
 marked `(default)`.
 
-**Capture** put the caret after `stored="true"` on `managed-schema.xml:44`, type a space, and let
+**Capture** put the caret after `stored="true"` on `managed-schema.xml:51`, type a space, and let
 completion open. Frame enough of the list to show the summaries and at least one `(default)` marker.
 Undo the space afterwards.
 

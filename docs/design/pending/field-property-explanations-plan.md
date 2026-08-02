@@ -986,3 +986,19 @@ which is the case whose behaviour this change reverses."
 **Where a wrong answer costs most.** `SolrFieldProperties`' own KDoc says a type naming a class the catalog does not carry is "exactly where asserting a default would be inventing one". Task 2's null-versus-empty-set test is the guard for that, and Task 4's `testAPropertyWithNoAnswerContributesNoPhrase` is the same guard one layer up. Neither is optional.
 
 **If every fixture test fails at once with `FileDeletedException`** while the plain JUnit tests stay green, the sandbox VFS is corrupt rather than the code. It survives `./gradlew clean`. Delete `.intellijPlatform/sandbox/<project>/<IDE>/system-test` and re-run.
+
+---
+
+## Corrections found during implementation
+
+Four errors surfaced while executing this plan, none of which changed the design — all are corrections to what the plan *said*, not to what shipped.
+
+1. **`SolrField`'s constructor was called positionally with the wrong third argument.** The plan's test snippet wrote `SolrField("sku", "string", mapOf(...))`, intending the map as the field's attributes. The third positional parameter is actually `indexed: Boolean?`; a map there does not compile. Fixed by passing `attributes = mapOf(...)` as a named argument.
+
+2. **The plan's expected hint strings ordered `multiValued` before `docValues`.** `SolrFieldProperties.ALL` (and therefore `FOR_FIELD`) declares `docValues` before `multiValued`, so every rendered hint reads `..., doc values, single-valued` or `..., no doc values, multi-valued`, never the reverse. This error was pervasive enough to reach the shipped screenshot and manual-test-suite prose too, and Task 5 corrected it there as well.
+
+3. **The plan assumed a versionless test fixture defaults `multiValued` to `false`.** `multiValued`'s rule is `defaultTrueWithin(below = 1.1f)`, and `SolrSchemaVersion.ASSUMED` (used when a `<schema>` declares no `version`) is `1.0` — below 1.1 — so an unversioned fixture defaults `multiValued` to **true**, the same version-conditional trap `docValues` sets for the same fixture. The demo schema declares `version="1.6"`, well above 1.1, so this does not affect it.
+
+4. **The plan did not anticipate that dropping the match-only silence rule would break `testEachHintSegmentFitsTheRenderersInlineBudget`.** That pre-existing test asserted a segment budget sized for a match-only hint; once storage-shape phrases render unconditionally, the longest hint is longer. The test was amended to size its budget against the new combined hint rather than loosened, so it still catches a genuine regression in segment length.
+
+A fifth issue, found while writing Task 5's documentation rather than while coding: the design record's own worked example (the "Rendered against `demo/solr/conf/managed-schema.xml`" block) claimed every one of the seven demo fields reads `no doc values`. That was never true of `id`, `sku` and `category` — the demo's `string` fieldType declares `docValues="true"` directly on the `fieldType` element, and `SolrFieldProperties.resolve` reads a fieldType-level attribute before it ever reaches the schema-version default that the design record's prose describes. Those three fields read `doc values`, not `no doc values`. Task 5 corrected the rendered block, the prose explaining it, and every other document that repeated the assumption.

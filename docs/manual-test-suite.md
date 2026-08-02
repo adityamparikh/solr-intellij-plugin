@@ -66,13 +66,20 @@ committed demo configset is dangling, and which one it is.
 placement and readability of the rendered hint.*
 
 - [ ] **HINT-1** — `string` fields (`id`, `sku`, `category`) read as whole-value,
-      case-sensitive.
-- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read as tokenized,
-      case-insensitive, with no efficient prefix support.
-- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads as prefix-capable, and the
-      hint names EdgeNGram as the mechanism rather than saying "prefix: true".
+      case-sensitive, and carry `indexed, stored, doc values, single-valued`. The demo
+      schema's `string` fieldType declares `docValues="true"` itself, so these three read
+      `doc values` even though the schema version alone would default it off.
+- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read as tokenised,
+      case-insensitive, with no efficient prefix support, and both carry `indexed` and
+      `no doc values`. `description` alone also carries `stored, single-valued`; `text`
+      alone carries `not stored, multi-valued`.
+- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads as prefix-capable and carries
+      `indexed, not stored, no doc values, single-valued`.
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
+- [ ] **HINT-5** — A field whose analyser chain contains an unrecognised factory shows
+      the storage-shape phrases and no match claim; a field whose `type` is undeclared
+      shows no hint at all.
 
 ## 4. Navigation and Find Usages (NAV)
 

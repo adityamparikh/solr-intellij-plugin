@@ -37,11 +37,13 @@ Captures come from the sandbox IDE running against `demo/`.
 ### What each field can actually match, inline
 
 <!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
-     Frame managed-schema.xml:40-46 so all seven fields show at once. This is the lead image. -->
+     Frame managed-schema.xml:47-53 so all seven fields show at once. This is the lead image. -->
 
 > *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
-> read as whole-value and case-sensitive, `text_general` as tokenized and case-insensitive, and
-> `name_prefix` names EdgeNGram as the mechanism rather than claiming "prefix: true".
+> read as whole-value and case-sensitive, `text_general` as tokenised and case-insensitive, and
+> `name_prefix` as prefix-capable. Beside the match claim, each hint also carries the storage shape
+> that decides whether a matched document can be returned at all — `indexed`, `stored`, `doc values`
+> or `no doc values`, `multi-valued` or `single-valued`.
 
 ### Quick documentation on a field
 
