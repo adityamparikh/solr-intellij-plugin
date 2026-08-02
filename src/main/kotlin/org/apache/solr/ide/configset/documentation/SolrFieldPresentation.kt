@@ -370,7 +370,7 @@ object SolrFieldPresentation {
         SolrPropertyOrigin.FIELD -> "on this field"
         SolrPropertyOrigin.FIELD_TYPE -> "from the field type"
         SolrPropertyOrigin.SOLR_DEFAULT -> "Solr default"
-        SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT -> "Solr default at schema version ${schemaVersion.declared}"
+        SolrPropertyOrigin.SCHEMA_VERSION_DEFAULT -> "Solr default at schema version ${schemaVersion.label}"
         SolrPropertyOrigin.UNDETERMINED -> "see the guide"
     }
 

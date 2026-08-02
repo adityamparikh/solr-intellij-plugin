@@ -44,8 +44,8 @@ defaults, because the attribute is how Solr changed its defaults without breakin
 - Moving `1.6` → `1.7` *"will generally require a re-index of all data"* (Major Changes in Solr 9), so
   users stay at `1.6` deliberately and indefinitely.
 - Solr's own `_default` and `sample_techproducts_configs` are `1.7`, so new configsets start there.
-- The `1.7` docValues default caused real production breakage severe enough to warrant vendor
-  advisories.
+- Doc values cannot be added to a field that is already indexed, so the `1.7` default is not a
+  setting a running collection can simply adopt — which is what the re-index above is for.
 
 The population is therefore split durably, both halves are current on Solr 9 and 10, and *"why isn't
 `docValues` on for this field?"* is the most common question the change produced. Answering that with
@@ -111,9 +111,14 @@ That leaves `uninvertible`, `useDocValuesAsStored` and `multiValued` fully answe
 ### Model changes
 
 `SolrConfigsetFacts` and `SolrFieldModel` gain `schemaVersion: String?`, parsed by `SolrSchemaParser`
-from the root element and carried like `luceneMatchVersion` already is. Absent means Solr's `1.0`;
-that mapping lives in the model, not the parser, so the parser keeps reporting only what the file
-says.
+from the root element and carried like `luceneMatchVersion` already is. Absent means Solr's `1.0`,
+and so does a value that will not parse — a half-typed attribute is the normal state of a file being
+edited, and the model has to keep answering while it is. Both mappings live in the model, not the
+parser, so the parser keeps reporting only what the file says.
+
+`SolrSchemaVersion` renders its own label, so the version a popup names is read from the same
+normalized value resolution used. A schema declaring nothing therefore reads as `1.0` — the version
+its defaults came from — rather than as the absent text in the file.
 
 `SolrPropertyOrigin` gains one value:
 
@@ -136,7 +141,8 @@ Plain JUnit 4 — `SolrFieldProperties` imports nothing from the platform and mu
 
 - `uninvertible` resolves `true` at `1.6` and `false` at `1.7`, with origin `SCHEMA_VERSION_DEFAULT`.
 - `useDocValuesAsStored` resolves `false` at `1.5` and `true` at `1.6`.
-- An absent version resolves as `1.0`, not as the newest.
+- An absent version resolves as `1.0`, not as the newest, and so does an unparseable one.
+- Documentation names the version a value came from, so both of those render as `1.0`.
 - A value declared on the field or type still wins over any version rule.
 - Properties with no version dependence keep reporting `SOLR_DEFAULT`.
 - `SolrSchemaParser` reads the attribute, and its absence, from the root element.

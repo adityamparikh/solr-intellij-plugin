@@ -21,6 +21,16 @@ package org.apache.solr.ide.model
 @JvmInline
 value class SolrSchemaVersion(val declared: Float) {
 
+    /**
+     * How this version is written when a reader is shown which one an answer came from.
+     *
+     * Rendered here rather than by each caller so that what the popup names and what resolution
+     * used cannot drift: both read the same normalized [declared]. A schema declaring nothing, or
+     * something that will not parse, therefore renders as `1.0` — the version its defaults actually
+     * came from — rather than as the absent or malformed text the file contains.
+     */
+    val label: String get() = declared.toString()
+
     /** Reading a schema's declaration, including the case where it makes none. */
     companion object {
 

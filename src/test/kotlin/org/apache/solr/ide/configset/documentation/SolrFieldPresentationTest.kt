@@ -132,6 +132,35 @@ class SolrFieldPresentationTest {
         assertTrue(html.contains("latest release"))
     }
 
+    /**
+     * The version named in the popup is the one the value came from, not the text in the file.
+     *
+     * A schema declaring nothing is running under Solr's `1.0` rules, so naming anything else —
+     * or nothing — would attribute the value to a version that did not produce it.
+     */
+    @Test
+    fun `a schema declaring no version documents the version Solr assumes for it`() {
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field("string"),
+            stringType,
+            SolrVersionSelection.DEFAULT,
+            SolrSchemaVersion.of(null),
+        )
+        assertTrue("expected the assumed version named: $html", html.contains("schema version 1.0"))
+    }
+
+    /** A half-typed attribute is the normal state of a file being edited, and resolves the same way. */
+    @Test
+    fun `an unparseable version documents the assumed one`() {
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field("string"),
+            stringType,
+            SolrVersionSelection.DEFAULT,
+            SolrSchemaVersion.of("not-a-version"),
+        )
+        assertTrue("expected the assumed version named: $html", html.contains("schema version 1.0"))
+    }
+
     @Test
     fun `an undeclared type is reported rather than rendered as blank`() {
         val html = SolrFieldPresentation.fieldDocumentation(field("nope"), null, SolrVersionSelection.DEFAULT, modernSchema)
