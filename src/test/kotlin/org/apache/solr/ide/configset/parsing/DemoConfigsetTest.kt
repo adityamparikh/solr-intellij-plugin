@@ -133,11 +133,11 @@ class DemoConfigsetTest {
 
         val undeclaredTypes = model.fields.values.map { it.effective }
             .filter { it.type.isNotEmpty() && !model.fieldTypes.containsKey(it.type) }
-        assertTrue("every demo field names a declared type: ${'$'}undeclaredTypes", undeclaredTypes.isEmpty())
+        assertTrue("every demo field names a declared type: $undeclaredTypes", undeclaredTypes.isEmpty())
 
         val unknownReferences = model.fieldReferences
             .filter { it.fieldName != "score" && model.resolve(it.fieldName) == null }
-        assertTrue("no handler parameter names a missing field: ${'$'}unknownReferences", unknownReferences.isEmpty())
+        assertTrue("no handler parameter names a missing field: $unknownReferences", unknownReferences.isEmpty())
     }
 
     @Test

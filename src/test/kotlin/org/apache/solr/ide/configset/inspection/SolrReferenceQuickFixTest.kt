@@ -72,6 +72,28 @@ class SolrReferenceQuickFixTest : SolrConfigsetTestCase() {
         assertTrue("expected the dynamic pattern among the candidates: $fixes", fixes.any { it.contains("*_s") })
     }
 
+    // --- unknown attribute name -----------------------------------------------------------------
+
+    /**
+     * The fix for a misspelled attribute *name*, which is reported on a different element than every
+     * other fix here — the name token rather than the value.
+     *
+     * This asserts the fix is applied, not merely offered. Offering was never the broken half: the
+     * menu listed the right spellings and choosing one silently did nothing, because the fix only
+     * knew how to write a value. A test that stopped at `getAllQuickFixes` passed throughout.
+     */
+    fun testApplyingTheFixRenamesAMisspelledAttribute() {
+        myFixture.enableInspections(SolrUnknownAttributeInspection())
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema.replace("BODY", """<field name="sku" type="string" indexd<caret>="true"/>"""),
+        )
+        val fix = myFixture.getAllQuickFixes().first { it.text.contains("indexed") }
+        myFixture.launchAction(fix)
+        assertTrue("expected the attribute renamed, got: ${myFixture.file.text}", myFixture.file.text.contains("""indexed="true""""))
+        assertFalse(myFixture.file.text.contains("indexd"))
+    }
+
     /**
      * A schema with many fields must not answer a typo with a directory. Past a handful the list
      * stops being a suggestion.

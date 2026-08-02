@@ -63,9 +63,12 @@ class SolrReferenceGuideTest {
         assertTrue(
             SolrReferenceGuide.analyzerComponentPage("solr.LowerCaseFilterFactory", version)!!.endsWith("filters.html"),
         )
+        // `charfilterfactories`, unhyphenated, is the odd one out among the three and is what the
+        // guide actually serves — `char-filter-factories.html` is a 404. The name is inherited from
+        // the pre-Antora wiki page, so it does not follow its neighbours and cannot be derived.
         assertTrue(
             SolrReferenceGuide.analyzerComponentPage("solr.HTMLStripCharFilterFactory", version)!!
-                .endsWith("char-filter-factories.html"),
+                .endsWith("charfilterfactories.html"),
         )
     }
 

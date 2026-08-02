@@ -142,8 +142,10 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
     ) {
         val attributes = hierarchy.attributesOf(className).joinToString(",")
         // A tab or newline in a summary would corrupt the row; [JavadocSummaries] already collapses
-        // whitespace, but a literal tab is guarded here rather than trusted to stay out.
-        val summary = documentation.orEmpty().replace('\t', ' ')
+        // whitespace, but the literals are guarded here rather than trusted to stay out. A newline
+        // is the worse of the two — a tab merely shifts the columns, a newline splits one class into
+        // two rows and the second one parses as garbage.
+        val summary = documentation.orEmpty().replace(ROW_BREAKING_WHITESPACE, " ")
         // Empty for every analysis factory, which has no property defaults to carry. Written for
         // all kinds anyway so the row shape stays uniform and the reader needs no special case.
         val traits = hierarchy.traitsOf(className).joinToString(",")
@@ -384,8 +386,17 @@ private fun encodeAttribute(name: String, facts: AttributeFacts): String {
     }
 }
 
-/** The characters the fourth column's grammar uses, and which therefore may not sit in a default. */
-private val attributeDelimiters = setOf('\t', ',', ':', '=', '!')
+/**
+ * The characters the fourth column's grammar uses, and which therefore may not sit in a default.
+ *
+ * The line terminators are here for the same reason as the column separators rather than a different
+ * one: the catalog is one record per line, so a default carrying `\n` or `\r` would end the row
+ * early and leave its remainder to be read as a class of its own.
+ */
+private val attributeDelimiters = setOf('\t', ',', ':', '=', '!', '\n', '\r')
+
+/** Whitespace that would end a catalog row early, collapsed to a space before a summary is written. */
+private val ROW_BREAKING_WHITESPACE = Regex("[\\t\\r\\n]")
 
 /**
  * Everything one [ArtifactScanner] pass over a Solr line's jars discovers, before the class

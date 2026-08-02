@@ -90,11 +90,26 @@ internal object SolrXmlDocuments {
     /** The value of attribute [name], or null when absent or empty. */
     fun Element.attributeOrNull(name: String): String? = getAttribute(name).takeIf { it.isNotEmpty() }
 
-    /** Attribute [name] read as a boolean, or null when absent or not a boolean. */
-    fun Element.booleanAttribute(name: String): Boolean? = when (attributeOrNull(name)) {
-        "true" -> true
-        "false" -> false
-        else -> null
+    /**
+     * Attribute [name] read as a boolean, or null when absent or not a boolean.
+     *
+     * Case-insensitive because Solr reads these through `Boolean.parseBoolean`, which is: a schema
+     * writing `indexed="TRUE"` is one Solr loads. Matching case exactly would have made the property
+     * read as *unspecified* and silently resolved to the type's default instead — a wrong answer on
+     * a correct file, arrived at quietly. [org.apache.solr.ide.model.SolrValueType] already accepts
+     * either case when validating, so a case-sensitive read here also disagreed with this plugin's
+     * own inspection.
+     *
+     * A value that is neither still returns null rather than false, which is where this deliberately
+     * stops short of `Boolean.parseBoolean` — that reads every unrecognized string as false, and
+     * mirroring it would swallow the typo the invalid-value inspection exists to report.
+     */
+    fun Element.booleanAttribute(name: String): Boolean? = attributeOrNull(name)?.let { value ->
+        when {
+            value.equals("true", ignoreCase = true) -> true
+            value.equals("false", ignoreCase = true) -> false
+            else -> null
+        }
     }
 
     /** Every attribute except those in [except], as a map in document order. */
