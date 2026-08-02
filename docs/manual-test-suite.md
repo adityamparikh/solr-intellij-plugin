@@ -44,13 +44,17 @@ be retired from here, not accumulated.
 *Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
 analysis pass over the real demo files, all inspections at once.*
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **zero** warnings or weak
-      warnings from the plugin.
-- [ ] **BASE-2** — `solrconfig.xml`, untouched, likewise shows zero.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly one** warning: the
+      planted dangling `manufacturer` copyField at the bottom, which is the inspection
+      demo and must not be fixed. Nothing else in the file is underlined.
+- [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
-This is the suite's most important check. Solr configuration is full of syntax that
-resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); an underline on a
-correct file is a bug, never noise.
+This is the suite's most important check, and the count is the whole of it: one report,
+on the one defect the fixture plants deliberately. Solr configuration is full of syntax
+that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a second underline
+is a false positive, and a false positive on a correct file is a bug, never noise.
+`DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
+committed demo configset is dangling, and which one it is.
 
 ## 3. Match-capability inlay hints (HINT)
 
@@ -103,8 +107,9 @@ clickability.*
       which field is the unique key and of what type, how many fields use a type).
 - [ ] **DOC-4** — A `class=` value answers on hover — `solr.WordDelimiterGraphFilterFactory`
       shows what kind of class it is, both spellings, the attributes it reads, how this
-      configset uses it, and a Reference Guide link. Javadoc prose is expected to be
-      absent until the catalog carries a documentation column.
+      configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
+      the catalog's documentation column carries, where the line's `-sources` artifacts
+      supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
 
 ## 6. Inspections and quick-fixes (INSP)
 
@@ -174,8 +179,6 @@ finding one alive means the suite is behind, not that something is wrong:
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Javadoc prose inside the `class=` hover (DOC-4 shows structure and links today) — waits
-  on the catalog's `-sources` documentation column
 - Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
   default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown
