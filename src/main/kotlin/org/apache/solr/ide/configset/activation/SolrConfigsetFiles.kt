@@ -238,6 +238,12 @@ object SolrSchemaTags {
      */
     val COPY_FIELD_ENDS: Set<String> = setOf("source", "dest")
 
+    /** The tag wrapping one analysis chain, index-time or query-time. */
+    const val ANALYZER: String = "analyzer"
+
+    /** The tag declaring the chain's tokenizer, the one component a chain has at most one of. */
+    const val TOKENIZER: String = "tokenizer"
+
     /** The tag declaring an analyzer filter — the position whose attributes may name resource files. */
     const val FILTER: String = "filter"
 

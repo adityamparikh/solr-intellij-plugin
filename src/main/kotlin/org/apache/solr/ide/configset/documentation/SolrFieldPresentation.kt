@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.documentation
 
+import org.apache.solr.ide.model.SolrClassAttribute
 import org.apache.solr.ide.model.SolrClassEntry
 import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrEffectiveProperty
@@ -239,6 +240,55 @@ object SolrFieldPresentation {
         // Not escaped: the specifics are built by this plugin from model values and carry markup
         // of their own, the same contract elementDocumentation documents.
         specifics?.let { append("<p><b>In this configset:</b> $it</p>") }
+        append("</div>")
+        append(classGuideLink(entry, version))
+    }
+
+    /**
+     * The popup for one attribute a class reads — owner, value type, and default or required marker.
+     *
+     * **This is deliberately thinner than [propertyDocumentation].** Field properties have hand-written
+     * summaries and a resolution chain; factory attributes have neither. Javadoc is written per
+     * class, so there is no per-argument prose the catalog could carry, and inventing one from the
+     * attribute name is exactly the false confidence the standing rule forbids. What remains is what
+     * bytecode proved: the class that consumes the name, the JVM type of the reader that did, and a
+     * literal default or a required marker where one was recovered. The guide link carries the rest.
+     *
+     * A [SolrValueType.FREE] attribute omits the "Accepts" row rather than promising "any value".
+     * FREE means the generator could not narrow the type, which is weaker than a promise, and the
+     * class-level Accepts table already uses the same empty rendering for the same reason.
+     *
+     * @param entry the catalog entry for the class that reads the attribute
+     * @param attribute the attribute being hovered
+     * @param version the Solr line this configset targets, for the guide link
+     * @return HTML for the documentation popup
+     */
+    fun classAttributeDocumentation(
+        entry: SolrClassEntry,
+        attribute: SolrClassAttribute,
+        version: SolrVersionSelection,
+    ): String = buildString {
+        append("<div class='definition'><pre>${escape(attribute.name)}</pre></div>")
+        append("<div class='content'>")
+        append("<table>")
+        append("<tr><td>Read by</td><td><code>${escape(entry.shortName)}</code></td></tr>")
+        val accepts = valueTypeText(attribute.valueType)
+        if (accepts.isNotEmpty()) {
+            append("<tr><td>Accepts</td><td>${escape(accepts)}</td></tr>")
+        }
+        when {
+            attribute.required ->
+                append(
+                    "<tr><td>Required</td>" +
+                        "<td>Solr rejects the class when this is absent</td></tr>",
+                )
+            attribute.defaultValue != null ->
+                append(
+                    "<tr><td>Default</td>" +
+                        "<td><code>${escape(attribute.defaultValue)}</code></td></tr>",
+                )
+        }
+        append("</table>")
         append("</div>")
         append(classGuideLink(entry, version))
     }

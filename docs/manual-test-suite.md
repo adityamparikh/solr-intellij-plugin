@@ -155,6 +155,12 @@ gesture, caret placement, the Find Usages tool window.*
       origins name 1.7. **Undo, and confirm the values return.** One side alone proves
       nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
       check.
+- [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
+      on the attribute name). The popup names the owning class, the value type (*a whole
+      number*), and the required marker — and does **not** invent a prose description of what
+      the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
+      catalog default `false` instead of a required marker. An attribute name the catalog does
+      not list, or any attribute on a class the catalog does not know, stays silent.
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
@@ -163,11 +169,10 @@ gesture, caret placement, the Find Usages tool window.*
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
       DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
-also carries each attribute's default and whether it is required, and no surface renders
-them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
-looking for `minGramSize` marked required is looking for something unbuilt, not something
-broken.
+**DOC-4's `Accepts` table still shows a name and a value type, and nothing more.** Defaults and
+required markers live on the per-attribute hover (DOC-7), not on the class-value table — Javadoc is
+per class, so the class popup has no honest per-argument prose to add beside a default either. A
+tester looking for `minGramSize` marked required wants DOC-7, not DOC-4.
 
 **DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
@@ -187,7 +192,8 @@ boundary again.
 
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
-`SolrInvalidAttributeValueInspectionTest`, `SolrReferenceQuickFixTest`. Manual adds:
+`SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
+`SolrReferenceQuickFixTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
 
 Every check here ends with **undo until the baseline (BASE) is clean again**.
@@ -207,10 +213,22 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — Undo everything, including DOC-6's version edit: both files return to
+- [ ] **INSP-7** — The ordering check, in three edits to `text_prefix`'s **index** analyzer
+      (lines 45–49), because a claim about order needs both sides:
+      1. Add `<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange="1"/>`
+         *below* the `LowerCaseFilterFactory`: the `1` is underlined, and the message names
+         the filter that already folded the case away.
+      2. Move that same filter *above* the `LowerCaseFilterFactory`: the warning clears.
+         Nothing was added or removed, so this is the half that proves the check is about
+         order rather than presence.
+      3. Add `<filter class="solr.FlattenGraphFilterFactory"/>` above the word-delimiter
+         filter: its `class` is underlined, naming the graph filter below it.
+- [ ] **INSP-8** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
       planted `legacy` field's undeclared type are part of the baseline and stay underlined.
+      None of INSP-7's three edits survives into the baseline: the demo's own chains are
+      correctly ordered.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -274,8 +292,6 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
-  default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown
   at their defaults
 - The dimmed rendering of an attribute that merely restates its default, with a
@@ -284,16 +300,16 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The three inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
-  and has not built: an unused field type, a known-bad analyzer chain ordering, and a
-  configuration element removed in the targeted Solr line
+- The two inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: an unused field type, and a configuration element removed in the
+  targeted Solr line
 - The relevance-parameter check on a non-indexed field, which is built and registered but
   has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
   automatically; what manual would add is the live reaction the INSP checks exist for
-- **Do not read INSP's length as an inspection count** — six inspection classes exist, and
-  the six INSP checks above are scenarios over five of them: INSP-1 and INSP-3 are both the
+- **Do not read INSP's length as an inspection count** — seven inspection classes exist, and
+  the seven INSP checks above are scenarios over six of them: INSP-1 and INSP-3 are both the
   dangling-`copyField` inspection, once on a written edit and once on a live deletion, and
-  INSP-7 restores the baseline rather than testing anything
+  INSP-8 restores the baseline rather than testing anything
 
 ## Pass log
 
