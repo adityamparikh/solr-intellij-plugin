@@ -50,7 +50,7 @@ A field without prefix support is **correct**. Underlining it would be the plugi
 problem in order to have somewhere to attach a fix, and the standing rule is that inspections do not
 fire on correct files.
 
-[Showing that an attribute restates the default](../../../specs/plans/0002-solr-intellij-plugin-plan.md)
+[Showing that an attribute restates the default](../../../../specs/plans/0002-solr-intellij-plugin-plan.md)
 already settled this exact question for its own feature, and the reasoning transfers unchanged: the
 platform's idiom for "true but improvable" is an intention, because an intention carries no claim
 that anything is wrong. Nothing underlines, and nothing appears in the Problems view.
@@ -173,7 +173,7 @@ kind.
 
 The platform requires description files at `intentionDescriptions/<ClassName>/description.html` with
 `before.xml.template` and `after.xml.template` beside them. Same shape as the inspection description
-files already written, and [CI gates](../../../specs/plans/0002-solr-intellij-plugin-plan.md) will
+files already written, and [CI gates](../../../../specs/plans/0002-solr-intellij-plugin-plan.md) will
 want them regardless.
 
 ## Risks
@@ -191,7 +191,7 @@ want them regardless.
 ## Delivery
 
 This is **Step 7 action 3**, less its `_exact` half, and it closes the last open criterion on
-[match hints and quick-fixes](../../../specs/plans/0002-solr-intellij-plugin-plan.md) once the
+[match hints and quick-fixes](../../../../specs/plans/0002-solr-intellij-plugin-plan.md) once the
 sibling lands. Action 4 — edit the file directly, no provenance check — is a constraint on this work
 rather than separate work, so it lands here.
 

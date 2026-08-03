@@ -65,9 +65,13 @@ abstract class GenerateSolrCatalogTask : DefaultTask() {
         /**
          * The `-sources` jars for those same artifacts, for the documentation column.
          *
-         * May be empty — a module that publishes no sources (Jetty, ZooKeeper) or a resolution that
-         * failed outright degrades to no documentation for the classes it would have covered, the
-         * same decline-rather-than-guess rule the attribute pass already follows.
+         * May be empty — a module that publishes no sources, or a resolution that failed outright,
+         * degrades to no documentation for the classes it would have covered, the same
+         * decline-rather-than-guess rule the attribute pass already follows.
+         *
+         * Jetty and ZooKeeper are not the case to picture here, though this said they were: both
+         * publish sources, and the run loop drops them by filename before their contents matter,
+         * since they carry nothing a configset can name.
          */
         @get:Classpath
         abstract val sources: ConfigurableFileCollection

@@ -1,0 +1,9 @@
+<schema name="example" version="1.6">
+  <fieldType name="text_general" class="solr.TextField">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+  <field name="descr<spot>i</spot>ption" type="text_general"/>
+</schema>

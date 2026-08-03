@@ -31,6 +31,7 @@ New packages are created when they have a file to hold, not in advance.
 | How a file is read into that meaning | `configset.parsing` | [Extend the field model](how-to/extend-the-field-model.md) |
 | Whether the plugin runs at all, or which configset owns a file | `configset.activation` | The [activation decision](#the-activation-decision) below |
 | Something the editor reports as wrong | `configset.inspection` | [Add an editor feature](how-to/add-an-editor-feature.md) |
+| Something the editor offers to improve, on a file that is already correct | `configset.intention` | [Add an editor feature](how-to/add-an-editor-feature.md) |
 | What is offered at the caret | `configset.completion` | [Add an editor feature](how-to/add-an-editor-feature.md) |
 | Ctrl-click, Find Usages, rename | `configset.reference` | [Add an editor feature](how-to/add-an-editor-feature.md) |
 | What a hover explains | `configset.documentation` | [Add an editor feature](how-to/add-an-editor-feature.md) |
@@ -274,6 +275,21 @@ An inlay rather than a tooltip on purpose: a user who does not already suspect t
 match a prefix will never hover over it to find out. Nothing is shown where the analysis is not
 confident, or where a field names a type the configset does not declare — a wrong claim here is worse
 than a missing one, and this is the output most likely to be quoted back.
+
+### `org.apache.solr.ide.configset.intention`
+
+Offering to improve a file that is already correct.
+
+**The boundary against `configset.inspection` is the point of a separate package.** An inspection
+claims something is wrong, and the standing rule is that inspections do not fire on a correct file. A
+field that cannot match a prefix is correct Solr — underlining it in order to have somewhere to hang
+a fix would be manufacturing a problem. An intention carries no such claim: nothing is highlighted,
+and nothing reaches the Problems view.
+
+The availability rules live in pure functions over the model rather than in the `IntentionAction`, so
+the cases that decide *not* to offer can be tested without booting an IDE. Those are the cases worth
+the most: an intention offered where it does not apply is acted on, which is worse than one that is
+simply missing.
 
 ### `org.apache.solr.ide.server`
 

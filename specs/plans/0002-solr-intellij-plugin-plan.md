@@ -77,8 +77,8 @@ it whole, and the gutter action goes with the Server track.
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; four of seven
   inspections shipped, three remain and one of those waits on the catalog
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**;
-  only action 3 remains, the `_exact` and `_prefix` intentions, and nothing in `src/main`
-  implements `IntentionAction` yet
+  action 3's `_prefix` half shipped and its `_exact` half remains, so the step's last criterion
+  stays open on one intention rather than on the extension point being unused
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) — **done**
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing
   the catalog provides.
@@ -594,10 +594,16 @@ anything a user can see — four steps of foundation had shipped with no exit to
   [The design record](../../docs/design/archive/2026-08-02-schema-version-defaults/design.md)
   covers both.
 
-**Action 3 is what remains.** No intention exists yet: nothing in `src/main` implements
-`IntentionAction`, so the `_exact` companion and the EdgeNGram-backed `_prefix` field are
-unbuilt, and the last criterion below is the one holding this step open. Action 4 is a
-constraint on that work rather than something to build, so it lands with it.
+- `SolrAddPrefixCompanionIntention` and the pure `SolrPrefixCompanion` in
+  `org.apache.solr.ide.configset.intention` — action 3's EdgeNGram-backed `_prefix` half, and
+  with it action 4, which was a constraint on this work rather than separate work.
+  [The design record](../../docs/design/archive/2026-08-03-match-capability-intentions/design.md)
+  covers the availability rules and why the generated type's edge n-gram sits on the index side
+  alone.
+
+**Action 3's `_exact` half is what remains.** The extension point is no longer unused: the
+`_prefix` companion ships, and the `_exact` companion reuses its naming, insertion and copy-rule
+code. The last criterion below stays open until that sibling lands.
 
 **Success criteria:**
 - [x] Fields annotated correctly for canonical types.
@@ -605,6 +611,8 @@ constraint on that work rather than something to build, so it lands with it.
 - [x] Quick documentation on a field's type resolves, and its Reference Guide link names
       the version the configset targets.
 - [ ] Quick-fixes produce valid configset edits.
+  - [x] The `_prefix` companion, its copy rule, and the field type when one has to be written.
+  - [ ] The `_exact` companion.
 
 **Acceptance:** demo steps
 [28 to 33 — the hints and the generated fix](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field).

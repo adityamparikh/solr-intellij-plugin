@@ -25,8 +25,15 @@ comparable and readable when scaled down.
 the image, leak whatever branch you happened to be on, and add nothing — the first capture in this
 catalog leaked `feat/catalog-attribute-de` in its top-left corner before it was cropped out.
 
-**Names describe the capability, not the gesture.** `hints-match-capability.png`, not
-`inlay-hover-demo.png`. Kebab-case, `.png`, in `docs/images/`.
+**Names describe the capability, not the gesture.** `hints-match-capability`, not
+`inlay-hover-demo`. Kebab-case, `.png`, in `docs/images/`.
+
+**A two-digit prefix carries the catalog entry number**, so the directory lists in the order this
+document reads and a file says which entry owns it: `01-hints-match-capability.png` for entry 1. An
+annotated pair takes its entry's number rather than one of its own — `02-quick-doc-field.png` and
+`02-quick-doc-field-annotated.png` sort together because they document the same popup. The prefix is
+positional and the name is not: renumbering an entry renames its file, which is the cost of having
+the order visible, and the reason the name still has to stand on its own.
 
 **Annotate only where the prose needs it.** Bake numbered markers into the pixels and nothing else;
 every word of explanation lives in the markdown beside the image. A re-shot screenshot then never
@@ -52,7 +59,9 @@ who cannot see it should lose nothing but the illustration.
 Every capture starts the same way: `./gradlew runIde`, then open `demo/solr/conf/managed-schema.xml`
 in the sandbox. The demo project is built for this — several defects in it are deliberate.
 
-### 1. Match-capability hints — `hints-match-capability.png`
+### 1. Match-capability hints — `01-hints-match-capability.png`
+
+**✅ Captured.**
 
 **Shows** the feature nothing else in the ecosystem does — what each field can *actually* match —
 and, beside it, the storage shape that decides whether a matched document can be returned at all,
@@ -74,44 +83,67 @@ capability is recognised, or the demo schema's field list changes.
 
 **Verifies** HINT-1 through HINT-5.
 
-### 2. Quick documentation on a field — `quick-doc-field.png` ✅ captured
+### 2. Quick documentation on a field — `02-quick-doc-field.png`
 
-*Annotated pair: `quick-doc-field-annotated.png`, used by [the FAQ](faq.md) with a marker key.*
+**✅ Captured.**
+
+*Annotated pair: `02-quick-doc-field-annotated.png`, marked from this capture and used by
+[the FAQ](faq.md) with a four-marker key — the header, the match summary, the **Value**/**From**
+pair, and the hand-maintained columns.*
 
 **Shows** the question the Reference Guide cannot answer: each property's value *and where it came
 from* — this field, its type, or Solr's default.
 
-**Capture** caret inside `name="category"` at `managed-schema.xml:70`, press F1. Crop to the popup,
-**including the `uninvertible` row** — the current image ends above it.
+**Capture** caret inside `name="category"` at `managed-schema.xml:70`, then Quick Documentation. Crop
+to the popup, **including the `uninvertible` row**.
+
+**The popup will not hold the table at its default size.** At the size it opens, the property names
+wrap mid-word and the table ends around `termVectors`, which is the crop this entry has warned about
+twice. Drag its right edge out until every row is one line, then its bottom edge down; the popup
+remembers the size, so this is a once-per-machine adjustment rather than a step in the gesture.
 
 **Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
 `From` column's wording changes.
 
 **Verifies** DOC-1.
 
-### 3. Quick documentation on a class value — `quick-doc-class.png` ✅ captured, **redo pending**
+### 3. Quick documentation on a class value — `03-quick-doc-class.png`
 
-*Annotated pair: `quick-doc-class-annotated.png`, used by [the FAQ](faq.md) with a marker key. Both
-files need re-shooting together.*
+**✅ Captured.**
+
+*Annotated pair: `03-quick-doc-class-annotated.png`, marked from this capture and used by
+[the FAQ](faq.md) with a five-marker key, one per build-time source. It is framed wider than the
+plain file, because its markers sit in the editor margin to the right of the popup.*
 
 **Shows** all four build-time sources in one popup: short name and kind, the fully-qualified Lucene
 class, the one-sentence Javadoc summary, the attributes read from constructor bytecode, and the
 constructed Reference Guide link.
 
 **Capture** caret inside any `class="solr.…"` value — `solr.StandardTokenizerFactory` at
-`managed-schema.xml:33` is the clearest — press F1.
+`managed-schema.xml:33` is the clearest — then Quick Documentation.
 
-**Redo when** the catalog's columns change. **This one is outstanding now:** the existing image
-predates `feat/catalog-attribute-defaults`, so its `Accepts` table shows attribute names and value
-types but no defaults or required markers. Re-shoot after that branch builds.
+**Redo when** the catalog's columns change. **Not when the catalog gains a column.** The catalog has
+carried each attribute's default and required marker since
+`feat: record factory attribute defaults and required markers in the catalog`, and the `Accepts`
+table still shows name and value type alone, because that is all the popup renders. The image is
+correct for what the plugin displays; it goes stale when the per-attribute hover and the
+complete-configuration popup put those facts on screen.
 
 **Verifies** DOC-2 and DOC-4.
 
-### 4. Inspection and quick-fix — `inspection-copyfield-quickfix.png`
+### 4. Inspection and quick-fix — `04-inspection-copyfield-quickfix.png`
 
-**Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields with
-the closest spelling first — the plugin catching the failure that would otherwise surface only at
-core reload.
+**✅ Captured.**
+
+**Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields
+closest in spelling — the plugin catching the failure that would otherwise surface only at core
+reload.
+
+**Closest-spelling ranking decides *which* fields are offered, not the order they appear in.**
+`SolrInspections.replacementFixes` sorts by edit distance and keeps the nearest six, which is why
+`sku`, `id` and `text` are absent from a nine-field schema. The IDE then renders the intention list
+alphabetically, so the capture reads `category`, `description`, `legacy`, `name`, `name_prefix`,
+`notes` — a correct image of a correct ranking, and not evidence that the ranking was ignored.
 
 **Capture** `managed-schema.xml:85` carries a **deliberate** dangling `manufacturer` copyField that
 the demo's header comment says must not be fixed, so no editing is needed. Put the caret on
@@ -131,28 +163,45 @@ same frame, its underline too — but no underline this pass did not already kno
 kind of underline anywhere in frame is a false positive, and the screenshot should not be
 published until it is gone.
 
-### 5. Completion over the schema's own vocabulary — `completion-field-properties.png`
+### 5. Completion over the schema's own vocabulary — `05-completion-field-properties.png`
 
-**Shows** attribute completion inside an opening `<field>` tag: the property table with each property's
-one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
-marked `(default)`.
+**✅ Captured.**
 
-**Capture** put the caret after `stored="true"` on `managed-schema.xml:70`, type a space, and let
-completion open. Frame enough of the list to show the summaries and at least one `(default)` marker.
-Undo the space afterwards.
+**Shows** attribute completion inside an opening `<field>` tag: every property with its one-line
+summary and what it accepts, and the attributes already on the tag omitted — `indexed` and `stored`
+are absent from the list precisely because line 70 already declares them.
+
+**Capture** put the caret after `stored="true"` on `managed-schema.xml:70` and **before the `/`**,
+type a space, and let completion open. A space typed between `/` and `>` opens element completion
+instead — `fieldType`, `field`, `copyField` — which is the wrong popup and an easy mistake to
+publish. Undo the space afterwards; the demo configset is a committed fixture.
+
+**The `(default)` marking is not in this popup, and this entry used to ask for it.** The attribute
+*name* list carries `Property`, summary and accepted values; COMP-4's default marking belongs to
+value completion, which is a different gesture and, if it is wanted as an image, a different entry.
 
 **Redo when** the property vocabulary changes, or the `(default)` marking rule changes.
 
 **Verifies** COMP-2 and COMP-4.
 
-### 6. Catalog-backed factory attributes — `completion-factory-attributes.png`
+### 6. Catalog-backed factory attributes — `06-completion-factory-attributes.png`
+
+**✅ Captured.**
 
 **Shows** the end of the pipeline that starts in `buildSrc`: completion offering a factory's *own*
-attributes, read from its constructor bytecode at build time.
+attributes, read from its constructor bytecode at build time, each labelled with the factory it came
+from.
 
 **Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
-`managed-schema.xml:48`, put the caret after the class attribute, type a space, and let completion
-open — `minGramSize` and `maxGramSize` should appear.
+`managed-schema.xml:48`, put the caret before the closing `/`, type a space, and let completion
+open. What appears is `luceneMatchVersion` and `preserveOriginal`, both attributed to
+`solr.EdgeNGramFilterFactory`. Undo the space afterwards.
+
+**Not `minGramSize` and `maxGramSize`, which this entry used to promise.** The demo declares both on
+that filter, and completion omits what the tag already carries — the same rule that makes image 5
+show no `indexed` or `stored`. The two rules cannot both be demonstrated on one tag: an attribute
+already written is the proof of one and invisible to the other. `preserveOriginal` reaches the popup
+by the identical constructor-bytecode route, so the claim this image makes is unchanged.
 
 **Redo when** the catalog gains columns — the same trigger as image 3, and for the same reason.
 
@@ -163,19 +212,28 @@ you type the class first. A screenshot should not require editing the fixture, s
 the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
 to the demo, which is a fixture change and belongs to CAT-2, not here.
 
-### 7. Find Usages on a field type — `find-usages-field-type.png`
+### 7. Find Usages on a field type — `07-find-usages-field-type.png`
+
+**✅ Captured.**
 
 **Shows** the shared model doing cross-file work: every field declared with a given type, listed from
-one gesture.
+one gesture — `name`, `description` and `text`, three results.
 
-**Capture** caret on `text_general` in the `<fieldType name="text_general">` declaration
-(`managed-schema.xml:31`), press ⌥F7, frame the Find Usages tool window with its results.
+**Capture** caret on `text_general` in a field's `type="text_general"` **reference**
+(`managed-schema.xml:68`), press ⌥F7, frame the Find Usages tool window with its results.
+
+**Invoke it from a reference, not from the declaration.** With the caret inside
+`<fieldType name="text_general">` at line 31 the IDE answers *Cannot search for usages from this
+location*: the declaration is what references resolve *to*, and nothing registers it as a search
+target. This entry named the declaration until a capture pass tried it.
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 
 **Verifies** NAV-3.
 
-### 8. Navigation from `solrconfig.xml` into the schema — `nav-solrconfig-field-reference.png`
+### 8. Navigation from `solrconfig.xml` into the schema — `08-nav-solrconfig-field-reference.png`
+
+**✅ Captured.**
 
 **Shows** the cross-file link that catches the silent failure the README opens with: a `qf` parameter
 naming a field, resolving to that field's schema declaration.
@@ -189,11 +247,20 @@ landing in `managed-schema.xml`. The tooltip version reads better in one frame; 
 
 **Verifies** NAV-4.
 
-### 9. Navigation to a resource file — `nav-resource-file.png` *(optional)*
+### 9. Navigation to a resource file — `09-nav-resource-file.png` *(optional)*
+
+**✅ Captured.**
 
 **Shows** a filter's `words="stopwords.txt"` opening the file it names, including through `lang/`.
 
-**Capture** Cmd+hover the resource path on a `<filter>` that declares one.
+**Capture** caret on the resource path of a `<filter>` that declares one —
+`managed-schema.xml:34` — then Quick Definition, which frames the resolved file's own contents
+beside the reference.
+
+**Cmd+hover raises a tooltip that is the absolute path, and that path is somebody's home
+directory.** It is the faster gesture and the right one for checking NAV-5 by hand; it is the wrong
+one to publish, for the same reason this catalog crops out the branch chip. Quick Definition shows
+the same resolution as the file it opens, named `stopwords.txt` and nothing more.
 
 **Redo when** resource attribute coverage changes.
 
