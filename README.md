@@ -36,17 +36,17 @@ Captures come from the sandbox IDE running against `demo/`.
 
 ### What each field can actually match, inline
 
-<!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
-     Frame managed-schema.xml:66-77 so all nine fields show at once. This is the lead image. -->
+![Nine field declarations in managed-schema.xml, each followed by an inline hint: id, sku and
+category read as whole value, case-sensitive; name, description and text as tokenised,
+case-insensitive; name_prefix adds prefix-capable; every hint then names the storage shape —
+indexed, stored or not stored, doc values or no doc values, single- or multi-valued; notes carries
+only the storage shape and text is the one multi-valued field, while legacy carries no hint at
+all](docs/images/hints-match-capability.png)
 
-> *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
-> read as whole-value and case-sensitive, `text_general` as tokenised and case-insensitive, and
-> `name_prefix` as prefix-capable. Beside the match claim, each hint also carries the storage shape
-> that decides whether a matched document can be returned at all — `indexed` or `not indexed`,
-> `stored` or `not stored`, `doc values` or `no doc values`, `multi-valued` or `single-valued`. Two
-> fields show what the hint does when it cannot say everything: `notes` carries only the storage
-> shape, because its analyser is unrecognised, and `legacy` carries no hint at all, because its
-> `type` is undeclared.
+The hints render beside each field declaration with no hover. Beside the match claim, each carries
+the storage shape that decides whether a matched document can be returned at all. Two fields show
+what the hint does when it cannot say everything: `notes` keeps only the storage shape, because its
+analyser is unrecognised, and `legacy` carries no hint at all, because its `type` is undeclared.
 
 ### Quick documentation on a field
 
@@ -66,25 +66,33 @@ never copied out of the Reference Guide it links to.
 
 ### An inspection catching what fails only at core reload
 
-<!-- SCREENSHOT PENDING: inspection-copyfield-quickfix.png — screenshot catalog entry 4.
-     managed-schema.xml:85 ships a deliberate dangling copyField; Alt-Enter on it. -->
+![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
+open above it offering to change the name to category, description, legacy, name, name_prefix or
+notes](docs/images/inspection-copyfield-quickfix.png)
 
-> *Screenshot pending.* A `copyField` pointing at a field no longer declared, underlined in the
-> editor, with Alt-Enter offering the declared fields closest-spelling-first.
+A `copyField` pointing at a field no longer declared, flagged in the editor, with Alt-Enter offering
+replacements. The six on offer are the six declared names closest in spelling — a nine-field schema
+has three more, and they do not appear.
 
 ### Completion that knows the schema's vocabulary
 
-<!-- SCREENSHOT PENDING: completion-field-properties.png — screenshot catalog entry 5.
-     Also worth a second slot for completion-factory-attributes.png (entry 6). -->
+![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
+multiValued, omitNorms and more, each with a one-line summary and the values it accepts](docs/images/completion-field-properties.png)
 
-> *Screenshot pending.* Attribute completion inside a `<field>` tag, each property carrying its
-> one-line summary, attributes already on the tag omitted, and the value Solr would have used anyway
-> marked `(default)`.
+Attribute completion inside a `<field>` tag: each property with its one-line summary and what it
+accepts. `indexed` and `stored` are missing from the list because that tag already declares them.
+
+The same rule reaches the factories, whose attributes are read from constructor bytecode when the
+plugin is built:
+
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
+luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
+from](docs/images/completion-factory-attributes.png)
 
 Cross-file navigation and Find Usages are not shown here — they are gestures rather than states, and
-a still frame of a resolved reference looks like an ordinary editor. [The screenshot
-catalog](docs/screenshots.md) carries capture instructions for those too, for anyone assembling a
-talk or a marketplace listing.
+a resolved reference at rest looks like an ordinary editor. Both are captured in [the screenshot
+catalog](docs/screenshots.md) as entries 7 to 9, held there for anyone assembling a talk or a
+marketplace listing rather than repeated here.
 
 ## Planned scope
 
