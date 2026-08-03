@@ -154,9 +154,11 @@ From `SolrVersionSelection.fromLuceneMatchVersion` (in `SolrReferenceGuide.kt`):
 - **It is a dependency graph, not one jar.** The factory data spans several independently versioned
   Lucene analysis modules. Which module a factory lives in is what Gradle's resolver computes once
   at build time against a pinned classpath, and is not derivable from a version number.
-- **Not every module ships sources.** `SolrLine.sources` "may be empty — a module that publishes no
-  sources (Jetty, ZooKeeper)... degrades to no documentation for the classes it would have covered."
-  The bytecode catalog never has that gap.
+- **A sources jar can be missing, and then the summary is.** `SolrLine.sources` "may be empty," and
+  the classes it would have covered "degrade to no documentation" rather than to a guess — a gap the
+  bytecode half of the catalog never has. Solr's own dependencies are not that case: Jetty and
+  ZooKeeper publish sources, and the generator drops them by filename, scanning `solr-*` and
+  `lucene-*` alone because nothing else carries a class a configset can name.
 
 **Not from the SolrJ dependency either.** `SolrProjectDetector` matches `SOLR_CLIENT_COORDINATES`
 "as substrings of the library name so that every version matches and no version is named here" — a
