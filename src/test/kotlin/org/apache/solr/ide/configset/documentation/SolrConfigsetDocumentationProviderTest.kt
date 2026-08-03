@@ -372,6 +372,33 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * The caret in the attribute's *value* answers exactly as the caret on its name does.
+     *
+     * A reader asking what `15` is has the same question as one asking what `maxGramSize` is, and
+     * gets there by hovering the half their eye is already on. It works because the value of a
+     * factory attribute is not a documented target of its own — unlike `class`, `type` or `name` —
+     * so the search for something to document walks out of the value and lands on the attribute
+     * that encloses it.
+     *
+     * That is a consequence of the *order* the target is chosen in, which makes it exactly the kind
+     * of behaviour that disappears silently: give factory attribute values a target of their own,
+     * or move the attribute branch below the fallback to the enclosing tag, and this position
+     * starts answering with the `<filter>` element or with nothing while every other test stays
+     * green. Asserting the two halves are identical, rather than merely both non-null, is what
+     * pins it down.
+     */
+    fun testHoveringAFactoryAttributesValueAnswersAsItsNameDoes() {
+        val fromValue = docAtCaret(caretInside("15"))
+        assertNotNull("the value half of a factory attribute should answer too", fromValue)
+        assertTrue("expected the owning class: $fromValue", fromValue!!.contains("solr.EdgeNGramFilterFactory"))
+        assertEquals(
+            "both halves of one attribute must answer identically",
+            docAtCaret(caretInside("maxGramSize")),
+            fromValue,
+        )
+    }
+
+    /**
      * An attribute the catalog does not list is not described. Analysis tags have no element-level
      * documentation either, so the honest answer is silence — inventing a value type would be the
      * failure mode this surface exists to avoid.
