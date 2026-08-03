@@ -1,0 +1,340 @@
+## Navigation Menu
+
+# Search code, repositories, users, issues, pull requests...
+
+# Provide feedback
+
+We read every piece of feedback, and take your input very seriously.
+
+# Saved searches
+
+## Use saved searches to filter your results more quickly
+
+To see all available qualifiers, see our [documentation](https://docs.github.com/search-github/github-code-search/understanding-github-code-search-syntax).
+
+# feat: generate the exact-match companion, and close the quick-fix step - #93
+
+## [feat: generate the exact-match companion, and close the quick-fix step](#top)#93 [adityamparikh](/adityamparikh) wants to merge 3 commits into [main](/adityamparikh/solr-intellij-plugin/tree/main)adityamparikh/solr-intellij-plugin:mainfrom [feat/exact-companion-intention](/adityamparikh/solr-intellij-plugin/tree/feat/exact-companion-intention)adityamparikh/solr-intellij-plugin:feat/exact-companion-intentionCopy head branch name to clipboard
+
+## Conversation
+
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=80&v=4)
+
+### @adityamparikh **[adityamparikh](/adityamparikh)** commented [Aug 3, 2026](#issue-5050079059)
+
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=48&v=4)
+
+**Stacked on [#91](https://github.com/adityamparikh/solr-intellij-plugin/pull/91).** Based on `feat/prefix-companion-intention`, not `main`, because it reuses that branch's naming, insertion and copy-rule code. Review [#91](https://github.com/adityamparikh/solr-intellij-plugin/pull/91) first; GitHub will retarget this to `main` automatically once [#91](https://github.com/adityamparikh/solr-intellij-plugin/pull/91) merges. The diff shown here is this change alone.
+
+`feat/prefix-companion-intention`
+`main`
+`main`
+
+A tokenized field does not keep the string a document carried. `Widget Pro` enters the index as `widget` and `pro`, so a filter on the whole value, a facet over it, or a sort by it all have nothing to work against — and none of them reports an error. Alt-Enter on such a field now offers *Add exact-match companion field*, which writes the `string` companion and the `copyField` rule that populates it.
+
+`Widget Pro`
+`widget`
+`pro`
+`string`
+`copyField`
+
+With it, Step 7 closes: action 3 is complete on both halves, action 4 with it.
+
+### The rule worth reading twice
+
+**Reuse matches the implementing class, not the match capability.** Every numeric, date and boolean type is unanalyzed, so match analysis reports all of them as matching whole values — exactly what a string type reports. A reuse rule written against the capability would point a text field's `_exact` companion at whichever `plong` the schema happened to declare first. The schema would accept it, and the failure would arrive at index time against real documents rather than in the editor.
+
+`_exact`
+`plong`
+
+The generated catalog cannot settle it either: its `PRIMITIVE` trait covers numeric, boolean, string, date, UUID and enum types together, because it exists to decide `omitNorms` rather than to separate these. So the check is `StrField` by name. A pure test declares `plong` and `pdate` ahead of `string` and asserts `string` still wins; a fixture test covers the same trap end to end.
+
+`PRIMITIVE`
+`omitNorms`
+`StrField`
+`plong`
+`pdate`
+`string`
+`string`
+
+Already-capable is the mirror of that, and is granularity rather than class: a keyword-tokenized *text* field holds the whole input as one term just as a `string` field does, and has equally nothing to gain. Both are silent.
+
+`string`
+
+### The refactor
+
+The two companions differ in exactly two places — what counts as already capable, and which declared types may be reused — and agree everywhere else. The shared rules moved to `SolrCompanions`, the shared PSI insertion to `SolrAddCompanionIntention`, leaving each companion as its policy.
+
+`SolrCompanions`
+`SolrAddCompanionIntention`
+
+This is not tidying. The companion-name rule and the generated-name collision rule are the kind that get fixed once and left broken in the copy, and a user would meet the difference before anyone reading the code did. The prefix half's 17 tests were re-run unchanged across the refactor, before any exact behaviour was added.
+
+### The generated type
+
+Copied from Solr's own `_default` configset rather than invented — it is the one declaration in a schema that almost never varies, and matching it means a reader recognises the line instead of checking it. `sortMissingLast` puts documents lacking the field at the end of a sort rather than the start; `docValues` is what a facet or sort actually reads.
+
+`_default`
+`sortMissingLast`
+`docValues`
+
+### Tests
+
+19 new (11 pure, 8 fixture), 36 across the package. One asserts the written XML parses back into a model whose companion really does report `WHOLE_VALUE`; another asserts both intentions are offered on the same field and neither hides the other. `./gradlew build` green including the Dokka and Kover gates.
+
+`WHOLE_VALUE`
+`./gradlew build`
+
+### Plan
+
+Step 7 moves to done: the heading, its build-order entry, the last criterion, and the five cross-references pointing at its anchor. The overview gains a sentence — these two intentions are the first time the plugin edits a configset rather than explaining one. I deliberately did **not** touch the inspection-count line in that same paragraph, since [#92](https://github.com/adityamparikh/solr-intellij-plugin/pull/92) rewrites it.
+
+Sorry, something went wrong.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=40&v=4)
+`feat: generate the prefix companion instead of only diagnosing its ab…`
+`1a2bfd1`
+![@coderabbitai](https://avatars.githubusercontent.com/in/347564?s=80&v=4)
+
+### **[coderabbitai](/apps/coderabbitai) Bot** commented [Aug 3, 2026](#issuecomment-5166649999) • edited Loading Uh oh! There was an error while loading. Please reload this page.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+|  |
+| --- |
+| Important Review skipped Auto reviews are disabled on base/target branches other than the default branch.  Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.  ⚙️ Run configuration **Configuration used**: Organization UI  **Review profile**: CHILL  **Plan**: Pro Plus  **Run ID**: `e14f315a-4a82-405e-8d53-864b6e98e690`  You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.  Use the checkbox below for a quick retry:   * 🔍 Trigger review   ---   Comment `@coderabbitai help` to get the list of available commands. |
+
+Important
+
+## Review skipped
+
+Auto reviews are disabled on base/target branches other than the default branch.
+
+Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.
+
+`.coderabbit.yaml`
+`@coderabbitai review`
+
+**Configuration used**: Organization UI
+
+**Review profile**: CHILL
+
+**Plan**: Pro Plus
+
+**Run ID**: `e14f315a-4a82-405e-8d53-864b6e98e690`
+
+`e14f315a-4a82-405e-8d53-864b6e98e690`
+
+You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.
+
+`reviews.review_status`
+`false`
+
+Use the checkbox below for a quick retry:
+
+Comment `@coderabbitai help` to get the list of available commands.
+
+`@coderabbitai help`
+
+Sorry, something went wrong.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+![@gitar-bot](https://avatars.githubusercontent.com/in/827041?s=80&v=4)
+
+### **[gitar-bot](/apps/gitar-bot) Bot** commented [Aug 3, 2026](#issuecomment-5166680603) • edited Loading Uh oh! There was an error while loading. Please reload this page.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+|  |  |  |
+| --- | --- | --- |
+| Note  Automatic reviews are paused because your trial's included automatic processing has been used for this period. **[Upgrade now](https://gitar.ai/pricing?utm_source=github&utm_medium=in_app&utm_campaign=in_app_upgrade&utm_content=budget_limit)**, or comment **"Gitar review"** to run a review anytime.  [Learn more](https://docs.gitar.ai/resources/faq?utm_source=github&utm_medium=in_app&utm_campaign=in_app_engagement&utm_content=budget_limit#gitar-shows-paused-automatic-processing)  **Code Review** `⚠️ Changes requested` `0 resolved / 1 findings` Generates the exact-match companion field and closes the quick-fix step, but the companion field ignores multiValued source, failing at index time.  ⚠️ **Edge Case:** Companion field ignores multiValued source, fails at index time `📄 src/main/kotlin/org/apache/solr/ide/configset/intention/SolrAddCompanionIntention.kt:117-129` `📄 src/main/kotlin/org/apache/solr/ide/configset/intention/SolrCompanions.kt:65-79`  The generated companion is always written single-valued: `<field name="..._exact" type="..." indexed="true" stored="false"/>` (no `multiValued`), and neither SolrCompanions.plan nor the exact/prefix policies consider the source field's `multiValued` setting. When the source is a multiValued text field carrying more than one value, Solr rejects the `copyField` at index time with "multiple values encountered for non multiValued copy field" — precisely the class of silent, deferred failure this feature is meant to avoid. Propagate the source field's effective `multiValued` onto the generated companion field (e.g. add `multiValued="true"` when the source resolves to multiValued), so the companion accepts the same cardinality the copy rule feeds it.   🤖 **Prompt for agents** ``` Code Review: Generates the exact-match companion field and closes the quick-fix step, but the companion field ignores multiValued source, failing at index time.  1. ⚠️ Edge Case: Companion field ignores multiValued source, fails at index time    Files: src/main/kotlin/org/apache/solr/ide/configset/intention/SolrAddCompanionIntention.kt:117-129, src/main/kotlin/org/apache/solr/ide/configset/intention/SolrCompanions.kt:65-79     The generated companion is always written single-valued: `<field name="..._exact" type="..." indexed="true" stored="false"/>` (no `multiValued`), and neither SolrCompanions.plan nor the exact/prefix policies consider the source field's `multiValued` setting. When the source is a multiValued text field carrying more than one value, Solr rejects the `copyField` at index time with "multiple values encountered for non multiValued copy field" — precisely the class of silent, deferred failure this feature is meant to avoid. Propagate the source field's effective `multiValued` onto the generated companion field (e.g. add `multiValued="true"` when the source resolves to multiValued), so the companion accepts the same cardinality the copy rule feeds it.   ```   **Options**  `Display: compact` → Showing less information.  Comment with these commands to change the behavior for this request:   |  | | --- | | `Compact` | | ``` gitar display:verbose           ``` |    ---   Important  Your trial ends in 4 days — [upgrade now](https://app.gitar.ai/upgrade?utm_source=github&utm_medium=in_app&utm_campaign=in_app_upgrade&utm_content=footer) to keep code review, CI analysis, auto-apply, custom automations, and more.  Was this helpful? React with 👍 / 👎 | [Gitar](https://gitar.ai) |
+
+Note
+
+Automatic reviews are paused because your trial's included automatic processing has been used for this period. **[Upgrade now](https://gitar.ai/pricing?utm_source=github&utm_medium=in_app&utm_campaign=in_app_upgrade&utm_content=budget_limit)**, or comment **"Gitar review"** to run a review anytime.  
+[Learn more](https://docs.gitar.ai/resources/faq?utm_source=github&utm_medium=in_app&utm_campaign=in_app_engagement&utm_content=budget_limit#gitar-shows-paused-automatic-processing)
+
+Generates the exact-match companion field and closes the quick-fix step, but the companion field ignores multiValued source, failing at index time.
+
+`📄 src/main/kotlin/org/apache/solr/ide/configset/intention/SolrAddCompanionIntention.kt:117-129` `📄 src/main/kotlin/org/apache/solr/ide/configset/intention/SolrCompanions.kt:65-79`
+
+The generated companion is always written single-valued: `<field name="..._exact" type="..." indexed="true" stored="false"/>` (no `multiValued`), and neither SolrCompanions.plan nor the exact/prefix policies consider the source field's `multiValued` setting. When the source is a multiValued text field carrying more than one value, Solr rejects the `copyField` at index time with "multiple values encountered for non multiValued copy field" — precisely the class of silent, deferred failure this feature is meant to avoid. Propagate the source field's effective `multiValued` onto the generated companion field (e.g. add `multiValued="true"` when the source resolves to multiValued), so the companion accepts the same cardinality the copy rule feeds it.
+
+`<field name="..._exact" type="..." indexed="true" stored="false"/>`
+`multiValued`
+`multiValued`
+`copyField`
+`multiValued`
+`multiValued="true"`
+`Code Review: Generates the exact-match companion field and closes the quick-fix step, but the companion field ignores multiValued source, failing at index time.
+1. ⚠️ Edge Case: Companion field ignores multiValued source, fails at index time
+Files: src/main/kotlin/org/apache/solr/ide/configset/intention/SolrAddCompanionIntention.kt:117-129, src/main/kotlin/org/apache/solr/ide/configset/intention/SolrCompanions.kt:65-79
+The generated companion is always written single-valued: `<field name="..._exact" type="..." indexed="true" stored="false"/>` (no `multiValued`), and neither SolrCompanions.plan nor the exact/prefix policies consider the source field's `multiValued` setting. When the source is a multiValued text field carrying more than one value, Solr rejects the `copyField` at index time with "multiple values encountered for non multiValued copy field" — precisely the class of silent, deferred failure this feature is meant to avoid. Propagate the source field's effective `multiValued` onto the generated companion field (e.g. add `multiValued="true"` when the source resolves to multiValued), so the companion accepts the same cardinality the copy rule feeds it.`
+
+`Display: compact` → Showing less information.
+
+Comment with these commands to change the behavior for this request:
+
+|  |
+| --- |
+| `Compact` |
+| ``` gitar display:verbose           ``` |
+
+`gitar display:verbose`
+
+Important
+
+Your trial ends in 4 days — [upgrade now](https://app.gitar.ai/upgrade?utm_source=github&utm_medium=in_app&utm_campaign=in_app_upgrade&utm_content=footer) to keep code review, CI analysis, auto-apply, custom automations, and more.
+
+Was this helpful? React with 👍 / 👎 | [Gitar](https://gitar.ai)
+
+Sorry, something went wrong.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+![gitar-bot[bot]](https://avatars.githubusercontent.com/in/827041?s=60&v=4)
+
+|  |  |  |
+| --- | --- | --- |
+|  |  | // Immediately after the source field, so the pair reads together. |
+|  |  | schema.addAfter( |
+|  |  | factory.createTagFromText( |
+|  |  | """<field name="${plan.companionField}" type="${plan.typeName}" indexed="true" stored="false"/>""", |
+|  |  | ), |
+|  |  | fieldTag, |
+|  |  | ) |
+|  |  |  |
+|  |  | val copyRule = factory.createTagFromText( |
+|  |  | """<copyField source="$fieldName" dest="${plan.companionField}"/>""", |
+|  |  | ) |
+|  |  | val lastCopy = schema.subTags.lastOrNull { it.name == SolrSchemaTags.COPY\_FIELD } |
+|  |  | if (lastCopy != null) schema.addAfter(copyRule, lastCopy) else schema.addSubTag(copyRule, false) |
+
+### @gitar-bot **[gitar-bot](/apps/gitar-bot) Bot** [Aug 3, 2026](#discussion_r3704110444)
+
+![@gitar-bot](https://avatars.githubusercontent.com/in/827041?s=48&v=4)
+
+There was a problem hiding this comment.
+
+### Choose a reason for hiding this comment
+
+The reason will be displayed to describe this comment to others. [Learn more](https://docs.github.com/articles/managing-disruptive-comments/#hiding-a-comment).
+
+The generated companion is always written single-valued: `<field name="..._exact" type="..." indexed="true" stored="false"/>` (no `multiValued`), and neither SolrCompanions.plan nor the exact/prefix policies consider the source field's `multiValued` setting. When the source is a multiValued text field carrying more than one value, Solr rejects the `copyField` at index time with "multiple values encountered for non multiValued copy field" — precisely the class of silent, deferred failure this feature is meant to avoid. Propagate the source field's effective `multiValued` onto the generated companion field (e.g. add `multiValued="true"` when the source resolves to multiValued), so the companion accepts the same cardinality the copy rule feeds it.
+
+`<field name="..._exact" type="..." indexed="true" stored="false"/>`
+`multiValued`
+`multiValued`
+`copyField`
+`multiValued`
+`multiValued="true"`
+
+Was this helpful? React with 👍 / 👎
+
+Sorry, something went wrong.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=40&v=4)
+`fix: decide availability on a local, and pin the inserted-element layout`
+`f9e2432`
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=40&v=4)
+`feat: generate the exact-match companion, and close the quick-fix step`
+`1b137b5`
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=40&u=07e8f56a54f64cb31ad034e794aa2a613646c73c&v=4)
+`8175bbc`
+`1b137b5`
+![@sonarqubecloud](https://avatars.githubusercontent.com/in/12526?s=80&v=4)
+
+### **[sonarqubecloud](/apps/sonarqubecloud) Bot** commented [Aug 3, 2026](#issuecomment-5166950792)
+
+|  |
+| --- |
+| [Quality Gate Passed](https://sonarcloud.io/dashboard?id=adityamparikh_solr-intellij-plugin&pullRequest=93) **Quality Gate passed** Issues   [0 New issues](https://sonarcloud.io/project/issues?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=OPEN,CONFIRMED&sinceLeakPeriod=true)   [0 Accepted issues](https://sonarcloud.io/project/issues?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=ACCEPTED)  Measures   [0 Security Hotspots](https://sonarcloud.io/project/security_hotspots?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=OPEN,CONFIRMED&sinceLeakPeriod=true)   [86.0% Coverage on New Code](https://sonarcloud.io/component_measures?id=adityamparikh_solr-intellij-plugin&pullRequest=93&metric=new_coverage&view=list)   [0.0% Duplication on New Code](https://sonarcloud.io/component_measures?id=adityamparikh_solr-intellij-plugin&pullRequest=93&metric=new_duplicated_lines_density&view=list)  [See analysis details on SonarQube Cloud](https://sonarcloud.io/dashboard?id=adityamparikh_solr-intellij-plugin&pullRequest=93) |
+
+## [Quality Gate Passed](https://sonarcloud.io/dashboard?id=adityamparikh_solr-intellij-plugin&pullRequest=93) **Quality Gate passed**
+
+![Quality Gate Passed](https://camo.githubusercontent.com/00bac9dd89ca597beae761468f8cdeff283833839405027acacea9b132e0116e/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636865636b732f5175616c6974794761746542616467652f71672d7061737365642d323070782e706e67 "Quality Gate Passed")
+
+Issues  
+[![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67) [0 New issues](https://sonarcloud.io/project/issues?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=OPEN,CONFIRMED&sinceLeakPeriod=true)  
+[![](https://camo.githubusercontent.com/5ad34d7e6f2a5aa0d644209f46bb24fba00f31f704923ce46fe8434f94917f73/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f61636365707465642d313670782e706e67)](https://camo.githubusercontent.com/5ad34d7e6f2a5aa0d644209f46bb24fba00f31f704923ce46fe8434f94917f73/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f61636365707465642d313670782e706e67) [0 Accepted issues](https://sonarcloud.io/project/issues?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=ACCEPTED)
+
+![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)
+![](https://camo.githubusercontent.com/5ad34d7e6f2a5aa0d644209f46bb24fba00f31f704923ce46fe8434f94917f73/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f61636365707465642d313670782e706e67)
+
+Measures  
+[![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67) [0 Security Hotspots](https://sonarcloud.io/project/security_hotspots?id=adityamparikh_solr-intellij-plugin&pullRequest=93&issueStatuses=OPEN,CONFIRMED&sinceLeakPeriod=true)  
+[![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67) [86.0% Coverage on New Code](https://sonarcloud.io/component_measures?id=adityamparikh_solr-intellij-plugin&pullRequest=93&metric=new_coverage&view=list)  
+[![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67) [0.0% Duplication on New Code](https://sonarcloud.io/component_measures?id=adityamparikh_solr-intellij-plugin&pullRequest=93&metric=new_duplicated_lines_density&view=list)
+
+![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)
+![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)
+![](https://camo.githubusercontent.com/6cc27951a82703bd6a32deed62ec92af84fc495762ca86bc7af5a3ac490c7bda/68747470733a2f2f736f6e6172736f757263652e6769746875622e696f2f736f6e6172636c6f75642d6769746875622d7374617469632d7265736f75726365732f76322f636f6d6d6f6e2f7061737365642d313670782e706e67)
+
+[See analysis details on SonarQube Cloud](https://sonarcloud.io/dashboard?id=adityamparikh_solr-intellij-plugin&pullRequest=93)
+
+Sorry, something went wrong.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+### Reviewers
+
+![@gitar-bot](https://avatars.githubusercontent.com/in/827041?s=40&v=4)
+
+### Assignees
+
+### Labels
+
+### Projects
+
+### Milestone
+
+### Development
+
+Successfully merging this pull request may close these issues.
+
+### Uh oh!
+
+There was an error while loading. Please reload this page.
+
+There was an error while loading. Please reload this page.
+
+### 1 participant
+
+![@adityamparikh](https://avatars.githubusercontent.com/u/15164497?s=52&v=4)
+
+## Footer
+
+### Footer navigation
