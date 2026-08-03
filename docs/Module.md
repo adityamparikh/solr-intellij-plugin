@@ -130,6 +130,17 @@ Showing what each field matches, inline beside its declaration.
 [Why an inlay rather than a
 tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsethint).
 
+# Package org.apache.solr.ide.configset.intention
+
+Offering to improve a file that is already correct.
+
+Separate from `inspection` on purpose: an inspection claims something is wrong, and a
+field without prefix support is not wrong. What belongs here is anything the user might
+want and the plugin can write, where staying silent is also a valid answer.
+
+[Why the boundary against
+inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetintention).
+
 # Package org.apache.solr.ide.server
 
 Talking to a live Solr server, and remembering how to reach one. Currently
