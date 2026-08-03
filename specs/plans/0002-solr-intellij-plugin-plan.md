@@ -484,21 +484,27 @@ before [references and navigation](#step-5-references-navigation-and-find-usages
 depends on: that dependency holds only for inspections written as unresolved-reference checks, and these are driven off
 the field model instead.
 
-**What shipped so far:** four of the seven inspections action 1 names, each with its description file and its flagged
+**What shipped so far:** five of the seven inspections action 1 names, each with its description file and its flagged
 and clean fixtures — `SolrDanglingCopyFieldInspection`,
-`SolrUnknownFieldTypeInspection`, `SolrUnknownFieldReferenceInspection` and
-`SolrNonIndexedRelevanceFieldInspection`. Two more inspections exist in the same package and belong to
+`SolrUnknownFieldTypeInspection`, `SolrUnknownFieldReferenceInspection`,
+`SolrNonIndexedRelevanceFieldInspection` and `SolrUnusedFieldTypeInspection`. The last of those is the only one whose
+finding is not a defect — an unused type is dead weight and Solr loads it without complaint — so it is drawn as an
+unused declaration rather than underlined, and offers no quick-fix: whether the declaration is a leftover or a
+provision for fields not written yet is a judgement the editor cannot make. It is also the first of these to refuse to
+answer at all in a case it cannot read, staying silent on a schema that `xi:include`s its field declarations, where
+every type would otherwise look unused. Two more inspections exist in the same package and belong to
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
 rather than here: `SolrUnknownAttributeInspection` and `SolrInvalidAttributeValueInspection`
 are catalog-backed and validate an attribute rather than a reference.
 
-**Three numbers describe this step and none of them is the same number.** Seven inspections are planned here and four
-are built. Six inspection classes are registered in
-`plugin.xml`, because two of them belong to another step. Six of
-[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise five of those six, since the dangling-
-`copyField` inspection gets a second check for reacting to a live edit, a seventh restores the baseline, and the
-non-indexed relevance check has no sandbox gesture yet. Read a count against what it counts; "six inspections exist" is
-true and says nothing about this step's progress.
+**Four numbers describe this step, and reading one of them for another is the mistake this paragraph exists to
+prevent.** Seven inspections are planned here and five are built. Seven inspection classes are registered in
+`plugin.xml` — the same number by coincidence, not correspondence, because two of the registered classes belong to
+another step and two of the planned inspections do not exist yet. Seven of
+[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise six of those seven, since the dangling-
+`copyField` inspection gets a second check for reacting to a live edit, an eighth restores the baseline, and the
+non-indexed relevance check has no sandbox gesture yet. Read a count against what it counts; "seven inspections exist"
+is true and says nothing about this step's progress.
 
 **Success criteria:**
 
@@ -507,14 +513,13 @@ true and says nothing about this step's progress.
     - [x] A field naming an undeclared field type.
     - [x] A handler parameter naming a field the schema does not declare.
     - [x] A relevance parameter naming a non-indexed field.
-    - [ ] An unused field type.
+    - [x] An unused field type.
     - [ ] A known-bad analyzer chain ordering.
     - [ ] A configuration element removed in the targeted Solr line.
 
-The last one is the only one of the three with a dependency: it needs the catalog to know which line removed what, which
-is a fact
-[the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record today. The other two are
-buildable now.
+Of the two left, only the last has a dependency: it needs the catalog to know which line removed what, which is a fact
+[the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record today. The analyzer-chain
+ordering check is buildable now.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)

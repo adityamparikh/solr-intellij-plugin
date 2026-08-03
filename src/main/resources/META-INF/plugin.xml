@@ -132,6 +132,20 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+        <!-- The one finding here that is not a defect: a type nothing uses is dead weight, not a
+             mistake, so it is drawn as an unused declaration rather than underlined. Enabled by
+             default all the same — the grey-out costs a reader nothing, and dead configuration is
+             how a schema becomes unreadable. -->
+        <localInspection
+                language="XML"
+                shortName="SolrUnusedFieldType"
+                bundle="messages.SolrBundle"
+                key="inspection.unusedFieldType.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnusedFieldTypeInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to
