@@ -994,13 +994,15 @@ because none of it needs the catalog. Positions where any value is legal are lef
 implies the values not on it are wrong. Since then the catalog-backed half has largely landed too: completion offers the
 `class`
 classes and, inside an analysis tag, the factory's own attribute names, and the typed-attribute inspections validate an
-attribute's value and name against the catalog — action 2. What remains is the per-attribute hover and the factory-tag
-complete-configuration popup (actions 5 and 6). Both want the defaults-and-required column,
-and [Step 9](#step-9-factory-catalog-generator-in-progress) now carries it — so they are no longer blocked on the data,
-only unbuilt. Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup renders the
-catalog's kind, spellings and attributes plus the schema's own usage, and the Javadoc summary waits
-on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
-resolution.
+attribute's value and name against the catalog — action 2. Quick documentation on `class` values shipped ahead of the
+catalog's prose column and now carries the Javadoc summary where [Step 9](#step-9-factory-catalog-generator-in-progress)
+resolved `-sources`. **What shipped in this change is action 5:** hovering a factory attribute — `minGramSize` on an
+`EdgeNGramFilterFactory` — answers with the class that reads it, its value type, and its default or required marker
+where the catalog carries them, plus the guide link the class-value half already builds. The provider stays silent when
+the class or the attribute is unknown rather than inventing a type or a default; Javadoc is per class, so there is no
+per-attribute prose to surface and none is claimed. **What remains is action 6** — the factory-tag complete-configuration
+popup — which wants the same defaults column and is a separate change deliberately kept off this surface so the two
+merge cleanly.
 
 **Actions:**
 
@@ -1011,10 +1013,10 @@ resolution.
    of quick documentation does not belong here — it needs the model and match analysis rather than the catalog, so it
    ships with
    [match hints](#step-7-match-hints-and-quick-fixes-done) instead. Only the catalog-backed half waits for this step.
-5. Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers with what the catalog can
+5. ~~Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers with what the catalog can
    prove: the class that reads it, its value type, and its default or required marker once the catalog carries them,
    with the guide link for the rest. Javadoc is written per class, not per attribute, so full per-attribute prose has no
-   source anywhere in this design; the provider states what it can cite and claims nothing beyond it.
+   source anywhere in this design; the provider states what it can cite and claims nothing beyond it.~~ **Done.**
 6. The factory sibling of the field property table: quick documentation on a factory tag shows every attribute the class
    accepts at its effective value, written or defaulted, distinguishably — the complete-configuration picture the field
    half already gives, and the second consumer of the defaults column beside
@@ -1023,8 +1025,8 @@ resolution.
 **Success criteria:**
 
 - [x] Completion and validation work against the catalog.
-- [ ] Quick documentation resolves for factories and attributes.
-- [ ] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
+- [x] Quick documentation resolves for factories and attributes.
+- [x] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
   default or required marker, and stays silent about meaning it cannot cite.
 - [ ] A factory tag's documentation shows its complete configuration, unwritten attributes at their defaults,
   distinguishably from written ones.
