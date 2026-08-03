@@ -40,8 +40,8 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
-        <!-- Quick documentation on a field or its type, resolving each property's effective value
-             and where it came from. -->
+        <!-- Quick documentation on a field, its type, a factory tag's complete configuration, or a
+             class value — each resolving effective values and where they came from. -->
         <lang.documentationProvider
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>

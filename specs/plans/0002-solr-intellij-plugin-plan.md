@@ -988,13 +988,16 @@ because none of it needs the catalog. Positions where any value is legal are lef
 implies the values not on it are wrong. Since then the catalog-backed half has largely landed too: completion offers the
 `class`
 classes and, inside an analysis tag, the factory's own attribute names, and the typed-attribute inspections validate an
-attribute's value and name against the catalog — action 2. What remains is the per-attribute hover and the factory-tag
-complete-configuration popup (actions 5 and 6). Both want the defaults-and-required column,
-and [Step 9](#step-9-factory-catalog-generator-in-progress) now carries it — so they are no longer blocked on the data,
-only unbuilt. Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup renders the
-catalog's kind, spellings and attributes plus the schema's own usage, and the Javadoc summary waits
-on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
-resolution.
+attribute's value and name against the catalog — action 2. Quick documentation on `class` values ships the catalog's
+kind, spellings, accepted attributes and Javadoc summary. **Action 6 has also shipped:** hovering a factory tag
+(`<filter>`, `<tokenizer>`, `<charFilter>`) shows every attribute the catalog says the class accepts at its effective
+value — written values bold and labelled as on this filter/tokenizer/char filter, unwritten defaults plain and labelled
+as Solr's — the factory sibling of the field property table. A class the catalog does not know stays silent rather than
+claiming an empty attribute set. The configuration table lives on the *tag*, not on the `class` value: the value keeps
+answering what the class is, and the tag answers what this particular instance resolves to. **What remains is action 5**
+— per-attribute hover with owner, value type, and default/required marker. Both action 5 and action 6 consume the
+defaults-and-required column [Step 9](#step-9-factory-catalog-generator-in-progress) now carries; only the per-attribute
+surface is still unbuilt.
 
 **Actions:**
 
@@ -1020,7 +1023,7 @@ resolution.
 - [ ] Quick documentation resolves for factories and attributes.
 - [ ] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
   default or required marker, and stays silent about meaning it cannot cite.
-- [ ] A factory tag's documentation shows its complete configuration, unwritten attributes at their defaults,
+- [x] A factory tag's documentation shows its complete configuration, unwritten attributes at their defaults,
   distinguishably from written ones.
 
 **Acceptance:** demo steps

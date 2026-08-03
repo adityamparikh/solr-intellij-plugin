@@ -147,6 +147,11 @@ gesture, caret placement, the Find Usages tool window.*
       configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
       the catalog's documentation column carries, where the line's `-sources` artifacts
       supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
+- [ ] **DOC-4b** — Hover the *tag* of the demo's EdgeNGram filter (the word `filter`, not the
+      `class` value): the popup shows a **Configuration** table of every attribute the class
+      accepts. Written `minGramSize` / `maxGramSize` are bold and labelled *on this filter*;
+      unwritten `preserveOriginal` appears as **false** labelled *Solr default*. A custom
+      `class` the catalog does not know must offer nothing on the tag — not an empty table.
 - [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
       `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
       and `useDocValuesAsStored` likewise.
@@ -163,11 +168,12 @@ gesture, caret placement, the Find Usages tool window.*
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
       DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
-also carries each attribute's default and whether it is required, and no surface renders
-them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
-looking for `minGramSize` marked required is looking for something unbuilt, not something
-broken.
+**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** That is the
+class-*value* popup on purpose. Defaults and required markers appear on the *tag* as
+DOC-4b's complete-configuration table, and will also appear on a single attribute via the
+per-attribute hover still listed in *Not yet in the suite*. A tester looking for
+`minGramSize` marked required on the class value is looking at the wrong element, not at a
+broken feature.
 
 **DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
@@ -276,8 +282,6 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
   default or required marker
-- A factory's complete effective configuration in its popup, unwritten attributes shown
-  at their defaults
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
 - `solrconfig.xml`'s own structure: element completion and validation

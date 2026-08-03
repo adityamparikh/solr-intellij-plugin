@@ -64,8 +64,10 @@ class SolrFieldPresentationTest {
         "org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory",
         "solr.EdgeNGramFilterFactory",
         listOf(
-            SolrClassAttribute("maxGramSize", SolrValueType.INTEGER),
-            SolrClassAttribute("preserveOriginal", SolrValueType.BOOLEAN),
+            SolrClassAttribute("luceneMatchVersion", SolrValueType.FREE),
+            SolrClassAttribute("maxGramSize", SolrValueType.INTEGER, required = true),
+            SolrClassAttribute("minGramSize", SolrValueType.INTEGER, required = true),
+            SolrClassAttribute("preserveOriginal", SolrValueType.BOOLEAN, defaultValue = "false"),
         ),
     )
 
@@ -246,6 +248,102 @@ class SolrFieldPresentationTest {
         val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
         assertTrue("strFieldEntry carries no summary", strFieldEntry.summary == null)
         assertFalse("no empty <p></p> for a missing summary", html.contains("<p></p>"))
+    }
+
+    // --- the factory-tag complete-configuration popup ----------------------------------------
+
+    /**
+     * The configuration table is the point of documenting the tag: every attribute the class
+     * accepts, each at its effective value, written or defaulted.
+     */
+    @Test
+    fun `a factory tag popup shows every attribute at its effective value`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            edgeNGramEntry,
+            mapOf("minGramSize" to "2", "maxGramSize" to "15"),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("<b>Configuration</b>"))
+        assertTrue(html.contains("minGramSize"))
+        assertTrue(html.contains("maxGramSize"))
+        assertTrue(html.contains("preserveOriginal"))
+        assertTrue(html.contains("luceneMatchVersion"))
+        assertTrue("written minGramSize must appear", html.contains("<b>2</b>"))
+        assertTrue("the catalog default must appear for the unwritten attribute", html.contains("false"))
+        assertTrue("defaults are labelled as Solr's: $html", html.contains("Solr default"))
+        assertTrue("written values name the filter: $html", html.contains("on this filter"))
+    }
+
+    /** Written and defaulted rows must be visually distinguishable, not merely both present. */
+    @Test
+    fun `written factory attributes are bold and defaults are not`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            edgeNGramEntry,
+            mapOf("minGramSize" to "2"),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue("a written value is bold: $html", html.contains("<td><b>2</b></td>"))
+        assertTrue(
+            "a default is plain text, not bold: $html",
+            html.contains("<td>false</td>") && !html.contains("<td><b>false</b></td>"),
+        )
+    }
+
+    /** A required attribute the tag omits still appears — dropping it would understate the class. */
+    @Test
+    fun `a missing required factory attribute is marked rather than invented`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            edgeNGramEntry,
+            emptyMap(),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue("required, not set must appear: $html", html.contains("required, not set"))
+        assertTrue("no invented number for minGramSize: $html", html.contains("—"))
+        assertFalse("must not claim a Solr default for a required attribute", html.contains("minGramSize</code></td><td>false"))
+    }
+
+    /** An optional attribute with no recorded default is not silently dropped either. */
+    @Test
+    fun `an unset optional factory attribute appears without a fabricated value`() {
+        val resolved = SolrFieldPresentation.effectiveFactoryAttributes(
+            edgeNGramEntry,
+            emptyMap(),
+        ).associateBy { it.attribute.name }
+        assertEquals(SolrFactoryAttributeOrigin.UNSET, resolved.getValue("luceneMatchVersion").origin)
+        assertNull(resolved.getValue("luceneMatchVersion").value)
+        assertEquals(SolrFactoryAttributeOrigin.SOLR_DEFAULT, resolved.getValue("preserveOriginal").origin)
+        assertEquals("false", resolved.getValue("preserveOriginal").value)
+    }
+
+    /** Written attributes sort ahead of defaults, matching the field property table. */
+    @Test
+    fun `written factory attributes sort before defaults`() {
+        val resolved = SolrFieldPresentation.effectiveFactoryAttributes(
+            edgeNGramEntry,
+            mapOf("preserveOriginal" to "true"),
+        )
+        assertEquals("preserveOriginal", resolved.first().attribute.name)
+        assertEquals(SolrFactoryAttributeOrigin.TAG, resolved.first().origin)
+    }
+
+    /** A class with no known attributes claims nothing about configuration. */
+    @Test
+    fun `a factory with no known attributes claims no configuration table`() {
+        val bare = SolrClassEntry(SolrClassKind.TOKENIZER, "org.example.T", "solr.T")
+        val html = SolrFieldPresentation.factoryDocumentation(bare, emptyMap(), SolrVersionSelection.DEFAULT)
+        assertFalse("no configuration table for an empty list: $html", html.contains("Configuration"))
+    }
+
+    @Test
+    fun `a factory tag popup names the kind and the tag`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            edgeNGramEntry,
+            emptyMap(),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("&lt;filter&gt;"))
+        assertTrue(html.contains("token filter factory"))
+        assertTrue(html.contains("solr.EdgeNGramFilterFactory"))
     }
 
     // --- the meaning of a property's resolved value ----------------------------------------------

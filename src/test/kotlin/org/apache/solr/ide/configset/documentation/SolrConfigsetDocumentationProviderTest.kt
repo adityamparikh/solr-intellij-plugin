@@ -280,6 +280,90 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         assertTrue("expected the kind in words: $doc", doc!!.contains("token filter factory"))
     }
 
+    /**
+     * Hovering the factory *tag* answers with the complete configuration — every attribute at its
+     * effective value — not the class-identity popup the `class` value already owns.
+     */
+    fun testHoveringAFactoryTagShowsItsCompleteConfiguration() {
+        val filter = """
+            <schema name="products">
+              <fieldType name="text_edge" class="solr.TextField">
+                <analyzer>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                  <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+        """.trimIndent()
+        val doc = docAtCaret(caretInside("filter", text = filter))
+        assertNotNull("a factory tag should be documented", doc)
+        assertTrue("expected the configuration table: $doc", doc!!.contains("Configuration"))
+        assertTrue("expected the written minGramSize: $doc", doc.contains("2"))
+        assertTrue("expected the written maxGramSize: $doc", doc.contains("15"))
+        assertTrue(
+            "expected the unwritten preserveOriginal default: $doc",
+            doc.contains("preserveOriginal") && doc.contains("false"),
+        )
+        assertTrue("expected the Solr default origin: $doc", doc.contains("Solr default"))
+        assertTrue("expected the on-this-filter origin: $doc", doc.contains("on this filter"))
+        // The class-value Accepts table is a different popup; the tag must not be it.
+        assertFalse(
+            "the tag popup is configuration, not the bare Accepts list: $doc",
+            doc.contains("<b>Accepts</b>") && !doc.contains("Configuration"),
+        )
+    }
+
+    /** A tokenizer tag is the same surface with the tokenizer vocabulary. */
+    fun testHoveringATokenizerTagShowsItsCompleteConfiguration() {
+        val doc = docAtCaret(caretInside("tokenizer"))
+        assertNotNull(doc)
+        assertTrue("expected the configuration table: $doc", doc!!.contains("Configuration"))
+        assertTrue("expected a catalog attribute: $doc", doc.contains("maxTokenLength"))
+        assertTrue("expected the tokenizer origin vocabulary: $doc", doc.contains("on this tokenizer") || doc.contains("Solr default") || doc.contains("no default recorded"))
+    }
+
+    /**
+     * A custom plugin class the catalog has never seen must stay silent on the tag — an empty
+     * configuration table would claim the class accepts nothing.
+     */
+    fun testAnUnknownFactoryClassOnATagOffersNothing() {
+        val custom = schema.replace(
+            "solr.LowerCaseFilterFactory",
+            "com.example.CustomFilterFactory",
+        )
+        val doc = docAtCaret(caretInside("filter", occurrence = 1, text = custom))
+        assertNull("an unknown factory class must not get a configuration table: $doc", doc)
+    }
+
+    /**
+     * The class *value* keeps the identity popup. Putting the configuration table there would mix
+     * two questions and steal the tag's reason to exist.
+     */
+    fun testAClassValueStillShowsTheIdentityPopupNotTheConfigurationTable() {
+        val filter = """
+            <schema name="products">
+              <fieldType name="text_edge" class="solr.TextField">
+                <analyzer>
+                  <filter class="solr.EdgeNGramFilterFactory" minGramSize="2"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+        """.trimIndent()
+        val doc = docAtCaret(caretInside("solr.EdgeNGramFilterFactory", text = filter))
+        assertNotNull(doc)
+        assertTrue("expected the Accepts table on the class value: $doc", doc!!.contains("Accepts"))
+        assertFalse(
+            "the configuration table belongs on the tag, not the class value: $doc",
+            doc.contains("<b>Configuration</b>"),
+        )
+    }
+
+    /** Outside a Solr project a factory tag is as silent as every other surface. */
+    fun testNoFactoryTagDocumentationOutsideASolrProject() {
+        givenNoSolrOnTheClasspath()
+        assertNull(docAtCaret(caretInside("filter")))
+    }
+
     /** The catalog matches both spellings, so the hover must too. */
     fun testAFullyQualifiedClassValueAnswersLikeItsShortForm() {
         val fqn = schema.replace("solr.StrField", "org.apache.solr.schema.StrField")
