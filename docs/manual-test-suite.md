@@ -90,9 +90,9 @@ placement and readability of the rendered hint.*
       `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
       `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
       the schema does not declare) shows no hint at all.
-- [ ] 📸 **Capture `docs/images/hints-match-capability.png`** — the field block at lines
+- [ ] 📸 **Capture `docs/images/01-hints-match-capability.png`** — the field block at lines
       66-77, all nine fields in one frame, no interaction.
-      [Catalog entry 1](screenshots.md#1-match-capability-hints--hints-match-capabilitypng).
+      [Catalog entry 1](screenshots.md#1-match-capability-hints--01-hints-match-capabilitypng).
 
 ## 4. Navigation and Find Usages (NAV)
 
@@ -116,15 +116,15 @@ gesture, caret placement, the Find Usages tool window.*
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
-- [ ] 📸 **Capture `docs/images/find-usages-field-type.png`** at NAV-3 — the Find Usages
+- [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at NAV-3 — the Find Usages
       tool window with its results, invoked from a `type="text_general"` reference.
-      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--find-usages-field-typepng).
-- [ ] 📸 **Capture `docs/images/nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
+      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
+- [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
-      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--nav-solrconfig-field-referencepng).
-- [ ] 📸 *Optional:* **`docs/images/nav-resource-file.png`** at NAV-5 — Cmd+hover
+      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
+- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — Cmd+hover
       `words="stopwords.txt"` at `managed-schema.xml:34`.
-      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--nav-resource-filepng-optional).
+      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
 ## 5. Quick documentation (DOC)
 
@@ -153,13 +153,13 @@ gesture, caret placement, the Find Usages tool window.*
       origins name 1.7. **Undo, and confirm the values return.** One side alone proves
       nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
       check.
-- [ ] 📸 **Re-capture `docs/images/quick-doc-field.png`** at DOC-1 — caret inside
+- [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
       the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
       arrival if taken before that lands.
-      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--quick-doc-fieldpng).
-      DOC-4's `quick-doc-class.png` is current and needs nothing.
+      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
+      DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
 **DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
 also carries each attribute's default and whether it is required, and no surface renders
@@ -192,10 +192,10 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 
 - [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
       and Alt-Enter offers the declared fields, closest spelling first.
-- [ ] 📸 **Capture `docs/images/inspection-copyfield-quickfix.png`** — use the *planted*
+- [ ] 📸 **Capture `docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted*
       `manufacturer` rule at line 85 rather than the edit INSP-1 makes, so the image needs
       no undo. Frame the underline and the open Alt-Enter menu.
-      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--inspection-copyfield-quickfixpng).
+      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
       declared types; applying one produces a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
@@ -232,10 +232,10 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       Change the root element to `version="1.7"` and it marks **false** instead; undo. Same
       claim as DOC-5 and DOC-6, in the surface where a reader meets it first, and the same
       reason for testing both sides.
-- [ ] 📸 **Capture `docs/images/completion-field-properties.png`** — caret after
+- [ ] 📸 **Capture `docs/images/05-completion-field-properties.png`** — caret after
       `stored="true"` on line 70 and before the `/`, type a space, frame the summaries and
       the accepted values. Undo the space afterwards.
-      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--completion-field-propertiespng).
+      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--05-completion-field-propertiespng).
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -250,13 +250,13 @@ popup, against the demo configset's declared Solr line.*
       factory's own attributes — `generateWordParts`, `catenateAll`,
       `splitOnCaseChange` among them. This is the check that proves the
       constructor-bytecode pass reached the editor.
-- [ ] 📸 **Capture `docs/images/completion-factory-attributes.png`** — not from CAT-2,
+- [ ] 📸 **Capture `docs/images/06-completion-factory-attributes.png`** — not from CAT-2,
       which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
       filter at line 48, caret before the closing `/`, space, and frame
       `luceneMatchVersion` and `preserveOriginal` — not `minGramSize` and `maxGramSize`,
       which the filter already declares and completion therefore omits. Same bytecode
       route, no fixture edit.
-      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--completion-factory-attributespng).
+      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--06-completion-factory-attributespng).
 
 ---
 
@@ -302,6 +302,6 @@ a pass was started and abandoned is worth more than a gap.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
-| 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
-| 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| 2007-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
+| 2008-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |

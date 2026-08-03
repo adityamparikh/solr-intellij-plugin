@@ -22,7 +22,7 @@ rest of the page is the follow-up questions it provokes.
 
 ![Quick documentation on a class value, with five regions marked: the short name and kind, the
 fully-qualified class name, the one-sentence Javadoc summary, the accepted attributes, and the
-Reference Guide link](images/quick-doc-class-annotated.png)
+Reference Guide link](images/03-quick-doc-class-annotated.png)
 
 | | What you see | Where it came from |
 |---|---|---|
@@ -38,7 +38,7 @@ fetched, and no prose was copied from the guide the popup links to.
 **A field.** Hovering `name="category"` asks a different question, and gets a different mix:
 
 ![Quick documentation on a field, with four regions marked: the field and type header, the match
-summary, the Value and From columns, and the Accepts and Meaning columns](images/quick-doc-field-annotated.png)
+summary, the Value and From columns, and the Accepts and Meaning columns](images/02-quick-doc-field-annotated.png)
 
 | | What you see | Where it came from |
 |---|---|---|
@@ -61,11 +61,17 @@ It is also not reachable by the machinery that generates the rest: the catalog r
 classes, while these properties are read by `SchemaField` and `FieldType` out of an argument map,
 with defaults living in branching code rather than in any enumerable structure.
 
-The picture shows that table holding its own line where it does not know. `default`, `omitNorms` and
-`omitTermFreqAndPositions` read "depends on the field type" and their **From** says *see the guide* —
-because `omitNorms` defaults true for primitive types and false for text, and asserting one answer
-where Solr has two is how a plugin gets distrusted. A hand-maintained table is allowed to be
-incomplete; it is not allowed to be confidently wrong.
+The picture shows that table holding its own line where it does not know. `default`,
+`omitTermFreqAndPositions` and `omitPositions` read "depends on the field type" and their **From**
+says *see the guide*, because asserting one answer where Solr has two is how a plugin gets
+distrusted. A hand-maintained table is allowed to be incomplete; it is not allowed to be confidently
+wrong.
+
+`omitNorms` used to sit in that list and no longer does: it reads **true**, *Solr default for
+solr.StrField*. Its two answers — true for primitive types, false for text — turned out to be
+decided by the field type's *class*, which the plugin already knows, so resolution reaches the answer
+rather than declining to guess. That is the shape of the exception shrinking: a row leaves the
+"depends" list when something mechanical can settle it, not when someone picks the likelier value.
 
 ## Does the plugin pull sections out of the Solr Reference Guide?
 

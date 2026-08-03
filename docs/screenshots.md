@@ -25,8 +25,15 @@ comparable and readable when scaled down.
 the image, leak whatever branch you happened to be on, and add nothing — the first capture in this
 catalog leaked `feat/catalog-attribute-de` in its top-left corner before it was cropped out.
 
-**Names describe the capability, not the gesture.** `hints-match-capability.png`, not
-`inlay-hover-demo.png`. Kebab-case, `.png`, in `docs/images/`.
+**Names describe the capability, not the gesture.** `hints-match-capability`, not
+`inlay-hover-demo`. Kebab-case, `.png`, in `docs/images/`.
+
+**A two-digit prefix carries the catalog entry number**, so the directory lists in the order this
+document reads and a file says which entry owns it: `01-hints-match-capability.png` for entry 1. An
+annotated pair takes its entry's number rather than one of its own — `02-quick-doc-field.png` and
+`02-quick-doc-field-annotated.png` sort together because they document the same popup. The prefix is
+positional and the name is not: renumbering an entry renames its file, which is the cost of having
+the order visible, and the reason the name still has to stand on its own.
 
 **Annotate only where the prose needs it.** Bake numbered markers into the pixels and nothing else;
 every word of explanation lives in the markdown beside the image. A re-shot screenshot then never
@@ -52,7 +59,7 @@ who cannot see it should lose nothing but the illustration.
 Every capture starts the same way: `./gradlew runIde`, then open `demo/solr/conf/managed-schema.xml`
 in the sandbox. The demo project is built for this — several defects in it are deliberate.
 
-### 1. Match-capability hints — `hints-match-capability.png`
+### 1. Match-capability hints — `01-hints-match-capability.png`
 
 **✅ Captured.**
 
@@ -76,15 +83,13 @@ capability is recognised, or the demo schema's field list changes.
 
 **Verifies** HINT-1 through HINT-5.
 
-### 2. Quick documentation on a field — `quick-doc-field.png`
+### 2. Quick documentation on a field — `02-quick-doc-field.png`
 
 **✅ Captured.**
 
-*Annotated pair: `quick-doc-field-annotated.png`, used by [the FAQ](faq.md) with a marker key. It is
-the outstanding half of this entry: its markers sit on an older popup, where `omitNorms` still read
-*depends on the field type* rather than resolving through `solr.StrField`, and the table stopped at
-`omitTermFreqAndPositions`. The four markers still point at the right columns, so re-marking the new
-capture is a redraw, not a rewrite of [the FAQ](faq.md)'s key.*
+*Annotated pair: `02-quick-doc-field-annotated.png`, marked from this capture and used by
+[the FAQ](faq.md) with a four-marker key — the header, the match summary, the **Value**/**From**
+pair, and the hand-maintained columns.*
 
 **Shows** the question the Reference Guide cannot answer: each property's value *and where it came
 from* — this field, its type, or Solr's default.
@@ -102,12 +107,13 @@ remembers the size, so this is a once-per-machine adjustment rather than a step 
 
 **Verifies** DOC-1.
 
-### 3. Quick documentation on a class value — `quick-doc-class.png`
+### 3. Quick documentation on a class value — `03-quick-doc-class.png`
 
 **✅ Captured.**
 
-*Annotated pair: `quick-doc-class-annotated.png`, used by [the FAQ](faq.md) with a marker key. The
-annotated file still carries the older capture's pixels and is the outstanding half of this entry.*
+*Annotated pair: `03-quick-doc-class-annotated.png`, marked from this capture and used by
+[the FAQ](faq.md) with a five-marker key, one per build-time source. It is framed wider than the
+plain file, because its markers sit in the editor margin to the right of the popup.*
 
 **Shows** all four build-time sources in one popup: short name and kind, the fully-qualified Lucene
 class, the one-sentence Javadoc summary, the attributes read from constructor bytecode, and the
@@ -125,7 +131,7 @@ complete-configuration popup put those facts on screen.
 
 **Verifies** DOC-2 and DOC-4.
 
-### 4. Inspection and quick-fix — `inspection-copyfield-quickfix.png`
+### 4. Inspection and quick-fix — `04-inspection-copyfield-quickfix.png`
 
 **✅ Captured.**
 
@@ -157,7 +163,7 @@ same frame, its underline too — but no underline this pass did not already kno
 kind of underline anywhere in frame is a false positive, and the screenshot should not be
 published until it is gone.
 
-### 5. Completion over the schema's own vocabulary — `completion-field-properties.png`
+### 5. Completion over the schema's own vocabulary — `05-completion-field-properties.png`
 
 **✅ Captured.**
 
@@ -178,7 +184,7 @@ value completion, which is a different gesture and, if it is wanted as an image,
 
 **Verifies** COMP-2 and COMP-4.
 
-### 6. Catalog-backed factory attributes — `completion-factory-attributes.png`
+### 6. Catalog-backed factory attributes — `06-completion-factory-attributes.png`
 
 **✅ Captured.**
 
@@ -206,7 +212,7 @@ you type the class first. A screenshot should not require editing the fixture, s
 the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
 to the demo, which is a fixture change and belongs to CAT-2, not here.
 
-### 7. Find Usages on a field type — `find-usages-field-type.png`
+### 7. Find Usages on a field type — `07-find-usages-field-type.png`
 
 **✅ Captured.**
 
@@ -225,7 +231,7 @@ target. This entry named the declaration until a capture pass tried it.
 
 **Verifies** NAV-3.
 
-### 8. Navigation from `solrconfig.xml` into the schema — `nav-solrconfig-field-reference.png`
+### 8. Navigation from `solrconfig.xml` into the schema — `08-nav-solrconfig-field-reference.png`
 
 **✅ Captured.**
 
@@ -241,7 +247,7 @@ landing in `managed-schema.xml`. The tooltip version reads better in one frame; 
 
 **Verifies** NAV-4.
 
-### 9. Navigation to a resource file — `nav-resource-file.png` *(optional)*
+### 9. Navigation to a resource file — `09-nav-resource-file.png` *(optional)*
 
 **✅ Captured.**
 

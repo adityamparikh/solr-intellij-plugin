@@ -41,7 +41,7 @@ category read as whole value, case-sensitive; name, description and text as toke
 case-insensitive; name_prefix adds prefix-capable; every hint then names the storage shape —
 indexed, stored or not stored, doc values or no doc values, single- or multi-valued; notes carries
 only the storage shape and text is the one multi-valued field, while legacy carries no hint at
-all](docs/images/hints-match-capability.png)
+all](docs/images/01-hints-match-capability.png)
 
 The hints render beside each field declaration with no hover. Beside the match claim, each carries
 the storage shape that decides whether a matched document can be returned at all. Two fields show
@@ -51,7 +51,7 @@ analyser is unrecognised, and `legacy` carries no hint at all, because its `type
 ### Quick documentation on a field
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](docs/images/quick-doc-field.png)
+that value came from, what it accepts, and what it means](docs/images/02-quick-doc-field.png)
 
 Every property's value **and where it came from** — this field, its type, or Solr's default. That
 last column is the one the Reference Guide cannot have, because it is about your schema.
@@ -59,7 +59,7 @@ last column is the one the Reference Guide cannot have, because it is about your
 ### Quick documentation on a class value
 
 ![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](docs/images/quick-doc-class.png)
+name, one-sentence summary, accepted attributes, and a Reference Guide link](docs/images/03-quick-doc-class.png)
 
 Read from the Solr artifacts themselves when the plugin was built — never fetched at edit time, and
 never copied out of the Reference Guide it links to.
@@ -68,7 +68,7 @@ never copied out of the Reference Guide it links to.
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
 open above it offering to change the name to category, description, legacy, name, name_prefix or
-notes](docs/images/inspection-copyfield-quickfix.png)
+notes](docs/images/04-inspection-copyfield-quickfix.png)
 
 A `copyField` pointing at a field no longer declared, flagged in the editor, with Alt-Enter offering
 replacements. The six on offer are the six declared names closest in spelling — a nine-field schema
@@ -77,7 +77,7 @@ has three more, and they do not appear.
 ### Completion that knows the schema's vocabulary
 
 ![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
-multiValued, omitNorms and more, each with a one-line summary and the values it accepts](docs/images/completion-field-properties.png)
+multiValued, omitNorms and more, each with a one-line summary and the values it accepts](docs/images/05-completion-field-properties.png)
 
 Attribute completion inside a `<field>` tag: each property with its one-line summary and what it
 accepts. `indexed` and `stored` are missing from the list because that tag already declares them.
@@ -87,7 +87,7 @@ plugin is built:
 
 ![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
 luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](docs/images/completion-factory-attributes.png)
+from](docs/images/06-completion-factory-attributes.png)
 
 Cross-file navigation and Find Usages are not shown here — they are gestures rather than states, and
 a resolved reference at rest looks like an ordinary editor. Both are captured in [the screenshot
