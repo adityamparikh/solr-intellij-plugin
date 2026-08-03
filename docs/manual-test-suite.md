@@ -61,6 +61,13 @@ analysis pass over the real demo files, all inspections at once.*
       and neither may be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
+**Count the rows that begin `Solr:`, and read the count in the Problems tool window rather
+than off the underlines.** The demo's own comments are written in British English, which
+trips IntelliJ's American-English locale inspection four times, and `configsets` trips its
+spellchecker once. Five underlines in a clean file, none of them this plugin's, is the
+shape of a false positive without being one — the tool window separates them by inspection
+and settles it in a glance.
+
 This is the suite's most important check, and the count is the whole of it: two reports,
 on the two defects the fixture plants deliberately, and no more. Solr configuration is full
 of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
@@ -110,8 +117,11 @@ gesture, caret placement, the Find Usages tool window.*
       for usages from this location*.
 - [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages on the field lists
-      the parameter among its usages.
+      in `name^3 description` navigates on its own, and Find Usages **from a reference** —
+      the parameter itself, or a `copyField` end — lists the parameter among its usages.
+      NAV-3's caveat is not about field types: a *field* declaration refuses the search
+      too, so `<field name="description">` answers *Cannot search for usages from this
+      location* exactly as the `<fieldType>` one does.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
@@ -325,3 +335,21 @@ a pass was started and abandoned is worth more than a gap.
 | 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
 | 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
+| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | every check green, DOC-5/DOC-6 and COMP-6 closed on both sides of the 1.6/1.7 boundary. Scope notes below |
+
+**About the 2026-08-03 row.** Three things a reader should know before trusting it.
+
+*It predates two feature merges.* `SolrAnalyzerChainOrderInspection` and the per-attribute
+hover landed after it, bringing DOC-7 and the ordering INSP-7 with them; both are unrun, and
+the pass's INSP-7 is what this document now calls INSP-8. The new inspection cannot fire on
+the demo — neither rule has anything to match, since no chain declares a graph filter or a
+case-splitting one — so BASE's count is expected to hold, but expected is not verified.
+
+*NAV-5 was exercised on `words=` alone.* The demo declares no `synonyms=`, no `protected=`,
+no `<charFilter>` `mapping=` and no `lang/` path, so the rest of that check has no fixture to
+press. Either the demo grows one or the check should say what it can cover.
+
+*INSP-7's baseline returned by restoring the file, not by undoing.* The undo stack was driven
+by synthetic keystrokes, and unwinding a dozen of them left the buffer mid-edit rather than
+clean — a hazard of how the pass was run, not of the plugin. A human pressing ⌘Z will not
+meet it; a scripted pass should reload from disk rather than trust a long undo chain.
