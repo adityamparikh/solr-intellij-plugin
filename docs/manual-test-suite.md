@@ -278,14 +278,16 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The four inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
-  and has not built: a relevance parameter naming a non-indexed field, an unused field
-  type, a known-bad analyzer chain ordering, and a configuration element removed in the
-  targeted Solr line. **Do not read INSP's length as an inspection count** — five
-  inspection classes exist, and the six INSP checks above are scenarios over them:
-  INSP-1 and INSP-3 are both the dangling-`copyField` inspection, once on a written edit
-  and once on a live deletion, and INSP-7 restores the baseline rather than testing
-  anything
+- The three inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: an unused field type, a known-bad analyzer chain ordering, and a
+  configuration element removed in the targeted Solr line
+- The relevance-parameter check on a non-indexed field, which is built and registered but
+  has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
+  automatically; what manual would add is the live reaction the INSP checks exist for
+- **Do not read INSP's length as an inspection count** — six inspection classes exist, and
+  the six INSP checks above are scenarios over five of them: INSP-1 and INSP-3 are both the
+  dangling-`copyField` inspection, once on a written edit and once on a live deletion, and
+  INSP-7 restores the baseline rather than testing anything
 
 ## Pass log
 

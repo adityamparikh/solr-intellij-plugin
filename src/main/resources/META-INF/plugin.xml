@@ -118,5 +118,19 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection"/>
+        <!-- Reads the same handler parameters as the check above and asks the next question of them:
+             the field is declared, but can it be searched? Separate rather than folded in, because a
+             user who trusts one may not want the other — and because the two examine different
+             parameter sets, `qf` and the phrase fields alone rather than everything naming a field. -->
+        <localInspection
+            language="XML"
+            shortName="SolrNonIndexedRelevanceField"
+            bundle="messages.SolrBundle"
+            key="inspection.nonIndexedRelevanceField.displayName"
+            groupBundle="messages.SolrBundle"
+            groupKey="inspection.group"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
     </extensions>
 </idea-plugin>

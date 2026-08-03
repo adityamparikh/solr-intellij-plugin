@@ -15,7 +15,7 @@ are. Foundation is built apart from its settings page. Of the three tracks the w
 splits into, only the Editor one has moved, and what it built is real rather than
 scaffolding: a configset parses into a field model, and that model reaches the screen as
 match-capability inlay hints, quick documentation on schema elements, field types and
-`class` values, five inspections — several of them offering the valid names rather than
+`class` values, six inspections — several of them offering the valid names rather than
 only reporting the invalid one — and completion for both the schema's own vocabulary and
 the catalog's classes and factory attributes. The generated catalog now carries each
 class's attributes with their value types — and, where the bytecode proves them, their
@@ -74,8 +74,8 @@ it whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
-- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; three of seven
-  inspections shipped, four remain and one of those waits on the catalog
+- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; four of seven
+  inspections shipped, three remain and one of those waits on the catalog
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**;
   only action 3 remains, the `_exact` and `_prefix` intentions, and nothing in `src/main`
   implements `IntentionAction` yet
@@ -514,36 +514,38 @@ than as one change. Taken before [references and navigation](#step-5-references-
 which this step nominally depends on: that dependency holds only for inspections written as
 unresolved-reference checks, and these are driven off the field model instead.
 
-**What shipped so far:** three of the seven inspections action 1 names, each with its
+**What shipped so far:** four of the seven inspections action 1 names, each with its
 description file and its flagged and clean fixtures — `SolrDanglingCopyFieldInspection`,
-`SolrUnknownFieldTypeInspection` and `SolrUnknownFieldReferenceInspection`. Two more
+`SolrUnknownFieldTypeInspection`, `SolrUnknownFieldReferenceInspection` and
+`SolrNonIndexedRelevanceFieldInspection`. Two more
 inspections exist in the same package and belong to
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
 rather than here: `SolrUnknownAttributeInspection` and `SolrInvalidAttributeValueInspection`
 are catalog-backed and validate an attribute rather than a reference.
 
 **Three numbers describe this step and none of them is the same number.** Seven inspections
-are planned here and three are built. Five inspection classes are registered in
+are planned here and four are built. Six inspection classes are registered in
 `plugin.xml`, because two of them belong to another step. Six of
-[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise those five, since
-the dangling-`copyField` inspection gets a second check for reacting to a live edit, and a
-seventh restores the baseline. Read a count against what it counts; "five inspections
-exist" is true and says nothing about this step's progress.
+[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise five of those
+six, since the dangling-`copyField` inspection gets a second check for reacting to a live
+edit, a seventh restores the baseline, and the non-indexed relevance check has no sandbox
+gesture yet. Read a count against what it counts; "six inspections exist" is true and says
+nothing about this step's progress.
 
 **Success criteria:**
 - [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
   - [x] Dangling `copyField` source or destination.
   - [x] A field naming an undeclared field type.
   - [x] A handler parameter naming a field the schema does not declare.
-  - [ ] A relevance parameter naming a non-indexed field.
+  - [x] A relevance parameter naming a non-indexed field.
   - [ ] An unused field type.
   - [ ] A known-bad analyzer chain ordering.
   - [ ] A configuration element removed in the targeted Solr line.
 
-The last one is the only one of the four with a dependency: it needs the catalog to know
+The last one is the only one of the three with a dependency: it needs the catalog to know
 which line removed what, which is a fact
 [the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record
-today. The other three are buildable now.
+today. The other two are buildable now.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)

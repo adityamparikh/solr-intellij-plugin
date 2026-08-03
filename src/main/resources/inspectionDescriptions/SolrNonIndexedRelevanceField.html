@@ -1,0 +1,27 @@
+<html>
+<body>
+Reports a query-field parameter in <code>solrconfig.xml</code> that names a field the schema declares
+but does not index.
+<p>
+  The field is there, spelled correctly, and the parameter still does nothing. A <code>qf</code>
+  naming an <code>indexed="false"</code> field adds no clause to the query and no boost to the score,
+  because its terms were never written to the inverted index for the query parser to match against.
+  Solr does not complain, the handler still answers, and results are ranked by everything except the
+  field the author meant to emphasise.
+</p>
+<p>
+  Four parameters are examined: <code>qf</code>, <code>pf</code>, <code>pf2</code> and
+  <code>pf3</code>. Those are the ones whose values become term and phrase queries against the index.
+  <code>bf</code> and <code>boost</code> are left alone on purpose — their values are function
+  queries, read per document from doc values rather than from the index, so boosting on a non-indexed
+  field there is correct and common.
+</p>
+<p>
+  <code>indexed</code> is resolved rather than read: from the field, then from its field type, then
+  from Solr's own default for the schema version and the type's class. Where that resolution cannot
+  reach an answer — a field type naming a class this build has never seen — nothing is reported.
+</p>
+<p><small>Example: <code>&lt;str name="qf"&gt;title^3 body&lt;/str&gt;</code> where the schema
+  declares <code>&lt;field name="body" type="text_general" indexed="false" stored="true"/&gt;</code>.</small></p>
+</body>
+</html>
