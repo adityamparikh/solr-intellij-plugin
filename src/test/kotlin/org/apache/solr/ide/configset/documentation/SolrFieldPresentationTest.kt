@@ -6,6 +6,7 @@ import org.apache.solr.ide.model.SolrClassAttribute
 import org.apache.solr.ide.model.SolrClassEntry
 import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.SolrFieldProperties
 import org.apache.solr.ide.model.SolrFieldType
 import org.apache.solr.ide.model.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrValueType
@@ -245,5 +246,152 @@ class SolrFieldPresentationTest {
         val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
         assertTrue("strFieldEntry carries no summary", strFieldEntry.summary == null)
         assertFalse("no empty <p></p> for a missing summary", html.contains("<p></p>"))
+    }
+
+    // --- the meaning of a property's resolved value ----------------------------------------------
+
+    @Test
+    fun `the property table states the consequence of the value that is in effect`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "false"))
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue(
+            "the false consequence must be stated",
+            "No original value is kept for retrieval" in html,
+        )
+        assertFalse(
+            "the true consequence must not appear for a false value",
+            "The original value is returned in results" in html,
+        )
+    }
+
+    @Test
+    fun `the opposite value gets the opposite sentence`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "true"))
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue("The original value is returned in results" in html)
+    }
+
+    /**
+     * `stored="false"` bounds one retrieval route, not all of them. A field carrying doc values can
+     * still come back — through `useDocValuesAsStored` on a wildcard `fl`, or by being named
+     * explicitly — and the demo's own schema declares a version where that flag defaults on. A popup
+     * saying the value can never be displayed would be confidently wrong about the common case.
+     */
+    @Test
+    fun `a non-stored field with doc values is never called undisplayable`() {
+        val field = SolrField(
+            "sku", "string",
+            attributes = mapOf("stored" to "false", "docValues" to "true"),
+        )
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue(
+            "the stored switch still states its own consequence",
+            "No original value is kept for retrieval" in html,
+        )
+        assertTrue(
+            "and it must leave the doc-values route open",
+            "can still put a value in results" in html,
+        )
+        assertFalse(
+            "nothing may claim the value is simply not displayable",
+            "but not displayed" in html,
+        )
+    }
+
+    /**
+     * `useDocValuesAsStored="false"` drops the field from a wildcard `fl`; it does not make the doc
+     * values unreachable, because naming the field explicitly still returns them.
+     */
+    @Test
+    fun `useDocValuesAsStored false bounds the wildcard rather than every request`() {
+        val field = SolrField(
+            "sku", "string",
+            attributes = mapOf("docValues" to "true", "useDocValuesAsStored" to "false"),
+        )
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue(
+            "an explicit request must still be described as returning the value",
+            "naming it explicitly still returns its doc values" in html,
+        )
+        assertFalse(
+            "no blanket claim that doc values never come back",
+            "Doc values are not returned" in html,
+        )
+    }
+
+    /**
+     * Setting `sortMissingLast` resolves `sortMissingFirst` to `false`, and a sentence claiming
+     * missing values sort lowest would describe an order the sibling flag has just overridden. Each
+     * false sentence says only what its own flag does not do, so the two cannot contradict.
+     */
+    @Test
+    fun `a false sortMissing flag claims no effective ordering`() {
+        val field = SolrField("sku", "string", attributes = mapOf("sortMissingLast" to "true"))
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, stringType, SolrVersionSelection.DEFAULT, modernSchema,
+        )
+        assertTrue(
+            "the flag that is set states its effect",
+            "sort after all others" in html,
+        )
+        assertFalse(
+            "the flag that is not set must not contradict it",
+            "sort as though the value were lowest" in html,
+        )
+    }
+
+    /**
+     * An undetermined value has no consequence to state, and picking one of the two would be exactly
+     * the confident wrong answer the null value exists to avoid. The neutral summary is the fallback.
+     */
+    @Test
+    fun `an undetermined value falls back to the value-neutral summary`() {
+        val unknownType = SolrFieldType("mystery", "com.example.MysteryFieldType")
+        val field = SolrField("odd", "mystery")
+        val html = SolrFieldPresentation.fieldDocumentation(
+            field, unknownType, SolrVersionSelection.DEFAULT, modernSchema, typeTraits = null,
+        )
+        assertTrue(
+            "the neutral summary must stand in",
+            "Whether a column-oriented structure is built" in html,
+        )
+        assertFalse("no column store claim either way", "A column store is built" in html)
+        assertFalse("no column store claim either way", "No column store;" in html)
+    }
+
+    @Test
+    fun `hovering a property attribute states the consequence under its resolved value`() {
+        val field = SolrField("sku", "string", attributes = mapOf("stored" to "false"))
+        val property = SolrFieldProperties.byName("stored")!!
+        val html = SolrFieldPresentation.propertyDocumentation(
+            property = property,
+            effective = SolrFieldProperties.resolve(property, field, stringType, modernSchema),
+            version = SolrVersionSelection.DEFAULT,
+            schemaVersion = modernSchema,
+        )
+        assertTrue("No original value is kept for retrieval" in html)
+    }
+
+    /**
+     * On a fieldType there is no field to resolve against, so there is no value and no consequence.
+     * The general half — summary, accepted values, Solr's default — is all a type can be told.
+     */
+    @Test
+    fun `hovering a property on a field type states no consequence`() {
+        val html = SolrFieldPresentation.propertyDocumentation(
+            property = SolrFieldProperties.byName("stored")!!,
+            effective = null,
+            version = SolrVersionSelection.DEFAULT,
+            schemaVersion = modernSchema,
+        )
+        assertFalse("The original value is" in html)
     }
 }

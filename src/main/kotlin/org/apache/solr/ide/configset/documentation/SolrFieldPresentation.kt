@@ -20,11 +20,14 @@ import org.apache.solr.ide.model.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**
- * Turns model facts into the text the editor shows.
+ * Turns model facts into the HTML the documentation popup shows.
  *
- * Shared by the inlay hints and the documentation popup on purpose: the two must never disagree
- * about what a field matches, and the surest way to guarantee that is for both to render the same
- * computed value rather than each phrasing it themselves.
+ * The inlay hints provider does not call this — it reads `SolrFieldProperties` and
+ * `SolrMatchCapability` directly to build its own short phrases — but both surfaces render the same
+ * underlying model, `SolrFieldProperties.meaning` and `SolrMatchAnalysis.of` chief among it. That
+ * shared table, not this class, is what keeps the popup and the hint from disagreeing about what a
+ * field matches or what a property's value means; this class only turns the popup's half of that
+ * table into markup.
  */
 object SolrFieldPresentation {
 
@@ -147,6 +150,10 @@ object SolrFieldPresentation {
                 "<tr><td>Here</td><td><b>${escape(valueText(it))}</b> — " +
                     "${escape(originText(it.origin, schemaVersion, typeClassName))}</td></tr>",
             )
+            val meaning = meaningText(it)
+            if (meaning != it.property.summary) {
+                append("<tr><td></td><td>${escape(meaning)}</td></tr>")
+            }
         }
         append("</table>")
         append("</div>")
@@ -332,13 +339,29 @@ object SolrFieldPresentation {
             append(if (declared) "<td><b>${escape(valueText(effective))}</b></td>" else "<td>${escape(valueText(effective))}</td>")
             append("<td><i>${escape(originText(effective.origin, schemaVersion, fieldType?.className))}</i></td>")
             append("<td>${escape(effective.property.validValues)}</td>")
-            append("<td>${escape(effective.property.summary)}</td></tr>")
+            append("<td>${escape(meaningText(effective))}</td></tr>")
         }
         append("</table>")
     }
 
     private fun valueText(effective: SolrEffectiveProperty): String =
         effective.value ?: DEPENDS_ON_TYPE
+
+    /**
+     * The consequence of a property's resolved value, or its value-neutral summary where there is none.
+     *
+     * Falls back in the two cases where no consequence can be stated: the value is undetermined, so
+     * choosing one of the two sentences would assert what the null value exists to avoid; or the
+     * property takes something other than a boolean and has no two consequences to choose between.
+     */
+    private fun meaningText(effective: SolrEffectiveProperty): String {
+        val meaning = effective.property.meaning ?: return effective.property.summary
+        return when (effective.value) {
+            "true" -> meaning.whenTrue
+            "false" -> meaning.whenFalse
+            else -> effective.property.summary
+        }
+    }
 
     /**
      * What is reported where Solr's own default is decided by the field type's class.

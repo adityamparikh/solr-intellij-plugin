@@ -88,6 +88,10 @@ it whole, and the gutter action goes with the Server track.
 - [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
   — likewise added late; belongs beside the two above. Its field half needs only the
   property table; its factory half waits on the catalog carrying defaults.
+- [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
+  — likewise added late; belongs beside the three above. Extends the match-hint provider
+  and the documentation provider both, so it needs the property table plus the two steps
+  that already extend them.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
   — the largest step here, and entirely behind the catalog. Split it when it starts.
 - [Step 8 — Rename](#step-8-rename)
@@ -809,6 +813,71 @@ property table answers in the popup — which of these lines could go.
 [completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done)
 for the property table it reads; the factory half additionally needs the defaults column in
 [the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
+
+### Step 27: Saying what a property's value means (done)
+
+Numbered last because it was added last; it belongs in the Editor track beside
+[explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done).
+Read the section it sits in, not the number.
+
+The popup already resolved each property to a value and said where it came from, then
+described the property in the neutral, value-independent terms the Reference Guide itself
+uses — *"Whether the original value can be returned in results"* beside `stored: false`,
+never *"the original value is not returned"*. The inlay hint had the matching gap from the
+other side: it said what a field could match and nothing about what happened to the value
+afterwards, so a field that is searchable but not returnable — the most common cause of "my
+query works but the field is missing from the response" — looked identical inline to one
+that is both.
+
+**Actions:**
+1. `SolrPropertyMeaning` on `SolrFieldProperty`: a `whenTrue`/`whenFalse` sentence pair for
+   every boolean property legal on a field, plus a short `inlineWhenTrue`/`inlineWhenFalse`
+   phrase pair for the four that decide a field's storage shape — `indexed`, `stored`,
+   `docValues`, `multiValued`.
+2. The popup's Meaning column renders the sentence for the resolved value, falling back to
+   the neutral summary only where no value can be stated: `UNDETERMINED`, or a property with
+   no `meaning` at all (`default`, which takes any value of the field's type).
+3. `SolrMatchInlayHintsProvider` appends the four inline phrases after the match parts, in
+   `SolrFieldProperties.FOR_FIELD` order — match capability first, storage shape second.
+4. Two behaviour changes to the hint's silence rules, one loosened and one left alone: an
+   unrecognised analysis factory now renders the storage-shape phrases with no match claim,
+   where it previously suppressed the hint entirely — property values never depended on the
+   analyser chain, only the match claim did. An undeclared field type still suppresses the
+   hint completely, and the fall-through is the reason rather than an exception to it:
+   resolution is three-tier — field, then field type, then Solr's default — so a missing
+   middle tier still resolves every property, but resolves it by attributing each default to
+   Solr when the type that might have overridden it does not exist. Property resolution
+   survives an undeclared type; hint eligibility does not, because that silent
+   misattribution is an inspection's finding, not a hint's.
+5. `versionOf`/`traitsOf`, previously private helpers on `SolrConfigsetDocumentationProvider`,
+   move onto `SolrFieldModel` as `solrVersion`/`traitsOf`, since the inlay provider needs them
+   too and neither touches PSI.
+
+**What shipped:** all five actions. `SolrFieldProperties` in `org.apache.solr.ide.model`
+carries the meaning table; `SolrFieldPresentation.propertyTable` and
+`SolrConfigsetDocumentationProvider` render it in the popup; `SolrMatchInlayHintsProvider`
+renders it inline. [The design record](../../docs/design/archive/2026-08-02-field-property-explanations/design.md)
+covers the phrasing and the silence rules in full.
+
+**Success criteria:**
+- [x] The popup's Meaning cell states the consequence of the resolved value, for every
+      boolean property that carries one, and falls back to the neutral summary only where
+      the value is `UNDETERMINED` or the property has no meaning to state.
+- [x] The inlay hint carries `indexed`, `stored`, `docValues` and `multiValued` after the
+      match parts, in that order, for a field whose type is declared.
+- [x] An unrecognised analysis factory drops only the match claim; the storage-shape phrases
+      still render.
+- [x] An undeclared field type still suppresses the hint entirely.
+- [x] A property that resolves to `UNDETERMINED` contributes no phrase, while the other
+      three still render — the silence is per property, not per hint.
+
+**Acceptance:** [the manual test suite's HINT-1 through HINT-5](../../docs/manual-test-suite.md),
+and [screenshot catalog entry 1](../../docs/screenshots.md), both rendered against
+`demo/solr/conf/managed-schema.xml`.
+
+**Dependencies:** [match hints](#step-7-match-hints-and-quick-fixes-in-progress) for the inlay
+provider it extends; [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
+for the documentation provider it extends.
 
 ### Step 8: Rename
 

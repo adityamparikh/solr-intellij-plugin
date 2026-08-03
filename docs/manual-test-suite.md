@@ -11,7 +11,7 @@ join this suite only when its code has shipped and there is something to press.
 1. `./gradlew runIde` — the sandbox opens `demo/`. Open `solr/conf/managed-schema.xml`.
 2. Uncheck every box from the previous pass (a pass is all-or-nothing; history lives in
    the [pass log](#pass-log), not in the boxes).
-3. Work top to bottom. The order matters: the zero-warning baseline comes first because
+3. Work top to bottom. The order matters: the baseline pass comes first because
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
@@ -55,17 +55,19 @@ be retired from here, not accumulated.
 *Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
 analysis pass over the real demo files, all inspections at once.*
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly one** warning: the
-      planted dangling `manufacturer` copyField at the bottom, which is the inspection
-      demo and must not be fixed. Nothing else in the file is underlined.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** warnings: the
+      planted dangling `manufacturer` copyField near the bottom, and the planted undeclared
+      `type="discontinued"` on the `legacy` field. Both are there to demonstrate an inspection,
+      and neither may be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
-This is the suite's most important check, and the count is the whole of it: one report,
-on the one defect the fixture plants deliberately. Solr configuration is full of syntax
-that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a second underline
-is a false positive, and a false positive on a correct file is a bug, never noise.
+This is the suite's most important check, and the count is the whole of it: two reports,
+on the two defects the fixture plants deliberately, and no more. Solr configuration is full
+of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
+underline is a false positive, and a false positive on a correct file is a bug, never noise.
 `DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
-committed demo configset is dangling, and which one it is.
+committed demo configset is dangling and exactly one field names an undeclared type, and
+which ones they are.
 
 ## 3. Match-capability inlay hints (HINT)
 
@@ -73,15 +75,23 @@ committed demo configset is dangling, and which one it is.
 placement and readability of the rendered hint.*
 
 - [ ] **HINT-1** — `string` fields (`id`, `sku`, `category`) read as whole-value,
-      case-sensitive.
-- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read as tokenized,
-      case-insensitive, with no efficient prefix support.
-- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads as prefix-capable, and the
-      hint names EdgeNGram as the mechanism rather than saying "prefix: true".
+      case-sensitive, and carry `indexed, stored, doc values, single-valued`. The demo
+      schema's `string` fieldType declares `docValues="true"` itself, so these three read
+      `doc values` even though the schema version alone would default it off.
+- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read as tokenised,
+      case-insensitive, with no efficient prefix support, and both carry `indexed` and
+      `no doc values`. `description` alone also carries `stored, single-valued`; `text`
+      alone carries `not stored, multi-valued`.
+- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads as prefix-capable and carries
+      `indexed, not stored, no doc values, single-valued`.
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
+- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyser names the unrecognised
+      `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
+      `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
+      the schema does not declare) shows no hint at all.
 - [ ] 📸 **Capture `docs/images/hints-match-capability.png`** — the field block at lines
-      47-53, all seven fields in one frame, no interaction.
+      66-77, all nine fields in one frame, no interaction.
       [Catalog entry 1](screenshots.md#1-match-capability-hints--hints-match-capabilitypng).
 
 ## 4. Navigation and Find Usages (NAV)
@@ -111,7 +121,7 @@ gesture, caret placement, the Find Usages tool window.*
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
       [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--nav-solrconfig-field-referencepng).
 - [ ] 📸 *Optional:* **`docs/images/nav-resource-file.png`** at NAV-5 — Cmd+hover
-      `words="stopwords.txt"` at `managed-schema.xml:25`.
+      `words="stopwords.txt"` at `managed-schema.xml:34`.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--nav-resource-filepng-optional).
 
 ## 5. Quick documentation (DOC)
@@ -142,7 +152,7 @@ gesture, caret placement, the Find Usages tool window.*
       nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
       check.
 - [ ] 📸 **Re-capture `docs/images/quick-doc-field.png`** at DOC-1 — caret inside
-      `name="category"` at line 51, F1, cropped to the popup **including the
+      `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
       the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
       arrival if taken before that lands.
@@ -181,7 +191,7 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
       and Alt-Enter offers the declared fields, closest spelling first.
 - [ ] 📸 **Capture `docs/images/inspection-copyfield-quickfix.png`** — use the *planted*
-      `manufacturer` rule at line 61 rather than the edit INSP-1 makes, so the image needs
+      `manufacturer` rule at line 85 rather than the edit INSP-1 makes, so the image needs
       no undo. Frame the underline and the open Alt-Enter menu.
       [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
@@ -194,9 +204,9 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
 - [ ] **INSP-7** — Undo everything, including DOC-6's version edit: both files return to
-      their BASE counts — **one** warning in `managed-schema.xml`, zero in
-      `solrconfig.xml`. Not zero and zero; the planted `manufacturer` rule is part of the
-      baseline and stays underlined.
+      their BASE counts — **two** warnings in `managed-schema.xml`, zero in
+      `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
+      planted `legacy` field's undeclared type are part of the baseline and stay underlined.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -221,7 +231,7 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       claim as DOC-5 and DOC-6, in the surface where a reader meets it first, and the same
       reason for testing both sides.
 - [ ] 📸 **Capture `docs/images/completion-field-properties.png`** — caret after
-      `stored="true"` on line 51, type a space, frame the summaries and at least one
+      `stored="true"` on line 70, type a space, frame the summaries and at least one
       default marker. Undo the space afterwards.
       [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--completion-field-propertiespng).
 
@@ -240,7 +250,7 @@ popup, against the demo configset's declared Solr line.*
       constructor-bytecode pass reached the editor.
 - [ ] 📸 **Capture `docs/images/completion-factory-attributes.png`** — not from CAT-2,
       which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
-      filter at line 39, caret after the class attribute, space, and frame `minGramSize`
+      filter at line 48, caret after the class attribute, space, and frame `minGramSize`
       and `maxGramSize`. Same bytecode route, no fixture edit.
       [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--completion-factory-attributespng).
 

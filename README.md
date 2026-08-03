@@ -19,10 +19,15 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 **Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
 purpose.**
 
+The configuration-files surface is largely built: the plugin detects configsets, parses them into a
+field model, and uses it for inspections with quick-fixes, completion, cross-file navigation, quick
+documentation, and inline hints saying what each field can actually match. The server surface exists
+only as stored connection settings — nothing talks to a Solr server yet — and the Java/Kotlin code
+surface is unbuilt.
+
 **The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
-is done**, step by step, and is the only file that says so — a summary here would go stale on the
-next merged step while the plan stayed correct. The
-[specification](specs/0002-solr-intellij-plugin.md) describes intent, much of which is still ahead.
+is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
+much of which is still ahead.
 
 ## What it looks like today
 
@@ -32,24 +37,24 @@ Captures come from the sandbox IDE running against `demo/`.
 ### What each field can actually match, inline
 
 <!-- SCREENSHOT PENDING: hints-match-capability.png — screenshot catalog entry 1.
-     Frame managed-schema.xml:47-53 so all seven fields show at once. This is the lead image. -->
+     Frame managed-schema.xml:66-77 so all nine fields show at once. This is the lead image. -->
 
 > *Screenshot pending.* The hints render beside each field declaration with no hover: `string` fields
-> read as whole-value and case-sensitive, `text_general` as tokenized and case-insensitive, and
-> `name_prefix` names EdgeNGram as the mechanism rather than claiming "prefix: true".
+> read as whole-value and case-sensitive, `text_general` as tokenised and case-insensitive, and
+> `name_prefix` as prefix-capable. Beside the match claim, each hint also carries the storage shape
+> that decides whether a matched document can be returned at all — `indexed` or `not indexed`,
+> `stored` or `not stored`, `doc values` or `no doc values`, `multi-valued` or `single-valued`. Two
+> fields show what the hint does when it cannot say everything: `notes` carries only the storage
+> shape, because its analyser is unrecognised, and `legacy` carries no hint at all, because its
+> `type` is undeclared.
 
 ### Quick documentation on a field
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
 that value came from, what it accepts, and what it means](docs/images/quick-doc-field.png)
 
-Every property's value **and where it came from** — this field, its type, Solr's default, or Solr's
-default *at the schema version this file declares*, since several of them changed with it. That
-column is the one the Reference Guide cannot have, because it is about your schema.
-
-<!-- RE-SHOOT: the image above predates the schema-version resolution and crops `uninvertible` off
-     the bottom. Screenshot catalog entry 2 has the framing; wait for the field-type-class
-     resolution of omitNorms/docValues to land first. -->
+Every property's value **and where it came from** — this field, its type, or Solr's default. That
+last column is the one the Reference Guide cannot have, because it is about your schema.
 
 ### Quick documentation on a class value
 
@@ -62,7 +67,7 @@ never copied out of the Reference Guide it links to.
 ### An inspection catching what fails only at core reload
 
 <!-- SCREENSHOT PENDING: inspection-copyfield-quickfix.png — screenshot catalog entry 4.
-     managed-schema.xml:61 ships a deliberate dangling copyField; Alt-Enter on it. -->
+     managed-schema.xml:85 ships a deliberate dangling copyField; Alt-Enter on it. -->
 
 > *Screenshot pending.* A `copyField` pointing at a field no longer declared, underlined in the
 > editor, with Alt-Enter offering the declared fields closest-spelling-first.
@@ -115,10 +120,9 @@ covers.
 ## Supported Solr versions
 
 The plugin supports the Solr release lines that Apache Solr has **not** declared end-of-life; when
-Solr declares a line EOL, the plugin drops it in its next release. The lines themselves are declared
-once, as `supportedSolrLines` in [`build.gradle.kts`](build.gradle.kts) — the build resolves each
-one's artifacts to generate the class catalog, so that map is the only place they can be written
-down without drifting. A compatibility matrix ships with the first release.
+Solr declares a line EOL, the plugin drops it in its next release. The
+[specification](specs/0002-solr-intellij-plugin.md) names the current lines, and is the one place
+they are written down — a compatibility matrix ships with the first release.
 
 ## Documentation
 
