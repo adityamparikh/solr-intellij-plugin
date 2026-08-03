@@ -103,7 +103,7 @@ The four above, which carry both registers:
 | Property | `whenTrue` | `whenFalse` |
 |---|---|---|
 | `indexed` | Can be searched, filtered and sorted on. | Cannot be searched or filtered — the value is carried but never queryable. |
-| `stored` | The original value is returned in results and available to highlighting. | The original value is not returned in results; it can be searched but not displayed. |
+| `stored` | The original value is returned in results and available to highlighting. | No original value is kept for retrieval, and highlighting has none to work from; doc values, if this field has them, can still put a value in results. |
 | `docValues` | A column store is built, so sorting, faceting, grouping and function queries are efficient. | No column store; sorting and faceting must un-invert the index at query time, or fail outright. |
 | `multiValued` | One document may hold several values for this field. | One document may hold at most one value; a second causes an indexing error. |
 
@@ -120,15 +120,18 @@ the indicative, not a restatement of the attribute name:
 | `termPositions` | Positions are stored in the term vector. | The term vector carries no positions. |
 | `termOffsets` | Offsets are stored in the term vector, which is what fast vector highlighting needs. | The term vector carries no offsets. |
 | `termPayloads` | Payloads are stored in the term vector. | The term vector carries no payloads. |
-| `sortMissingFirst` | Documents lacking this field sort before all others, in either direction. | Documents lacking this field sort as though the value were lowest. |
-| `sortMissingLast` | Documents lacking this field sort after all others, in either direction. | Documents lacking this field sort as though the value were lowest. |
+| `sortMissingFirst` | Documents lacking this field sort before all others, in either direction. | Nothing forces documents lacking this field to sort first. |
+| `sortMissingLast` | Documents lacking this field sort after all others, in either direction. | Nothing forces documents lacking this field to sort last. |
 | `uninvertible` | The field may be un-inverted at query time when it has no doc values — correct, but memory-hungry on a large index. | Sorting or faceting without doc values fails rather than silently building a field cache. |
-| `useDocValuesAsStored` | Doc values are returned in results as though the field were stored, so a `fl` naming it gets a value back. | Doc values are not returned; only a stored field appears in results. |
+| `useDocValuesAsStored` | Doc values are returned as though the field were stored, so even a wildcard `fl` gets a value back. | A wildcard `fl` leaves this field out unless it is stored; naming it explicitly still returns its doc values. |
 | `large` | The value is loaded lazily and not held in the document cache above 512KB. | The value is loaded and cached like any other. |
 
-`sortMissingFirst` and `sortMissingLast` share a `whenFalse` because Solr's fallback is the same
-absent either flag, and inventing a distinction to make the two rows differ would be inventing one
-Solr does not make.
+`sortMissingFirst` and `sortMissingLast` state only what their own flag does not do. The obvious
+wording — "sort as though the value were lowest" — describes Solr's fallback absent *either* flag,
+which is exactly the case where it is true and the popup does not need it: set `sortMissingLast`
+and `sortMissingFirst` resolves `false`, whereupon that sentence would describe an order the
+sibling flag has just overridden. Each `whenFalse` is property-local for that reason, and the two
+stay parallel without either claiming an effective order it cannot see.
 
 ### The inlay hint
 
@@ -164,7 +167,7 @@ finding; the hint stays out of its way.
 
 Rendered against `demo/solr/conf/managed-schema.xml`, which declares `version="1.6"`:
 
-```
+```text
 <field name="id"          .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
 <field name="sku"         .../>   whole value, case-sensitive, indexed, stored, doc values, single-valued
 <field name="name"        .../>   tokenised, case-insensitive, indexed, stored, no doc values, single-valued
@@ -211,9 +214,10 @@ comfortably takes.
 `propertyDocumentation`, which answers a hover on `stored="false"` directly, appends the same sentence
 to its **Here** row, after the origin:
 
-```
+```text
 Here    false — on this field
-        The original value is not returned in results; it can be searched but not displayed.
+        No original value is kept for retrieval, and highlighting has none to work from; doc
+        values, if this field has them, can still put a value in results.
 ```
 
 `elementDocumentation` and `fieldDocumentation` inherit the change through `propertyTable` and need no

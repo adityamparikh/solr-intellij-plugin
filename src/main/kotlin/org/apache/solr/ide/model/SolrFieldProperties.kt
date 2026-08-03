@@ -226,7 +226,8 @@ object SolrFieldProperties {
             "stored", "Whether the original value can be returned in results.", "true or false", "true",
             meaning = SolrPropertyMeaning(
                 whenTrue = "The original value is returned in results and available to highlighting.",
-                whenFalse = "The original value is not returned in results; it can be searched but not displayed.",
+                whenFalse = "No original value is kept for retrieval, and highlighting has none to work from; " +
+                    "doc values, if this field has them, can still put a value in results.",
                 inlineWhenTrue = "stored",
                 inlineWhenFalse = "not stored",
             ),
@@ -325,14 +326,14 @@ object SolrFieldProperties {
             "sortMissingFirst", "Whether documents lacking this field sort first.", "true or false", "false",
             meaning = SolrPropertyMeaning(
                 whenTrue = "Documents lacking this field sort before all others, in either direction.",
-                whenFalse = "Documents lacking this field sort as though the value were lowest.",
+                whenFalse = "Nothing forces documents lacking this field to sort first.",
             ),
         ),
         SolrFieldProperty(
             "sortMissingLast", "Whether documents lacking this field sort last.", "true or false", "false",
             meaning = SolrPropertyMeaning(
                 whenTrue = "Documents lacking this field sort after all others, in either direction.",
-                whenFalse = "Documents lacking this field sort as though the value were lowest.",
+                whenFalse = "Nothing forces documents lacking this field to sort last.",
             ),
         ),
         SolrFieldProperty(
@@ -353,8 +354,8 @@ object SolrFieldProperties {
             null,
             defaultTrueWithin = SolrVersionRange(from = 1.6f),
             meaning = SolrPropertyMeaning(
-                whenTrue = "Doc values are returned in results as though the field were stored, so an fl naming it gets a value back.",
-                whenFalse = "Doc values are not returned; only a stored field appears in results.",
+                whenTrue = "Doc values are returned as though the field were stored, so even a wildcard fl gets a value back.",
+                whenFalse = "A wildcard fl leaves this field out unless it is stored; naming it explicitly still returns its doc values.",
             ),
         ),
         SolrFieldProperty(

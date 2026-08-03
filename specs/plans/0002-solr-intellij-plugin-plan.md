@@ -843,8 +843,12 @@ that is both.
    unrecognised analysis factory now renders the storage-shape phrases with no match claim,
    where it previously suppressed the hint entirely — property values never depended on the
    analyser chain, only the match claim did. An undeclared field type still suppresses the
-   hint completely, because resolution is three-tier — field, then field type, then Solr's
-   default — and a missing type removes the middle tier without removing the fall-through.
+   hint completely, and the fall-through is the reason rather than an exception to it:
+   resolution is three-tier — field, then field type, then Solr's default — so a missing
+   middle tier still resolves every property, but resolves it by attributing each default to
+   Solr when the type that might have overridden it does not exist. Property resolution
+   survives an undeclared type; hint eligibility does not, because that silent
+   misattribution is an inspection's finding, not a hint's.
 5. `versionOf`/`traitsOf`, previously private helpers on `SolrConfigsetDocumentationProvider`,
    move onto `SolrFieldModel` as `solrVersion`/`traitsOf`, since the inlay provider needs them
    too and neither touches PSI.

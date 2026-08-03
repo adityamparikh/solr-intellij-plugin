@@ -57,8 +57,8 @@ analysis pass over the real demo files, all inspections at once.*
 
 - [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** warnings: the
       planted dangling `manufacturer` copyField near the bottom, and the planted undeclared
-      `type="discontinued"` on the `legacy` field — both the inspection demo and both must
-      not be fixed. Nothing else in the file is underlined.
+      `type="discontinued"` on the `legacy` field. Both are there to demonstrate an inspection,
+      and neither may be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
 This is the suite's most important check, and the count is the whole of it: two reports,

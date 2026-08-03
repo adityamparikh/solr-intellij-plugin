@@ -6,7 +6,7 @@
 > [Corrections found during implementation](#corrections-found-during-implementation) at
 > the end before quoting anything above it.** Where this document and the code disagree,
 > the code is right.
-
+>
 > **For agentic workers (historical):** this plan was executed with
 > superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
 
