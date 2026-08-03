@@ -26,32 +26,32 @@
              rather than a tooltip on purpose: a user who does not already suspect their field
              cannot match a prefix will never hover over it to find out. -->
         <codeInsight.declarativeInlayProvider
-            language="XML"
-            providerId="solr.match.capability"
-            bundle="messages.SolrBundle"
-            nameKey="inlay.matchCapability.name"
-            group="OTHER_GROUP"
-            isEnabledByDefault="true"
-            implementationClass="org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider"/>
+                language="XML"
+                providerId="solr.match.capability"
+                bundle="messages.SolrBundle"
+                nameKey="inlay.matchCapability.name"
+                group="OTHER_GROUP"
+                isEnabledByDefault="true"
+                implementationClass="org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider"/>
 
         <!-- Element descriptors for schema files. A schema has no XSD, so without these the
              platform guesses: attribute completion echoes whatever same-named sibling tags carry.
              The descriptors are deliberately permissive — validation stays with the inspections. -->
         <xml.elementDescriptorProvider
-            implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
+                implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
         <!-- Quick documentation on a field or its type, resolving each property's effective value
              and where it came from. -->
         <lang.documentationProvider
-            language="XML"
-            implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
+                language="XML"
+                implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
 
         <!-- References. A configset is held together by string references — a field names its
              type, a copyField names two fields — and none of them is a reference as far as the
              editor is concerned until this makes it one. -->
         <psi.referenceContributor
-            language="XML"
-            implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
+                language="XML"
+                implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
 
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
@@ -59,65 +59,79 @@
         <!-- order="first" so the vocabulary provider runs ahead of the platform's XML contributor
              and can drop the bare duplicates of names it already offered with summaries. -->
         <completion.contributor
-            language="XML"
-            order="first"
-            implementationClass="org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor"/>
+                language="XML"
+                order="first"
+                implementationClass="org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor"/>
 
         <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
              authoritative enough to claim a hard error, and an error on a file the user is midway
              through editing is worse than a warning on the same file. -->
         <localInspection
-            language="XML"
-            shortName="SolrDanglingCopyField"
-            bundle="messages.SolrBundle"
-            key="inspection.copyField.displayName"
-            groupBundle="messages.SolrBundle"
-            groupKey="inspection.group"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection"/>
+                language="XML"
+                shortName="SolrDanglingCopyField"
+                bundle="messages.SolrBundle"
+                key="inspection.copyField.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection"/>
         <localInspection
-            language="XML"
-            shortName="SolrUnknownFieldType"
-            bundle="messages.SolrBundle"
-            key="inspection.fieldType.displayName"
-            groupBundle="messages.SolrBundle"
-            groupKey="inspection.group"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
+                language="XML"
+                shortName="SolrUnknownFieldType"
+                bundle="messages.SolrBundle"
+                key="inspection.fieldType.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
         <!-- Value and attribute-name checks. Both read the generated catalog, so both are silent on
              a class it does not know: a custom plugin must not be underlined for being custom. -->
         <localInspection
-            language="XML"
-            shortName="SolrInvalidAttributeValue"
-            bundle="messages.SolrBundle"
-            key="inspection.attributeValue.displayName"
-            groupBundle="messages.SolrBundle"
-            groupKey="inspection.group"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.apache.solr.ide.configset.inspection.SolrInvalidAttributeValueInspection"/>
+                language="XML"
+                shortName="SolrInvalidAttributeValue"
+                bundle="messages.SolrBundle"
+                key="inspection.attributeValue.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrInvalidAttributeValueInspection"/>
         <localInspection
-            language="XML"
-            shortName="SolrUnknownAttribute"
-            bundle="messages.SolrBundle"
-            key="inspection.attribute.displayName"
-            groupBundle="messages.SolrBundle"
-            groupKey="inspection.group"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection"/>
+                language="XML"
+                shortName="SolrUnknownAttribute"
+                bundle="messages.SolrBundle"
+                key="inspection.attribute.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection"/>
         <localInspection
-            language="XML"
-            shortName="SolrUnknownFieldReference"
-            bundle="messages.SolrBundle"
-            key="inspection.fieldReference.displayName"
-            groupBundle="messages.SolrBundle"
-            groupKey="inspection.group"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection"/>
+                language="XML"
+                shortName="SolrUnknownFieldReference"
+                bundle="messages.SolrBundle"
+                key="inspection.fieldReference.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection"/>
+        <!-- Reads the same handler parameters as the check above and asks the next question of them:
+             the field is declared, but can it be searched? Separate rather than folded in, because a
+             user who trusts one may not want the other — and because the two examine different
+             parameter sets, `qf` and the phrase fields alone rather than everything naming a field. -->
+        <localInspection
+                language="XML"
+                shortName="SolrNonIndexedRelevanceField"
+                bundle="messages.SolrBundle"
+                key="inspection.nonIndexedRelevanceField.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to

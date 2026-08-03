@@ -17,10 +17,18 @@ internal object SolrConfigParameters {
     /**
      * One field name inside a parameter value.
      *
+     * @property parameterName the parameter that holds it, as `solrconfig.xml` spells it. Carried
+     *   because not every consumer treats every parameter alike: whether a name must be *declared*
+     *   is the same question in `fl` as in `qf`, but whether it must be *indexed* is a question only
+     *   the query-field parameters ask
      * @property fieldName the name as the parameter writes it
      * @property rangeInTag where it sits, relative to the start of the enclosing tag
      */
-    data class FieldNameOccurrence(val fieldName: String, val rangeInTag: TextRange)
+    data class FieldNameOccurrence(
+        val parameterName: String,
+        val fieldName: String,
+        val rangeInTag: TextRange,
+    )
 
     /**
      * The field-name occurrences inside [tag], or empty when it is not a parameter value.
@@ -42,6 +50,7 @@ internal object SolrConfigParameters {
             while (index >= 0) {
                 if (isWholeToken(text, index, name.length)) {
                     occurrences += FieldNameOccurrence(
+                        parameterName,
                         name,
                         TextRange(valueStart + index, valueStart + index + name.length),
                     )
