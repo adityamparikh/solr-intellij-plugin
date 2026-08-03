@@ -132,6 +132,19 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+        <!-- The hardest schema defect to see by reading: every class exists and every attribute is
+             legal, and the filter still never runs. Registered for XML like the rest; both rules it
+             carries are provable from the order of the chain alone. -->
+        <localInspection
+                language="XML"
+                shortName="SolrAnalyzerChainOrder"
+                bundle="messages.SolrBundle"
+                key="inspection.analyzerChainOrder.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrAnalyzerChainOrderInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to

@@ -1,0 +1,41 @@
+<html>
+<body>
+Reports an analyzer component placed where the components above it have already made its work
+impossible.
+<p>
+  An analyzer chain is a pipeline, and the order of its filters is the whole of its meaning. A
+  mis-ordered chain is the hardest kind of schema defect to see: nothing is misspelled, every class
+  exists, every attribute is legal, and Solr starts without complaint. The filter simply never does
+  anything, and the only evidence is a search that quietly fails to match.
+</p>
+<p>Two orderings are reported, both provable from the order alone:</p>
+<ul>
+  <li><b>A graph flattener above every filter that produces a graph.</b>
+    <code>FlattenGraphFilterFactory</code> flattens the token graph a
+    <code>SynonymGraphFilterFactory</code> or <code>WordDelimiterGraphFilterFactory</code> emits, and
+    a pipeline stage cannot flatten output produced after it runs. A chain that legitimately flattens
+    twice, once after each producer, is not reported — the second flattener has a producer above it.
+  </li>
+  <li><b><code>splitOnCaseChange</code> below a filter that folds case.</b> The option splits
+    <code>iPhone</code> at the case transition; a <code>LowerCaseFilterFactory</code> above it has
+    already turned that into <code>iphone</code>, so there is no transition left to find. The
+    tokenizer counts too — <code>LowerCaseTokenizerFactory</code> folds as it splits.
+  </li>
+</ul>
+<p>
+  The case-folding rule fires only on the attribute <em>written</em> in the file. Solr leaves
+  <code>splitOnCaseChange</code> on unless set, so most chains with a lowercase filter above a
+  word-delimiter filter are technically in this state, and their authors never asked for case
+  splitting. Written, it is a stated intention the chain cannot honour.
+</p>
+<p>
+  Nothing is reported for an ordering that is merely unusual. Analyzer chains are where expert users
+  deliberately do surprising things, and an inspection with opinions about style would fire
+  constantly on chains working exactly as intended. No quick-fix is offered for the same reason: the
+  repair is to move a filter, and which one to move is a question about intent.
+</p>
+<p><small>Example: <code>&lt;filter class="solr.FlattenGraphFilterFactory"/&gt;</code> written above
+  the <code>&lt;filter class="solr.WordDelimiterGraphFilterFactory"/&gt;</code> whose output it is
+  meant to flatten.</small></p>
+</body>
+</html>
