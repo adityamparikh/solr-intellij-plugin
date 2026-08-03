@@ -122,8 +122,10 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
       [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
-- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — Cmd+hover
-      `words="stopwords.txt"` at `managed-schema.xml:34`.
+- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — caret on
+      `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
+      NAV-5 itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
+      tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
 ## 5. Quick documentation (DOC)
@@ -302,6 +304,6 @@ a pass was started and abandoned is worth more than a gap.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
-| 2007-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
-| 2008-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
+| 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
+| 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
