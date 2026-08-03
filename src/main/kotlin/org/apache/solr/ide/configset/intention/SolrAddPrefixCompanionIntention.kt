@@ -38,9 +38,19 @@ class SolrAddPrefixCompanionIntention : IntentionAction, DumbAware {
      * The plan [isAvailable] computed, so that [getText] can name the type it chose.
      *
      * The platform calls [isAvailable] and then [getText] on the same instance while building the
-     * Alt-Enter list, which is the accepted way to carry context between them. Volatile because that
-     * pairing is the only ordering guaranteed, and [invoke] recomputes rather than trusting this —
-     * the file may have changed between the menu opening and the user choosing.
+     * Alt-Enter list, which is the accepted way to carry context between them: [getText] takes no
+     * parameters, so there is no context to recompute from and no way to pass one.
+     *
+     * **The instance is shared, so this is genuinely global.** If a daemon pass for another file
+     * runs [isAvailable] between this file's [isAvailable] and [getText], the label can name a type
+     * from that other schema. The cost is confined to the label. [invoke] recomputes the plan from
+     * the PSI at the caret and never reads this field, so no wrong edit can be written, and
+     * [isAvailable] clears it before deciding so a stale plan cannot make the intention appear where
+     * it does not apply.
+     *
+     * The alternative is a fixed label, which costs the type name — and naming the chosen type is a
+     * deliberate mitigation recorded in the design record, not an incidental nicety. A wrong word in
+     * a menu is the cheaper failure.
      */
     @Volatile
     private var plan: SolrPrefixCompanionPlan? = null
@@ -76,8 +86,11 @@ class SolrAddPrefixCompanionIntention : IntentionAction, DumbAware {
         plan = null
         val model = modelFor(file) ?: return false
         val field = fieldAtCaret(editor, file, model) ?: return false
-        plan = SolrPrefixCompanion.planFor(field, model)
-        return plan != null
+        // Decided on a local, never on the field: the shared instance means another file's pass can
+        // overwrite it at any point, and availability is the half that must not be affected.
+        val computed = SolrPrefixCompanion.planFor(field, model)
+        plan = computed
+        return computed != null
     }
 
     /**

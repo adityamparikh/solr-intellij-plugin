@@ -57,6 +57,26 @@ class SolrAddPrefixCompanionIntentionTest : SolrConfigsetTestCase() {
         assertFalse(text, text.contains("text_prefix"))
     }
 
+    /**
+     * Each inserted element owns its line.
+     *
+     * `addAfter` places a tag directly against its anchor, and nothing in this file asks for
+     * whitespace, so "did the companion land glued to the source field" is a real question about
+     * PSI insertion rather than a stylistic one. Asserting on `contains` alone would pass either
+     * way, which is what makes this worth its own test.
+     */
+    fun testEachInsertedElementIsOnItsOwnLine() {
+        applyIntention("""<field name="desc<caret>ription" type="text_general"/>""")
+
+        val lines = myFixture.file.text.lines().map { it.trim() }
+        assertContainsElements(
+            lines,
+            """<field name="description" type="text_general"/>""",
+            """<field name="description_prefix" type="text_prefix" indexed="true" stored="false"/>""",
+            """<copyField source="description" dest="description_prefix"/>""",
+        )
+    }
+
     fun testTheGeneratedTypePutsTheEdgeNGramOnTheIndexSideOnly() {
         applyIntention("""<field name="desc<caret>ription" type="text_general"/>""")
 
