@@ -150,7 +150,9 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] **DOC-4b** — Hover the *tag* of the demo's EdgeNGram filter (the word `filter`, not the
       `class` value): the popup shows a **Configuration** table of every attribute the class
       accepts. Written `minGramSize` / `maxGramSize` are bold and labelled *on this filter*;
-      unwritten `preserveOriginal` appears as **false** labelled *Solr default*. A custom
+      unwritten `preserveOriginal` appears as **false** labelled *Solr default*. An attribute
+      the catalog records no literal default for — `luceneMatchVersion` — shows an em dash
+      labelled *no default recorded*: the dash is the feature, not a missing value. A custom
       `class` the catalog does not know must offer nothing on the tag — not an empty table.
 - [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
       `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,

@@ -259,6 +259,7 @@ class SolrFieldPresentationTest {
     @Test
     fun `a factory tag popup shows every attribute at its effective value`() {
         val html = SolrFieldPresentation.factoryDocumentation(
+            "filter",
             edgeNGramEntry,
             mapOf("minGramSize" to "2", "maxGramSize" to "15"),
             SolrVersionSelection.DEFAULT,
@@ -278,6 +279,7 @@ class SolrFieldPresentationTest {
     @Test
     fun `written factory attributes are bold and defaults are not`() {
         val html = SolrFieldPresentation.factoryDocumentation(
+            "filter",
             edgeNGramEntry,
             mapOf("minGramSize" to "2"),
             SolrVersionSelection.DEFAULT,
@@ -293,6 +295,7 @@ class SolrFieldPresentationTest {
     @Test
     fun `a missing required factory attribute is marked rather than invented`() {
         val html = SolrFieldPresentation.factoryDocumentation(
+            "filter",
             edgeNGramEntry,
             emptyMap(),
             SolrVersionSelection.DEFAULT,
@@ -330,13 +333,15 @@ class SolrFieldPresentationTest {
     @Test
     fun `a factory with no known attributes claims no configuration table`() {
         val bare = SolrClassEntry(SolrClassKind.TOKENIZER, "org.example.T", "solr.T")
-        val html = SolrFieldPresentation.factoryDocumentation(bare, emptyMap(), SolrVersionSelection.DEFAULT)
+        val html =
+            SolrFieldPresentation.factoryDocumentation("tokenizer", bare, emptyMap(), SolrVersionSelection.DEFAULT)
         assertFalse("no configuration table for an empty list: $html", html.contains("Configuration"))
     }
 
     @Test
     fun `a factory tag popup names the kind and the tag`() {
         val html = SolrFieldPresentation.factoryDocumentation(
+            "filter",
             edgeNGramEntry,
             emptyMap(),
             SolrVersionSelection.DEFAULT,
@@ -344,6 +349,45 @@ class SolrFieldPresentationTest {
         assertTrue(html.contains("&lt;filter&gt;"))
         assertTrue(html.contains("token filter factory"))
         assertTrue(html.contains("solr.EdgeNGramFilterFactory"))
+    }
+
+    /**
+     * The tag comes from the file and the kind from the catalog, so a class written on the wrong
+     * element is described as what it is *where it is*.
+     *
+     * A token filter factory on a `<tokenizer>` is a configuration Solr rejects, and one a reader is
+     * plausibly hovering *because* it does not work. Deriving the element from the entry's kind
+     * would print `<filter>` over a tag that says `tokenizer` and label the written value "on this
+     * filter", sending them to edit an element the file does not contain — the popup silently
+     * repairing the file instead of describing it. The kind stays the catalog's, because that is the
+     * half that is true: naming both is what makes the mismatch legible.
+     */
+    @Test
+    fun `a factory popup names the tag the file wrote, not the one the class belongs on`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            "tokenizer",
+            edgeNGramEntry,
+            mapOf("minGramSize" to "2"),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue("the element written in the file: $html", html.contains("&lt;tokenizer&gt;"))
+        assertFalse("must not invent the element the class belongs on: $html", html.contains("&lt;filter&gt;"))
+        assertTrue("the origin follows the tag: $html", html.contains("on this tokenizer"))
+        assertFalse("the origin must not follow the kind: $html", html.contains("on this filter"))
+        assertTrue("the class is still what the catalog says it is: $html", html.contains("token filter factory"))
+    }
+
+    /** `charFilter` is one word written and two spoken, and the label is prose. */
+    @Test
+    fun `a char filter tag is named in words rather than echoed`() {
+        val html = SolrFieldPresentation.factoryDocumentation(
+            "charFilter",
+            edgeNGramEntry,
+            mapOf("minGramSize" to "2"),
+            SolrVersionSelection.DEFAULT,
+        )
+        assertTrue("expected the spoken form: $html", html.contains("on this char filter"))
+        assertTrue("the element keeps the file's spelling: $html", html.contains("&lt;charFilter&gt;"))
     }
 
     // --- the meaning of a property's resolved value ----------------------------------------------

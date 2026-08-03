@@ -175,6 +175,11 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      * factory must never render as a class that accepts nothing — that is worse than silence,
      * because silence is honest and an empty table is a claim. The `class` *value* popup already
      * takes the same vow; this is the tag half of it.
+     *
+     * The catalog is looked up by class name alone, so the entry it returns says what the class is
+     * and not where it was written. Those can disagree — a tokenizer factory on a `<filter>` is a
+     * configuration Solr rejects, and one a reader may well be hovering to understand — so the tag
+     * goes to the presentation beside the entry rather than being inferred back out of it.
      */
     private fun factoryTagDocumentation(tag: XmlTag): String? {
         val model = modelFor(tag) ?: return null
@@ -185,7 +190,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             .filter { it.name != "class" }
             .mapNotNull { attribute -> attribute.value?.let { attribute.name to it } }
             .toMap()
-        return SolrFieldPresentation.factoryDocumentation(entry, written, model.solrVersion)
+        return SolrFieldPresentation.factoryDocumentation(tag.name, entry, written, model.solrVersion)
     }
 
     /**

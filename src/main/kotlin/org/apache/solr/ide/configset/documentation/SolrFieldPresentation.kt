@@ -268,25 +268,35 @@ object SolrFieldPresentation {
      * to decline — rendering an empty configuration table for a custom plugin factory would claim
      * the class accepts nothing, which is the one lie this surface is organised never to tell.
      *
+     * [tagName] is the element the file wrote, not the element the class belongs on, and the two
+     * can disagree: `<filter class="solr.StandardTokenizerFactory"/>` resolves a tokenizer entry
+     * while the caret is on a `filter`. Naming the tag from the file and the kind from the catalog
+     * puts that disagreement on screen — `<filter> solr.StandardTokenizerFactory — tokenizer
+     * factory` reads as the mistake it is — where deriving the tag from the entry's kind would
+     * quietly rewrite the file into a valid one. Documenting a misplaced class as what it is, and
+     * leaving the complaint to the inspections, is the same contract [classDocumentation] keeps.
+     *
+     * @param tagName the element name as this configset writes it
      * @param entry the catalog entry for the class named on the tag
      * @param writtenAttributes the attributes written on the tag, excluding `class`
      * @param version the Solr line this configset targets, for the guide link
      * @return HTML for the documentation popup
      */
     fun factoryDocumentation(
+        tagName: String,
         entry: SolrClassEntry,
         writtenAttributes: Map<String, String>,
         version: SolrVersionSelection,
     ): String = buildString {
         append("<div class='definition'><pre>")
-        append("&lt;${escape(tagNameFor(entry.kind))}&gt; ")
+        append("&lt;${escape(tagName)}&gt; ")
         append("<b>${escape(entry.shortName)}</b> — ${kindText(entry.kind)}")
         append("\n${escape(entry.className)}")
         append("</pre></div>")
         append("<div class='content'>")
         entry.summary?.let { append("<p>${it}</p>") }
         if (entry.attributes.isNotEmpty()) {
-            append(factoryConfigurationTable(entry, writtenAttributes))
+            append(factoryConfigurationTable(tagName, entry, writtenAttributes))
         }
         append("</div>")
         append(classGuideLink(entry, version))
@@ -329,6 +339,7 @@ object SolrFieldPresentation {
      * inventing one is exactly the claim [classDocumentation] already refuses to make.
      */
     private fun factoryConfigurationTable(
+        tagName: String,
         entry: SolrClassEntry,
         writtenAttributes: Map<String, String>,
     ): String = buildString {
@@ -344,7 +355,7 @@ object SolrFieldPresentation {
                     "<td>${escape(factoryValueText(effective))}</td>"
                 },
             )
-            append("<td><i>${escape(factoryOriginText(effective.origin, entry.kind))}</i></td>")
+            append("<td><i>${escape(factoryOriginText(effective.origin, tagName))}</i></td>")
             append("<td>${escape(valueTypeText(effective.attribute.valueType))}</td></tr>")
         }
         append("</table>")
@@ -364,30 +375,34 @@ object SolrFieldPresentation {
     /**
      * Where a factory attribute's effective value came from, named so the reader knows what to edit.
      *
-     * Kind-specific "on this filter" / "on this tokenizer" wording matches the field half's "on
+     * Tag-specific "on this filter" / "on this tokenizer" wording matches the field half's "on
      * this field": a generic "on this tag" would force the reader to look up which element they
      * are on, which is the one fact the caret position already gave them.
+     *
+     * Named from the tag the file wrote rather than from the class's kind, so a tokenizer factory
+     * written on a `<filter>` says *on this filter* — the element the reader would have to edit.
      */
-    private fun factoryOriginText(origin: SolrFactoryAttributeOrigin, kind: SolrClassKind): String =
+    private fun factoryOriginText(origin: SolrFactoryAttributeOrigin, tagName: String): String =
         when (origin) {
-            SolrFactoryAttributeOrigin.TAG -> when (kind) {
-                SolrClassKind.TOKENIZER -> "on this tokenizer"
-                SolrClassKind.TOKEN_FILTER -> "on this filter"
-                SolrClassKind.CHAR_FILTER -> "on this char filter"
-                // Unreachable for analysis factories; kept exhaustive so a future kind fails loudly.
-                SolrClassKind.FIELD_TYPE -> "on this tag"
-            }
+            SolrFactoryAttributeOrigin.TAG -> "on this ${tagWord(tagName)}"
             SolrFactoryAttributeOrigin.SOLR_DEFAULT -> "Solr default"
             SolrFactoryAttributeOrigin.REQUIRED -> "required, not set"
             SolrFactoryAttributeOrigin.UNSET -> "no default recorded"
         }
 
-    /** The schema element name that carries a class of this kind. */
-    private fun tagNameFor(kind: SolrClassKind): String = when (kind) {
-        SolrClassKind.FIELD_TYPE -> "fieldType"
+    /**
+     * A schema element in words, for the "on this …" label.
+     *
+     * `charFilter` is two words spoken and one written, which is the only reason this is a mapping
+     * rather than the tag name itself. An element outside the analysis vocabulary falls back to the
+     * generic word: echoing an unrecognised element name into prose reads as a typo, and `fieldType`
+     * never reaches this surface.
+     */
+    private fun tagWord(tagName: String): String = when (SolrClassKind.forTag(tagName)) {
         SolrClassKind.TOKENIZER -> "tokenizer"
         SolrClassKind.TOKEN_FILTER -> "filter"
-        SolrClassKind.CHAR_FILTER -> "charFilter"
+        SolrClassKind.CHAR_FILTER -> "char filter"
+        SolrClassKind.FIELD_TYPE, null -> "tag"
     }
 
     /** The kind in words, for the definition line. */

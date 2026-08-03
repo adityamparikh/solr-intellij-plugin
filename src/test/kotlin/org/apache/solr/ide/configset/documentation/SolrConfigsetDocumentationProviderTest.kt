@@ -323,6 +323,36 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A class written on the wrong element is documented on the element it is written on.
+     *
+     * `<filter class="solr.StandardTokenizerFactory"/>` is a configuration Solr refuses to load, and
+     * therefore one a reader is plausibly hovering *because* it does not work. The catalog is
+     * searched by class name, so the entry that comes back is a tokenizer's; taking the element from
+     * that entry would print `<tokenizer>` over a tag that says `filter` and send the reader to edit
+     * an element the file does not contain. The tag is the file's and the kind is the catalog's, and
+     * showing both is what makes the mismatch visible instead of quietly repaired — the contract
+     * `testAMisplacedClassValueIsDocumentedAsWhatItIs` already holds the class value to.
+     */
+    fun testAMisplacedFactoryClassIsDocumentedOnTheTagTheFileWrote() {
+        val misplaced = """
+            <schema name="products">
+              <fieldType name="text_mixed" class="solr.TextField">
+                <analyzer>
+                  <filter class="solr.StandardTokenizerFactory" maxTokenLength="64"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+        """.trimIndent()
+        val doc = docAtCaret(caretInside("filter", text = misplaced))
+        assertNotNull("a misplaced factory is still documented", doc)
+        assertTrue("expected the element the file wrote: $doc", doc!!.contains("&lt;filter&gt;"))
+        assertFalse("must not rewrite the tag to the one the class belongs on: $doc", doc.contains("&lt;tokenizer&gt;"))
+        assertTrue("the written value belongs to the filter tag: $doc", doc.contains("on this filter"))
+        assertFalse("the origin must not follow the class's kind: $doc", doc.contains("on this tokenizer"))
+        assertTrue("the class is still described as what it is: $doc", doc.contains("tokenizer factory"))
+    }
+
+    /**
      * A custom plugin class the catalog has never seen must stay silent on the tag — an empty
      * configuration table would claim the class accepts nothing.
      */

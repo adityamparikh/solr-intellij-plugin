@@ -991,13 +991,19 @@ classes and, inside an analysis tag, the factory's own attribute names, and the 
 attribute's value and name against the catalog — action 2. Quick documentation on `class` values ships the catalog's
 kind, spellings, accepted attributes and Javadoc summary. **Action 6 has also shipped:** hovering a factory tag
 (`<filter>`, `<tokenizer>`, `<charFilter>`) shows every attribute the catalog says the class accepts at its effective
-value — written values bold and labelled as on this filter/tokenizer/char filter, unwritten defaults plain and labelled
-as Solr's — the factory sibling of the field property table. A class the catalog does not know stays silent rather than
-claiming an empty attribute set. The configuration table lives on the *tag*, not on the `class` value: the value keeps
-answering what the class is, and the tag answers what this particular instance resolves to. **What remains is action 5**
-— per-attribute hover with owner, value type, and default/required marker. Both action 5 and action 6 consume the
-defaults-and-required column [Step 9](#step-9-factory-catalog-generator-in-progress) now carries; only the per-attribute
-surface is still unbuilt.
+value — written values bold and labelled as on this filter/tokenizer/char filter, and the attributes the tag leaves out
+plain: a *literal* catalog default is shown at that value and labelled as Solr's, while an attribute the catalog cannot
+cite a value for shows an em dash, its origin column separating the two reasons there is none — required and missing, or
+optional with no recorded default. Those rows still appear, because a complete-configuration picture that dropped them
+would understate what the class accepts, and an em dash is the honest cell where an invented number would be a claim.
+The element named is the one the file wrote rather than the one the class belongs on, so a misplaced factory — a
+tokenizer's class on a `<filter>` — reads as the mistake it is instead of being quietly rendered valid; flagging it
+remains the inspections' job. This is the factory sibling of the field property table. A class the catalog does not know
+stays silent rather than claiming an empty attribute set. The configuration table lives on the *tag*, not on the `class`
+value: the value keeps answering what the class is, and the tag answers what this particular instance resolves to.
+**What remains is action 5** — per-attribute hover with owner, value type, and default/required marker. Both action 5
+and action 6 consume the defaults-and-required column [Step 9](#step-9-factory-catalog-generator-in-progress) now
+carries; only the per-attribute surface is still unbuilt.
 
 **Actions:**
 
@@ -1023,8 +1029,8 @@ surface is still unbuilt.
 - [ ] Quick documentation resolves for factories and attributes.
 - [ ] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
   default or required marker, and stays silent about meaning it cannot cite.
-- [x] A factory tag's documentation shows its complete configuration, unwritten attributes at their defaults,
-  distinguishably from written ones.
+- [x] A factory tag's documentation shows its complete configuration — literal defaults at their values, and attributes
+  with no citable value marked rather than invented — distinguishably from written ones.
 
 **Acceptance:** demo steps
 [68 — *completion inside an analyser chain*](../../docs/demo/README.md#step-68-completion-inside-an-analyser-chain),

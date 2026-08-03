@@ -40,8 +40,9 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
-        <!-- Quick documentation on a field, its type, a factory tag's complete configuration, or a
-             class value — each resolving effective values and where they came from. -->
+        <!-- Quick documentation. On a field, its type, or a factory tag, it resolves the values in
+             effect and where each came from; on a class value it answers what the class is and what
+             it accepts, which is identity rather than resolution. -->
         <lang.documentationProvider
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
