@@ -99,128 +99,75 @@ IDE offers alongside it. Rendering one and delegating the other is what that pai
 
 ## Is "link, never copy" universal across IntelliJ plugins? What about Spring?
 
-No — it is this project's choice, not a platform rule. Spring's tooling takes the opposite approach:
+No — it is this project's choice, and Spring makes the opposite one.
 `spring-boot-configuration-processor` reads the Javadoc on every `@ConfigurationProperties` field at
-compile time and writes it into `META-INF/spring-configuration-metadata.json` under a
-`"description"` key. Spring's own reference documentation states it plainly — "the Javadoc on fields
-is used to populate the `description` attribute" — and the multi-sentence description its format
-appendix shows for `spring.jpa.hibernate.ddl-auto` is the field's whole comment, not its first
-sentence. The metadata format has no field for a link at all (`name`, `type`, `description`,
-`sourceType`, `defaultValue`, `deprecation`), so a tool reading it has only the embedded text to
-show.
+compile time and writes it into `META-INF/spring-configuration-metadata.json`: "the Javadoc on
+fields is used to populate the `description` attribute." That format has no field for a link at all
+(`name`, `type`, `description`, `sourceType`, `defaultValue`, `deprecation`), so a tool reading it
+has only the embedded text — and the description it shows for `spring.jpa.hibernate.ddl-auto` is the
+field's whole comment, not its first sentence.
 
-So Spring's model is "mechanically extract Javadoc once, embed the extracted text in full," while
-this plugin's is "mechanically extract Javadoc once, keep one sentence, link for the rest." Both are
-mechanical extraction; they draw the line at a different point.
-
-**Two things put Spring's line out of reach here.** The mechanism is not available: the processor
-"can only populate the `description` attribute when the type is available as source code that is
-being compiled," and this plugin never compiles Solr — it reads artifacts someone else published.
-And the prose is not its own: Spring embeds Javadoc it wrote, where staleness and licensing are
-its own problem to have, while everything this plugin would embed belongs to Apache Solr — which is
-what makes "link, never copy" the cheaper answer here and not there.
+Both are mechanical extraction, cutting at different points, and two things put Spring's cut out of
+reach here. The processor "can only populate the `description` attribute when the type is available
+as source code that is being compiled," and this plugin never compiles Solr. And Spring embeds
+Javadoc it wrote, where staleness and licensing are its own problem to have; everything this plugin
+would embed belongs to Apache Solr.
 
 ## Why does the generated catalog keep only a one-sentence summary, not the full Javadoc?
 
-Two constraints shape that column, both visible in
-`buildSrc/src/main/kotlin/org/apache/solr/ide/build/GenerateSolrCatalogTask.kt`. The first decides
-that the text is machine-read at all; the second decides how much of it survives.
+Two constraints, both in
+`buildSrc/src/main/kotlin/org/apache/solr/ide/build/GenerateSolrCatalogTask.kt`.
 
-**It is the one fact that cannot come from bytecode.** Everything else in the catalog — attribute
-names, types, defaults, required-ness, class hierarchy — is read from compiled `.class` files via
-ASM. Javadoc is not retained in bytecode at all, so this column has to come from outside the
-compiled artifact: the optional `-sources` jars, which may not even resolve for a given Solr line.
-`JavadocSummaries`' KDoc ties that choice to the same principle as `SolrReferenceGuide`:
+**It is the one fact bytecode cannot carry.** Attribute names, types, defaults, required-ness and
+the class hierarchy all come from `.class` files via ASM; Javadoc is not retained in bytecode, so
+this column comes from the optional `-sources` jars, which may not resolve for a given Solr line at
+all. `JavadocSummaries`' KDoc keeps it machine-read for the reason the plugin links rather than
+copies: "a second body of documentation drifts out of sync on its own schedule, and a summary read
+mechanically from the artifact Solr itself published for this exact release cannot."
 
-> The plugin's own reasoning for linking to the Reference Guide rather than copying it is why this
-> stays a machine-read summary rather than hand-copied Reference Guide prose — a second body of
-> documentation drifts out of sync on its own schedule, and a summary read mechanically from the
-> artifact Solr itself published for this exact release cannot.
+**One sentence is what "summary" already means.** `summarizeJavadocComment` cuts where the `javadoc`
+tool does for its overview tables — "prose only — block tags and worked `<pre>` examples cut off,
+not merely truncated — reduced to what precedes the first `". "`". That is the convention Solr's
+authors were already writing to: the first sentence is the one meant to stand alone. Taking more
+takes prose written to be read in context, into a popup that has none.
 
-That settles where the text comes from — Solr's own artifact, re-read on every build, so it cannot
-drift the way a hand-copied paragraph would — but not how much of it to keep.
-
-**One sentence is what "summary" already means.** `summarizeJavadocComment`'s own comment defines the
-cut as the `javadoc` tool does for its overview tables — "prose only — block tags and worked `<pre>`
-examples cut off, not merely truncated — reduced to what precedes the first `". "`". That is a
-convention Solr's authors were already writing to, not a limit this build imposes on them: the first
-sentence of a class comment is the one they wrote to stand alone. Taking more means taking prose
-written to be read in context, in a popup that has none.
-
-The pass is more than a truncation, which is what makes the result readable: `{@link}` and `{@code}`
-are rendered to their text, inline tags it cannot render correctly are dropped rather than shown as
-raw braces, HTML is stripped, and whitespace is collapsed. A comment with no sentence-ending period
-at all is kept whole, since "Creates new instances of X" is exactly the case worth having.
-
-Collapsing whitespace is also what keeps the catalog's row format intact — each entry is a
-tab-separated line, `kind`, `class`, `short name`, `attributes`, `documentation` — since a newline
-would end the row early. The summary occupies the last column, so its length is not what the format
-constrains; `appendCatalogRow` guards the one character that would still corrupt a row, a literal
-tab, rather than trusting it to stay out.
+The pass is more than a truncation, which is what makes it readable: `{@link}` and `{@code}` render
+to their text, inline tags it cannot render are dropped rather than shown as raw braces, HTML is
+stripped, whitespace is collapsed, and a comment with no sentence-ending period is kept whole —
+"Creates new instances of X" is exactly the case worth having. Collapsing whitespace also keeps the
+catalog's tab-separated rows intact, and `appendCatalogRow` guards the one character that would
+still corrupt one: a literal tab.
 
 ## Why not resolve the exact `-sources` jar for the project's Solr version?
 
-Because the plugin never has an exact server-side version to resolve against, and even if it did,
-runtime resolution costs more than it buys. From `SolrVersionSelection.fromLuceneMatchVersion` (in
-`SolrReferenceGuide.kt`) and its KDoc:
+There is no exact version to resolve against, and resolving at runtime would cost more than it buys.
+From `SolrVersionSelection.fromLuceneMatchVersion` (in `SolrReferenceGuide.kt`):
 
-- **Only a major line is knowable today.** `luceneMatchVersion` names a *Lucene* version, not a
-  Solr one — Solr 10.0 pairs with Lucene 10.3, Solr 9.10 with Lucene 9.12 — and deriving a full Solr
-  version from a Lucene one needs a table that would want updating on every release. So the most
-  precise thing derivable from a configset is a major line (`9`, `10`, ...), never a coordinate like
-  `solr-core-9.7.1`. A version range would resolve — Maven's `[9,10)` and Gradle's `9.+` both do —
-  but only to whatever 9.x was published most recently, which is a guess about what the user runs
-  rather than an answer to it, and a network round-trip to make the guess.
-- **There is no live source to fetch from.** Even a connected server (planned as
-  `SolrVersionSource.SERVER`) reports a version string, not its own `-sources` artifact. Turning that
-  string into a jar still means a network round-trip to Maven Central or wherever the user's repos
-  are configured — with all the firewall, mirror, and credential complications that implies.
-  `docs/Module.md` states Phase 1 works "offline with no Solr connection," and quick documentation
-  depending on runtime artifact resolution would break that guarantee.
-- **It is a dependency graph, not one jar.** The catalog's tokenizer/filter/char-filter data spans
-  several independently versioned Lucene analysis modules, not just `solr-core`. Knowing which
-  module a given factory lives in — and which sources artifact to pull — is exactly what Gradle's
-  resolver already computes once at build time against a pinned classpath (`solrArtifacts$line` /
-  `sources` in `build.gradle.kts`); it is not derivable from a version number alone.
-- **Not every module ships sources at all.** `SolrLine.sources`' KDoc notes it "may be empty — a
-  module that publishes no sources (Jetty, ZooKeeper)... degrades to no documentation for the
-  classes it would have covered." Depending solely on a sources jar would leave gaps the bytecode-
-  based catalog never has, since kind/attributes/defaults always come from the `.class` files.
+- **Only a major line is knowable.** `luceneMatchVersion` names a *Lucene* version — Solr 10.0 pairs
+  with Lucene 10.3, Solr 9.10 with Lucene 9.12 — so a configset yields `9` or `10`, never a
+  coordinate like `solr-core-9.7.1`. A range resolves (Maven's `[9,10)`, Gradle's `9.+`) but only to
+  the most recently published 9.x, which is a guess about what the user runs, bought with a network
+  trip.
+- **There is no live source to fetch from.** Even a connected server reports a version string, not
+  its `-sources` artifact, so turning one into the other is still a trip to Maven Central or a
+  mirror. `docs/Module.md` promises Phase 1 works "offline with no Solr connection."
+- **It is a dependency graph, not one jar.** The factory data spans several independently versioned
+  Lucene analysis modules. Which module a factory lives in is what Gradle's resolver computes once
+  at build time against a pinned classpath, and is not derivable from a version number.
+- **Not every module ships sources.** `SolrLine.sources` "may be empty — a module that publishes no
+  sources (Jetty, ZooKeeper)... degrades to no documentation for the classes it would have covered."
+  The bytecode catalog never has that gap.
 
-### What about detecting the SolrJ version the project depends on?
+**Not from the SolrJ dependency either.** `SolrProjectDetector` matches `SOLR_CLIENT_COORDINATES`
+"as substrings of the library name so that every version matches and no version is named here" — a
+gate asking *whether* a Solr client is present, never *which*. Reading that version would not help
+anyway: SolrJ depends on `solr-api`, Jetty and Jackson, not on `solr-core` or any Lucene analysis
+module — `StandardTokenizerFactory`, the most-used tokenizer there is, lives in `lucene-core` — a
+project's client version need not match the server it deploys to, and a bare configset repository
+has no build file to read one from.
 
-`SolrProjectDetector` (`org.apache.solr.ide.configset.activation`) does read library names off the
-project's dependencies, and a Gradle-resolved `solr-solrj` library name typically does carry an
-exact version. The detector deliberately does not look at it: `SOLR_CLIENT_COORDINATES` is "matched
-as substrings of the library name so that every version matches and no version is named here," which
-is the shape of a gate that asks *whether* a Solr client is present and never *which*. Three reasons
-that version would not be worth reading even if the gate kept it:
-
-- **It is the wrong artifact.** SolrJ's published POM depends on `solr-api`, Jetty's HTTP/2 client
-  and Jackson — not on `solr-core`, `lucene-core`, or any analysis module. The classes the catalog
-  documents are on the other side of that line: `FieldType` is `solr-core`, while
-  `TokenizerFactory`, `TokenFilterFactory` and `CharFilterFactory` are Lucene's own
-  (`org.apache.lucene.analysis`), with their implementations spread across `lucene-core` and the
-  `lucene-analysis-*` modules that `solr-core` and `solr-analysis-extras` pull in transitively.
-  `StandardTokenizerFactory`, the most-used tokenizer there is, lives in `lucene-core`. A project can
-  depend on SolrJ and have none of them on its classpath.
-- **Client and server versions can legitimately differ.** Nothing requires the SolrJ a project
-  compiles against to match the Solr the configset is deployed to, and nothing in the build would
-  notice if they diverged — so the client dependency's version is not a statement about the server.
-- **Not every configset sits in a project with a SolrJ dependency at all.** A bare configset
-  repository with no build file — the case the manual configset-root override in
-  `SolrConfigsetSettings` exists for — has nothing to read a version from either way.
-
-### What about downloading from Maven Central once a version is known?
-
-Grant a trustworthy exact version and the two bullets above still stand: it is a graph rather than a
-coordinate, so the IDE would need a dependency resolver running against whatever repositories the
-user's project happens to have configured, and doing that on the editor path is what the offline
-guarantee rules out.
-
-What is left is the trade-off actually taken. Pre-computing the summary once per supported line,
-from the pinned version in `supportedSolrLines` (`build.gradle.kts`), makes it "close enough" for the
-line rather than exact for a patch release. Class-level Javadoc rarely changes within a major line,
-and `SolrReferenceGuide` already prefers coarse-but-reliable to exact-but-fragile — so the accuracy
-given up is small, and it is given up at build time where a mistake is visible, not at runtime where
-it would be a failed fetch in front of a user.
+**The trade-off taken.** Pre-compute once per supported line, from the pinned version in
+`supportedSolrLines` (`build.gradle.kts`): close enough for the line rather than exact for a patch
+release. Class-level Javadoc rarely changes within a major line, and the accuracy given up is given
+up at build time, where a mistake is visible, rather than at runtime where it is a failed fetch in
+front of a user.
