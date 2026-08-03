@@ -22,6 +22,7 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
             <analyzer type="index">
               <tokenizer class="solr.StandardTokenizerFactory"/>
               <filter class="solr.LowerCaseFilterFactory"/>
+              <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15" preserveOriginal="false"/>
             </analyzer>
           </fieldType>
           <field name="sku" type="string" indexed="true" stored="false"/>
@@ -338,5 +339,89 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
             "expected the field types page: $urls",
             urls!!.single().endsWith("/indexing-guide/field-types-included-with-solr.html"),
         )
+    }
+
+    /**
+     * Hovering a factory attribute answers with what the catalog can prove and nothing else.
+     *
+     * `minGramSize` on `EdgeNGramFilterFactory` is required and an integer — both recovered from
+     * bytecode — so the popup names the owner, the value type and the required marker. It does not
+     * invent a prose description: Javadoc is written per class, and there is no per-attribute
+     * summary anywhere in this design.
+     */
+    fun testHoveringAFactoryAttributeNamesItsOwnerTypeAndRequiredMarker() {
+        val doc = docAtCaret(caretInside("minGramSize"))
+        assertNotNull(doc)
+        assertTrue("expected the attribute name: $doc", doc!!.contains("minGramSize"))
+        assertTrue("expected the owning class: $doc", doc.contains("solr.EdgeNGramFilterFactory"))
+        assertTrue("expected the value type: $doc", doc.contains("whole number"))
+        assertTrue("expected the required marker: $doc", doc.contains("Required"))
+        assertFalse("a required attribute has no default to show: $doc", doc.contains("Default"))
+    }
+
+    /**
+     * A literal default recovered from bytecode is shown; a required marker is not invented beside it.
+     */
+    fun testHoveringAFactoryAttributeWithADefaultShowsTheDefault() {
+        val doc = docAtCaret(caretInside("preserveOriginal"))
+        assertNotNull(doc)
+        assertTrue("expected the owning class: $doc", doc!!.contains("solr.EdgeNGramFilterFactory"))
+        assertTrue("expected the value type: $doc", doc.contains("true or false"))
+        assertTrue("expected the catalog default: $doc", doc.contains("Default") && doc.contains("false"))
+        assertFalse("a defaulted attribute is not required: $doc", doc.contains("Required"))
+    }
+
+    /**
+     * An attribute the catalog does not list is not described. Analysis tags have no element-level
+     * documentation either, so the honest answer is silence — inventing a value type would be the
+     * failure mode this surface exists to avoid.
+     */
+    fun testAnUnknownFactoryAttributeOffersNothing() {
+        val custom = schema.replace("minGramSize=\"2\"", "notARealAttribute=\"2\"")
+        assertNull(
+            "an unknown factory attribute must not be described",
+            docAtCaret(caretInside("notARealAttribute", text = custom)),
+        )
+    }
+
+    /**
+     * A class the catalog does not know leaves every attribute undocumentable. The same contract
+     * the unknown-attribute inspection follows: a custom plugin class is not flagged, and it is
+     * not described either.
+     */
+    fun testAFactoryAttributeOnAnUnknownClassOffersNothing() {
+        val custom = schema.replace(
+            "solr.EdgeNGramFilterFactory",
+            "com.example.CustomFilterFactory",
+        )
+        assertNull(
+            "attributes of an unknown class must not be described",
+            docAtCaret(caretInside("minGramSize", text = custom)),
+        )
+    }
+
+    /** Outside a Solr project the factory-attribute half is inert, like every other surface. */
+    fun testFactoryAttributeDocumentationIsOffOutsideASolrProject() {
+        givenNoSolrOnTheClasspath()
+        assertNull(docAtCaret(caretInside("minGramSize")))
+    }
+
+    /**
+     * The external URL for a factory attribute is the guide page for its owning class's kind —
+     * the same page the class-value popup offers, so the two halves of the same filter never
+     * disagree about where to send the reader.
+     */
+    fun testExternalUrlForAFactoryAttributeNamesTheFiltersPage() {
+        givenSolrConfigAtFixtureRoot()
+        myFixture.configureByText("managed-schema.xml", caretInside("minGramSize"))
+        val element: PsiElement = provider.getCustomDocumentationElement(
+            myFixture.editor,
+            myFixture.file,
+            myFixture.file.findElementAt(myFixture.caretOffset),
+            myFixture.caretOffset,
+        )!!
+        val urls = provider.getUrlFor(element, element)
+        assertNotNull(urls)
+        assertTrue("expected the filters page: $urls", urls!!.single().endsWith("/indexing-guide/filters.html"))
     }
 }

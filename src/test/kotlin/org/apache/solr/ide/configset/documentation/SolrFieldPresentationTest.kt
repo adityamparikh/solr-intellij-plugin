@@ -64,8 +64,10 @@ class SolrFieldPresentationTest {
         "org.apache.lucene.analysis.ngram.EdgeNGramFilterFactory",
         "solr.EdgeNGramFilterFactory",
         listOf(
-            SolrClassAttribute("maxGramSize", SolrValueType.INTEGER),
-            SolrClassAttribute("preserveOriginal", SolrValueType.BOOLEAN),
+            SolrClassAttribute("maxGramSize", SolrValueType.INTEGER, required = true),
+            SolrClassAttribute("minGramSize", SolrValueType.INTEGER, required = true),
+            SolrClassAttribute("preserveOriginal", SolrValueType.BOOLEAN, defaultValue = "false"),
+            SolrClassAttribute("luceneMatchVersion", SolrValueType.FREE),
         ),
     )
 
@@ -246,6 +248,55 @@ class SolrFieldPresentationTest {
         val html = SolrFieldPresentation.classDocumentation(strFieldEntry, null, SolrVersionSelection.DEFAULT)
         assertTrue("strFieldEntry carries no summary", strFieldEntry.summary == null)
         assertFalse("no empty <p></p> for a missing summary", html.contains("<p></p>"))
+    }
+
+    // --- the factory-attribute documentation popup -----------------------------------------------
+
+    @Test
+    fun `a required factory attribute names its owner type and required marker`() {
+        val attribute = edgeNGramEntry.attribute("minGramSize")!!
+        val html = SolrFieldPresentation.classAttributeDocumentation(
+            edgeNGramEntry, attribute, SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("minGramSize"))
+        assertTrue(html.contains("solr.EdgeNGramFilterFactory"))
+        assertTrue("expected the value type: $html", html.contains("whole number"))
+        assertTrue("expected the required marker: $html", html.contains("Required"))
+        assertFalse("a required attribute has no default row: $html", html.contains("Default"))
+    }
+
+    @Test
+    fun `a defaulted factory attribute shows its catalog default`() {
+        val attribute = edgeNGramEntry.attribute("preserveOriginal")!!
+        val html = SolrFieldPresentation.classAttributeDocumentation(
+            edgeNGramEntry, attribute, SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("true or false"))
+        assertTrue(html.contains("Default") && html.contains("false"))
+        assertFalse(html.contains("Required"))
+    }
+
+    /**
+     * FREE means the generator could not narrow the type. Promising "any value" would overclaim,
+     * so the Accepts row is simply absent — the same empty rendering the class-level table uses.
+     */
+    @Test
+    fun `a free-typed factory attribute omits the accepts row`() {
+        val attribute = edgeNGramEntry.attribute("luceneMatchVersion")!!
+        val html = SolrFieldPresentation.classAttributeDocumentation(
+            edgeNGramEntry, attribute, SolrVersionSelection.DEFAULT,
+        )
+        assertTrue(html.contains("Read by"))
+        assertFalse("FREE must not invent an accepts line: $html", html.contains("Accepts"))
+    }
+
+    @Test
+    fun `a factory attribute popup links the guide page for its class kind`() {
+        val attribute = edgeNGramEntry.attribute("minGramSize")!!
+        val html = SolrFieldPresentation.classAttributeDocumentation(
+            edgeNGramEntry, attribute, SolrVersionSelection.DEFAULT,
+        )
+        assertTrue("expected the filters page: $html", html.contains("/indexing-guide/filters.html"))
     }
 
     // --- the meaning of a property's resolved value ----------------------------------------------

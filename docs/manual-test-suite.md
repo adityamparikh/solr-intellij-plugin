@@ -155,6 +155,12 @@ gesture, caret placement, the Find Usages tool window.*
       origins name 1.7. **Undo, and confirm the values return.** One side alone proves
       nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
       check.
+- [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
+      on the attribute name). The popup names the owning class, the value type (*a whole
+      number*), and the required marker — and does **not** invent a prose description of what
+      the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
+      catalog default `false` instead of a required marker. An attribute name the catalog does
+      not list, or any attribute on a class the catalog does not know, stays silent.
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
@@ -163,11 +169,10 @@ gesture, caret placement, the Find Usages tool window.*
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
       DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
-also carries each attribute's default and whether it is required, and no surface renders
-them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
-looking for `minGramSize` marked required is looking for something unbuilt, not something
-broken.
+**DOC-4's `Accepts` table still shows a name and a value type, and nothing more.** Defaults and
+required markers live on the per-attribute hover (DOC-7), not on the class-value table — Javadoc is
+per class, so the class popup has no honest per-argument prose to add beside a default either. A
+tester looking for `minGramSize` marked required wants DOC-7, not DOC-4.
 
 **DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
@@ -274,8 +279,6 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
-  default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown
   at their defaults
 - The dimmed rendering of an attribute that merely restates its default, with a
