@@ -159,7 +159,7 @@ class DemoConfigsetTest {
 
         val unknownReferences = model.fieldReferences
             .filter { it.fieldName != "score" && model.resolve(it.fieldName) == null }
-        assertTrue("no handler parameter names a missing field: ${'$'}unknownReferences", unknownReferences.isEmpty())
+        assertTrue("no handler parameter names a missing field: $unknownReferences", unknownReferences.isEmpty())
     }
 
     @Test

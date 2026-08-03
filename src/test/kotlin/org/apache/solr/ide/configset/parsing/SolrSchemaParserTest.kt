@@ -62,6 +62,41 @@ class SolrSchemaParserTest {
         assertEquals(false, SolrSchemaParser.parse(schema).fields.single { it.name == "internal" }.indexed)
     }
 
+    /**
+     * Solr reads these through `Boolean.parseBoolean`, so `TRUE` is a schema that loads. Matching
+     * case exactly made the property read as *unset*, which is not a near-miss but the opposite
+     * answer: unset inherits the field type's value, so a field written `indexed="TRUE"` was
+     * reported as whatever its type said, silently.
+     */
+    @Test
+    fun `boolean attributes are read whatever their case`() {
+        val mixed = SolrSchemaParser.parse(
+            """
+            <schema name="products" version="1.6">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="shouty" type="string" indexed="TRUE" stored="False" multiValued="tRuE"/>
+            </schema>
+            """.trimIndent(),
+        ).fields.single { it.name == "shouty" }
+        assertEquals(true, mixed.indexed)
+        assertEquals(false, mixed.stored)
+        assertEquals(true, mixed.multiValued)
+    }
+
+    /** Case-insensitivity stops at the two words: a typo is still unset, not silently false. */
+    @Test
+    fun `a value that is not a boolean at all stays null`() {
+        val bogus = SolrSchemaParser.parse(
+            """
+            <schema name="products" version="1.6">
+              <fieldType name="string" class="solr.StrField"/>
+              <field name="odd" type="string" indexed="yes"/>
+            </schema>
+            """.trimIndent(),
+        ).fields.single { it.name == "odd" }
+        assertNull("`yes` is not a boolean, and inventing false would hide the typo", bogus.indexed)
+    }
+
     @Test
     fun `dynamic fields are read separately from declared fields`() {
         val facts = SolrSchemaParser.parse(schema)

@@ -73,6 +73,15 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * `_docid_` is the sort spelling of the same thing `[docid]` is in an `fl`, and it wears no
+     * bracket to give itself away — it is an ordinary-looking name that no schema declares and Solr
+     * answers itself, out of `SortSpecParsing`. A sort by internal document id is a correct file.
+     */
+    fun testSortingByTheInternalDocumentIdIsNotReported() {
+        checkConfig(handler("""<str name="sort">_docid_ asc</str>"""))
+    }
+
     /** A dynamic field satisfies a handler reference exactly as it satisfies any other. */
     fun testAHandlerParameterNamingADynamicFieldIsClean() {
         checkConfig(handler("""<str name="fl">title_s</str>"""))

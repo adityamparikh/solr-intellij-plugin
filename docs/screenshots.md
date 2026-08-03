@@ -81,7 +81,8 @@ capability is recognised, or the demo schema's field list changes.
 **Shows** the question the Reference Guide cannot answer: each property's value *and where it came
 from* — this field, its type, or Solr's default.
 
-**Capture** caret inside `name="category"` at `managed-schema.xml:70`, press F1. Crop to the popup.
+**Capture** caret inside `name="category"` at `managed-schema.xml:70`, press F1. Crop to the popup,
+**including the `uninvertible` row** — the current image ends above it.
 
 **Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
 `From` column's wording changes.

@@ -163,6 +163,31 @@ class SolrSchemaVocabularyCompletionTest : SolrConfigsetTestCase() {
         assertTrue("stored is not: $offered", "stored" in offered)
     }
 
+    /**
+     * A tag carrying no attributes yet, which every other test in this section skips over — they
+     * all start from a tag that already has one.
+     *
+     * `isAttributePosition` measures the tag's header out to the end of its last attribute, which
+     * reads as though it must collapse to a single point here and misclassify the caret. It does
+     * not: the platform inserts its dummy identifier at the caret before the tag is reparsed, so by
+     * the time the range is computed there *is* a last attribute — the dummy itself. That is a
+     * load-bearing accident of how completion works rather than anything the range says, so it is
+     * pinned here.
+     */
+    fun testAttributesAreOfferedOnATagThatHasNoneYet() {
+        val offered = completionsFor(
+            """
+            <schema name="t">
+              <fieldType name="string" class="solr.StrField"/>
+              <field <caret>/>
+            </schema>
+            """.trimIndent(),
+        )
+        assertTrue("expected name among $offered", "name" in offered)
+        assertTrue("expected type among $offered", "type" in offered)
+        assertFalse("a child element is not an attribute: $offered", "analyzer" in offered)
+    }
+
     /** A field cannot carry the properties that configure a type's own behaviour. */
     fun testTypeOnlyPropertiesAreNotOfferedOnAField() {
         val offered = completionsFor(
