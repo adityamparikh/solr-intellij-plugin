@@ -17,7 +17,10 @@ scaffolding: a configset parses into a field model, and that model reaches the s
 match-capability inlay hints, quick documentation on schema elements, field types and
 `class` values, five inspections — several of them offering the valid names rather than
 only reporting the invalid one — and completion for both the schema's own vocabulary and
-the catalog's classes and factory attributes. The generated catalog now carries each
+the catalog's classes and factory attributes. Two Alt-Enter intentions now *write* rather than
+only describe — the `_prefix` and `_exact` companion patterns, generated from the field that
+lacks them — which is the first time the plugin edits a configset rather than explaining one.
+The generated catalog now carries each
 class's attributes with their value types — and, where the bytecode proves them, their
 literal defaults and required markers — and covers the field-type classes as well as
 the factories. On the schema side, a field's effective properties resolve against the
@@ -76,9 +79,7 @@ it whole, and the gutter action goes with the Server track.
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
 - [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; three of seven
   inspections shipped, four remain and one of those waits on the catalog
-- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-in-progress) — **in progress**;
-  action 3's `_prefix` half shipped and its `_exact` half remains, so the step's last criterion
-  stays open on one intention rather than on the extension point being unused
+- [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-done) — **done**
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) — **done**
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing
   the catalog provides.
@@ -553,7 +554,7 @@ rule immediately.
 
 **Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done)
 
-### Step 7: Match hints and quick-fixes (in progress)
+### Step 7: Match hints and quick-fixes (done)
 
 Taken out of order, ahead of the Editor track's earlier steps. Its two dependencies are
 both met, it needs no PSI reference infrastructure, and it is the first step that produces
@@ -592,25 +593,26 @@ anything a user can see — four steps of foundation had shipped with no exit to
   [The design record](../../docs/design/archive/2026-08-02-schema-version-defaults/design.md)
   covers both.
 
-- `SolrAddPrefixCompanionIntention` and the pure `SolrPrefixCompanion` in
-  `org.apache.solr.ide.configset.intention` — action 3's EdgeNGram-backed `_prefix` half, and
+- Both companion intentions in `org.apache.solr.ide.configset.intention` — action 3 entire, and
   with it action 4, which was a constraint on this work rather than separate work.
+  `SolrAddPrefixCompanionIntention` writes the EdgeNGram-backed `_prefix` field;
+  `SolrAddExactCompanionIntention` writes the `StrField`-backed `_exact` field. They share
+  `SolrAddCompanionIntention` and `SolrCompanions`, differing only in what counts as already
+  capable and which declared types may be reused.
   [The design record](../../docs/design/archive/2026-08-03-match-capability-intentions/design.md)
-  covers the availability rules and why the generated type's edge n-gram sits on the index side
-  alone.
-
-**Action 3's `_exact` half is what remains.** The extension point is no longer unused: the
-`_prefix` companion ships, and the `_exact` companion reuses its naming, insertion and copy-rule
-code. The last criterion below stays open until that sibling lands.
+  covers the prefix half, including why its generated type's edge n-gram sits on the index side
+  alone. The exact half's one non-obvious rule is that reuse matches the implementing *class*:
+  every numeric and date type is unanalysed and so matches whole values exactly as a string type
+  does, and borrowing one would fail at index time rather than in the editor.
 
 **Success criteria:**
 - [x] Fields annotated correctly for canonical types.
 - [x] No hint is shown where match analysis is not confident.
 - [x] Quick documentation on a field's type resolves, and its Reference Guide link names
       the version the configset targets.
-- [ ] Quick-fixes produce valid configset edits.
+- [x] Quick-fixes produce valid configset edits.
   - [x] The `_prefix` companion, its copy rule, and the field type when one has to be written.
-  - [ ] The `_exact` companion.
+  - [x] The `_exact` companion, on the same terms.
 
 **Acceptance:** demo steps
 [28 to 33 — the hints and the generated fix](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field).
@@ -624,7 +626,7 @@ with its copy rule.
 ### Step 23: Explaining and correcting what is already on screen (done)
 
 Numbered last because it was added last; it belongs in the Editor track, after
-[match hints](#step-7-match-hints-and-quick-fixes-in-progress). Read the section it sits in, not the
+[match hints](#step-7-match-hints-and-quick-fixes-done). Read the section it sits in, not the
 number.
 
 Three gaps found by using the plugin rather than by reading the plan, and they share a
@@ -680,7 +682,7 @@ with no Alt-Enter is more frustrating than no underline.
 survive the obvious follow-up question, which is "so what do I put there instead".
 
 **Dependencies:** [inspections](#step-6-inspections-in-progress) for the quick-fixes;
-[match hints](#step-7-match-hints-and-quick-fixes-in-progress) for the documentation provider they
+[match hints](#step-7-match-hints-and-quick-fixes-done) for the documentation provider they
 extend.
 
 ### Step 24: Completing the schema's own vocabulary (done)
@@ -883,7 +885,7 @@ covers the phrasing and the silence rules in full.
 and [screenshot catalog entry 1](../../docs/screenshots.md), both rendered against
 `demo/solr/conf/managed-schema.xml`.
 
-**Dependencies:** [match hints](#step-7-match-hints-and-quick-fixes-in-progress) for the inlay
+**Dependencies:** [match hints](#step-7-match-hints-and-quick-fixes-done) for the inlay
 provider it extends; [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the documentation provider it extends.
 
@@ -1069,7 +1071,7 @@ resolution.
 4. Documentation provider keyed by factory and attribute, surfacing which catalog source
    answered. The *field type* half of quick documentation does not belong here — it needs
    the model and match analysis rather than the catalog, so it ships with
-   [match hints](#step-7-match-hints-and-quick-fixes-in-progress) instead. Only the catalog-backed
+   [match hints](#step-7-match-hints-and-quick-fixes-done) instead. Only the catalog-backed
    half waits for this step.
 5. Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers
    with what the catalog can prove: the class that reads it, its value type, and its

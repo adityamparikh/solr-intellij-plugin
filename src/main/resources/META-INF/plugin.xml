@@ -127,5 +127,10 @@
             <category>Solr</category>
             <className>org.apache.solr.ide.configset.intention.SolrAddPrefixCompanionIntention</className>
         </intentionAction>
+        <intentionAction>
+            <language>XML</language>
+            <category>Solr</category>
+            <className>org.apache.solr.ide.configset.intention.SolrAddExactCompanionIntention</className>
+        </intentionAction>
     </extensions>
 </idea-plugin>

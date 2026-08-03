@@ -1,0 +1,27 @@
+<html>
+<body>
+Adds a companion field that holds a tokenized field's whole value, so it can be matched, faceted and
+sorted exactly.
+<p>
+  A tokenized field does not keep the string a document carried. <code>Widget Pro</code> enters the
+  index as <code>widget</code> and <code>pro</code>, so a filter on the whole value, a facet over it,
+  or a sort by it all have nothing to work against — and none of them reports an error. The standard
+  remedy is a <code>string</code> companion beside the text field, populated by a
+  <code>copyField</code> rule, and this writes both.
+</p>
+<p>
+  An existing <code>StrField</code> type is reused when the schema declares one, and the intention
+  names the type it chose. Where the schema declares none, one is written as Solr's own
+  <code>_default</code> configset writes it.
+</p>
+<p>
+  Reuse matches on the implementing class rather than on what the type matches, and the distinction
+  matters: every numeric, date and boolean type is unanalyzed, so all of them match whole values just
+  as a string type does. Borrowing one for the companion would be accepted by the schema and fail
+  later, at index time, against real documents.
+</p>
+<p><small>Not offered on a field that already matches whole values, whether it is a
+  <code>string</code> field or a keyword-tokenized text field — both already hold the whole input as
+  one term.</small></p>
+</body>
+</html>

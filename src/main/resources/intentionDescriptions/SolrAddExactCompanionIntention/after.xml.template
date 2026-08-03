@@ -1,0 +1,12 @@
+<schema name="example" version="1.6">
+  <fieldType name="text_general" class="solr.TextField">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true"/>
+  <field name="name" type="text_general"/>
+  <field name="name_exact" type="string" indexed="true" stored="false"/>
+  <copyField source="name" dest="name_exact"/>
+</schema>
