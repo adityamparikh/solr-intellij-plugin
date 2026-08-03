@@ -81,6 +81,36 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
         check(index(whitespace() + filter("solr.FlattenGraphFilterFactory")))
     }
 
+    /**
+     * The case the flattener rule exists to stay off: a tokenizer that emits a graph itself.
+     *
+     * `JapaneseTokenizerFactory` splits compounds in its default `search` mode and emits the whole
+     * word alongside its parts, and Lucene documents this flattener as how that reaches an index.
+     * The flattener is doing real work here — the graph filter below it is a second producer that
+     * the second flattener answers, not evidence that the first one is misplaced.
+     */
+    fun testAFlattenerBelowAGraphProducingTokenizerIsClean() {
+        check(
+            index(
+                """<tokenizer class="solr.JapaneseTokenizerFactory" mode="search"/>""" +
+                    filter("solr.FlattenGraphFilterFactory") +
+                    filter("solr.SynonymGraphFilterFactory") +
+                    filter("solr.FlattenGraphFilterFactory"),
+            ),
+        )
+    }
+
+    /** Nori decompounds the same way Kuromoji does, and is written in the same position. */
+    fun testAFlattenerBelowTheKoreanTokenizerIsClean() {
+        check(
+            index(
+                """<tokenizer class="solr.KoreanTokenizerFactory" decompoundMode="mixed"/>""" +
+                    filter("solr.FlattenGraphFilterFactory") +
+                    filter("solr.WordDelimiterGraphFilterFactory"),
+            ),
+        )
+    }
+
     /** The two analyzers are two pipelines; a graph filter in one says nothing about the other. */
     fun testAGraphFilterInTheOtherAnalyzerIsNotCounted() {
         check(

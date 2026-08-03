@@ -15,6 +15,9 @@ impossible.
     <code>SynonymGraphFilterFactory</code> or <code>WordDelimiterGraphFilterFactory</code> emits, and
     a pipeline stage cannot flatten output produced after it runs. A chain that legitimately flattens
     twice, once after each producer, is not reported — the second flattener has a producer above it.
+    Nor is any chain whose tokenizer emits a graph of its own: <code>JapaneseTokenizerFactory</code>
+    and <code>KoreanTokenizerFactory</code> segment compounds into a graph, and they run above every
+    filter, so a flattener below one has work to do wherever it sits.
   </li>
   <li><b><code>splitOnCaseChange</code> below a filter that folds case.</b> The option splits
     <code>iPhone</code> at the case transition; a <code>LowerCaseFilterFactory</code> above it has

@@ -32,7 +32,8 @@ import org.apache.solr.ide.model.SolrMatchAnalysis
  *    `WordDelimiterGraphFilterFactory` emits, and a pipeline stage cannot flatten output that is
  *    produced after it runs. Reported only when no graph filter precedes it *and* one follows: a
  *    chain may legitimately flatten twice, once after each producer, and the second flattener has a
- *    producer above it.
+ *    producer above it. A tokenizer that emits a graph itself — Kuromoji, Nori — runs above every
+ *    filter and silences the rule for the whole chain.
  *  - **`splitOnCaseChange` below a filter that folds case.** The option splits `iPhone` into `i`
  *    and `Phone` by finding the case transition. A `LowerCaseFilterFactory` above it has already
  *    turned that into `iphone`, and there is no transition left to find.
@@ -52,6 +53,12 @@ import org.apache.solr.ide.model.SolrMatchAnalysis
  * filter at all is also inert, but proving it needs to know that the *tokenizer* produces no graph
  * either, and `JapaneseTokenizerFactory` does. Both are true findings that this rule set cannot
  * establish from ordering alone, which is the line it holds to.
+ *
+ * **The graph-producing tokenizers are named, and naming too few is the safe direction.** Missing
+ * one costs a false positive on a correct chain, which is the failure this package is organised to
+ * avoid; listing one that does not produce a graph costs only a report this inspection would
+ * otherwise have made. [GRAPH_PRODUCING_TOKENIZERS] is therefore read as *do not report*, never as
+ * evidence for reporting.
  *
  * **No quick-fix.** The repair is to move a filter, and where to move it to is a question about
  * intent: the flattener may belong after the graph filter, or the graph filter may belong first.
@@ -95,8 +102,12 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
                 val filters = chain.subTags.filter { it.localName == SolrSchemaTags.FILTER }
                 val above = filters.takeWhile { it !== tag }
                 val below = filters.dropWhile { it !== tag }.drop(1)
-                reportFlattenerAboveEveryGraph(holder, tag, above, below)
-                reportCaseSplitBelowCaseFolding(holder, tag, chain, above)
+                // Solr collects a chain's components by element name and runs the tokenizer first
+                // whatever position it is written in, so it is upstream of every filter here. Both
+                // rules ask something of it, and they must ask the same element.
+                val tokenizer = chain.subTags.firstOrNull { it.localName == SolrSchemaTags.TOKENIZER }
+                reportFlattenerAboveEveryGraph(holder, tag, tokenizer, above, below)
+                reportCaseSplitBelowCaseFolding(holder, tag, tokenizer, above)
             }
         }
     }
@@ -111,15 +122,22 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
          * the tokenizer produces no graph either — and `JapaneseTokenizerFactory` does, so the
          * finding would be wrong on a Japanese chain. With a producer *below* it, the ordering
          * alone proves the mistake: that producer's graph cannot reach a stage that has already run.
+         *
+         * **A [tokenizer] that emits a graph itself silences the rule outright**, and for the same
+         * reason. It runs above every filter, so the flattener has real work to do no matter what
+         * follows: a Kuromoji chain that flattens the tokenizer's compound splitting and then flattens
+         * a synonym graph further down is two producers answered in order, not a misplaced stage.
          */
         fun reportFlattenerAboveEveryGraph(
             holder: ProblemsHolder,
             filter: XmlTag,
+            tokenizer: XmlTag?,
             above: List<XmlTag>,
             below: List<XmlTag>,
         ) {
             val declaration = classValueOf(filter) ?: return
             if (simpleName(declaration.value) != FLATTEN_GRAPH) return
+            if (tokenizer != null && simpleName(classOf(tokenizer)) in GRAPH_PRODUCING_TOKENIZERS) return
             if (above.any { producesGraph(it) }) return
             val producer = below.firstOrNull { producesGraph(it) } ?: return
             SolrInspections.reportOnValue(
@@ -140,13 +158,12 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
         fun reportCaseSplitBelowCaseFolding(
             holder: ProblemsHolder,
             filter: XmlTag,
-            chain: XmlTag,
+            tokenizer: XmlTag?,
             above: List<XmlTag>,
         ) {
             if (simpleName(classOf(filter)) !in WORD_DELIMITERS) return
             val request = filter.getAttribute(SPLIT_ON_CASE_CHANGE)?.valueElement ?: return
             if (request.value !in ASKED_FOR) return
-            val tokenizer = chain.subTags.firstOrNull { it.localName == SolrSchemaTags.TOKENIZER }
             val folder = (listOfNotNull(tokenizer) + above)
                 .firstOrNull { SolrMatchAnalysis.foldsCase(classOf(it)) }
                 ?: return
@@ -182,6 +199,29 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
             "SynonymGraphFilterFactory",
             "ManagedSynonymGraphFilterFactory",
             "WordDelimiterGraphFilterFactory",
+        )
+
+        /**
+         * Tokenizers emitting a token graph, which makes a flattener anywhere below them useful.
+         *
+         * The morphological analyzers for languages written without spaces, where a compound is
+         * segmented into its parts *and* kept whole at the same position. Kuromoji does this in the
+         * `search` mode it defaults to; Nori does it under `decompoundMode="mixed"`, having defaulted
+         * to discarding the original since it was contributed.
+         *
+         * **The mode attribute is deliberately not read.** Doing so would turn a question this rule
+         * declines to answer — is this flattener useful? — into one it would have to get right on a
+         * chain configured either way, and the cost is asymmetric: a Nori chain left in its default
+         * mode merely keeps a flattener this inspection would otherwise have reported, while reading
+         * the attribute wrongly underlines a working chain.
+         *
+         * Short on purpose, and it makes the rule's silence wider rather than its reporting: an
+         * unlisted graph-producing tokenizer is the one way this can still be wrong on a correct
+         * chain, so a name belongs here the moment there is doubt.
+         */
+        val GRAPH_PRODUCING_TOKENIZERS = setOf(
+            "JapaneseTokenizerFactory",
+            "KoreanTokenizerFactory",
         )
 
         /** The filters accepting [SPLIT_ON_CASE_CHANGE], both the graph-aware one and its predecessor. */
