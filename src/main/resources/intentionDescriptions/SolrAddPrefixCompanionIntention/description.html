@@ -1,0 +1,27 @@
+<html>
+<body>
+Adds a companion field that makes prefix searching efficient, from a field that does not support it.
+<p>
+  Prefix matching is a property of the index-time analyzer chain, not of anything written in the
+  field declaration, so a field that looks ordinary may be unable to answer the search its name
+  promises. The remedy is a three-part pattern — a field type carrying an edge-n-gram filter, a
+  companion field using that type, and a <code>copyField</code> rule to populate it — and this
+  writes all three.
+</p>
+<p>
+  An existing edge-n-gram field type is reused when the schema declares one, and the intention names
+  the type it chose so the choice is visible before it is taken. Only where the schema declares none
+  is a type written, and then the edge n-gram is placed on the <em>index</em> analyzer alone: putting
+  it on the query side as well grinds the query into its own prefixes, so a search for
+  <code>wid</code> also searches <code>wi</code>, and relevance collapses.
+</p>
+<p>
+  The intention is offered only where the plugin is certain — the field's type must be declared, the
+  chain must contain no factory the plugin does not recognize, the field must not already support
+  prefixes, and the companion name must be free.
+</p>
+<p><small>A field that is not indexed still qualifies. <code>copyField</code> copies the incoming
+  value before analysis, so a display-only field is the cleanest case for this pattern rather than
+  one to skip.</small></p>
+</body>
+</html>

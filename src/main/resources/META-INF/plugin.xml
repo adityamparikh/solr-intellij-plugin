@@ -118,5 +118,14 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection"/>
+
+        <!-- An intention rather than an inspection quick-fix, because a field without prefix
+             support is correct Solr. Underlining it would be manufacturing a problem in order to
+             have somewhere to hang the fix; an intention carries no claim that anything is wrong. -->
+        <intentionAction>
+            <language>XML</language>
+            <category>Solr</category>
+            <className>org.apache.solr.ide.configset.intention.SolrAddPrefixCompanionIntention</className>
+        </intentionAction>
     </extensions>
 </idea-plugin>
