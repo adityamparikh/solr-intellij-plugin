@@ -86,7 +86,7 @@ placement and readability of the rendered hint.*
       `indexed, not stored, no doc values, single-valued`.
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
-- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyser names the unrecognised
+- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyzer names the unrecognised
       `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
       `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
       the schema does not declare) shows no hint at all.
