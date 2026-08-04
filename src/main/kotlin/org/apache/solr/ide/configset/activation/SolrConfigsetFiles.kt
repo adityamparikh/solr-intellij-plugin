@@ -251,6 +251,15 @@ object SolrSchemaTags {
     const val CHAR_FILTER: String = "charFilter"
 
     /**
+     * The three tags naming a factory in their `class`, which is what the generated catalog indexes.
+     *
+     * Distinct from [RESOURCE_CARRIERS] below, which is a subset chosen for a different reason: this
+     * set is every component whose `class` can be looked up, that one is the components whose
+     * attributes may name a file. A tag can be in one and not the other, and the tokenizer is.
+     */
+    val ANALYSIS_COMPONENTS: Set<String> = setOf(TOKENIZER, FILTER, CHAR_FILTER)
+
+    /**
      * The analyzer components a resource attribute may sit on.
      *
      * Tokenizers are deliberately absent: the stock tokenizers that read files at all take them
