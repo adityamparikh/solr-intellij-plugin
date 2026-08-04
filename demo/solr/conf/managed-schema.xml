@@ -76,6 +76,13 @@
        hint stays silent rather than guessing at a default the type might have overridden. -->
   <field name="legacy"      type="discontinued" indexed="true"  stored="true"/>
 
+  <!-- The only declaration here that is a pattern rather than a name, and it is NOT a defect.
+       `body_t` in the /select handler's `pf` is declared by nothing: it resolves through this
+       pattern, the way Solr resolves it. That makes it the one cross-file reference in the demo
+       whose target is a glob, and the one place a usage search has to reach a name the pattern
+       supplies rather than a name that spells it. -->
+  <dynamicField name="*_t" type="text_general" indexed="true" stored="true"/>
+
   <uniqueKey>id</uniqueKey>
 
   <copyField source="name"         dest="text"/>

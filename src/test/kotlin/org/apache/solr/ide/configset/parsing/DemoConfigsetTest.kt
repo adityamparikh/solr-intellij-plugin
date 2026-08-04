@@ -163,8 +163,34 @@ class DemoConfigsetTest {
     }
 
     @Test
-    fun `a field the schema does not declare resolves to nothing`() {
-        assertNull("the demo schema declares no dynamic fields, so nothing catches this", model.resolve("title_s"))
+    fun `a field no declaration supplies resolves to nothing`() {
+        assertNull("the demo declares only `*_t`, so a `_s` name has nothing to match", model.resolve("title_s"))
         assertNotNull(model.resolve("name"))
+    }
+
+    /**
+     * The planted dynamic field, and the reference that only it supplies.
+     *
+     * `body_t` is named by the `/select` handler's `pf` and declared by nothing, so it resolves
+     * through the pattern the way Solr resolves it. That pairing is the demo's only cross-file
+     * reference whose target is a glob — and the only place a usage search has to reach a name the
+     * pattern *supplies* rather than one that spells it, which is what
+     * [declarations as targets](../../../../../../../docs/design/pending/2026-08-04-declaration-targets/design.md)
+     * needs a fixture for. Pinned here so that removing either half fails a build.
+     */
+    @Test
+    fun `the planted dynamic field supplies the name solrconfig references`() {
+        assertEquals(setOf("*_t"), model.dynamicFields.keys)
+
+        val resolved = model.resolve("body_t")
+        assertNotNull("body_t must resolve through the *_t pattern", resolved)
+        assertEquals("*_t", resolved!!.name)
+
+        assertTrue(
+            "the /select handler's pf must still name body_t, or the pattern has nothing referencing it",
+            model.fieldReferences.any {
+                it.fieldName == "body_t" && it.handlerName == "/select" && it.parameterName == "pf"
+            },
+        )
     }
 }

@@ -36,6 +36,13 @@ Field names cross every boundary here without anything checking them: `qf` in `s
 names fields defined in `managed-schema.xml`; `ProductSearch` names them again in Java strings; and
 the Solr URL is a property reference resolved against whichever profile is active, not a literal.
 
+**One reference deliberately resolves the hard way, and it is not a defect.** The `/select`
+handler's `pf` names `body_t`, which no `<field>` declares — it resolves through the schema's
+`<dynamicField name="*_t">`, exactly as Solr resolves it. It is the only reference here whose target
+is a pattern rather than a name, which makes it the fixture for anything that has to follow a glob:
+resolution, and a usage search that has to reach a name the pattern *supplies* rather than one that
+spells it. Both halves are pinned by `DemoConfigsetTest`, so removing either fails a build.
+
 ## Running it
 
 Solr, if you are exercising the server features:
