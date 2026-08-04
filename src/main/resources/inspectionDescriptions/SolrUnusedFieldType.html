@@ -1,0 +1,30 @@
+<html>
+<body>
+Reports a <code>fieldType</code> that no <code>field</code>, <code>dynamicField</code> or other field
+type in the configset names.
+<p>
+  Nothing here is wrong: Solr loads a schema full of unused types without complaint. The cost is paid
+  by the next reader, who has to work out which of the declarations in front of them the index
+  actually depends on, and by the next author, who tunes an analyzer chain no document has passed
+  through in years.
+</p>
+<p>
+  The declaration is therefore greyed out rather than underlined, and no quick-fix is offered:
+  whether an unused type is a leftover or a provision for fields not written yet is a judgement the
+  editor cannot make. Solr's own <code>_default</code> configset ships a deliberate palette of types
+  for exactly that reason.
+</p>
+<p>
+  A <code>dynamicField</code> counts as a use whether or not any document matches its pattern, and so
+  does another type's <code>subFieldType</code> — the attribute through which
+  <code>PointType</code> and <code>LatLonType</code> delegate each dimension to a numeric type.
+</p>
+<p>
+  Nothing at all is reported for a schema that pulls its declarations in with
+  <code>&lt;xi:include&gt;</code>, because the fields naming these types are then in a file this
+  reading never sees.
+</p>
+<p><small>Example: <code>&lt;fieldType name="text_legacy" class="solr.TextField"/&gt;</code> in a
+  schema whose fields all name <code>string</code> and <code>text_general</code>.</small></p>
+</body>
+</html>

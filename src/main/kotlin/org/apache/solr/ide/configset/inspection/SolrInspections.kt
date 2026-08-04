@@ -78,17 +78,23 @@ internal object SolrInspections {
      * @param holder the collector to report to
      * @param value the attribute value element
      * @param message the user-facing message
+     * @param fixes the quick-fixes to offer, if any
+     * @param highlightType how the finding is drawn. The default claims a defect; a finding that is
+     *   merely dead rather than wrong passes
+     *   [ProblemHighlightType.LIKE_UNUSED_SYMBOL] instead, so that the presentation says what the
+     *   inspection actually means
      */
     fun reportOnValue(
         holder: ProblemsHolder,
         value: XmlAttributeValue,
         message: String,
         fixes: Array<LocalQuickFix> = LocalQuickFix.EMPTY_ARRAY,
+        highlightType: ProblemHighlightType = ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
     ) {
         holder.registerProblem(
             value,
             message,
-            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+            highlightType,
             ElementManipulators.getValueTextRange(value),
             *fixes,
         )

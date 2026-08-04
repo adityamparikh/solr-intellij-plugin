@@ -93,7 +93,7 @@ placement and readability of the rendered hint.*
       `indexed, not stored, no doc values, single-valued`.
 - [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
       at presentation font size.
-- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyser names the unrecognised
+- [ ] **HINT-5** — `notes` (type `custom_text`, whose analyzer names the unrecognised
       `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
       `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
       the schema does not declare) shows no hint at all.
@@ -213,6 +213,7 @@ boundary again.
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
 `SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
+`SolrUnusedFieldTypeInspectionTest`,
 `SolrReferenceQuickFixTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
 
@@ -243,12 +244,19 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
          order rather than presence.
       3. Add `<filter class="solr.FlattenGraphFilterFactory"/>` above the word-delimiter
          filter: its `class` is underlined, naming the graph filter below it.
-- [ ] **INSP-8** — Undo everything, including DOC-6's version edit: both files return to
+- [ ] **INSP-8** — Change `name_prefix`'s `type` from `text_prefix` to `text_general`:
+      the `<fieldType name="text_prefix">` declaration nothing now names goes **dim**,
+      immediately and without saving. Dimmed, not underlined — this is the one finding in
+      the section that is dead configuration rather than a defect, and the presentation is
+      the claim being checked. The demo's other three types stay lit, so a rule that dims
+      every type would fail here rather than pass silently.
+- [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
       planted `legacy` field's undeclared type are part of the baseline and stay underlined.
       None of INSP-7's three edits survives into the baseline: the demo's own chains are
-      correctly ordered.
+      correctly ordered. No dimmed type is part of the baseline: every type the demo
+      declares has a field behind it.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -318,16 +326,15 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The two inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
-  and has not built: an unused field type, and a configuration element removed in the
-  targeted Solr line
+- The one inspection [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: a configuration element removed in the targeted Solr line
 - The relevance-parameter check on a non-indexed field, which is built and registered but
   has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
   automatically; what manual would add is the live reaction the INSP checks exist for
-- **Do not read INSP's length as an inspection count** — seven inspection classes exist, and
-  the seven INSP checks above are scenarios over six of them: INSP-1 and INSP-3 are both the
+- **Do not read INSP's length as an inspection count** — eight inspection classes exist, and
+  the eight INSP checks above are scenarios over seven of them: INSP-1 and INSP-3 are both the
   dangling-`copyField` inspection, once on a written edit and once on a live deletion, and
-  INSP-8 restores the baseline rather than testing anything
+  INSP-9 restores the baseline rather than testing anything
 
 ## Pass log
 
