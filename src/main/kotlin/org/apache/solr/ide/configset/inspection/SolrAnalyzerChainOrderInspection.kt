@@ -45,6 +45,12 @@ import org.apache.solr.ide.model.SolrMatchAnalysis
  * intention the chain cannot honour, which is a defect worth a warning. Defaulted, it is Solr's
  * opinion rather than the author's.
  *
+ * **Written, and readable.** A value Solr's own `Integer.parseInt` rejects is a core that will not
+ * start rather than a chain that runs wrong, which is a different finding with a different repair —
+ * and one [SolrInvalidAttributeValueInspection] already makes from the catalog's recorded type. This
+ * rule stays off it so that one attribute carries one warning, and so that the warning it carries is
+ * the accurate one. See [asksForCaseSplit].
+ *
  * **What was considered and left out.** A `KeywordMarkerFilterFactory` with no stemmer below it is
  * equally inert, and it was left out because Solr ships dozens of language stemmers: recognizing a
  * handful of them would report a German chain as broken for using
@@ -163,7 +169,7 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
         ) {
             if (simpleName(classOf(filter)) !in WORD_DELIMITERS) return
             val request = filter.getAttribute(SPLIT_ON_CASE_CHANGE)?.valueElement ?: return
-            if (request.value !in ASKED_FOR) return
+            if (!asksForCaseSplit(request.value)) return
             val folder = (listOfNotNull(tokenizer) + above)
                 .firstOrNull { SolrMatchAnalysis.foldsCase(classOf(it)) }
                 ?: return
@@ -234,14 +240,22 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
         const val SPLIT_ON_CASE_CHANGE = "splitOnCaseChange"
 
         /**
-         * Values that turn [SPLIT_ON_CASE_CHANGE] on.
+         * Whether [value] turns [SPLIT_ON_CASE_CHANGE] on, read the way Solr reads it.
          *
-         * Solr reads it as an integer, so `1` is the documented spelling; `true` is accepted here
-         * because configsets are full of it and the author's intention is not in doubt. Anything
-         * else — `0`, `false`, or a typo — leaves this silent, since a value Solr cannot read is the
-         * invalid-attribute-value inspection's finding and not this one's.
+         * `getInt(args, "splitOnCaseChange", 1) != 0` — an integer, and any non-zero one, so `2` and
+         * `-1` ask for the option as surely as `1` does while `0` declines it. The comparison is
+         * against what Solr does rather than against the spelling the Reference Guide uses, because
+         * the whole claim being made is about what the chain will do when it runs.
+         *
+         * **A value that is not an integer at all leaves this silent, `true` included.** Solr reads
+         * this attribute with `Integer.parseInt` and refuses to load the core when it cannot, and the
+         * catalog records `splitOnCaseChange:int`, so
+         * [SolrInvalidAttributeValueInspection] already underlines that value and offers a fix.
+         * Saying it again here would put two warnings on one attribute, and the second would be the
+         * misleading one: it describes a chain that folded the case away too early, when the actual
+         * defect is a core that will not start.
          */
-        val ASKED_FOR = setOf("1", "true")
+        fun asksForCaseSplit(value: String): Boolean = (value.toIntOrNull() ?: 0) != 0
 
         /** The attribute naming a component's factory. */
         const val CLASS = "class"
