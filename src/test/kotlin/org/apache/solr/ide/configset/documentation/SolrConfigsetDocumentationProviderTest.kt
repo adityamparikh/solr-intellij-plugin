@@ -298,7 +298,7 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         """.trimIndent()
         val doc = docAtCaret(caretInside("filter", text = filter))
         assertNotNull("a factory tag should be documented", doc)
-        assertTrue("expected the configuration table: $doc", doc!!.contains("Configuration"))
+        assertTrue("expected the configuration table: $doc", doc!!.contains("<b>Configuration</b>"))
         assertTrue("expected the written minGramSize: $doc", doc.contains("2"))
         assertTrue("expected the written maxGramSize: $doc", doc.contains("15"))
         assertTrue(
@@ -307,10 +307,13 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
         )
         assertTrue("expected the Solr default origin: $doc", doc.contains("Solr default"))
         assertTrue("expected the on-this-filter origin: $doc", doc.contains("on this filter"))
-        // The class-value Accepts table is a different popup; the tag must not be it.
+        // The class-value Accepts table is a different popup; the tag must not be it. Asserted on
+        // the heading markup and not on the word, because this table has an Accepts *column*:
+        // `Accepts` appears either way, and only `<b>Accepts</b>` tells the two popups apart. The
+        // class-value test asserts the mirror of this, and the pair is what keeps them separate.
         assertFalse(
             "the tag popup is configuration, not the bare Accepts list: $doc",
-            doc.contains("<b>Accepts</b>") && !doc.contains("Configuration"),
+            doc.contains("<b>Accepts</b>"),
         )
     }
 
@@ -318,7 +321,7 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
     fun testHoveringATokenizerTagShowsItsCompleteConfiguration() {
         val doc = docAtCaret(caretInside("tokenizer"))
         assertNotNull(doc)
-        assertTrue("expected the configuration table: $doc", doc!!.contains("Configuration"))
+        assertTrue("expected the configuration table: $doc", doc!!.contains("<b>Configuration</b>"))
         assertTrue("expected a catalog attribute: $doc", doc.contains("maxTokenLength"))
         assertTrue("expected the tokenizer origin vocabulary: $doc", doc.contains("on this tokenizer") || doc.contains("Solr default") || doc.contains("no default recorded"))
     }
