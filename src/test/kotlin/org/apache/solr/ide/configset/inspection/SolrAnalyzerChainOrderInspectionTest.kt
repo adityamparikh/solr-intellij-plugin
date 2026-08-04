@@ -11,6 +11,11 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  * and the way to get such a rule wrong is to fire it on a chain that is working — so the correct
  * order, the doubly-flattened chain, the unset attribute and the chain whose graph filter is in the
  * other analyzer are all asserted silent.
+ *
+ * **Every name in the inspection's three factory sets has a fixture.** They are enumerations of what
+ * Solr ships rather than patterns, so nothing but a test notices a member going missing — and a
+ * missing member is silent in the direction that matters, turning a reported chain into an
+ * unreported one.
  */
 class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
 
@@ -32,6 +37,17 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    /**
+     * The same chains, in the file that does not carry them.
+     *
+     * @param chains the analyzer elements, marked as they would be were this a schema
+     */
+    private fun checkConfig(chains: String) {
+        myFixture.enableInspections(SolrAnalyzerChainOrderInspection())
+        myFixture.configureByText("solrconfig.xml", "<config>$chains</config>")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     private fun index(body: String) = """<analyzer type="index">$body</analyzer>"""
 
     private fun query(body: String) = """<analyzer type="query">$body</analyzer>"""
@@ -44,8 +60,12 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
         """<filter class="<warning descr="Solr: '$producer' below produces the token graph this """ +
             """flattens, so this filter has to come after it">$flattener</warning>"/>"""
 
-    private fun caseSplit(folder: String, value: String = "1") =
-        """<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange="<warning """ +
+    private fun caseSplit(
+        folder: String,
+        value: String = "1",
+        splitter: String = "solr.WordDelimiterGraphFilterFactory",
+    ) =
+        """<filter class="$splitter" splitOnCaseChange="<warning """ +
             """descr="Solr: '$folder' above has already folded case, so splitOnCaseChange can never """ +
             """split anything">$value</warning>"/>"""
 
@@ -183,6 +203,34 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * The gate is the file's kind, and `solrconfig.xml` is not a schema.
+     *
+     * Analyzer chains are declared in the schema and nowhere else, so the same elements pasted into
+     * the configuration file describe nothing Solr will run. Asserted because the alternative — a
+     * visitor that walks every XML file in the project looking for a tag named `filter` — is work on
+     * every keystroke and a warning wherever some other format spells an element the same way.
+     */
+    fun testNothingIsReportedOutsideTheSchema() {
+        checkConfig(
+            index(
+                whitespace() +
+                    filter("solr.FlattenGraphFilterFactory") +
+                    filter("solr.SynonymGraphFilterFactory"),
+            ),
+        )
+    }
+
+    /**
+     * A filter mid-typing has no `class` yet, and neither rule can say anything about one.
+     *
+     * The inspection runs on every keystroke, so the half-written element is not an edge case but
+     * the state the file is in while it is being edited.
+     */
+    fun testAFilterWithNoClassAttributeIsPassedOver() {
+        check(index(whitespace() + "<filter/>" + filter("solr.SynonymGraphFilterFactory")))
+    }
+
     /** Outside a Solr project every inspection is inert, like every other surface. */
     fun testNothingIsReportedOutsideASolrProject() {
         givenNoSolrOnTheClasspath()
@@ -264,6 +312,39 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
                 whitespace() +
                     filter("solr.ICUFoldingFilterFactory") +
                     caseSplit("solr.ICUFoldingFilterFactory"),
+            ),
+        )
+    }
+
+    /**
+     * The managed synonym filter is a graph producer too, and it is the member of that set most
+     * likely to be dropped by someone reading the names rather than what they do: it is configured
+     * through the Schema API rather than a file, which changes where its synonyms come from and
+     * nothing about the graph it emits.
+     */
+    fun testAFlattenerAboveTheManagedSynonymGraphIsFlagged() {
+        check(
+            index(
+                whitespace() +
+                    flattenerAbove("solr.ManagedSynonymGraphFilterFactory") +
+                    filter("solr.ManagedSynonymGraphFilterFactory"),
+            ),
+        )
+    }
+
+    /**
+     * The pre-graph word delimiter accepts `splitOnCaseChange` as well, and a schema still using it
+     * is exactly the schema most likely to be carrying an ordering mistake from years ago.
+     *
+     * It is deliberately absent from the graph producers: this factory splits without emitting a
+     * graph, which is the whole reason the graph-aware one replaced it.
+     */
+    fun testCaseSplittingOnThePreGraphWordDelimiterIsFlagged() {
+        check(
+            index(
+                whitespace() +
+                    filter("solr.LowerCaseFilterFactory") +
+                    caseSplit("solr.LowerCaseFilterFactory", splitter = "solr.WordDelimiterFilterFactory"),
             ),
         )
     }
