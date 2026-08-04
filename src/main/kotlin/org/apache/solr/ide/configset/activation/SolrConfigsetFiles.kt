@@ -223,6 +223,15 @@ object SolrSchemaTags {
     /** Tags that declare a field: a concrete one, or a dynamic pattern. */
     val FIELD: Set<String> = setOf("field", "dynamicField")
 
+    /**
+     * The tag declaring a dynamic field on its own.
+     *
+     * Named separately from [FIELD] for the readers that must tell the two apart rather than
+     * accept either — a dynamic field supplies names it does not spell, so what is true of
+     * searching for one is not true of searching for a concrete field.
+     */
+    const val DYNAMIC_FIELD: String = "dynamicField"
+
     /** Tags that declare a field type. Solr accepts both spellings and real configsets use both. */
     val FIELD_TYPE: Set<String> = setOf("fieldType", "fieldtype")
 

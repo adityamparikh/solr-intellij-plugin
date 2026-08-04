@@ -465,13 +465,14 @@ recovery for.
 - [x] Searching a declaration's references reaches every one of them, including across the file
   boundary — `ReferencesSearch` on a `<field>` returns the `qf` parameter naming it.
 
-**One clause of the original criterion moved out.** It read *"All four reference kinds resolve; Find
-Usages returns every reference"*, and the second half was ticked in error. The search half is real and
-asserted, but nothing here made a *declaration* into a target the platform will accept, so the Alt-F7
-the clause describes answers *Cannot search for usages from this location* — as
-[the manual suite's NAV-3 and NAV-4](../../docs/manual-test-suite.md) record after a real pass. That
-half now belongs to [declarations as targets](#step-28-declarations-as-targets). Everything this step
-built is done and none of it changes.
+**One clause of the original criterion moved out, and has since been delivered elsewhere.** It read
+*"All four reference kinds resolve; Find Usages returns every reference"*, and the second half was
+ticked in error: the search half is real and asserted here, but nothing in this step made a
+*declaration* into a target the platform will accept, so the Alt-F7 the clause describes answered
+*Cannot search for usages from this location*. That half moved to
+[declarations as targets](#step-28-declarations-as-targets) and landed there, which is where the
+Alt-F7 criterion and its fixtures now live. Everything this step built is done and none of it
+changed.
 
 **Acceptance:** demo steps
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
@@ -914,16 +915,26 @@ this one is the search direction only.
 
 **Success criteria:**
 
-- [ ] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
+- [x] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
   including the ones in `solrconfig.xml`; `SolrDeclarationTargetTest`'s three `yieldsNoTarget`
   assertions invert, and its reference and search assertions still hold unchanged.
-- [ ] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
+- [x] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
   at the range of the name itself rather than the whole parameter value.
-- [ ] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
+- [x] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
   plugin does not model — `<requestHandler name="/select">` among them.
-- [ ] A same-named field in a second configset in the same project is not reported; Solr resolves per
+- [x] A same-named field in a second configset in the same project is not reported; Solr resolves per
   configset and so does this.
-- [ ] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does.
+- [x] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does. NAV-6 was
+  added alongside them for the dynamic-field gesture, which no existing check covered.
+
+**Two claims in the design record were wrong, and the build said so.** `RenameableDelegatePsiTarget`
+was named as the ready-made target class; it requires a `PsiNamedElement`, which an
+`XmlAttributeValue` is not — the very fact that made a declaration searcher necessary, met again one
+layer down. The target is a `DelegatePsiTarget` carrying a name instead, and rename keeps its own
+fixtures in [Step 8](#step-8-rename) rather than inheriting an untested capability here. The second:
+a caret on the attribute *name* was said to yield no target at all, and it yields the enclosing tag —
+the platform's own descriptor answer, present before this step and not this step's to remove. The
+criterion that matters, and the one asserted, is that it yields no Solr *declaration* target.
 
 **Acceptance:**
 [demo step 27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type)

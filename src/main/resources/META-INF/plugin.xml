@@ -56,6 +56,21 @@
                 language="XML"
                 implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
 
+        <!-- The other end of those references. The contributor above anchors every reference at a
+             use site, which makes Ctrl-click work and left Find Usages refusing from the
+             declaration: the platform had no way to turn that caret into something to search for.
+             No language attribute — declaration searchers are registered globally and decline by
+             inspecting the element, which the configset guard already does. -->
+        <pom.declarationSearcher
+                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationSearcher"/>
+
+        <!-- A dynamic field supplies names it never spells, and the word index can only offer
+             candidates that share a word with the pattern. Without this, Find Usages on
+             <dynamicField name="*_t"> silently omits every name it actually supplies. Global and
+             declining first, for the same reason as above. -->
+        <referencesSearch
+                implementation="org.apache.solr.ide.configset.reference.SolrDynamicFieldSearcher"/>
+
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
              values not on it are wrong. -->
