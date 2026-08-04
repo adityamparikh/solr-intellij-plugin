@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.inspection
 
+import com.intellij.codeInspection.LocalInspectionTool
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -13,8 +14,12 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
 
-    private fun check(chains: String) {
-        myFixture.enableInspections(SolrAnalyzerChainOrderInspection())
+    /**
+     * @param chains the analyzer elements under test, carrying their own expected warnings
+     * @param alongside inspections enabled *as well*, for the cases asserting which of two speaks
+     */
+    private fun check(chains: String, vararg alongside: LocalInspectionTool) {
+        myFixture.enableInspections(SolrAnalyzerChainOrderInspection(), *alongside)
         myFixture.configureByText(
             "managed-schema.xml",
             """
@@ -130,6 +135,28 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * `true` is not a value this attribute has, and the other inspection is the one that says so.
+     *
+     * Solr reads `splitOnCaseChange` with `Integer.parseInt` and refuses to load the core when it
+     * cannot, so the defect here is a core that will not start rather than a chain that runs wrong.
+     * Both inspections are enabled precisely so this asserts *which* of them speaks: `checkHighlighting`
+     * fails on a highlight the fixture did not mark, so a second warning from the ordering rule would
+     * fail this test.
+     */
+    fun testAValueSolrCannotReadIsLeftToTheAttributeValueInspection() {
+        check(
+            index(
+                whitespace() +
+                    filter("solr.LowerCaseFilterFactory") +
+                    """<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange=""" +
+                    """"<warning descr="Solr: 'splitOnCaseChange' accepts a whole number">true""" +
+                    """</warning>"/>""",
+            ),
+            SolrInvalidAttributeValueInspection(),
+        )
+    }
+
     /** Turned off, the option is not an intention the chain fails to honour. */
     fun testCaseSplittingTurnedOffIsNotReported() {
         check(
@@ -229,15 +256,29 @@ class SolrAnalyzerChainOrderInspectionTest : SolrConfigsetTestCase() {
 
     /**
      * `ICUFoldingFilterFactory` folds case among other things, and it is recognized because this rule
-     * asks match analysis rather than keeping a second list of the factories that fold. `true` is
-     * accepted alongside `1` because configsets are full of it.
+     * asks match analysis rather than keeping a second list of the factories that fold.
      */
     fun testCaseSplittingBelowAFoldingFilterIsFlagged() {
         check(
             index(
                 whitespace() +
                     filter("solr.ICUFoldingFilterFactory") +
-                    caseSplit("solr.ICUFoldingFilterFactory", value = "true"),
+                    caseSplit("solr.ICUFoldingFilterFactory"),
+            ),
+        )
+    }
+
+    /**
+     * Any non-zero integer asks for the option, because that is how Solr reads it —
+     * `getInt(args, "splitOnCaseChange", 1) != 0`. Reporting only the documented `1` would let a
+     * chain state the intention and escape the finding on a spelling Solr treats identically.
+     */
+    fun testAnyNonZeroValueIsARequestForCaseSplitting() {
+        check(
+            index(
+                whitespace() +
+                    filter("solr.LowerCaseFilterFactory") +
+                    caseSplit("solr.LowerCaseFilterFactory", value = "2"),
             ),
         )
     }
