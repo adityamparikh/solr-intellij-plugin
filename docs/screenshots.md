@@ -133,19 +133,28 @@ complete-configuration popup put those facts on screen.
 
 ### 4. Inspection and quick-fix — `04-inspection-copyfield-quickfix.png`
 
-**✅ Captured.**
+**⚠️ Captured, and now stale — recapture needed.** Adding the `*_t` dynamic field to the demo
+schema changed which six names this menu offers; the shipped image predates it. Everything below
+describes what the *new* capture should show.
 
 **Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields
 closest in spelling — the plugin catching the failure that would otherwise surface only at core
 reload.
 
-**Closest-spelling ranking decides *which* fields are offered, not the order they appear in.**
-`SolrInspections.replacementFixes` sorts by edit distance and keeps the nearest six, which is why
-`sku`, `id` and `text` are absent from a nine-field schema. The IDE then renders the intention list
-alphabetically, so the capture reads `category`, `description`, `legacy`, `name`, `name_prefix`,
-`notes` — a correct image of a correct ranking, and not evidence that the ranking was ignored.
+**Closest-spelling ranking decides *which* names are offered, not the order they appear in.**
+`SolrInspections.replacementFixes` sorts by edit distance to `manufacturer` and keeps the nearest
+six, which is why `sku`, `id` and `text` are absent. The IDE then renders the intention list
+alphabetically — a correct image of a correct ranking, and not evidence that the ranking was
+ignored.
 
-**Capture** `managed-schema.xml:85` carries a **deliberate** dangling `manufacturer` copyField that
+**`*_t` is in that six, and `name_prefix` is not.** Dynamic patterns are candidates alongside
+fields, because `copyField` may legitimately name a glob. `*_t` and `name_prefix` tie at edit
+distance 11, and the tie breaks alphabetically, where `*` sorts ahead of every letter. So the
+capture reads `*_t`, `category`, `description`, `legacy`, `name`, `notes`. A pattern leading a
+list of replacements for `manufacturer` looks arbitrary and is: at that distance the ranking has
+no real signal left, and the tiebreak is doing the choosing.
+
+**Capture** `managed-schema.xml:92` carries a **deliberate** dangling `manufacturer` copyField that
 the demo's header comment says must not be fixed, so no editing is needed. Put the caret on
 `manufacturer`, press Alt-Enter, and frame both the underline and the open menu. Undo nothing —
 there is nothing to undo.

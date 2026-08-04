@@ -930,6 +930,11 @@ this one is the search direction only.
 performed as written, with the caret on the `text_general` **declaration** rather than on a reference,
 and [screenshot catalog entry 7](../../docs/screenshots.md) reshot from there.
 
+The dynamic half is demonstrable on the committed fixture rather than only in tests: the demo schema
+declares `<dynamicField name="*_t">` and the `/select` handler's `pf` names `body_t`, which nothing
+declares. Alt-F7 on that pattern must reach the `pf` occurrence — the case that returns an empty list
+today.
+
 **Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done) for
 the reference graph and `SolrSchemaPsi`; [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 for the resolution the dynamic-field executor calls.
