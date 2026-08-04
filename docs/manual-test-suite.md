@@ -335,21 +335,29 @@ a pass was started and abandoned is worth more than a gap.
 | 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
 | 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
-| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | every check green, DOC-5/DOC-6 and COMP-6 closed on both sides of the 1.6/1.7 boundary. Scope notes below |
+| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
+| 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
 
-**About the 2026-08-03 row.** Three things a reader should know before trusting it.
-
-*It predates two feature merges.* `SolrAnalyzerChainOrderInspection` and the per-attribute
-hover landed after it, bringing DOC-7 and the ordering INSP-7 with them; both are unrun, and
-the pass's INSP-7 is what this document now calls INSP-8. The new inspection cannot fire on
-the demo — neither rule has anything to match, since no chain declares a graph filter or a
-case-splitting one — so BASE's count is expected to hold, but expected is not verified.
+**About these two rows.** The first covers the suite as it stood before
+`SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
+against them and closed the checks they brought. Three things still qualify the second row.
 
 *NAV-5 was exercised on `words=` alone.* The demo declares no `synonyms=`, no `protected=`,
 no `<charFilter>` `mapping=` and no `lang/` path, so the rest of that check has no fixture to
 press. Either the demo grows one or the check should say what it can cover.
 
-*INSP-7's baseline returned by restoring the file, not by undoing.* The undo stack was driven
-by synthetic keystrokes, and unwinding a dozen of them left the buffer mid-edit rather than
-clean — a hazard of how the pass was run, not of the plugin. A human pressing ⌘Z will not
-meet it; a scripted pass should reload from disk rather than trust a long undo chain.
+*The ordering inspection has nothing to find in the committed demo, by construction.* Neither
+rule can match a chain that declares no graph filter and no case-splitting one, which is why
+BASE still counts two — INSP-7 plants what it needs and takes it away again, and that is the
+only reason the rule ever fires here.
+
+*Undo is the fragile step when a pass is scripted rather than typed.* Unwinding a long chain
+of synthetic keystrokes twice left the buffer mid-edit, once badly enough that the editor
+saved a broken line over a `git checkout`. Verify the fixture with `git diff` after every
+check rather than trusting the undo count, and reload from disk when the two disagree.
+
+**Two shipped features still have no checks here**, and this pass confirmed both alive: the
+exact-match and prefix-capable companion intentions offer themselves on Alt-Enter, and the
+prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
+They remain in *Not yet in the suite* below, which is that list working as intended — the
+suite is behind the plan, not wrong.
