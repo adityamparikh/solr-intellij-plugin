@@ -40,8 +40,9 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
-        <!-- Quick documentation on a field or its type, resolving each property's effective value
-             and where it came from. -->
+        <!-- Quick documentation on fields, types, class values and factory attributes. Resolves each
+             field property's effective value and origin; for a factory attribute, states only what
+             the catalog can prove (owner, value type, default or required) and stays silent beyond it. -->
         <lang.documentationProvider
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
@@ -132,6 +133,19 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+        <!-- The hardest schema defect to see by reading: every class exists and every attribute is
+             legal, and the filter still never runs. Registered for XML like the rest; both rules it
+             carries are provable from the order of the chain alone. -->
+        <localInspection
+                language="XML"
+                shortName="SolrAnalyzerChainOrder"
+                bundle="messages.SolrBundle"
+                key="inspection.analyzerChainOrder.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrAnalyzerChainOrderInspection"/>
         <!-- The one finding here that is not a defect: a type nothing uses is dead weight, not a
              mistake, so it is drawn as an unused declaration rather than underlined. Enabled by
              default all the same — the grey-out costs a reader nothing, and dead configuration is

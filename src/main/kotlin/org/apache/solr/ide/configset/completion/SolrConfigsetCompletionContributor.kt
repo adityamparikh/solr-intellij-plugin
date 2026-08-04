@@ -91,7 +91,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
     private fun suggestionsFor(tagName: String, attributeName: String, model: SolrFieldModel): List<LookupElement> = when {
         tagName in SolrSchemaTags.FIELD && attributeName == "type" -> fieldTypes(model)
         tagName == SolrSchemaTags.COPY_FIELD && attributeName in SolrSchemaTags.COPY_FIELD_ENDS -> fieldNames(model)
-        tagName == "analyzer" && attributeName == "type" -> ANALYZER_PHASES
+        tagName == SolrSchemaTags.ANALYZER && attributeName == "type" -> ANALYZER_PHASES
         attributeName == "class" -> classNames(tagName, model)
         // Every remaining answerable position is a property of a field or of a type. Scoping it to
         // those two tags is what keeps `<copyField synonymQueryStyle="">` — which means nothing —

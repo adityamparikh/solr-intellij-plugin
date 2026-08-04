@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.parsing
 
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.model.SolrAnalyzerChain
 import org.apache.solr.ide.model.SolrAnalyzerComponent
 import org.apache.solr.ide.model.SolrConfigsetFacts
@@ -79,7 +80,7 @@ object SolrSchemaParser {
 
     private fun readFieldType(element: Element): SolrFieldType? {
         val name = element.attributeOrNull("name") ?: return null
-        val analyzers = element.childrenNamed("analyzer")
+        val analyzers = element.childrenNamed(SolrSchemaTags.ANALYZER)
         // An analyzer with no `type` applies to both phases; a typed one applies to its own. Solr
         // allows either form, and a configset mixing them is legal.
         val untyped = analyzers.firstOrNull { it.attributeOrNull("type") == null }
@@ -95,9 +96,9 @@ object SolrSchemaParser {
     }
 
     private fun readAnalyzer(element: Element): SolrAnalyzerChain = SolrAnalyzerChain(
-        charFilters = element.childrenNamed("charFilter").mapNotNull { readComponent(it) },
-        tokenizer = element.childrenNamed("tokenizer").firstOrNull()?.let { readComponent(it) },
-        filters = element.childrenNamed("filter").mapNotNull { readComponent(it) },
+        charFilters = element.childrenNamed(SolrSchemaTags.CHAR_FILTER).mapNotNull { readComponent(it) },
+        tokenizer = element.childrenNamed(SolrSchemaTags.TOKENIZER).firstOrNull()?.let { readComponent(it) },
+        filters = element.childrenNamed(SolrSchemaTags.FILTER).mapNotNull { readComponent(it) },
         className = element.attributeOrNull("class"),
     )
 

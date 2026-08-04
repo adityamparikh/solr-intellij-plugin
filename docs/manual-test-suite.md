@@ -61,6 +61,13 @@ analysis pass over the real demo files, all inspections at once.*
       and neither may be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
+**Count the rows that begin `Solr:`, and read the count in the Problems tool window rather
+than off the underlines.** The demo's own comments are written in British English, which
+trips IntelliJ's American-English locale inspection four times, and `configsets` trips its
+spellchecker once. Five underlines in a clean file, none of them this plugin's, is the
+shape of a false positive without being one — the tool window separates them by inspection
+and settles it in a glance.
+
 This is the suite's most important check, and the count is the whole of it: two reports,
 on the two defects the fixture plants deliberately, and no more. Solr configuration is full
 of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
@@ -110,8 +117,11 @@ gesture, caret placement, the Find Usages tool window.*
       for usages from this location*.
 - [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages on the field lists
-      the parameter among its usages.
+      in `name^3 description` navigates on its own, and Find Usages **from a reference** —
+      the parameter itself, or a `copyField` end — lists the parameter among its usages.
+      NAV-3's caveat is not about field types: a *field* declaration refuses the search
+      too, so `<field name="description">` answers *Cannot search for usages from this
+      location* exactly as the `<fieldType>` one does.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
@@ -155,6 +165,12 @@ gesture, caret placement, the Find Usages tool window.*
       origins name 1.7. **Undo, and confirm the values return.** One side alone proves
       nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
       check.
+- [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
+      on the attribute name). The popup names the owning class, the value type (*a whole
+      number*), and the required marker — and does **not** invent a prose description of what
+      the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
+      catalog default `false` instead of a required marker. An attribute name the catalog does
+      not list, or any attribute on a class the catalog does not know, stays silent.
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
@@ -163,11 +179,10 @@ gesture, caret placement, the Find Usages tool window.*
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
       DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** The catalog
-also carries each attribute's default and whether it is required, and no surface renders
-them yet — the per-attribute hover that will is in *Not yet in the suite* below. A tester
-looking for `minGramSize` marked required is looking for something unbuilt, not something
-broken.
+**DOC-4's `Accepts` table still shows a name and a value type, and nothing more.** Defaults and
+required markers live on the per-attribute hover (DOC-7), not on the class-value table — Javadoc is
+per class, so the class popup has no honest per-argument prose to add beside a default either. A
+tester looking for `minGramSize` marked required wants DOC-7, not DOC-4.
 
 **DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
@@ -187,7 +202,8 @@ boundary again.
 
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
-`SolrInvalidAttributeValueInspectionTest`, `SolrUnusedFieldTypeInspectionTest`,
+`SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
+`SolrUnusedFieldTypeInspectionTest`,
 `SolrReferenceQuickFixTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
 
@@ -208,18 +224,29 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
       inspection fires, naming the element that cannot accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — Change `name_prefix`'s `type` from `text_prefix` to `text_general`:
+- [ ] **INSP-7** — The ordering check, in three edits to `text_prefix`'s **index** analyzer
+      (lines 45–49), because a claim about order needs both sides:
+      1. Add `<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange="1"/>`
+         *below* the `LowerCaseFilterFactory`: the `1` is underlined, and the message names
+         the filter that already folded the case away.
+      2. Move that same filter *above* the `LowerCaseFilterFactory`: the warning clears.
+         Nothing was added or removed, so this is the half that proves the check is about
+         order rather than presence.
+      3. Add `<filter class="solr.FlattenGraphFilterFactory"/>` above the word-delimiter
+         filter: its `class` is underlined, naming the graph filter below it.
+- [ ] **INSP-8** — Change `name_prefix`'s `type` from `text_prefix` to `text_general`:
       the `<fieldType name="text_prefix">` declaration nothing now names goes **dim**,
       immediately and without saving. Dimmed, not underlined — this is the one finding in
       the section that is dead configuration rather than a defect, and the presentation is
       the claim being checked. The demo's other three types stay lit, so a rule that dims
       every type would fail here rather than pass silently.
-- [ ] **INSP-8** — Undo everything, including DOC-6's version edit: both files return to
+- [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
       planted `legacy` field's undeclared type are part of the baseline and stay underlined.
-      No dimmed type is part of the baseline: every type the demo declares has a field
-      behind it.
+      None of INSP-7's three edits survives into the baseline: the demo's own chains are
+      correctly ordered. No dimmed type is part of the baseline: every type the demo
+      declares has a field behind it.
 
 ## 7. Completion — the schema's own vocabulary (COMP)
 
@@ -283,8 +310,6 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- Hover documentation on a factory attribute (`minGramSize`) — owner, value type,
-  default or required marker
 - A factory's complete effective configuration in its popup, unwritten attributes shown
   at their defaults
 - The dimmed rendering of an attribute that merely restates its default, with a
@@ -293,16 +318,15 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The two inspections [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
-  and has not built: a known-bad analyzer chain ordering, and a configuration element
-  removed in the targeted Solr line
+- The one inspection [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
+  and has not built: a configuration element removed in the targeted Solr line
 - The relevance-parameter check on a non-indexed field, which is built and registered but
   has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
   automatically; what manual would add is the live reaction the INSP checks exist for
-- **Do not read INSP's length as an inspection count** — seven inspection classes exist, and
-  the seven INSP checks above are scenarios over six of them: INSP-1 and INSP-3 are both the
+- **Do not read INSP's length as an inspection count** — eight inspection classes exist, and
+  the eight INSP checks above are scenarios over seven of them: INSP-1 and INSP-3 are both the
   dangling-`copyField` inspection, once on a written edit and once on a live deletion, and
-  INSP-8 restores the baseline rather than testing anything
+  INSP-9 restores the baseline rather than testing anything
 
 ## Pass log
 
@@ -318,3 +342,29 @@ a pass was started and abandoned is worth more than a gap.
 | 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
 | 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
+| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
+| 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+
+**About these two rows.** The first covers the suite as it stood before
+`SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
+against them and closed the checks they brought. Three things still qualify the second row.
+
+*NAV-5 was exercised on `words=` alone.* The demo declares no `synonyms=`, no `protected=`,
+no `<charFilter>` `mapping=` and no `lang/` path, so the rest of that check has no fixture to
+press. Either the demo grows one or the check should say what it can cover.
+
+*The ordering inspection has nothing to find in the committed demo, by construction.* Neither
+rule can match a chain that declares no graph filter and no case-splitting one, which is why
+BASE still counts two — INSP-7 plants what it needs and takes it away again, and that is the
+only reason the rule ever fires here.
+
+*Undo is the fragile step when a pass is scripted rather than typed.* Unwinding a long chain
+of synthetic keystrokes twice left the buffer mid-edit, once badly enough that the editor
+saved a broken line over a `git checkout`. Verify the fixture with `git diff` after every
+check rather than trusting the undo count, and reload from disk when the two disagree.
+
+**Two shipped features still have no checks here**, and this pass confirmed both alive: the
+exact-match and prefix-capable companion intentions offer themselves on Alt-Enter, and the
+prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
+They remain in *Not yet in the suite* below, which is that list working as intended — the
+suite is behind the plan, not wrong.

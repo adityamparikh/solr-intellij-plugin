@@ -61,12 +61,7 @@ class SolrSchemaElementDescriptorProvider : XmlElementDescriptorProvider {
     }
 
     private fun isKnownSchemaTag(name: String): Boolean =
-        SolrSchemaElements.forTag(name) != null || name in ANALYSIS_TAGS
-
-    private companion object {
-        /** The analysis components, which the element table does not describe but the catalog does. */
-        val ANALYSIS_TAGS: Set<String> = setOf("tokenizer", "filter", "charFilter")
-    }
+        SolrSchemaElements.forTag(name) != null || name in SolrSchemaTags.ANALYSIS_COMPONENTS
 }
 
 /**
@@ -101,7 +96,7 @@ internal class SolrSchemaTagDescriptor(private val tag: XmlTag) : XmlElementDesc
      * for being somewhere this class did not anticipate.
      */
     override fun getElementDescriptor(childTag: XmlTag, contextTag: XmlTag?): XmlElementDescriptor =
-        if (SolrSchemaElements.forTag(childTag.name) != null || childTag.name in setOf("tokenizer", "filter", "charFilter")) {
+        if (SolrSchemaElements.forTag(childTag.name) != null || childTag.name in SolrSchemaTags.ANALYSIS_COMPONENTS) {
             SolrSchemaTagDescriptor(childTag)
         } else {
             AnyXmlElementDescriptor(null, null)
@@ -147,7 +142,7 @@ internal class SolrSchemaTagDescriptor(private val tag: XmlTag) : XmlElementDesc
             listOf("name", "type") + SolrFieldProperties.FOR_FIELD.map { it.name }
         tag.name in SolrSchemaTags.FIELD_TYPE ->
             listOf("name", "class") + SolrFieldProperties.FOR_FIELD_TYPE.map { it.name }
-        tag.name in setOf("tokenizer", "filter", "charFilter") -> factoryAttributeNames()
+        tag.name in SolrSchemaTags.ANALYSIS_COMPONENTS -> factoryAttributeNames()
         else -> SolrSchemaElements.attributesOf(tag.name).map { it.name }
     }
 
@@ -162,8 +157,8 @@ internal class SolrSchemaTagDescriptor(private val tag: XmlTag) : XmlElementDesc
         val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
             ?: SolrVersionSelection.DEFAULT
         val kind = when (tag.name) {
-            "tokenizer" -> SolrClassKind.TOKENIZER
-            "filter" -> SolrClassKind.TOKEN_FILTER
+            SolrSchemaTags.TOKENIZER -> SolrClassKind.TOKENIZER
+            SolrSchemaTags.FILTER -> SolrClassKind.TOKEN_FILTER
             else -> SolrClassKind.CHAR_FILTER
         }
         val entry = SolrClassCatalog.find(className, version)?.takeIf { it.kind == kind }

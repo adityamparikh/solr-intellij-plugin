@@ -11,7 +11,9 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.model.SolrClassAttribute
 import org.apache.solr.ide.model.SolrClassCatalog
+import org.apache.solr.ide.model.SolrClassEntry
 import org.apache.solr.ide.model.SolrClassKind
 import org.apache.solr.ide.model.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
@@ -22,21 +24,27 @@ import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
- * Quick documentation for fields, field types and `class` attribute values in a configset.
+ * Quick documentation for fields, field types, `class` values and factory attributes in a configset.
  *
  * Answers the question the Reference Guide cannot: not "what does `omitNorms` mean" in general, but
  * what it is *for this field in this schema*, and whether that value came from the field, from its
  * type, or from Solr's default. The guide is linked for the prose; the resolution is the part only
  * something reading the configset can do.
  *
- * Documentation is offered on attribute *values* rather than through references, because reference
- * resolution has not landed yet and this does not need it: the element under the caret carries
- * enough to answer.
+ * Factory attributes are the same contract applied to a different source. Javadoc is written per
+ * class, not per attribute, so there is no per-argument prose anywhere in this design to surface —
+ * only what the catalog can prove: which class reads the name, what type it accepts, and a default
+ * or required marker where bytecode recorded one. Anything beyond that stays silent rather than
+ * being guessed from a name.
+ *
+ * Documentation is offered on attribute *values* and *names* rather than through references,
+ * because reference resolution has not landed yet and this does not need it: the element under the
+ * caret carries enough to answer.
  */
 class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), DumbAware {
 
     /**
-     * Picks the element to document when the caret is inside a schema attribute value.
+     * Picks the element to document when the caret is inside a schema attribute value or name.
      *
      * Without this, quick documentation would need a resolved reference to hang off, and there are
      * none in a configset yet.
@@ -45,7 +53,7 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      * @param file the file being edited
      * @param contextElement the element under the caret
      * @param targetOffset the caret offset
-     * @return the attribute value to document, or null
+     * @return the attribute value, attribute or tag to document, or null
      */
     override fun getCustomDocumentationElement(
         editor: Editor,
@@ -63,6 +71,13 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         contextElement?.parentOfType<XmlAttribute>(withSelf = true)
             ?.takeIf { documentedProperty(it) != null }
             ?.let { return it }
+        // A factory attribute is the same gesture on a different vocabulary: hovering `minGramSize`
+        // asks which class reads it and what it accepts, not what a `<filter>` element is. Claimed
+        // only where the catalog can name the attribute; an unknown name falls through so the
+        // element half — or silence, on analysis tags the element table does not cover — still wins.
+        contextElement?.parentOfType<XmlAttribute>(withSelf = true)
+            ?.takeIf { documentedClassAttribute(it) != null }
+            ?.let { return it }
         // Falling through to the tag means hovering the element itself answers. Without this, every
         // question the plugin can answer required the caret to be inside an attribute value — a
         // gesture a reader makes only once they already suspect something.
@@ -78,7 +93,10 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      */
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
         if (element is XmlTag) return elementDocumentation(element)
-        if (element is XmlAttribute) return propertyDocumentation(element)
+        if (element is XmlAttribute) {
+            propertyDocumentation(element)?.let { return it }
+            return classAttributeDocumentation(element)
+        }
         val value = element as? XmlAttributeValue ?: return null
         val file = value.containingFile ?: return null
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
@@ -123,6 +141,12 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      * @return the external documentation URLs, or null when none applies
      */
     override fun getUrlFor(element: PsiElement?, originalElement: PsiElement?): List<String>? {
+        if (element is XmlAttribute) {
+            val resolved = documentedClassAttribute(element) ?: return null
+            val version = modelFor(element.parentOfType<XmlTag>() ?: return null)?.solrVersion ?: return null
+            return SolrReferenceGuide.classPage(resolved.entry.kind, resolved.entry.className, version)
+                ?.let { listOf(it) }
+        }
         val value = element as? XmlAttributeValue ?: return null
         val file = value.containingFile ?: return null
         if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
@@ -193,6 +217,50 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         return SolrFieldProperties.byName(attribute.name)
     }
 
+    /**
+     * The popup for one factory attribute the catalog can prove something about.
+     *
+     * Null rather than a half-filled table when the class or the attribute is unknown: inventing a
+     * value type or a default is exactly the false confidence this package is organised to prevent,
+     * and the same rule the unknown-attribute inspection follows when it declines to flag a custom
+     * class.
+     */
+    private fun classAttributeDocumentation(attribute: XmlAttribute): String? {
+        val resolved = documentedClassAttribute(attribute) ?: return null
+        val tag = attribute.parentOfType<XmlTag>() ?: return null
+        val model = modelFor(tag) ?: return null
+        return SolrFieldPresentation.classAttributeDocumentation(
+            resolved.entry,
+            resolved.attribute,
+            model.solrVersion,
+        )
+    }
+
+    /**
+     * The catalog entry and attribute [attribute] names, or null when either is unknown.
+     *
+     * Field properties on a `field` or `fieldType` are deliberately excluded: they have richer
+     * documentation of their own, and a catalog hit for a name like `indexed` would be the wrong
+     * answer even if one ever appeared. Structural names — `class`, `name` — are absent from every
+     * recovered attribute list, so they fall out as null without a special case here.
+     *
+     * The kind is matched, not only the class name, for the same reason completion and the
+     * unknown-attribute inspection match it: a tokenizer's attribute on a filter is not an
+     * attribute this filter reads, even when both factories happen to share a spelling.
+     */
+    private fun documentedClassAttribute(attribute: XmlAttribute): ResolvedClassAttribute? {
+        if (documentedProperty(attribute) != null) return null
+        val tag = attribute.parentOfType<XmlTag>() ?: return null
+        val kind = SolrClassKind.forTag(tag.name) ?: return null
+        val className = tag.getAttributeValue("class")?.takeIf { it.isNotEmpty() } ?: return null
+        val model = modelFor(tag) ?: return null
+        val entry = SolrClassCatalog.find(className, model.solrVersion)
+            ?.takeIf { it.kind == kind }
+            ?: return null
+        val known = entry.attribute(attribute.name) ?: return null
+        return ResolvedClassAttribute(entry, known)
+    }
+
     /** The model's field for a `field` or `dynamicField` tag, or null for any other element. */
     private fun fieldDeclaredBy(tag: XmlTag, model: SolrFieldModel): SolrField? {
         if (tag.name !in SolrSchemaTags.FIELD) return null
@@ -232,5 +300,14 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
         /** A `class` attribute's value — named `SchemaClass` so it cannot shadow `java.lang.Class`. */
         data class SchemaClass(val name: String) : Target
     }
+
+    /**
+     * One attribute the catalog can document: the class that reads it, and what the catalog knows
+     * about the attribute itself.
+     */
+    private data class ResolvedClassAttribute(
+        val entry: SolrClassEntry,
+        val attribute: SolrClassAttribute,
+    )
 
 }
