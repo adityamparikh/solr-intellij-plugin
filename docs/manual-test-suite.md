@@ -61,6 +61,13 @@ analysis pass over the real demo files, all inspections at once.*
       and neither may be fixed. Nothing else in the file is underlined.
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
+**Count the rows that begin `Solr:`, and read the count in the Problems tool window rather
+than off the underlines.** The demo's own comments are written in British English, which
+trips IntelliJ's American-English locale inspection four times, and `configsets` trips its
+spellchecker once. Five underlines in a clean file, none of them this plugin's, is the
+shape of a false positive without being one — the tool window separates them by inspection
+and settles it in a glance.
+
 This is the suite's most important check, and the count is the whole of it: two reports,
 on the two defects the fixture plants deliberately, and no more. Solr configuration is full
 of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
@@ -110,8 +117,11 @@ gesture, caret placement, the Find Usages tool window.*
       for usages from this location*.
 - [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages on the field lists
-      the parameter among its usages.
+      in `name^3 description` navigates on its own, and Find Usages **from a reference** —
+      the parameter itself, or a `copyField` end — lists the parameter among its usages.
+      NAV-3's caveat is not about field types: a *field* declaration refuses the search
+      too, so `<field name="description">` answers *Cannot search for usages from this
+      location* exactly as the `<fieldType>` one does.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
@@ -333,3 +343,29 @@ a pass was started and abandoned is worth more than a gap.
 | 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
 | 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
+| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
+| 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+
+**About these two rows.** The first covers the suite as it stood before
+`SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
+against them and closed the checks they brought. Three things still qualify the second row.
+
+*NAV-5 was exercised on `words=` alone.* The demo declares no `synonyms=`, no `protected=`,
+no `<charFilter>` `mapping=` and no `lang/` path, so the rest of that check has no fixture to
+press. Either the demo grows one or the check should say what it can cover.
+
+*The ordering inspection has nothing to find in the committed demo, by construction.* Neither
+rule can match a chain that declares no graph filter and no case-splitting one, which is why
+BASE still counts two — INSP-7 plants what it needs and takes it away again, and that is the
+only reason the rule ever fires here.
+
+*Undo is the fragile step when a pass is scripted rather than typed.* Unwinding a long chain
+of synthetic keystrokes twice left the buffer mid-edit, once badly enough that the editor
+saved a broken line over a `git checkout`. Verify the fixture with `git diff` after every
+check rather than trusting the undo count, and reload from disk when the two disagree.
+
+**Two shipped features still have no checks here**, and this pass confirmed both alive: the
+exact-match and prefix-capable companion intentions offer themselves on Alt-Enter, and the
+prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
+They remain in *Not yet in the suite* below, which is that list working as intended — the
+suite is behind the plan, not wrong.
