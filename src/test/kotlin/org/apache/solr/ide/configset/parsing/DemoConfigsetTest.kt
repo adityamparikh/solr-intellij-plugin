@@ -187,8 +187,10 @@ class DemoConfigsetTest {
         assertEquals("*_t", resolved!!.name)
 
         assertTrue(
-            "the /select handler must still name body_t, or the pattern has nothing referencing it",
-            model.fieldReferences.any { it.fieldName == "body_t" && it.handlerName == "/select" },
+            "the /select handler's pf must still name body_t, or the pattern has nothing referencing it",
+            model.fieldReferences.any {
+                it.fieldName == "body_t" && it.handlerName == "/select" && it.parameterName == "pf"
+            },
         )
     }
 }
