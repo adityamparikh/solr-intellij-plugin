@@ -24,11 +24,13 @@ field's effective properties resolve against the
 `version` attribute on the schema's own root element, which is what decides several of Solr's defaults and is a third
 version number beside the Solr line and `luceneMatchVersion`.
 
-**Two facts are recorded and not yet shown.** The catalog's attribute defaults and required markers reach no surface:
-the class popup's `Accepts` table renders a name and a value type, and the two consumers that would render the rest —
-[the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-in-progress),
-and [the dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default) — are both unbuilt. Counting
-the catalog's columns as delivered features overstates what a user can see by two.
+**Two facts were recorded before anything showed them, and now two surfaces do.** The catalog's attribute defaults and
+required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
+[the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-in-progress)
+now render the rest, the first for the attribute under the caret and the second for every attribute a factory tag
+accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default) is still unbuilt, and it
+reads the same column to make a different claim: not what Solr will supply, but that a written value need not have been
+written at all.
 
 **The Server and Code tracks have not started**, which is two of the spec's three pillars.
 `server/` holds `SolrConnectionSettings` and nothing else — no HTTP client, no tool window, no query console — and no
@@ -89,10 +91,10 @@ whole, and the gutter action goes with the Server track.
   is built and every fact it emits is asserted, and what is left is the server arm of version selection, which belongs
   to the Server track
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) —
-  **in progress**; completion, validation and the class-value popup shipped, and actions 5 and 6 remain — the
-  per-attribute hover and the factory's complete-configuration popup. Both are unblocked: the catalog has carried their
-  defaults and required markers since
-  [Step 9](#step-9-factory-catalog-generator-in-progress) recorded them, and nothing renders either fact yet
+  **in progress**; completion, validation, the class-value popup, the per-attribute hover and the factory's
+  complete-configuration popup have all shipped, and every success criterion below the step is met. What holds the
+  heading is action 3 alone — dynamic field pattern awareness — which no criterion states and no change so far has
+  claimed
 
 ### Server track
 
@@ -484,21 +486,28 @@ before [references and navigation](#step-5-references-navigation-and-find-usages
 depends on: that dependency holds only for inspections written as unresolved-reference checks, and these are driven off
 the field model instead.
 
-**What shipped so far:** four of the seven inspections action 1 names, each with its description file and its flagged
+**What shipped so far:** five of the seven inspections action 1 names, each with its description file and its flagged
 and clean fixtures — `SolrDanglingCopyFieldInspection`,
-`SolrUnknownFieldTypeInspection`, `SolrUnknownFieldReferenceInspection` and
-`SolrNonIndexedRelevanceFieldInspection`. Two more inspections exist in the same package and belong to
+`SolrUnknownFieldTypeInspection`, `SolrUnknownFieldReferenceInspection`,
+`SolrNonIndexedRelevanceFieldInspection` and `SolrAnalyzerChainOrderInspection`. The last of those reports the defect in
+this list that a reader cannot see at all: every class exists, every attribute is legal, Solr starts without complaint,
+and the filter never runs. It carries two rules, both provable from the order of the chain alone — a
+`FlattenGraphFilterFactory` above every filter that produces a graph, and a written `splitOnCaseChange` below a filter
+that has already folded the case away. An ordering that is merely *unusual* is never reported: analyzer chains are where
+expert users deliberately do surprising things, and this is the one inspection where a style opinion would fire
+constantly on schemas that work. Two more inspections exist in the same package and belong to
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
 rather than here: `SolrUnknownAttributeInspection` and `SolrInvalidAttributeValueInspection`
 are catalog-backed and validate an attribute rather than a reference.
 
-**Three numbers describe this step and none of them is the same number.** Seven inspections are planned here and four
-are built. Six inspection classes are registered in
-`plugin.xml`, because two of them belong to another step. Six of
-[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise five of those six, since the dangling-
-`copyField` inspection gets a second check for reacting to a live edit, a seventh restores the baseline, and the
-non-indexed relevance check has no sandbox gesture yet. Read a count against what it counts; "six inspections exist" is
-true and says nothing about this step's progress.
+**Four numbers describe this step, and reading one of them for another is the mistake this paragraph exists to
+prevent.** Seven inspections are planned here and five are built. Seven inspection classes are registered in
+`plugin.xml` — the same number by coincidence, not correspondence, because two of the registered classes belong to
+another step and two of the planned inspections do not exist yet. Seven of
+[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise six of those seven, since the dangling-
+`copyField` inspection gets a second check for reacting to a live edit, an eighth restores the baseline, and the
+non-indexed relevance check has no sandbox gesture yet. Read a count against what it counts; "seven inspections exist"
+is true and says nothing about this step's progress.
 
 **Success criteria:**
 
@@ -508,13 +517,12 @@ true and says nothing about this step's progress.
     - [x] A handler parameter naming a field the schema does not declare.
     - [x] A relevance parameter naming a non-indexed field.
     - [ ] An unused field type.
-    - [ ] A known-bad analyzer chain ordering.
+    - [x] A known-bad analyzer chain ordering.
     - [ ] A configuration element removed in the targeted Solr line.
 
-The last one is the only one of the three with a dependency: it needs the catalog to know which line removed what, which
-is a fact
-[the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record today. The other two are
-buildable now.
+Of the two left, only the last has a dependency: it needs the catalog to know which line removed what, which is a fact
+[the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record today. The unused-field-type
+check is buildable now.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
@@ -988,22 +996,33 @@ because none of it needs the catalog. Positions where any value is legal are lef
 implies the values not on it are wrong. Since then the catalog-backed half has largely landed too: completion offers the
 `class`
 classes and, inside an analysis tag, the factory's own attribute names, and the typed-attribute inspections validate an
-attribute's value and name against the catalog — action 2. Quick documentation on `class` values ships the catalog's
-kind, spellings, accepted attributes and Javadoc summary. **Action 6 has also shipped:** hovering a factory tag
-(`<filter>`, `<tokenizer>`, `<charFilter>`) shows every attribute the catalog says the class accepts at its effective
-value — written values bold and labelled as on this filter/tokenizer/char filter, and the attributes the tag leaves out
-plain: a *literal* catalog default is shown at that value and labelled as Solr's, while an attribute the catalog cannot
-cite a value for shows an em dash, its origin column separating the two reasons there is none — required and missing, or
-optional with no recorded default. Those rows still appear, because a complete-configuration picture that dropped them
-would understate what the class accepts, and an em dash is the honest cell where an invented number would be a claim.
-The element named is the one the file wrote rather than the one the class belongs on, so a misplaced factory — a
-tokenizer's class on a `<filter>` — reads as the mistake it is instead of being quietly rendered valid; flagging it
-remains the inspections' job. This is the factory sibling of the field property table. A class the catalog does not know
-stays silent rather than claiming an empty attribute set. The configuration table lives on the *tag*, not on the `class`
-value: the value keeps answering what the class is, and the tag answers what this particular instance resolves to.
-**What remains is action 5** — per-attribute hover with owner, value type, and default/required marker. Both action 5
-and action 6 consume the defaults-and-required column [Step 9](#step-9-factory-catalog-generator-in-progress) now
-carries; only the per-attribute surface is still unbuilt.
+attribute's value and name against the catalog — action 2. Quick documentation on `class` values shipped ahead of the
+catalog's prose column and now carries the Javadoc summary where [Step 9](#step-9-factory-catalog-generator-in-progress)
+resolved `-sources`. **Action 5 shipped:** hovering a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` —
+answers with the class that reads it, its value type, and its default or required marker where the catalog carries them,
+plus the guide link the class-value half already builds. The provider stays silent when the class or the attribute is
+unknown rather than inventing a type or a default; Javadoc is per class, so there is no per-attribute prose to surface
+and none is claimed. **Action 6 shipped next:** hovering a factory tag (`<filter>`, `<tokenizer>`, `<charFilter>`) shows
+every attribute the catalog says the class accepts at its effective value — written values bold and labelled as on this
+filter/tokenizer/char filter, and the attributes the tag leaves out plain: a *literal* catalog default is shown at that
+value and labelled as Solr's, while an attribute the catalog cannot cite a value for shows an em dash, its origin column
+separating the two reasons there is none — required and missing, or optional with no recorded default. Those rows still
+appear, because a complete-configuration picture that dropped them would understate what the class accepts, and an em
+dash is the honest cell where an invented number would be a claim. The element named is the one the file wrote rather
+than the one the class belongs on, so a misplaced factory — a tokenizer's class on a `<filter>` — reads as the mistake
+it is instead of being quietly rendered valid; flagging it remains the inspections' job. This is the factory sibling of
+the field property table, and a class the catalog does not know stays silent rather than claiming an empty attribute
+set.
+
+The three surfaces divide the caret between them rather than competing for it: the `class` value answers what the class
+is, an attribute answers for itself, and the tag answers for this instance once Solr has filled in the defaults — one
+catalog entry read three ways, each position claiming only what it can support. Landing the tag surface also settled
+where an *uncitable* attribute goes: it defers to its tag, the same fall-through a schema attribute has always had to its
+element, since the tag's table is built from the attributes the catalog lists and therefore cannot name the unknown one
+at any value. Silence is kept for the case where nothing can be cited at all — a class the catalog has never seen —
+which is the distinction that matters, invention rather than absence. All four success criteria below are now met; the
+heading stays *in progress* until action 3, dynamic field pattern awareness, is confirmed, which no criterion states and
+no change so far has claimed.
 
 **Actions:**
 
@@ -1014,20 +1033,21 @@ carries; only the per-attribute surface is still unbuilt.
    of quick documentation does not belong here — it needs the model and match analysis rather than the catalog, so it
    ships with
    [match hints](#step-7-match-hints-and-quick-fixes-done) instead. Only the catalog-backed half waits for this step.
-5. Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers with what the catalog can
+5. ~~Hover on a factory attribute — `minGramSize` on an `EdgeNGramFilterFactory` — answers with what the catalog can
    prove: the class that reads it, its value type, and its default or required marker once the catalog carries them,
    with the guide link for the rest. Javadoc is written per class, not per attribute, so full per-attribute prose has no
-   source anywhere in this design; the provider states what it can cite and claims nothing beyond it.
-6. The factory sibling of the field property table: quick documentation on a factory tag shows every attribute the class
-   accepts at its effective value, written or defaulted, distinguishably — the complete-configuration picture the field
-   half already gives, and the second consumer of the defaults column beside
-   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default).
+   source anywhere in this design; the provider states what it can cite and claims nothing beyond it.~~ **Done.**
+6. ~~The factory sibling of the field property table: quick documentation on a factory tag shows every attribute the
+   class accepts at its effective value, written or defaulted, distinguishably — the complete-configuration picture the
+   field half already gives, and the second consumer of the defaults column beside
+   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default).~~
+   **Done.**
 
 **Success criteria:**
 
 - [x] Completion and validation work against the catalog.
-- [ ] Quick documentation resolves for factories and attributes.
-- [ ] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
+- [x] Quick documentation resolves for factories and attributes.
+- [x] A factory attribute answers on hover with its owner, value type, and — where the catalog carries them — its
   default or required marker, and stays silent about meaning it cannot cite.
 - [x] A factory tag's documentation shows its complete configuration — literal defaults at their values, and attributes
   with no citable value marked rather than invented — distinguishably from written ones.

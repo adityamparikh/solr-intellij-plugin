@@ -107,6 +107,24 @@ object SolrMatchAnalysis {
     }
 
     /**
+     * Whether the factory [className] folds case, so that nothing downstream can see a case
+     * boundary.
+     *
+     * Asked here rather than answered again elsewhere. The sets below are the plugin's one authority
+     * on which factories do this, and the ordering inspection needs the same answer for a different
+     * question — whether a filter that splits on case transitions can still find any. A second copy
+     * of these names is how the two would come to disagree about `ICUFoldingFilterFactory`.
+     *
+     * Tokenizers count as well as filters: `LowerCaseTokenizerFactory` folds as it splits, so a
+     * chain using it has no case boundaries left even with no filter at all.
+     *
+     * @param className the factory as written, `solr.X` or fully qualified
+     * @return true if a component of this class removes case distinctions
+     */
+    fun foldsCase(className: String): Boolean =
+        simpleName(className).let { it in CASE_FOLDING_FILTERS || it in CASE_FOLDING_TOKENIZERS }
+
+    /**
      * A factory's simple name, whether it was written as `solr.X` or fully qualified.
      *
      * Configsets use the `solr.` shorthand almost universally, but the fully qualified form is

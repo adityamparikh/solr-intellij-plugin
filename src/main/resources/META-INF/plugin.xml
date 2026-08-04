@@ -40,9 +40,11 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
-        <!-- Quick documentation. On a field, its type, or a factory tag, it resolves the values in
-             effect and where each came from; on a class value it answers what the class is and what
-             it accepts, which is identity rather than resolution. -->
+        <!-- Quick documentation, answering a different question at each position. On a field, its
+             type, or a factory tag, it resolves the values in effect and where each came from; on a
+             factory attribute it states only what the catalog can prove — owner, value type,
+             default or required — and stays silent beyond it; on a class value it answers what the
+             class is and what it accepts, which is identity rather than resolution. -->
         <lang.documentationProvider
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
@@ -133,6 +135,19 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+        <!-- The hardest schema defect to see by reading: every class exists and every attribute is
+             legal, and the filter still never runs. Registered for XML like the rest; both rules it
+             carries are provable from the order of the chain alone. -->
+        <localInspection
+                language="XML"
+                shortName="SolrAnalyzerChainOrder"
+                bundle="messages.SolrBundle"
+                key="inspection.analyzerChainOrder.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrAnalyzerChainOrderInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to
