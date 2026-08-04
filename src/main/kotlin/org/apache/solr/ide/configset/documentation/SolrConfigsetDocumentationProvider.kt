@@ -24,27 +24,32 @@ import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
- * Quick documentation for fields, field types, `class` values and factory attributes in a configset.
+ * Quick documentation for fields, field types, factory tags, `class` values and factory attributes
+ * in a configset.
  *
  * Answers the question the Reference Guide cannot: not "what does `omitNorms` mean" in general, but
  * what it is *for this field in this schema*, and whether that value came from the field, from its
  * type, or from Solr's default. The guide is linked for the prose; the resolution is the part only
- * something reading the configset can do.
+ * something reading the configset can do. The same shape applies to an analysis factory: the guide
+ * lists what `EdgeNGramFilterFactory` accepts, and only the tag under the caret can say what this
+ * particular filter resolves to once Solr fills in the defaults.
  *
  * Factory attributes are the same contract applied to a different source. Javadoc is written per
  * class, not per attribute, so there is no per-argument prose anywhere in this design to surface —
  * only what the catalog can prove: which class reads the name, what type it accepts, and a default
  * or required marker where bytecode recorded one. Anything beyond that stays silent rather than
- * being guessed from a name.
+ * being guessed from a name. A factory *tag* answers the neighbouring question — not what one
+ * attribute is, but what this instance resolves to once Solr has filled in every default.
  *
- * Documentation is offered on attribute *values* and *names* rather than through references,
- * because reference resolution has not landed yet and this does not need it: the element under the
- * caret carries enough to answer.
+ * Documentation is offered on attribute *values*, attribute *names* and the tags themselves rather
+ * than through references, because reference resolution has not landed yet and this does not need
+ * it: the element under the caret carries enough to answer.
  */
 class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), DumbAware {
 
     /**
-     * Picks the element to document when the caret is inside a schema attribute value or name.
+     * Picks the element to document when the caret is inside a schema attribute value or name, or
+     * anywhere in a tag that carries one of them.
      *
      * Without this, quick documentation would need a resolved reference to hang off, and there are
      * none in a configset yet.
@@ -80,8 +85,12 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             ?.let { return it }
         // Falling through to the tag means hovering the element itself answers. Without this, every
         // question the plugin can answer required the caret to be inside an attribute value — a
-        // gesture a reader makes only once they already suspect something.
-        return contextElement?.parentOfType<XmlTag>()?.takeIf { SolrSchemaElements.forTag(it.name) != null }
+        // gesture a reader makes only once they already suspect something. Analysis factory tags
+        // join the schema elements here: the complete-configuration table is a fact about the tag,
+        // not about the class name written on it.
+        return contextElement?.parentOfType<XmlTag>()?.takeIf {
+            SolrSchemaElements.forTag(it.name) != null || isAnalysisFactoryTag(it)
+        }
     }
 
     /**
@@ -92,7 +101,10 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
      * @return HTML for the popup, or null
      */
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
-        if (element is XmlTag) return elementDocumentation(element)
+        if (element is XmlTag) {
+            if (isAnalysisFactoryTag(element)) return factoryTagDocumentation(element)
+            return elementDocumentation(element)
+        }
         if (element is XmlAttribute) {
             propertyDocumentation(element)?.let { return it }
             return classAttributeDocumentation(element)
@@ -180,6 +192,44 @@ class SolrConfigsetDocumentationProvider : AbstractDocumentationProvider(), Dumb
             schemaVersion = model.schemaVersion,
             typeTraits = model.traitsOf(field?.let { model.typeOf(it) }),
         )
+    }
+
+    /**
+     * The complete-configuration popup for an analysis factory tag.
+     *
+     * Declines rather than inventing when the catalog does not know the class. A custom plugin
+     * factory must never render as a class that accepts nothing — that is worse than silence,
+     * because silence is honest and an empty table is a claim. The `class` *value* popup already
+     * takes the same vow; this is the tag half of it.
+     *
+     * The catalog is looked up by class name alone, so the entry it returns says what the class is
+     * and not where it was written. Those can disagree — a tokenizer factory on a `<filter>` is a
+     * configuration Solr rejects, and one a reader may well be hovering to understand — so the tag
+     * goes to the presentation beside the entry rather than being inferred back out of it.
+     */
+    private fun factoryTagDocumentation(tag: XmlTag): String? {
+        val model = modelFor(tag) ?: return null
+        val className = tag.getAttributeValue("class")?.takeIf { it.isNotEmpty() } ?: return null
+        val entry = SolrClassCatalog.find(className, model.solrVersion) ?: return null
+        val written = tag.attributes
+            .asSequence()
+            .filter { it.name != "class" }
+            .mapNotNull { attribute -> attribute.value?.let { attribute.name to it } }
+            .toMap()
+        return SolrFieldPresentation.factoryDocumentation(tag.name, entry, written, model.solrVersion)
+    }
+
+    /**
+     * Whether [tag] is a tokenizer, token filter or char filter — the analysis factories whose
+     * complete configuration this provider owns.
+     *
+     * `fieldType` is deliberately excluded: it already has element documentation and a property
+     * table of its own, and routing it through the factory path would replace that with a catalog
+     * attribute list that is the wrong answer for a type.
+     */
+    private fun isAnalysisFactoryTag(tag: XmlTag): Boolean {
+        val kind = SolrClassKind.forTag(tag.name) ?: return false
+        return kind != SolrClassKind.FIELD_TYPE
     }
 
     /**

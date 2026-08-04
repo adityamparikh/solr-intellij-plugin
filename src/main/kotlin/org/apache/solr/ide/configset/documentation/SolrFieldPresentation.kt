@@ -245,6 +245,65 @@ object SolrFieldPresentation {
     }
 
     /**
+     * The documentation popup for a factory *tag* — every attribute the class accepts, each at its
+     * effective value.
+     *
+     * This is the factory sibling of [propertyTable]. The class-value popup answers what the named
+     * class is and which attributes it can read; this answers what *this* filter, tokenizer or
+     * char filter resolves to once Solr fills in the defaults the author left unwritten. The two
+     * questions share a catalog entry and almost nothing else, so they stay on different elements:
+     * the `class` value keeps the identity popup, and the tag carries the configuration table. A
+     * single popup that mixed both would bury the effective state behind a list of accepted types
+     * and, worse, would answer a configuration question on a value that may appear twice with
+     * different attributes.
+     *
+     * Written values are bold and labelled as on this tag; defaults are plain and labelled as
+     * Solr's — the same visual language the field property table uses, so a reader who has seen one
+     * half can read the other without learning a second vocabulary. Attributes the catalog marks
+     * required but the tag omits, and optional attributes with no recorded default, still appear:
+     * a complete-configuration picture that dropped them would look like the class accepted less
+     * than it does. Their values are an em dash rather than an invented number, because the catalog
+     * does not cite one.
+     *
+     * Callers must only reach this with a catalog entry. An unknown class is the caller's problem
+     * to decline — rendering an empty configuration table for a custom plugin factory would claim
+     * the class accepts nothing, which is the one lie this surface is organised never to tell.
+     *
+     * [tagName] is the element the file wrote, not the element the class belongs on, and the two
+     * can disagree: `<filter class="solr.StandardTokenizerFactory"/>` resolves a tokenizer entry
+     * while the caret is on a `filter`. Naming the tag from the file and the kind from the catalog
+     * puts that disagreement on screen — `<filter> solr.StandardTokenizerFactory — tokenizer
+     * factory` reads as the mistake it is — where deriving the tag from the entry's kind would
+     * quietly rewrite the file into a valid one. Documenting a misplaced class as what it is, and
+     * leaving the complaint to the inspections, is the same contract [classDocumentation] keeps.
+     *
+     * @param tagName the element name as this configset writes it
+     * @param entry the catalog entry for the class named on the tag
+     * @param writtenAttributes the attributes written on the tag, excluding `class`
+     * @param version the Solr line this configset targets, for the guide link
+     * @return HTML for the documentation popup
+     */
+    fun factoryDocumentation(
+        tagName: String,
+        entry: SolrClassEntry,
+        writtenAttributes: Map<String, String>,
+        version: SolrVersionSelection,
+    ): String = buildString {
+        append("<div class='definition'><pre>")
+        append("&lt;${escape(tagName)}&gt; ")
+        append("<b>${escape(entry.shortName)}</b> — ${kindText(entry.kind)}")
+        append("\n${escape(entry.className)}")
+        append("</pre></div>")
+        append("<div class='content'>")
+        entry.summary?.let { append("<p>${it}</p>") }
+        if (entry.attributes.isNotEmpty()) {
+            append(factoryConfigurationTable(tagName, entry, writtenAttributes))
+        }
+        append("</div>")
+        append(classGuideLink(entry, version))
+    }
+
+    /**
      * The popup for one attribute a class reads — owner, value type, and default or required marker.
      *
      * **This is deliberately thinner than [propertyDocumentation].** Field properties have hand-written
@@ -291,6 +350,109 @@ object SolrFieldPresentation {
         append("</table>")
         append("</div>")
         append(classGuideLink(entry, version))
+    }
+
+    /**
+     * Every attribute [entry] accepts, resolved against what the tag wrote.
+     *
+     * Written attributes sort first for the same reason the field property table puts declared
+     * values first: the author came to check what they wrote, and burying those rows under a list
+     * of defaults makes the popup answer a different question from the one the gesture asked.
+     */
+    internal fun effectiveFactoryAttributes(
+        entry: SolrClassEntry,
+        writtenAttributes: Map<String, String>,
+    ): List<SolrEffectiveFactoryAttribute> =
+        entry.attributes.map { attribute ->
+            val written = writtenAttributes[attribute.name]
+            when {
+                written != null ->
+                    SolrEffectiveFactoryAttribute(attribute, written, SolrFactoryAttributeOrigin.TAG)
+                attribute.defaultValue != null ->
+                    SolrEffectiveFactoryAttribute(
+                        attribute,
+                        attribute.defaultValue,
+                        SolrFactoryAttributeOrigin.SOLR_DEFAULT,
+                    )
+                attribute.required ->
+                    SolrEffectiveFactoryAttribute(attribute, null, SolrFactoryAttributeOrigin.REQUIRED)
+                else ->
+                    SolrEffectiveFactoryAttribute(attribute, null, SolrFactoryAttributeOrigin.UNSET)
+            }
+        }.sortedBy { if (it.origin == SolrFactoryAttributeOrigin.TAG) 0 else 1 }
+
+    /**
+     * The configuration table for a factory tag — effective value, origin, and accepted type.
+     *
+     * Mirrors [propertyTable]'s columns closely enough that the two halves of the plugin read as
+     * one surface. "Meaning" is absent on purpose: the catalog has no per-attribute prose, and
+     * inventing one is exactly the claim [classDocumentation] already refuses to make.
+     */
+    private fun factoryConfigurationTable(
+        tagName: String,
+        entry: SolrClassEntry,
+        writtenAttributes: Map<String, String>,
+    ): String = buildString {
+        append("<p><b>Configuration</b></p><table>")
+        append("<tr><th>Attribute</th><th>Value</th><th>From</th><th>Accepts</th></tr>")
+        for (effective in effectiveFactoryAttributes(entry, writtenAttributes)) {
+            val written = effective.origin == SolrFactoryAttributeOrigin.TAG
+            append("<tr><td><code>${escape(effective.attribute.name)}</code></td>")
+            append(
+                if (written) {
+                    "<td><b>${escape(factoryValueText(effective))}</b></td>"
+                } else {
+                    "<td>${escape(factoryValueText(effective))}</td>"
+                },
+            )
+            append("<td><i>${escape(factoryOriginText(effective.origin, tagName))}</i></td>")
+            append("<td>${escape(valueTypeText(effective.attribute.valueType))}</td></tr>")
+        }
+        append("</table>")
+    }
+
+    /**
+     * The value cell for one factory attribute.
+     *
+     * An em dash stands where the catalog cannot cite a value — required-but-missing and optional-
+     * with-no-default alike. Collapsing those two into one glyph is deliberate: the From column
+     * already separates them, and putting "required" in the value cell would look like Solr's
+     * fallback was the string `required`.
+     */
+    private fun factoryValueText(effective: SolrEffectiveFactoryAttribute): String =
+        effective.value ?: NO_RECORDED_VALUE
+
+    /**
+     * Where a factory attribute's effective value came from, named so the reader knows what to edit.
+     *
+     * Tag-specific "on this filter" / "on this tokenizer" wording matches the field half's "on
+     * this field": a generic "on this tag" would force the reader to look up which element they
+     * are on, which is the one fact the caret position already gave them.
+     *
+     * Named from the tag the file wrote rather than from the class's kind, so a tokenizer factory
+     * written on a `<filter>` says *on this filter* — the element the reader would have to edit.
+     */
+    private fun factoryOriginText(origin: SolrFactoryAttributeOrigin, tagName: String): String =
+        when (origin) {
+            SolrFactoryAttributeOrigin.TAG -> "on this ${tagWord(tagName)}"
+            SolrFactoryAttributeOrigin.SOLR_DEFAULT -> "Solr default"
+            SolrFactoryAttributeOrigin.REQUIRED -> "required, not set"
+            SolrFactoryAttributeOrigin.UNSET -> "no default recorded"
+        }
+
+    /**
+     * A schema element in words, for the "on this …" label.
+     *
+     * `charFilter` is two words spoken and one written, which is the only reason this is a mapping
+     * rather than the tag name itself. An element outside the analysis vocabulary falls back to the
+     * generic word: echoing an unrecognised element name into prose reads as a typo, and `fieldType`
+     * never reaches this surface.
+     */
+    private fun tagWord(tagName: String): String = when (SolrClassKind.forTag(tagName)) {
+        SolrClassKind.TOKENIZER -> "tokenizer"
+        SolrClassKind.TOKEN_FILTER -> "filter"
+        SolrClassKind.CHAR_FILTER -> "char filter"
+        SolrClassKind.FIELD_TYPE, null -> "tag"
     }
 
     /** The kind in words, for the definition line. */
@@ -421,6 +583,14 @@ object SolrFieldPresentation {
      * likely to be quoted back at someone.
      */
     private const val DEPENDS_ON_TYPE = "depends on the field type"
+
+    /**
+     * The value cell where the catalog cites neither a written value nor a literal default.
+     *
+     * Shared by required-missing and optional-unset rows so the value column never pretends Solr
+     * would use a string the bytecode never wrote.
+     */
+    private const val NO_RECORDED_VALUE = "—"
 
     /**
      * Solr's default for a property in general, before any particular schema is considered.

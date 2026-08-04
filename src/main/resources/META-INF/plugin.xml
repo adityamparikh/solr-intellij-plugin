@@ -40,9 +40,11 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
 
-        <!-- Quick documentation on fields, types, class values and factory attributes. Resolves each
-             field property's effective value and origin; for a factory attribute, states only what
-             the catalog can prove (owner, value type, default or required) and stays silent beyond it. -->
+        <!-- Quick documentation, answering a different question at each position. On a field, its
+             type, or a factory tag, it resolves the values in effect and where each came from; on a
+             factory attribute it states only what the catalog can prove — owner, value type,
+             default or required — and stays silent beyond it; on a class value it answers what the
+             class is and what it accepts, which is identity rather than resolution. -->
         <lang.documentationProvider
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>

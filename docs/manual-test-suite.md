@@ -157,6 +157,13 @@ gesture, caret placement, the Find Usages tool window.*
       configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
       the catalog's documentation column carries, where the line's `-sources` artifacts
       supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
+- [ ] **DOC-4b** — Hover the *tag* of the demo's EdgeNGram filter (the word `filter`, not the
+      `class` value): the popup shows a **Configuration** table of every attribute the class
+      accepts. Written `minGramSize` / `maxGramSize` are bold and labelled *on this filter*;
+      unwritten `preserveOriginal` appears as **false** labelled *Solr default*. An attribute
+      the catalog records no literal default for — `luceneMatchVersion` — shows an em dash
+      labelled *no default recorded*: the dash is the feature, not a missing value. A custom
+      `class` the catalog does not know must offer nothing on the tag — not an empty table.
 - [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
       `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
       and `useDocValuesAsStored` likewise.
@@ -179,10 +186,13 @@ gesture, caret placement, the Find Usages tool window.*
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
       DOC-4's `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table still shows a name and a value type, and nothing more.** Defaults and
-required markers live on the per-attribute hover (DOC-7), not on the class-value table — Javadoc is
-per class, so the class popup has no honest per-argument prose to add beside a default either. A
-tester looking for `minGramSize` marked required wants DOC-7, not DOC-4.
+**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** That is the
+class-*value* popup on purpose, and Javadoc is per class, so it has no honest per-argument
+prose to add beside a default either. Defaults and required markers live on the other two
+positions: on one attribute as DOC-7's hover, and on the whole tag as DOC-4b's
+complete-configuration table. A tester looking for `minGramSize` marked required on the
+class value wants DOC-7 or DOC-4b, and is looking at the wrong element rather than at a
+broken feature.
 
 **DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
@@ -302,8 +312,6 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- A factory's complete effective configuration in its popup, unwritten attributes shown
-  at their defaults
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
 - `solrconfig.xml`'s own structure: element completion and validation
