@@ -188,8 +188,13 @@ the ranges `SolrConfigParameters` already computes for the references.
 
 ## Testing strategy
 
-`BasePlatformTestCase` throughout — this is target resolution at a caret, so there is no pure-function
-half to test as plain JUnit 4.
+**`SolrConfigsetTestCase` throughout**, not `BasePlatformTestCase` directly. This is target
+resolution at a caret, so there is no pure-function half to test as plain JUnit 4 — and every test
+here reaches configset detection, which reads settings. `BasePlatformTestCase` reuses one light
+project across methods *and* classes, so settings leak between tests; the same base class also puts
+a Solr client on the fixture's classpath, without which a test asserting that nothing resolves can
+pass for the wrong reason. Both matter more here than usual, because most of these assertions are
+absences.
 
 **The starting point is already written down.** `SolrDeclarationTargetTest` pins where Find Usages
 stops today: three declarations yielding no target, two references yielding one, the reverse search

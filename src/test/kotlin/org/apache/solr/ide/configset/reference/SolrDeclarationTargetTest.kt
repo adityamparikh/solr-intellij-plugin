@@ -3,6 +3,9 @@ package org.apache.solr.ide.configset.reference
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.parentOfType
+import com.intellij.psi.xml.XmlAttributeValue
+import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -116,7 +119,15 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
      */
     fun testSearchingADynamicFieldMissesTheNameItsPatternSupplies() {
         val schemaFile = myFixture.addFileToProject("managed-schema.xml", schema())
-        myFixture.configureByText("solrconfig.xml", handler("""<str name="qf">body_t</str>"""))
+        myFixture.configureByText("solrconfig.xml", handler("""<str name="qf">body<caret>_t</str>"""))
+
+        // The premise, asserted first: without it the omission below would also hold if the
+        // reference had never been contributed, or had stopped resolving through the pattern.
+        val resolved = myFixture.getReferenceAtCaretPosition()?.resolve()
+        val declaringTag = (resolved as? XmlAttributeValue)?.parentOfType<XmlTag>()
+        assertEquals("body_t must resolve through the pattern", "dynamicField", declaringTag?.name)
+        assertEquals("*_t", declaringTag?.getAttributeValue("name"))
+
         val hits = ReferencesSearch.search(SolrSchemaPsi.findField(schemaFile, "*_t")!!).findAll()
         assertTrue(
             "the default search unexpectedly reached ${hits.map { it.element.text }}",
