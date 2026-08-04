@@ -26,6 +26,21 @@ Note what is *not* the cause, because it is the obvious suspect and it is innoce
 `XmlFindUsagesProvider.canFindUsagesFor` explicitly accepts `XmlAttributeValue`. The provider would
 say yes. It is never asked.
 
+**None of the above is inference.** `SolrDeclarationTargetTest` asks
+`TargetElementUtil.findTargetElement` — the call the Find Usages action itself makes — at each
+position in turn. A `field`, `dynamicField` and `fieldType` declaration each yield `null`, which *is*
+the refusal the user sees; a `type=` reference and a cross-file `qf` name each yield a target; and
+searching from a declaration reaches the `qf` parameter in the other file. Same string, same file,
+refused on the declaration and resolved from the reference two lines away — that pair is the whole
+diagnosis, and it is measured rather than argued.
+
+**Rename fails the same way, and only that way.** `renameElementAtCaret` on a declaration throws
+*element not found in file*: it resolves the same `null` target rather than reaching past it. The
+worry that it might instead offer to rename the `<field>` tag — the corruption
+`docs/modern-intellij-plugin-development.md` warns about — does not arise, because rename never gets
+an element at all. Rename therefore needs this step to *gain* a target, not to *suppress* a wrong
+one, which makes Step 8 smaller than it looks.
+
 **Three documents currently disagree about this, and correcting them is part of the work.** The
 [specification](../../../../specs/0002-solr-intellij-plugin.md) lists Find Usages for fields and
 field types as an editor feature. The
@@ -134,12 +149,14 @@ of the rest is written.
 `SolrConfigFieldReference` resolves `body_t` through the model, so a `qf` naming `body_t` resolves to
 `<dynamicField name="*_t">`. The reference genuinely points at that declaration.
 
-The default search will not find it. `ReferencesSearch` picks candidates out of the word index
-*before* it asks any reference to confirm itself, and the word it looks for is the declaration's own
-name — `*_t`. The text `body_t` shares no word with it, so it is never a candidate, never offered to
-`isReferenceTo`, and never appears. Left alone, Find Usages on a dynamic field would list the
-references that spell the pattern literally and **silently omit every name that matched it** — an
-empty list that reads as "nothing uses this pattern".
+The default search does not find it, and that is measured too: `SolrDeclarationTargetTest` puts
+`body_t` in a `qf`, searches from `<dynamicField name="*_t">`, and gets nothing back.
+`ReferencesSearch` picks candidates out of the word index *before* it asks any reference to confirm
+itself, and the word it looks for is the declaration's own name — `*_t`. The text `body_t` shares no
+word with it, so it is never a candidate, never offered to `isReferenceTo`, and never appears. Left
+alone, Find Usages on a dynamic field lists the references that spell the pattern literally and
+**silently omits every name that matched it** — an empty list that reads as "nothing uses this
+pattern".
 
 **A silently incomplete usage list is the failure this plugin's posture exists to prevent**, so the
 matched names are searched too. It is also the only answer to the question a dynamic field actually
@@ -173,6 +190,13 @@ the ranges `SolrConfigParameters` already computes for the references.
 
 `BasePlatformTestCase` throughout — this is target resolution at a caret, so there is no pure-function
 half to test as plain JUnit 4.
+
+**The starting point is already written down.** `SolrDeclarationTargetTest` pins where Find Usages
+stops today: three declarations yielding no target, two references yielding one, the reverse search
+reaching across the file boundary, and the dynamic pattern missing the name it supplies. **This step
+inverts the three `yieldsNoTarget` assertions**, and that inversion is the cleanest available proof
+it did what it claimed — a suite that went from asserting an absence to asserting a presence, rather
+than new tests grading their own homework.
 
 - The cross-file case first, as described above: caret on `<field name="description">`, and the `qf`
   parameter in `solrconfig.xml` is among the usages.

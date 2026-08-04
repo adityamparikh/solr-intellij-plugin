@@ -886,6 +886,10 @@ accepts a caret three ways — a reference at that offset, a `PsiNamedElement` w
 coincides, or a `PomTarget` from `PomDeclarationSearcher` — and a schema declaration is none of them.
 The platform's own `XmlFindUsagesProvider` would accept the element; it is never asked.
 
+`SolrDeclarationTargetTest` pins that boundary against the platform call the action makes: three
+declarations yield no target, two references yield one, and the reverse search still reaches across
+the file boundary. This step inverts the three, which is how it proves itself.
+
 **Actions:**
 
 1. A `PomDeclarationSearcher` producing a renameable target for the `name` attribute value of
@@ -911,7 +915,8 @@ this one is the search direction only.
 **Success criteria:**
 
 - [ ] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
-  including the ones in `solrconfig.xml`.
+  including the ones in `solrconfig.xml`; `SolrDeclarationTargetTest`'s three `yieldsNoTarget`
+  assertions invert, and its reference and search assertions still hold unchanged.
 - [ ] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
   at the range of the name itself rather than the whole parameter value.
 - [ ] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
@@ -953,8 +958,11 @@ the configset walk.
 its copy rules *and* the `qf` line in `solrconfig.xml`.
 
 **Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done) for the graph;
-[declarations as targets](#step-28-declarations-as-targets) for the target itself — Shift+F6 on a declaration is refused
-today for the same reason Alt-F7 is, so that step is a prerequisite rather than a neighbour.
+[declarations as targets](#step-28-declarations-as-targets) for the target itself, and it is a prerequisite rather than
+a neighbour. `renameElementAtCaret` on a declaration throws *element not found in file*: it resolves the same null
+target Alt-F7 does rather than reaching past it to the tag. So this step needs that one to *gain* a target, not to
+*suppress* a wrong one, and the `<field>`-tag corruption
+[the developer notes](../../docs/modern-intellij-plugin-development.md) warn about is not reachable from here.
 
 ### Step 9: Factory catalog generator (in progress)
 
