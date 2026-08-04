@@ -67,12 +67,13 @@ never copied out of the Reference Guide it links to.
 ### An inspection catching what fails only at core reload
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
-open above it offering to change the name to category, description, legacy, name, name_prefix or
+open above it offering to change the name to *_t, category, description, legacy, name or
 notes](docs/images/04-inspection-copyfield-quickfix.png)
 
 A `copyField` pointing at a field no longer declared, flagged in the editor, with Alt-Enter offering
-replacements. The six on offer are the six declared names closest in spelling — a nine-field schema
-has three more, and they do not appear.
+replacements. The six on offer are the six declared names closest in spelling — the schema declares
+ten, and the other four do not appear. `*_t` is among them because a `copyField` may legitimately
+name a dynamic pattern.
 
 ### Completion that knows the schema's vocabulary
 

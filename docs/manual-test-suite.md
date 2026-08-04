@@ -223,9 +223,8 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       and Alt-Enter offers the declared fields, closest spelling first.
 - [ ] 📸 **Capture `docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted*
       `manufacturer` rule at line 92 rather than the edit INSP-1 makes, so the image needs
-      no undo. Frame the underline and the open Alt-Enter menu. **The shipped image is stale**
-      — the `*_t` dynamic field changed which six names the menu offers, so this one must be
-      recaptured rather than confirmed.
+      no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
+      every item in it rewrites the file.
       [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
       declared types; applying one produces a file that parses clean.

@@ -133,9 +133,8 @@ complete-configuration popup put those facts on screen.
 
 ### 4. Inspection and quick-fix — `04-inspection-copyfield-quickfix.png`
 
-**⚠️ Captured, and now stale — recapture needed.** Adding the `*_t` dynamic field to the demo
-schema changed which six names this menu offers; the shipped image predates it. Everything below
-describes what the *new* capture should show.
+**✅ Captured.** Reshot after the `*_t` dynamic field joined the demo schema, which changed which
+six names this menu offers.
 
 **Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields
 closest in spelling — the plugin catching the failure that would otherwise surface only at core
