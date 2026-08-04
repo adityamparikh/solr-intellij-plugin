@@ -86,6 +86,10 @@ whole, and the gutter action goes with the Server track.
   both, so it needs the property table plus the two steps that already extend them.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
   — the largest step here, and entirely behind the catalog. Split it when it starts.
+- [Step 28 — Declarations as targets](#step-28-declarations-as-targets)
+  — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
+  closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
+  claimed and does not have, and it builds the target rename would otherwise have to build first.
 - [Step 8 — Rename](#step-8-rename)
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-in-progress) — **in progress**; the generator
   is built and every fact it emits is asserted, and what is left is the server arm of version selection, which belongs
@@ -457,7 +461,17 @@ recovery for.
 
 **Success criteria:**
 
-- [x] All four reference kinds resolve; Find Usages returns every reference.
+- [x] All four reference kinds resolve.
+- [x] Searching a declaration's references reaches every one of them, including across the file
+  boundary — `ReferencesSearch` on a `<field>` returns the `qf` parameter naming it.
+
+**One clause of the original criterion moved out.** It read *"All four reference kinds resolve; Find
+Usages returns every reference"*, and the second half was ticked in error. The search half is real and
+asserted, but nothing here made a *declaration* into a target the platform will accept, so the Alt-F7
+the clause describes answers *Cannot search for usages from this location* — as
+[the manual suite's NAV-3 and NAV-4](../../docs/manual-test-suite.md) record after a real pass. That
+half now belongs to [declarations as targets](#step-28-declarations-as-targets). Everything this step
+built is done and none of it changes.
 
 **Acceptance:** demo steps
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
@@ -854,6 +868,71 @@ and [screenshot catalog entry 1](../../docs/screenshots.md), both rendered again
 extends; [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the documentation provider it extends.
 
+### Step 28: Declarations as targets
+
+Numbered last because it was added last; it belongs in the Editor track immediately before
+[rename](#step-8-rename), which cannot start until it lands. Read the section it sits in, not the
+number.
+
+Navigation runs one way. Ctrl-click from `type="text_general"` lands on the declaration, and Alt-F7
+on that declaration answers *Cannot search for usages from this location*. The half that looks hard
+is already built and asserted:
+[references and navigation](#step-5-references-navigation-and-find-usages-done) anchored every
+reference at a use site and resolved it to the declaration's `name` attribute value, and
+`ReferencesSearch` traverses those edges backwards today — including across the file boundary. What
+is missing is the step *before* the search: nothing turns a caret sitting on a declaration into
+something the platform will search for. Reading `TargetElementUtilBase` off the 2026.2 platform, it
+accepts a caret three ways — a reference at that offset, a `PsiNamedElement` whose text offset
+coincides, or a `PomTarget` from `PomDeclarationSearcher` — and a schema declaration is none of them.
+The platform's own `XmlFindUsagesProvider` would accept the element; it is never asked.
+
+**Actions:**
+
+1. A `PomDeclarationSearcher` producing a renameable target for the `name` attribute value of
+   `field`, `dynamicField` and `fieldType` in a schema file of a detected configset. The target
+   delegates to the same `XmlAttributeValue` `SolrSchemaPsi` already returns, because that identity
+   is what `isReferenceTo` compares — a target pointing anywhere else would make Find Usages and
+   Ctrl-click disagree about which references exist.
+2. A `referencesSearch` executor for dynamic field targets alone, walking the owning configset's own
+   reference positions and resolving each through `SolrFieldModel.resolve`. Without it a
+   `<dynamicField name="*_t">` reports only the references spelling `*_t` literally: the word index
+   picks candidates before any reference confirms itself, and `body_t` shares no word with the
+   pattern, so every name the pattern actually supplies is silently absent. It resolves through the
+   same call the reference's own `resolve()` makes, so the two cannot disagree.
+3. Correct what this step disproves — the clause moved off
+   [references and navigation](#step-5-references-navigation-and-find-usages-done) above,
+   [the manual suite's NAV-3 and NAV-4](../../docs/manual-test-suite.md), which currently describe
+   the refusal as expected behaviour and will fail a correct plugin, and demo step 27's gesture.
+
+Distinct from [Step 10's action 3](#step-10-completion-validation-and-quick-documentation-in-progress),
+dynamic field pattern awareness, which is about completion and validation. Neither closes the other;
+this one is the search direction only.
+
+**Success criteria:**
+
+- [ ] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
+  including the ones in `solrconfig.xml`.
+- [ ] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
+  at the range of the name itself rather than the whole parameter value.
+- [ ] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
+  plugin does not model — `<requestHandler name="/select">` among them.
+- [ ] A same-named field in a second configset in the same project is not reported; Solr resolves per
+  configset and so does this.
+- [ ] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does.
+
+**Acceptance:**
+[demo step 27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type)
+performed as written, with the caret on the `text_general` **declaration** rather than on a reference,
+and [screenshot catalog entry 7](../../docs/screenshots.md) reshot from there.
+
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done) for
+the reference graph and `SolrSchemaPsi`; [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
+for the resolution the dynamic-field executor calls.
+
+[The design record](../../docs/design/pending/2026-08-04-declaration-targets/design.md) carries the
+route comparison — why the POM declaration searcher rather than the Symbol API — and the bounds on
+the configset walk.
+
 ### Step 8: Rename
 
 **Actions:**
@@ -873,7 +952,9 @@ for the documentation provider it extends.
 [demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files). Renaming a field updates
 its copy rules *and* the `qf` line in `solrconfig.xml`.
 
-**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done)
+**Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done) for the graph;
+[declarations as targets](#step-28-declarations-as-targets) for the target itself — Shift+F6 on a declaration is refused
+today for the same reason Alt-F7 is, so that step is a prerequisite rather than a neighbour.
 
 ### Step 9: Factory catalog generator (in progress)
 
