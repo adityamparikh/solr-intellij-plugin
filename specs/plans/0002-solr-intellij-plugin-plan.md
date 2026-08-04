@@ -811,7 +811,7 @@ response" — looked identical inline to one that is both.
    `SolrFieldProperties.FOR_FIELD` order — match capability first, storage shape second.
 4. Two behaviour changes to the hint's silence rules, one loosened and one left alone: an unrecognised analysis factory
    now renders the storage-shape phrases with no match claim, where it previously suppressed the hint entirely —
-   property values never depended on the analyzer chain, only the match claim did. An undeclared field type still
+   property values never depended on the analyser chain, only the match claim did. An undeclared field type still
    suppresses the hint completely, and the fall-through is the reason rather than an exception to it:
    resolution is three-tier — field, then field type, then Solr's default — so a missing middle tier still resolves
    every property, but resolves it by attributing each default to Solr when the type that might have overridden it does
@@ -1029,7 +1029,7 @@ resolution.
   distinguishably from written ones.
 
 **Acceptance:** demo steps
-[68 — *completion inside an analyzer chain*](../../docs/demo/README.md#step-68-completion-inside-an-analyser-chain),
+[68 — *completion inside an analyser chain*](../../docs/demo/README.md#step-68-completion-inside-an-analyser-chain),
 [69 — *attribute completion on a factory with many
 options*](../../docs/demo/README.md#step-69-attribute-completion-on-a-factory-with-many-options)
 and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-70-quick-documentation-on-a-factory).
