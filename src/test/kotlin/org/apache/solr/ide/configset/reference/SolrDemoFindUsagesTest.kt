@@ -1,12 +1,14 @@
 package org.apache.solr.ide.configset.reference
 
 import com.intellij.codeInsight.TargetElementUtil
+import com.intellij.psi.ElementDescriptionUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
+import com.intellij.usageView.UsageViewTypeLocation
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import java.io.File
 
@@ -77,6 +79,46 @@ class SolrDemoFindUsagesTest : SolrConfigsetTestCase() {
         val users = ReferencesSearch.search(target!!).findAll()
             .mapNotNull { (it.element as? XmlAttributeValue)?.parentOfType<XmlTag>()?.getAttributeValue("name") }
         assertEquals(setOf("name", "description", "text", "*_t"), users.toSet())
+    }
+
+    /**
+     * **What the Find Usages window actually reads, on the declaration the demo uses.**
+     *
+     * A sandbox pass found the header saying *Solr Declaration Target* and the results grouped under
+     * *Unclassified* — both correct results, presented as though something were broken. These assert
+     * the strings rather than the structure, because the strings are what went wrong and what a test
+     * can still reach. What remains beyond them is only how the tool window paints, which is the
+     * part the manual pass keeps.
+     */
+    fun testTheDemoFieldTypeNamesItselfAndGroupsItsUsages() {
+        val schema = demoSchema()
+        val target = targetOnDeclaredName(schema, """<fieldType name="""", "text_general")!!
+
+        assertEquals(
+            "field type",
+            ElementDescriptionUtil.getElementDescription(target, UsageViewTypeLocation.INSTANCE),
+        )
+        val groups = ReferencesSearch.search(target).findAll()
+            .map { SolrUsageTypeProvider().getUsageType(it.element)?.toString() }
+            .toSet()
+        assertEquals(setOf("Field declaring this type"), groups)
+    }
+
+    /** The same two questions of the dynamic field, whose usage lives in the other file. */
+    fun testTheDemoDynamicFieldNamesItselfAndGroupsItsHandlerUsage() {
+        val schema = demoSchema()
+        val target = targetOnDeclaredName(schema, """<dynamicField name="""", "*_t")!!
+
+        assertEquals(
+            "dynamic field",
+            ElementDescriptionUtil.getElementDescription(target, UsageViewTypeLocation.INSTANCE),
+        )
+        val inHandler = ReferencesSearch.search(target).findAll()
+            .single { it.element.containingFile.name == "solrconfig.xml" }
+        assertEquals(
+            "Handler parameter in solrconfig.xml",
+            SolrUsageTypeProvider().getUsageType(inHandler.element)?.toString(),
+        )
     }
 
     /**
