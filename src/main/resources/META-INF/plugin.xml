@@ -71,6 +71,16 @@
         <referencesSearch
                 implementation="org.apache.solr.ide.configset.reference.SolrDynamicFieldSearcher"/>
 
+        <!-- What the two above look like once the platform renders them. Without the first, the
+             Find Usages header and the rename dialog read "Solr Declaration Target" — the target's
+             own class name, which is the platform's fallback. Without the second, every usage lands
+             under "Unclassified". Both were found by a sandbox pass; neither is visible to a test
+             that asserts what the search returns. -->
+        <elementDescriptionProvider
+                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationDescriptionProvider"/>
+        <usageTypeProvider
+                implementation="org.apache.solr.ide.configset.reference.SolrUsageTypeProvider"/>
+
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
              values not on it are wrong. -->

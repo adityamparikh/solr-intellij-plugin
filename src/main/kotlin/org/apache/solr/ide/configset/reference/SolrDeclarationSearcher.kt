@@ -10,6 +10,7 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.Consumer
+import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
@@ -105,4 +106,24 @@ internal class SolrDeclarationTarget(private val value: XmlAttributeValue) :
 
     /** The declared name, as the schema spells it. */
     override fun getName(): String = value.value
+
+    /**
+     * What to call this declaration where the platform shows it to the user.
+     *
+     * **A dynamic field is told apart from a concrete one**, because that is the distinction a
+     * reader most needs when judging what a refactoring will do: a pattern supplies names it does
+     * not spell, so *dynamic field* and *field* do not behave alike under rename.
+     *
+     * Read from the declaring tag rather than stored, because the tag is the thing that decides it
+     * and this is asked only when something is being rendered.
+     */
+    internal val kind: String
+        get() {
+            val tag = value.parentOfType<XmlTag>()?.name
+            return when {
+                tag == SolrSchemaTags.DYNAMIC_FIELD -> SolrBundle.message("declaration.kind.dynamicField")
+                tag in SolrSchemaTags.FIELD_TYPE -> SolrBundle.message("declaration.kind.fieldType")
+                else -> SolrBundle.message("declaration.kind.field")
+            }
+        }
 }
