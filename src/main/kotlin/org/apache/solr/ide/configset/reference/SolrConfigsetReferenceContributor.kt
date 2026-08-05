@@ -172,6 +172,22 @@ private class SolrCopyFieldReferenceProvider : PsiReferenceProvider() {
 }
 
 /**
+ * Whether a reference spelling [spelling] and resolving to [declaration] may be rewritten by rename.
+ *
+ * **It may exactly when it spells the declaration's name.** Most references do, and for those this
+ * is always true. The exception is the one [SolrDynamicFieldSearcher] introduced: a `qf` naming
+ * `body_t` is a genuine usage of `<dynamicField name="*_t">`, but the two relations rename conflates
+ * — *is a usage of* and *should become the new name* — come apart there. Substituting the new
+ * pattern would write `*_txt` where a field name belongs, which Solr rejects outright.
+ *
+ * The name left behind matches nothing afterwards, and that is deliberate rather than overlooked:
+ * [org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection] reports it from the
+ * same position, in Solr's vocabulary, so the consequence is visible rather than silent.
+ */
+private fun mayBeRewritten(declaration: PsiElement?, spelling: String): Boolean =
+    (declaration as? XmlAttributeValue)?.value?.equals(spelling) ?: true
+
+/**
  * A reference from `source="title"` or `dest="text"` to the field declaring that name.
  *
  * **A glob resolves to the `dynamicField` spelling it, and to nothing else.** `dest="*_t"` and
@@ -207,6 +223,14 @@ internal class SolrCopyFieldReference(element: XmlAttributeValue) :
             ?.resolve(value)?.name ?: return null
         return SolrSchemaPsi.findField(file, declared)
     }
+
+    /**
+     * Rewrites this end to [newElementName], unless it is a name a dynamic pattern supplied.
+     *
+     * See [mayBeRewritten] for why the two cases part company.
+     */
+    override fun handleElementRename(newElementName: String): PsiElement =
+        if (mayBeRewritten(resolve(), value)) super.handleElementRename(newElementName) else element
 
     /**
      * No completion variants; the completion contributor already offers the fields here, with what
@@ -279,6 +303,19 @@ internal class SolrConfigFieldReference(
         val schema = SolrSchemaPsi.schemaFileOf(file) ?: return null
         return SolrSchemaPsi.findField(schema, declared)
     }
+
+    /**
+     * Rewrites this occurrence to [newElementName], unless it is a name a dynamic pattern supplied.
+     *
+     * See [mayBeRewritten]. This is the position where getting it wrong is worst: the parameter is
+     * in the other file, so a reader reviewing the rename in the schema would not see the damage.
+     */
+    override fun handleElementRename(newElementName: String): PsiElement =
+        if (mayBeRewritten(resolve(), occurrence.fieldName)) {
+            super.handleElementRename(newElementName)
+        } else {
+            element
+        }
 
     /**
      * No completion variants; what may be offered in a parameter value is the completion
