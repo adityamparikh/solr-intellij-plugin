@@ -1033,6 +1033,69 @@ for the resolution the dynamic-field executor calls.
 route comparison — why the POM declaration searcher rather than the Symbol API — and the bounds on
 the configset walk.
 
+### Step 29: What an attribute means
+
+Numbered last because it was added last; it belongs in the Editor track beside
+[explaining what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done),
+whose gesture it completes.
+
+A tag offers a caret three positions and two of them answer. Hovering `<fieldType>` explains the
+element; hovering `solr.TextField` explains the value; hovering `class` — the attribute's own name —
+says nothing, and neither does `name`, `type`, `source`, `dest`, or either attribute on the schema
+root. **Found in a sandbox pass rather than by reading the code**, which is now the second defect in
+this provider that no test could see: a suite that asserts what a provider answers cannot notice what
+it declines.
+
+`SolrConfigsetDocumentationProvider.documentedProperty` holds two of the three causes in four lines —
+a tag check that excludes `<schema>` outright, and a `byName` lookup that knows only *field
+properties*, so `name` and `class` fall through even on the tags that pass the check. The third is
+different in kind: a factory attribute does answer, and answers *a whole number*, which is a type
+rather than a meaning.
+
+**Actions:**
+
+1. A meaning for the structural attributes — `name`, `class`, `type`, `source`, `dest` — keyed by
+   element and attribute together, because `name` on a `copyField` is not a field name and must not
+   be described as one.
+2. The schema root's `name` and `version`, with `version` answering specifically: what the attribute
+   decides in general, and what *this* value decides here. `SolrSchemaVersion` already computes that
+   for every field-property popup; this surfaces it at the attribute that causes it.
+3. A hand-written table of what the common factory attributes do, shown beside the type and default
+   the catalog already proves. Silent for anything not on it.
+
+**Action 3 reverses [Step 10](#step-10-completion-validation-and-quick-documentation-in-progress), and
+the reversal is deliberate.** That step declined per-attribute prose because the catalog is generated
+from bytecode and Javadoc is per class, so no generated source carries it — all true, and it stopped
+one inference short. The rule this plugin holds is *do not invent facts*, not *do not record ones
+that are known*; a written table of what `minGramSize` does invents nothing. Nor does the
+maintenance argument transfer: the catalog had to be generated because it is thousands of attributes
+that move every Solr line, and this is the two dozen a reader hovers, unchanged since 2012.
+
+**Success criteria:**
+
+- [ ] `name`, `class`, `type`, `source` and `dest` each explain themselves, and say something
+  different where the element makes them different.
+- [ ] `<schema version="1.6">` states what the version decides and what it defaults `docValues` to
+  here; `<schema name=…>` says it carries no behaviour.
+- [ ] `minGramSize` and `maxGramSize` on an `EdgeNGramFilterFactory` say what they do, alongside the
+  required marker and value type already shown.
+- [ ] **An attribute the table does not list keeps exactly the popup it has today.** The regression
+  that matters is a popup appearing where none should, or an existing one losing what it proved.
+- [ ] Nothing outside a configset, and no element the plugin does not model, answers at all.
+
+**Acceptance:** hovering `minGramSize` in the demo's `text_prefix` chain
+(`managed-schema.xml:48`) and `version` on the demo schema root.
+
+**Dependencies:** [match hints and quick documentation](#step-7-match-hints-and-quick-fixes-done) for
+the provider, [the factory catalog generator](#step-9-factory-catalog-generator-in-progress) for the
+type and default this sits beside, and
+[the repository reader and field model](#step-3-repository-reader-and-field-model-done) for
+`SolrSchemaVersion`.
+
+[The design record](../../docs/design/pending/2026-08-06-attribute-meanings/design.md) carries the
+bounds on the hand-written table and the argument for why it is not the invention this plugin
+refuses.
+
 ### Step 8: Rename
 
 **Actions:**

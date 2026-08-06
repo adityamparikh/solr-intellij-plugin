@@ -360,6 +360,30 @@ by putting the caret inside an attribute *value*, which is a gesture you make wh
 already suspect something. A feature nobody can find is worth what a feature nobody built
 is worth.
 
+**And the attributes, which is the position between the two and the one that stayed
+silent.** A tag has three places a caret can sit — the element, an attribute's name, its
+value — and answering the first and third while the middle says nothing reads as the plugin
+not knowing the file, especially when the attribute beside it answers. Three groups are
+missing, and they fail for different reasons:
+
+- **The structural attributes** — `name`, `class`, `type`, `source`, `dest`. These are the
+  ones that make a schema a graph rather than text, and none of them explains itself.
+- **The schema root's own attributes.** `version` is the most valuable single attribute in
+  the file and the least understood: it runs from 1.0 to 1.7, it decides what every
+  undeclared attribute falls back to, and Solr 10 still honours a 2008 schema's defaults.
+  The plugin already models this to resolve field properties; it simply never says so.
+- **A factory attribute's meaning, as opposed to its type.** Hovering `minGramSize` reports
+  *a whole number*, which is a label rather than an answer. The reader wanting to know what
+  an edge n-gram of 2 to 15 actually indexes learns nothing they could not see.
+
+The third reverses a decision recorded earlier, and the reversal is the point. Per-attribute
+prose was declined because the catalog is generated from bytecode and Javadoc is written per
+class, so there was no source for it — and inventing one is exactly what this plugin refuses
+to do. That reasoning was right about the *generated* source and wrong to stop there: a
+short, hand-written table of what the common attributes mean is maintainable precisely
+because it is short, and it stays silent for everything not on it. Declining to guess is a
+rule about inventing facts, not a reason to withhold ones that are known.
+
 An earlier draft proposed resolving this at runtime from the project's own dependency
 jars, read as bytecode to avoid classloader conflicts, with per-module resolution. That
 is deleted. It was substantial machinery to answer a question a connected server answers
