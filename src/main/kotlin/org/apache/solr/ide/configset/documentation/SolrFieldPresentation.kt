@@ -668,4 +668,26 @@ object SolrFieldPresentation {
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
         .replace("'", "&#39;")
+
+    /**
+     * The popup for a structural attribute — the ones that make a schema a graph rather than text.
+     *
+     * [detail] carries the part that is specific to this configset rather than true of the
+     * attribute everywhere, which today is only the schema version's resolved defaults. Rendered
+     * as a second paragraph so the general answer reads first, the same order the field-property
+     * popups use.
+     *
+     * @param attributeName the attribute being hovered
+     * @param meaning what it means, as HTML
+     * @param detail what it decides here, as HTML, or null when nothing is specific
+     * @return the popup
+     */
+    fun attributeMeaning(attributeName: String, meaning: String, detail: String? = null): String =
+        buildString {
+            append("<div class='definition'><pre>${escape(attributeName)}</pre></div>")
+            append("<div class='content'>")
+            append("<p>$meaning</p>")
+            if (detail != null) append("<p>$detail</p>")
+            append("</div>")
+        }
 }
