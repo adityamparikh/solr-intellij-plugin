@@ -74,10 +74,14 @@ class SolrDemoFindUsagesTest : SolrConfigsetTestCase() {
     fun testFindUsagesOnTheFieldTypeDeclarationListsEveryFieldUsingIt() {
         val schema = demoSchema()
         val target = targetOnDeclaredName(schema, """<fieldType name="""", "text_general")
-        assertNotNull("no target on the text_general declaration", target)
+        assertTrue("no Solr declaration target on text_general", isSolrDeclarationTarget(target))
 
         val users = ReferencesSearch.search(target!!).findAll()
             .mapNotNull { (it.element as? XmlAttributeValue)?.parentOfType<XmlTag>()?.getAttributeValue("name") }
+        // Size before set: `toSet()` would collapse a name reported twice, and a duplicate report is
+        // exactly the defect `SolrDynamicFieldSearcher` guards against by skipping literal spellings.
+        // `mapNotNull` would likewise swallow a hit whose element was not an attribute value.
+        assertEquals("each user must be reported once, got $users", 4, users.size)
         assertEquals(setOf("name", "description", "text", "*_t"), users.toSet())
     }
 
@@ -128,7 +132,7 @@ class SolrDemoFindUsagesTest : SolrConfigsetTestCase() {
     fun testFindUsagesOnTheDynamicFieldReachesTheNameOnlyItSupplies() {
         val schema = demoSchema()
         val target = targetOnDeclaredName(schema, """<dynamicField name="""", "*_t")
-        assertNotNull("no target on the *_t declaration", target)
+        assertTrue("no Solr declaration target on *_t", isSolrDeclarationTarget(target))
 
         val hits = ReferencesSearch.search(target!!).findAll()
         val inHandler = hits.single { it.element.containingFile.name == "solrconfig.xml" }

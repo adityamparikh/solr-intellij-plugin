@@ -1,10 +1,10 @@
 package org.apache.solr.ide.configset.reference
 
 import com.intellij.codeInsight.TargetElementUtil
-import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
@@ -57,13 +57,8 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
     private fun handler(body: String) =
         """<config><requestHandler name="/select"><lst name="defaults">$body</lst></requestHandler></config>"""
 
-    private fun targetIn(schemaText: String): PsiElement? {
-        myFixture.configureByText("managed-schema.xml", schemaText)
-        return TargetElementUtil.findTargetElement(
-            myFixture.editor,
-            TargetElementUtil.getInstance().allAccepted,
-        )
-    }
+    private fun targetIn(schemaText: String): PsiElement? =
+        targetInFile("managed-schema.xml", schemaText)
 
     private fun targetInFile(fileName: String, text: String): PsiElement? {
         myFixture.configureByText(fileName, text)
@@ -76,23 +71,28 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
     private fun describe(element: PsiElement?) =
         if (element == null) "null" else "${element.javaClass.simpleName}(${element.text})"
 
-    /** Whether [element] is the target this step contributes, as opposed to any the platform had. */
-    private fun isSolrDeclaration(element: PsiElement?) =
-        (element as? PomTargetPsiElement)?.target is SolrDeclarationTarget
-
     fun testAFieldTypeDeclarationYieldsATarget() {
         val target = targetIn(schema(fieldType = """name="text_gen<caret>eral""""))
-        assertNotNull("expected a target on the declaration, got ${describe(target)}", target)
+        assertTrue(
+            "expected a Solr declaration target, got ${describe(target)}",
+            isSolrDeclarationTarget(target),
+        )
     }
 
     fun testAFieldDeclarationYieldsATarget() {
         val target = targetIn(schema(description = """name="descri<caret>ption""""))
-        assertNotNull("expected a target on the declaration, got ${describe(target)}", target)
+        assertTrue(
+            "expected a Solr declaration target, got ${describe(target)}",
+            isSolrDeclarationTarget(target),
+        )
     }
 
     fun testADynamicFieldDeclarationYieldsATarget() {
         val target = targetIn(schema(dynamic = """name="*<caret>_t""""))
-        assertNotNull("expected a target on the declaration, got ${describe(target)}", target)
+        assertTrue(
+            "expected a Solr declaration target, got ${describe(target)}",
+            isSolrDeclarationTarget(target),
+        )
     }
 
     /**
@@ -219,7 +219,7 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
         val target = targetIn(schema(description = """na<caret>me="description""""))
         assertFalse(
             "expected no Solr declaration target on the attribute name, got ${describe(target)}",
-            isSolrDeclaration(target),
+            isSolrDeclarationTarget(target),
         )
     }
 
@@ -277,6 +277,39 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
         assertTrue(
             "expected nothing outside the searched file, got ${hits.map { it.element.containingFile.name }}",
             hits.none { it.element.containingFile.name == "solrconfig.xml" },
+        )
+    }
+
+    /**
+     * **A scope can be narrower than a file, and the walk has to respect that too.**
+     *
+     * The file-level check this started with passed the whole-file fixture above while still
+     * reporting everything in that file — a `LocalSearchScope` built from one tag excludes its
+     * siblings, and the walk put them back. Asking the scope about the reference's own element
+     * rather than about its file is what makes the bound the caller's rather than approximately
+     * the caller's.
+     */
+    fun testADynamicFieldSearchHonoursAScopeNarrowerThanAFile() {
+        val schemaFile = myFixture.addFileToProject("managed-schema.xml", schema())
+        val config = myFixture.addFileToProject(
+            "solrconfig.xml",
+            """<config><requestHandler name="/select"><lst name="defaults">""" +
+                """<str name="qf">body_t</str><str name="pf">title_t</str>""" +
+                """</lst></requestHandler></config>""",
+        )
+        val queryFields = PsiTreeUtil.findChildrenOfType(config, XmlTag::class.java)
+            .single { it.name == "str" && it.getAttributeValue("name") == "qf" }
+
+        val hits = ReferencesSearch.search(
+            SolrSchemaPsi.findField(schemaFile, "*_t")!!,
+            LocalSearchScope(queryFields),
+            false,
+        ).findAll()
+
+        assertEquals(
+            "expected only the scoped tag's occurrence, got ${hits.map { it.element.text }}",
+            listOf("body_t"),
+            hits.map { it.rangeInElement.substring(it.element.text) },
         )
     }
 

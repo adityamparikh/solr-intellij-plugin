@@ -246,7 +246,8 @@ gesture changed, so a reshoot has two corrections to make, not one.
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 
-**Verifies** NAV-3. NAV-6 exercises the dynamic half of the same target and has no image of its own;
+**Verifies** NAV-3. NAV-6 exercises the same declaration-target machinery from a *different*
+declaration — a `dynamicField` rather than this `fieldType` — and has no image of its own;
 the usage list this one frames is the same machinery answering the easier question.
 
 ### 8. Navigation from `solrconfig.xml` into the schema — `08-nav-solrconfig-field-reference.png`

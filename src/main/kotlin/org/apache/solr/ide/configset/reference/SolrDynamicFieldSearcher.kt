@@ -7,6 +7,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
+import com.intellij.psi.search.PsiSearchScopeUtil
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.parentOfType
@@ -70,7 +72,7 @@ class SolrDynamicFieldSearcher :
                 ProgressManager.checkCanceled()
                 when (element) {
                     is XmlTag, is XmlAttributeValue ->
-                        reportUsagesIn(element, pattern, declaration, manager, consumer)
+                        reportUsagesIn(element, pattern, declaration, manager, scope, consumer)
 
                     else -> true
                 }
@@ -94,10 +96,14 @@ class SolrDynamicFieldSearcher :
         pattern: String,
         declaration: XmlAttributeValue,
         manager: PsiManager,
+        scope: SearchScope,
         consumer: Processor<in PsiReference>,
     ): Boolean {
         for (reference in element.references) {
             if (reference.rangeInElement.substring(element.text) == pattern) continue
+            // Asked of the element, not of its file: a LocalSearchScope can be built from a single
+            // tag, and excluding that tag's siblings is the whole point of building one.
+            if (!PsiSearchScopeUtil.isInScope(scope, reference.element)) continue
             if (!manager.areElementsEquivalent(reference.resolve(), declaration)) continue
             if (!consumer.process(reference)) return false
         }

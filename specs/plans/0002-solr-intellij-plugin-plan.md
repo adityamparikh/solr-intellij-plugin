@@ -477,8 +477,10 @@ changed.
 **Acceptance:** demo steps
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
 [23 — *navigate along a copyField*](../../docs/demo/README.md#step-23-navigate-along-a-copyfield),
-[24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary)
-and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type).
+and [24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary).
+Demo step 27 moved to [declarations as targets](#step-28-declarations-as-targets) with the criterion
+it belongs to: it now performs the search from the declaration, which is the gesture this step
+refused.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
@@ -893,7 +895,7 @@ the file boundary. This step inverts the three, which is how it proves itself.
 
 **Actions:**
 
-1. A `PomDeclarationSearcher` producing a renameable target for the `name` attribute value of
+1. A `PomDeclarationSearcher` producing a named target for the `name` attribute value of
    `field`, `dynamicField` and `fieldType` in a schema file of a detected configset. The target
    delegates to the same `XmlAttributeValue` `SolrSchemaPsi` already returns, because that identity
    is what `isReferenceTo` compares — a target pointing anywhere else would make Find Usages and
