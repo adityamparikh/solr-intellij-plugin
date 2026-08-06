@@ -1,5 +1,7 @@
 package org.apache.solr.ide.model.vocabulary
 
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrTypeTrait
 import org.apache.solr.ide.model.schema.SolrSchemaVersion
 import org.apache.solr.ide.model.schema.SolrVersionRange
 
@@ -27,6 +29,11 @@ import org.apache.solr.ide.model.schema.SolrVersionRange
  * **Silent by default, everywhere.** An attribute this does not list keeps exactly the popup it had
  * before, and no element the plugin does not model answers at all. The failure that matters here is
  * a popup appearing where none should.
+ *
+ * **What is hand-written is the prose, and only the prose.** [ofSchemaVersion] states which defaults
+ * a version selects, and every one of those is read back out of [SolrFieldProperties] rather than
+ * restated here. A sentence is safe to write down because nothing else computes it; a threshold is
+ * not, because the field-property popup computes it too and the two render side by side.
  */
 object SolrAttributeMeanings {
 
@@ -63,6 +70,13 @@ object SolrAttributeMeanings {
      * [SolrSchemaVersion] drives every field-property popup's notion of what an undeclared
      * attribute falls back to, and this states it at the attribute that causes it.
      *
+     * **Every on/off below is read from the property that owns it, never from a threshold written
+     * here.** This sentence renders beside the field-property popup that resolves the same
+     * defaults, so a number copied into this file would let the two contradict each other on the
+     * same screen — the popup asserting a default while the table next to it shows the other one.
+     * [SolrFieldProperties] is the single place a schema-version threshold is declared, and
+     * [holdsAt] is how this reaches it.
+     *
      * @param version the version the schema declares, or the assumed one where it declares none
      * @return a sentence naming the version and the defaults it selects
      */
@@ -74,27 +88,58 @@ object SolrAttributeMeanings {
         )
         append("At <code>${version.label}</code>, ")
         append(
-            listOf(
-                "<code>docValues</code> defaults ${onOrOff(version, DOC_VALUES_FROM)}",
-                "<code>uninvertible</code> defaults ${onOrOff(version, null, UNINVERTIBLE_BELOW)}",
-                "<code>autoGeneratePhraseQueries</code> defaults ${onOrOff(version, null, PHRASE_BELOW)}",
-            ).joinToString("; "),
+            VERSIONED.joinToString("; ") {
+                "<code>${it.property}</code> defaults ${if (holdsAt(it, version)) "on" else "off"}${it.qualifier}"
+            },
         )
         append(".")
     }
 
-    /** Whether a default holds at [version], given the range that turns it on. */
-    private fun onOrOff(version: SolrSchemaVersion, from: Float?, below: Float? = null): String =
-        if (version in SolrVersionRange(from = from, below = below)) "on" else "off"
+    /**
+     * A default this version selects, and the terms on which it is true.
+     *
+     * @property property the field property whose default the version decides
+     * @property traits the type traits to resolve against, for a default the version alone does not settle
+     * @property qualifier text naming the condition, empty where the version really is the whole rule
+     */
+    private data class VersionedDefault(
+        val property: String,
+        val traits: Set<SolrTypeTrait> = emptySet(),
+        val qualifier: String = "",
+    )
 
-    /** The first schema version that turns `docValues` on for the types that support it. */
-    private const val DOC_VALUES_FROM = 1.7f
+    /**
+     * The defaults worth stating at the `version` attribute.
+     *
+     * **`docValues` carries a qualifier and the other two do not, because it is the only one the
+     * version does not settle by itself.** Its rule is trait-dependent —
+     * [org.apache.solr.ide.model.schema.SolrTypeDefaultRule.DOC_VALUES] opens the gate at 1.7 for a type that supports doc values,
+     * while a sortable text type sets the bit at every version — so an unqualified "defaults off"
+     * would be false for that type on exactly the schemas this sentence is most often read on.
+     */
+    private val VERSIONED: List<VersionedDefault> = listOf(
+        VersionedDefault(
+            "docValues",
+            traits = setOf(SolrTypeTrait.DOC_VALUES_BY_DEFAULT),
+            qualifier = " for the types that support it, though a sortable text type sets it at any version",
+        ),
+        VersionedDefault("uninvertible"),
+        VersionedDefault("autoGeneratePhraseQueries"),
+    )
 
-    /** The first schema version that stops defaulting `uninvertible` on. */
-    private const val UNINVERTIBLE_BELOW = 1.7f
-
-    /** The first schema version that stops defaulting `autoGeneratePhraseQueries` on. */
-    private const val PHRASE_BELOW = 1.4f
+    /**
+     * Whether [default] holds at [version], asked of the property rather than of a local constant.
+     *
+     * Two shapes, because the model carries two: a property whose default is purely a version range
+     * answers from [org.apache.solr.ide.model.schema.SolrFieldProperty.defaultTrueWithin], and one whose default also depends on the
+     * field type answers through its [org.apache.solr.ide.model.schema.SolrTypeDefaultRule]. Prefers the range when a property
+     * somehow carries both, so gaining one later narrows this rather than changing it.
+     */
+    private fun holdsAt(default: VersionedDefault, version: SolrSchemaVersion): Boolean {
+        val property = SolrFieldProperties.byName(default.property) ?: return false
+        property.defaultTrueWithin?.let { return version in it }
+        return property.typeDefault?.holdsFor(default.traits, version) == true
+    }
 
     /**
      * The attributes that make a schema a graph rather than text.

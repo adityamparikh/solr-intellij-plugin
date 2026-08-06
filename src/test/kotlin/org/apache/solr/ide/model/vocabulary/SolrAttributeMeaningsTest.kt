@@ -1,5 +1,9 @@
 package org.apache.solr.ide.model.vocabulary
 
+import org.apache.solr.ide.model.schema.SolrTypeDefaultRule
+import org.apache.solr.ide.model.schema.SolrTypeTrait
+import org.apache.solr.ide.model.schema.SolrSchemaVersion
+import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -112,5 +116,56 @@ class SolrAttributeMeaningsTest {
     fun `an absent version is reported as the assumed one`() {
         val meaning = SolrAttributeMeanings.ofSchemaVersion(SolrSchemaVersion.ASSUMED)
         assertTrue(meaning, "1.0" in meaning)
+    }
+
+    /**
+     * **The anti-drift check, and the reason this sentence reads its answers rather than stating
+     * them.** It renders beside the field-property popup that resolves the same defaults from
+     * [SolrFieldProperties], so a threshold copied into `SolrAttributeMeanings` would let the two
+     * contradict each other on one screen. Recomputing the expectation from the property here fails
+     * the moment a literal comes back, at whichever version the copy and the model disagree.
+     */
+    @Test
+    fun `each purely versioned default agrees with the property that owns it`() {
+        for (name in listOf("uninvertible", "autoGeneratePhraseQueries")) {
+            val range = SolrFieldProperties.byName(name)!!.defaultTrueWithin!!
+            for (declared in listOf(1.0f, 1.1f, 1.4f, 1.5f, 1.6f, 1.7f)) {
+                val version = SolrSchemaVersion(declared)
+                val expected = if (version in range) "on" else "off"
+                val meaning = SolrAttributeMeanings.ofSchemaVersion(version)
+                assertTrue(
+                    "at $declared, $name should read $expected: $meaning",
+                    "<code>$name</code> defaults $expected" in meaning,
+                )
+            }
+        }
+    }
+
+    /**
+     * `docValues` is the one default the version does not settle alone, so it is the one that must
+     * not be stated flatly. [SolrTypeDefaultRule.DOC_VALUES] opens the gate at 1.7 for a type that
+     * supports doc values, while a sortable text type sets the bit at every version — so a bare
+     * "defaults off" would be false for that type on exactly the older schemas this popup is most
+     * often read on.
+     */
+    @Test
+    fun `the docValues default is qualified rather than stated flatly`() {
+        val meaning = SolrAttributeMeanings.ofSchemaVersion(SolrSchemaVersion(1.6f))
+        assertTrue(meaning, "<code>docValues</code> defaults off for the types that support it" in meaning)
+        assertTrue(meaning, "sortable text" in meaning)
+    }
+
+    /** And the gate itself is the model's, not a number in the meanings table. */
+    @Test
+    fun `the docValues gate follows the type default rule`() {
+        val supported = setOf(SolrTypeTrait.DOC_VALUES_BY_DEFAULT)
+        for (declared in listOf(1.6f, 1.7f)) {
+            val version = SolrSchemaVersion(declared)
+            val expected = if (SolrTypeDefaultRule.DOC_VALUES.holdsFor(supported, version)) "on" else "off"
+            assertTrue(
+                "at $declared, docValues should read $expected",
+                "<code>docValues</code> defaults $expected" in SolrAttributeMeanings.ofSchemaVersion(version),
+            )
+        }
     }
 }

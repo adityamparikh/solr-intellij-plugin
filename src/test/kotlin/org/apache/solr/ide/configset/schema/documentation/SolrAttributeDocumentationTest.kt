@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.documentation
+package org.apache.solr.ide.configset.schema.documentation
 
 import com.intellij.psi.PsiElement
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
@@ -30,7 +30,7 @@ class SolrAttributeDocumentationTest : SolrConfigsetTestCase() {
     /** The popup for whatever the caret is on, through the same path the platform takes. */
     private fun documentationAtCaret(text: String): String? {
         myFixture.configureByText("managed-schema.xml", text)
-        val provider = SolrConfigsetDocumentationProvider()
+        val provider = SolrSchemaDocumentationProvider()
         val target: PsiElement = provider.getCustomDocumentationElement(
             myFixture.editor,
             myFixture.file,
@@ -110,7 +110,7 @@ class SolrAttributeDocumentationTest : SolrConfigsetTestCase() {
     /** Nothing outside a configset answers, whatever it is called. */
     fun testAnAttributeOutsideAConfigsetAnswersNothing() {
         myFixture.configureByText("beans.xml", """<schema na<caret>me="products" version="1.6"/>""")
-        val provider = SolrConfigsetDocumentationProvider()
+        val provider = SolrSchemaDocumentationProvider()
         assertNull(
             provider.getCustomDocumentationElement(
                 myFixture.editor,
