@@ -149,6 +149,31 @@ gesture, caret placement, the Find Usages tool window.*
       tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
+## 4a. Rename (REN)
+
+*Renaming is the reference graph read backwards and then written to. Every check here ends
+in an undo — these edit both files, and the demo has to come back clean for the sections
+below.*
+
+- [ ] **REN-1** — Caret on `category` in `<field name="category">` at
+      `managed-schema.xml:70`, press Shift+F6. **Read the dialog before typing:** it must
+      say *Rename **field** 'category'*, not *Rename Solr Declaration Target 'category'* —
+      the same description NAV-7 checks, reached by a second refactoring.
+- [ ] **REN-2** — Complete that rename to `product_category`. The declaration updates, and
+      so does the `qf` line in `solrconfig.xml:28` — the cross-file half, and the one a
+      hand-edit misses. **Undo, and confirm both files are clean.**
+- [ ] **REN-3** — Rename `text_general` from its `<fieldType>` declaration at line 31: every
+      field's `type=` follows, including the `*_t` dynamic field's. **Undo.**
+- [ ] **REN-4** — **The one that is deliberately partial.** Rename `<dynamicField name="*_t">`
+      at line 84 to `*_txt`. The declaration updates and any reference *spelling* the pattern
+      updates with it — but the `pf` naming `body_t` in `solrconfig.xml` is left exactly as
+      written, because `body_t` is a name the pattern supplied and rewriting it to `*_txt`
+      would put a glob where a field name belongs.
+- [ ] **REN-5** — Still in REN-4's state, look at that `pf`: `body_t` is now underlined by the
+      unknown-field inspection, because nothing declares it any more. **That report is what
+      makes REN-4 defensible** — the configset is broken, and the plugin says so, rather than
+      leaving it silently wrong. **Undo REN-4 and confirm the underline goes.**
+
 ## 5. Quick documentation (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
@@ -328,7 +353,6 @@ list below is what the suite does not yet cover, and says nothing about what is 
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
 - Alt-Enter intentions generating an `_exact`/`_prefix` companion field
-- Rename refactoring on fields and field types
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
