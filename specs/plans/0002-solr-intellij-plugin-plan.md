@@ -968,8 +968,24 @@ the configset walk.
 
 **Success criteria:**
 
-- [ ] Every resolved reference updates; no dangling references after rename.
-- [ ] No scaffold fixtures remain under `src/test/testData/`.
+- [x] Every resolved reference updates; no dangling references after rename.
+- [x] No scaffold fixtures remain under `src/test/testData/`. The directory is gone; nothing read
+  `foo.xml` or `foo_after.xml`, which is why they survived this long.
+
+**A dynamic field rewrites only the references that spell it, and that is a decision rather than a
+limitation.** [Declarations as targets](#step-28-declarations-as-targets) made a name the pattern
+*supplies* — `body_t` under `<dynamicField name="*_t">` — a reported usage, which is correct and is
+the point of it. Rename conflates two relations that part company exactly there: *is a usage of* and
+*should become the new name*. Left alone, `PsiReferenceBase` substitutes the declaration's new name
+into the reference's range and writes `qf">name^3 *_txt` — a pattern where a field name belongs,
+which Solr rejects. So the rewrite is confined to references spelling the declaration literally.
+
+The name left behind then matches nothing, and the alternative considered was carrying it across —
+`body_t` to `body_txt`, mechanical rather than invented, since the model already matches the two.
+That was not taken: the consequence of leaving it is *reported* rather than silent, because
+`SolrUnknownFieldReferenceInspection` fires on the orphaned name from the same position, in Solr's
+vocabulary. `SolrRenameTest` asserts the report as well as the omission, since the omission alone
+would be the silent breakage this plugin's posture forbids.
 
 **Acceptance:**
 [demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files). Renaming a field updates
