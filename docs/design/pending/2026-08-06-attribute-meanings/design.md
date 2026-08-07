@@ -104,6 +104,18 @@ The last bound has a limit worth stating: an attribute name that genuinely means
 things on two factories cannot be expressed, and would have to be keyed by class if one ever turns
 up. None does today.
 
+**A sandbox pass then settled it further than the argument had.** Hovering `minGramSize` shows the
+popup already carries a *per-attribute* Reference Guide link — `minGramSize` on solr.apache.org —
+beside the per-class one. That was not known while the table was being drafted. The prose would
+therefore have duplicated a link that is already there, already specific to the attribute, and
+always current, which is the exact trade the FAQ's rule is about.
+
+**What would close it properly is a generated source.** The guide is ALv2 AsciiDoc with per-filter
+pages carrying attribute tables; a build-time extraction would put this on the same footing as the
+catalog — mechanical, refreshed per line, no second body of prose to maintain. The cost is a new kind
+of build input, since the guide is not a Maven artifact. That is a step of its own, and the decision
+between it and *leave the link to do the work* has not been made.
+
 ## Testing strategy
 
 Plain JUnit 4 for the table itself — it is a pure function from a pair of strings to prose, and
