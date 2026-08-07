@@ -224,11 +224,16 @@ below.*
       `uninvertible` on. The second paragraph is computed from the file, so DOC-6's edit to
       `1.7` should flip it; check that too while the file is already changed, and undo with
       the rest.
-- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Hover `name` on
-      the `<copyField>` — a `copyField`'s `name` is not a field name, so it must **not** gain
-      the `<field>` description. It falls through to the `copyField` element's explanation, as
-      it did before. And re-check DOC-7 while you are here: `minGramSize` still shows its owner,
-      value type and required marker with **no** prose row added.
+- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Re-check DOC-7
+      from here: `minGramSize` shows its owner, value type and required marker, the guide links —
+      and **no prose row**. A hand-written *Does* row was drafted for this popup and withdrawn,
+      and the popup already carries a per-attribute guide link, so prose here would duplicate a
+      link that is always current.
+
+      *The other half of this check has no fixture.* A `copyField`'s `name` must never gain the
+      `<field>` description — but the committed demo declares no `<copyField name=…>`, so there
+      is nothing to hover, the same shape of gap NAV-5 records. `SolrAttributeDocumentationTest`
+      covers it headlessly; either the demo grows one or this stays a note.
 
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
@@ -404,10 +409,19 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-06 | e518ff1 | Claude | NAV-3, NAV-6, NAV-7, REN-1, REN-2, DOC-9 only | **not completed** | six checks pressed and green; the other 51 were not. Driven through macOS accessibility scripting rather than by hand — see below |
+| 2026-08-06 | e917978 | Claude | BASE-1, BASE-2, NAV-3, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-4, DOC-7, DOC-8, DOC-9 | **not completed** | thirteen checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
-**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Six checks
-were pressed, all six green:
+**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
+checks were pressed, all thirteen green:
+
+- **BASE-1 / BASE-2** — the schema reports exactly two findings and `solrconfig.xml` reports none,
+  which is the baseline every later check restores to.
+- **REN-4 / REN-5** — renaming `*_t` to `*_txt` left the `pf` naming `body_t` exactly as written,
+  and `solrconfig.xml` went from zero findings to one: the unknown-field inspection reporting the
+  name the rename orphaned. That pair is the decision made visible. Undone afterwards.
+- **DOC-4 / DOC-7 / DOC-8** — the class *value* answers with its Javadoc summary and *Used by 3
+  field types*; the `class` attribute *name* now answers for itself rather than deferring to its
+  element; and `minGramSize` shows owner, type and required marker with no prose row.
 
 - **NAV-3** — the `text_general` declaration returns four usages: `name`, `description`, `text`
   and the `*_t` dynamic field. Four, not the three an older screenshot caption promised.
@@ -429,9 +443,16 @@ opening sentence twice — the structural table's entry for `version` restated w
 beneath it already said. Every headless assertion passed either way, because each checked for a
 substring rather than for the whole. Fixed in the same change that records this row.
 
-**What was not pressed:** ACT, BASE, HINT, INSP, COMP, CAT, DOC-1 through DOC-8, DOC-10, and
-REN-3 through REN-5. None of them is known to be broken; none of them was looked at. The boxes
-above stay unticked for that reason — a partial tick reads as a pass to everyone who did not run it.
+**A second finding, from DOC-7.** The factory attribute popup already carries a *per-attribute*
+Reference Guide link — `minGramSize` on solr.apache.org — alongside the per-class one. That was not
+known when the hand-written prose table was drafted, and it settles the question the withdrawal
+turned on: the prose would have duplicated a link that is already there, already per-attribute, and
+always current.
+
+**What was not pressed:** ACT, HINT, INSP, COMP, CAT, DOC-1, DOC-2, DOC-3, DOC-5, DOC-6, DOC-10,
+NAV-1, NAV-2, NAV-4, NAV-5 and REN-3. None of them is known to be broken; none was looked at. The
+boxes above stay unticked for that reason — a partial tick reads as a pass to everyone who did not
+run it.
 
 **About the two rows above this note.** The first covers the suite as it stood before
 `SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE

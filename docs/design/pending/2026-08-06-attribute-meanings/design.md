@@ -98,6 +98,12 @@ across majors, defining semantics rather than enumerating, unreachable by the ge
 structural table clears it on every count. The factory table clears none of them except size, and
 only for as long as nobody adds to it.
 
+**A sandbox pass then settled it further than the argument had.** Hovering `minGramSize` shows the
+popup already carries a *per-attribute* Reference Guide link — `minGramSize` on solr.apache.org —
+beside the per-class one. That was not known while the table was being drafted. The prose would
+therefore have duplicated a link that is already there, already specific to the attribute, and
+always current, which is the exact trade the FAQ's rule is about.
+
 **What would close it properly is a generated source.** The guide is ALv2 AsciiDoc with per-filter
 pages carrying attribute tables; a build-time extraction would put this on the same footing as the
 catalog — mechanical, refreshed per line, no second body of prose to maintain. The cost is a new kind
