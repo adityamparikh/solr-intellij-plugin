@@ -214,6 +214,27 @@ below.*
       the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
       catalog default `false` instead of a required marker. An attribute name the catalog does
       not list, or any attribute on a class the catalog does not know, stays silent.
+- [ ] **DOC-8** — **The attribute's own name answers**, which is the caret position that used
+      to say nothing while the element above it and the value beside it both did. Hover each
+      of these attribute *names*: `name` and `type` on a `<field>`; `name` and `class` on the
+      `<fieldType>`; `source` and `dest` on a `<copyField>`. Each explains itself, and the
+      two `copyField` ends read differently from each other.
+- [ ] **DOC-9** — Hover `version` on the demo's `<schema>` root. Two paragraphs: what the
+      attribute decides anywhere, then **what `1.6` decides here** — `docValues` off,
+      `uninvertible` on. The second paragraph is computed from the file, so DOC-6's edit to
+      `1.7` should flip it; check that too while the file is already changed, and undo with
+      the rest.
+- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Re-check DOC-7
+      from here: `minGramSize` shows its owner, value type and required marker, the guide links —
+      and **no prose row**. A hand-written *Does* row was drafted for this popup and withdrawn,
+      and the popup already carries a per-attribute guide link, so prose here would duplicate a
+      link that is always current.
+
+      *The other half of this check has no fixture.* A `copyField`'s `name` must never gain the
+      `<field>` description — but the committed demo declares no `<copyField name=…>`, so there
+      is nothing to hover, the same shape of gap NAV-5 records. `SolrAttributeDocumentationTest`
+      covers it headlessly; either the demo grows one or this stays a note.
+
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
@@ -388,8 +409,75 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+| 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
-**About these two rows.** The first covers the suite as it stood before
+**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
+checks were pressed, all thirteen green:
+
+- **ACT-1 and HINT-1…5** — the plugin is alive on open and every hint renders inline. `string`
+  fields read *whole value, case-sensitive*; `text_general` ones *tokenised, case-insensitive*;
+  `name_prefix` adds *prefix-capable*. Both of HINT-5's silences are visible together: `notes`
+  keeps its storage-shape phrases and drops the match claim, while `legacy` — whose type nothing
+  declares — shows no hint at all.
+- **NAV-1, NAV-2, NAV-4, NAV-5** — Go to Declaration lands where it should from every reference
+  kind: a field's `type` reaches the `fieldType` at 31:20, a `copyField`'s two ends reach 68:16
+  and 72:16, a `qf` name in `solrconfig.xml` crosses the file boundary to 71:16, and a filter's
+  `words=` opens `stopwords.txt`.
+- **INSP-1** — the planted `manufacturer` copy rule offers exactly the six fixes catalog entry 4
+  predicts: `*_t`, `category`, `description`, `legacy`, `name`, `notes`. `sku`, `id`, `text` and
+  `name_prefix` are absent, which is the closest-spelling ranking doing the choosing rather than
+  the list being arbitrary — and `*_t` leading it is the alphabetical tiebreak the entry already
+  explains. Pressed on the planted rule, so no edit and no undo. Image 4 re-shot from it.
+- **COMP-5 and CAT-1** — completion carries what the catalog and the model know. A field's `type=`
+  offers the four declared types *with what each one matches attached* — and `custom_text`, whose
+  chain names an unrecognised factory, falls back to naming its class rather than claiming a match,
+  the same silence HINT-5 shows. On a `<fieldType>`, `class=` offers field type classes; on a
+  `<filter>`, factories — including the Japanese and Korean ones that only appear because
+  `solr-analysis-extras` is resolved. The two class kinds never mix.
+- **DOC-1** — the field popup carries what no external documentation can: *Matches: whole value,
+  case-sensitive*, and a property table whose **From** column separates *on this field*, *from the
+  field type* and *Solr default*.
+- **BASE-1 / BASE-2** — the schema reports exactly two findings and `solrconfig.xml` reports none,
+  which is the baseline every later check restores to.
+- **REN-4 / REN-5** — renaming `*_t` to `*_txt` left the `pf` naming `body_t` exactly as written,
+  and `solrconfig.xml` went from zero findings to one: the unknown-field inspection reporting the
+  name the rename orphaned. That pair is the decision made visible. Undone afterwards.
+- **DOC-4 / DOC-7 / DOC-8** — the class *value* answers with its Javadoc summary and *Used by 3
+  field types*; the `class` attribute *name* now answers for itself rather than deferring to its
+  element; and `minGramSize` shows owner, type and required marker with no prose row.
+
+- **NAV-3** — the `text_general` declaration returns four usages: `name`, `description`, `text`
+  and the `*_t` dynamic field. Four, not the three an older screenshot caption promised.
+- **NAV-6** — `<dynamicField name="*_t">` returns one usage, the `pf` at `solrconfig.xml:31`,
+  highlighted at `body_t` alone. That gesture returned an empty list before declarations became
+  targets.
+- **NAV-7** — the labels. The header reads **Field type** over `text_general` and **Dynamic
+  field** over `*_t`; the groups read **Field declaring this type** and **Handler parameter in
+  solrconfig.xml**. Neither *Solr Declaration Target* nor *Unclassified* appears anywhere.
+- **REN-1** — the rename dialog reads *Rename field 'category' and its usages to:*, which is the
+  same description NAV-7 checks, reached by a second refactoring.
+- **REN-2** — renaming to `product_category` updated `solrconfig.xml:28`'s `qf` across the file
+  boundary; undo restored both files, and the demo is clean on disk.
+- **DOC-9** — `version` answers with the general rule and then *At 1.6, `docValues` defaults
+  off; `uninvertible` defaults on; `autoGeneratePhraseQueries` defaults off.*
+
+**DOC-9 also found a defect, which is the argument for pressing things.** The popup rendered its
+opening sentence twice — the structural table's entry for `version` restated what the paragraph
+beneath it already said. Every headless assertion passed either way, because each checked for a
+substring rather than for the whole. Fixed in the same change that records this row.
+
+**A second finding, from DOC-7.** The factory attribute popup already carries a *per-attribute*
+Reference Guide link — `minGramSize` on solr.apache.org — alongside the per-class one. That was not
+known when the hand-written prose table was drafted, and it settles the question the withdrawal
+turned on: the prose would have duplicated a link that is already there, already per-attribute, and
+always current.
+
+**What was not pressed:** ACT-2, INSP-2…9, COMP-1, COMP-2, COMP-3, COMP-4, COMP-6, CAT-2, DOC-2, DOC-3, DOC-5, DOC-6,
+DOC-10, REN-3, and the screenshot items other than image 7. None of them is known to be broken; none was looked at. The
+boxes above stay unticked for that reason — a partial tick reads as a pass to everyone who did not
+run it.
+
+**About the two rows above this note.** The first covers the suite as it stood before
 `SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
 against them and closed the checks they brought. Three things still qualify the second row.
 
