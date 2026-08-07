@@ -214,6 +214,22 @@ below.*
       the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
       catalog default `false` instead of a required marker. An attribute name the catalog does
       not list, or any attribute on a class the catalog does not know, stays silent.
+- [ ] **DOC-8** — **The attribute's own name answers**, which is the caret position that used
+      to say nothing while the element above it and the value beside it both did. Hover each
+      of these attribute *names*: `name` and `type` on a `<field>`; `name` and `class` on the
+      `<fieldType>`; `source` and `dest` on a `<copyField>`. Each explains itself, and the
+      two `copyField` ends read differently from each other.
+- [ ] **DOC-9** — Hover `version` on the demo's `<schema>` root. Two paragraphs: what the
+      attribute decides anywhere, then **what `1.6` decides here** — `docValues` off,
+      `uninvertible` on. The second paragraph is computed from the file, so DOC-6's edit to
+      `1.7` should flip it; check that too while the file is already changed, and undo with
+      the rest.
+- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Hover `name` on
+      the `<copyField>` — a `copyField`'s `name` is not a field name, so it must **not** gain
+      the `<field>` description. It falls through to the `copyField` element's explanation, as
+      it did before. And re-check DOC-7 while you are here: `minGramSize` still shows its owner,
+      value type and required marker with **no** prose row added.
+
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
