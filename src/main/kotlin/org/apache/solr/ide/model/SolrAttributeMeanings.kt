@@ -120,8 +120,12 @@ object SolrAttributeMeanings {
         ("schema" to "name") to
             "Identifies the schema for a human reading it. Carries no behaviour — Solr does not " +
             "resolve anything by this name.",
+        // Deliberately terse: the paragraph beneath it, built by [ofSchemaVersion], carries the
+        // explanation *and* what this file's value decides. A sentence here that restated the
+        // general rule would render immediately above its own repetition — which is exactly how a
+        // sandbox pass found it.
         ("schema" to "version") to
-            "Selects the defaults Solr applies to undeclared attributes. See below.",
+            "The schema format version, from <code>1.0</code> to <code>1.7</code>.",
     )
 
 }
