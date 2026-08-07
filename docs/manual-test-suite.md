@@ -125,6 +125,13 @@ gesture, caret placement, the Find Usages tool window.*
       `pf` parameter naming `body_t` in `solrconfig.xml` — a name the pattern supplies and
       never spells, which the word index alone cannot reach. The result is highlighted at
       `body_t` itself, not across the whole parameter value.
+- [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
+      In NAV-3's window the header reads **Field type** over `text_general`, and the results
+      group under **Field declaring this type** — not *Solr Declaration Target*, which is the
+      plugin's own class name leaking through the platform's fallback, and not
+      *Unclassified*. In NAV-6's, the header reads **Dynamic field** and the group reads
+      **Handler parameter in solrconfig.xml**. A correct result list under either of those
+      two wrong labels reads as broken to everyone but its author.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
