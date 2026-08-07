@@ -451,8 +451,36 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+| 2026-08-06 | e518ff1 | Claude | NAV-3, NAV-6, NAV-7, REN-1, REN-2, DOC-9 only | **not completed** | six checks pressed and green; the other 51 were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
-**About these two rows.** The first covers the suite as it stood before
+**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Six checks
+were pressed, all six green:
+
+- **NAV-3** — the `text_general` declaration returns four usages: `name`, `description`, `text`
+  and the `*_t` dynamic field. Four, not the three an older screenshot caption promised.
+- **NAV-6** — `<dynamicField name="*_t">` returns one usage, the `pf` at `solrconfig.xml:31`,
+  highlighted at `body_t` alone. That gesture returned an empty list before declarations became
+  targets.
+- **NAV-7** — the labels. The header reads **Field type** over `text_general` and **Dynamic
+  field** over `*_t`; the groups read **Field declaring this type** and **Handler parameter in
+  solrconfig.xml**. Neither *Solr Declaration Target* nor *Unclassified* appears anywhere.
+- **REN-1** — the rename dialog reads *Rename field 'category' and its usages to:*, which is the
+  same description NAV-7 checks, reached by a second refactoring.
+- **REN-2** — renaming to `product_category` updated `solrconfig.xml:28`'s `qf` across the file
+  boundary; undo restored both files, and the demo is clean on disk.
+- **DOC-9** — `version` answers with the general rule and then *At 1.6, `docValues` defaults
+  off; `uninvertible` defaults on; `autoGeneratePhraseQueries` defaults off.*
+
+**DOC-9 also found a defect, which is the argument for pressing things.** The popup rendered its
+opening sentence twice — the structural table's entry for `version` restated what the paragraph
+beneath it already said. Every headless assertion passed either way, because each checked for a
+substring rather than for the whole. Fixed in the same change that records this row.
+
+**What was not pressed:** ACT, BASE, HINT, INSP, COMP, CAT, DOC-1 through DOC-8, DOC-10, and
+REN-3 through REN-5. None of them is known to be broken; none of them was looked at. The boxes
+above stay unticked for that reason — a partial tick reads as a pass to everyone who did not run it.
+
+**About the two rows above this note.** The first covers the suite as it stood before
 `SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
 against them and closed the checks they brought. Three things still qualify the second row.
 
