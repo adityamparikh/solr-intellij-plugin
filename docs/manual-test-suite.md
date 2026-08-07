@@ -456,11 +456,29 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-06 | e917978 | Claude | BASE-1, BASE-2, NAV-3, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-4, DOC-7, DOC-8, DOC-9 | **not completed** | thirteen checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
+| 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1 | **not completed** | twenty-six checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
 
+- **ACT-1 and HINT-1…5** — the plugin is alive on open and every hint renders inline. `string`
+  fields read *whole value, case-sensitive*; `text_general` ones *tokenised, case-insensitive*;
+  `name_prefix` adds *prefix-capable*. Both of HINT-5's silences are visible together: `notes`
+  keeps its storage-shape phrases and drops the match claim, while `legacy` — whose type nothing
+  declares — shows no hint at all.
+- **NAV-1, NAV-2, NAV-4, NAV-5** — Go to Declaration lands where it should from every reference
+  kind: a field's `type` reaches the `fieldType` at 31:20, a `copyField`'s two ends reach 68:16
+  and 72:16, a `qf` name in `solrconfig.xml` crosses the file boundary to 71:16, and a filter's
+  `words=` opens `stopwords.txt`.
+- **COMP-5 and CAT-1** — completion carries what the catalog and the model know. A field's `type=`
+  offers the four declared types *with what each one matches attached* — and `custom_text`, whose
+  chain names an unrecognised factory, falls back to naming its class rather than claiming a match,
+  the same silence HINT-5 shows. On a `<fieldType>`, `class=` offers field type classes; on a
+  `<filter>`, factories — including the Japanese and Korean ones that only appear because
+  `solr-analysis-extras` is resolved. The two class kinds never mix.
+- **DOC-1** — the field popup carries what no external documentation can: *Matches: whole value,
+  case-sensitive*, and a property table whose **From** column separates *on this field*, *from the
+  field type* and *Solr default*.
 - **BASE-1 / BASE-2** — the schema reports exactly two findings and `solrconfig.xml` reports none,
   which is the baseline every later check restores to.
 - **REN-4 / REN-5** — renaming `*_t` to `*_txt` left the `pf` naming `body_t` exactly as written,
@@ -496,8 +514,8 @@ known when the hand-written prose table was drafted, and it settles the question
 turned on: the prose would have duplicated a link that is already there, already per-attribute, and
 always current.
 
-**What was not pressed:** ACT, HINT, INSP, COMP, CAT, DOC-1, DOC-2, DOC-3, DOC-5, DOC-6, DOC-10,
-NAV-1, NAV-2, NAV-4, NAV-5 and REN-3. None of them is known to be broken; none was looked at. The
+**What was not pressed:** ACT-2, INSP-1…9, COMP-1, COMP-2, COMP-3, COMP-4, COMP-6, CAT-2, DOC-2, DOC-3, DOC-5, DOC-6,
+DOC-10, REN-3, and the screenshot items other than image 7. None of them is known to be broken; none was looked at. The
 boxes above stay unticked for that reason — a partial tick reads as a pass to everyone who did not
 run it.
 
