@@ -456,7 +456,7 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1 | **not completed** | twenty-six checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
+| 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
@@ -470,6 +470,11 @@ checks were pressed, all thirteen green:
   kind: a field's `type` reaches the `fieldType` at 31:20, a `copyField`'s two ends reach 68:16
   and 72:16, a `qf` name in `solrconfig.xml` crosses the file boundary to 71:16, and a filter's
   `words=` opens `stopwords.txt`.
+- **INSP-1** — the planted `manufacturer` copy rule offers exactly the six fixes catalog entry 4
+  predicts: `*_t`, `category`, `description`, `legacy`, `name`, `notes`. `sku`, `id`, `text` and
+  `name_prefix` are absent, which is the closest-spelling ranking doing the choosing rather than
+  the list being arbitrary — and `*_t` leading it is the alphabetical tiebreak the entry already
+  explains. Pressed on the planted rule, so no edit and no undo. Image 4 re-shot from it.
 - **COMP-5 and CAT-1** — completion carries what the catalog and the model know. A field's `type=`
   offers the four declared types *with what each one matches attached* — and `custom_text`, whose
   chain names an unrecognised factory, falls back to naming its class rather than claiming a match,
@@ -514,7 +519,7 @@ known when the hand-written prose table was drafted, and it settles the question
 turned on: the prose would have duplicated a link that is already there, already per-attribute, and
 always current.
 
-**What was not pressed:** ACT-2, INSP-1…9, COMP-1, COMP-2, COMP-3, COMP-4, COMP-6, CAT-2, DOC-2, DOC-3, DOC-5, DOC-6,
+**What was not pressed:** ACT-2, INSP-2…9, COMP-1, COMP-2, COMP-3, COMP-4, COMP-6, CAT-2, DOC-2, DOC-3, DOC-5, DOC-6,
 DOC-10, REN-3, and the screenshot items other than image 7. None of them is known to be broken; none was looked at. The
 boxes above stay unticked for that reason — a partial tick reads as a pass to everyone who did not
 run it.
