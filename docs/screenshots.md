@@ -222,22 +222,33 @@ to the demo, which is a fixture change and belongs to CAT-2, not here.
 
 ### 7. Find Usages on a field type — `07-find-usages-field-type.png`
 
-**✅ Captured.**
+**✅ Captured, and now stale twice over — reshoot before publishing.**
 
 **Shows** the shared model doing cross-file work: every field declared with a given type, listed from
-one gesture — `name`, `description` and `text`, three results.
+one gesture — `name`, `description`, `text` and `*_t`, four results.
 
-**Capture** caret on `text_general` in a field's `type="text_general"` **reference**
-(`managed-schema.xml:68`), press ⌥F7, frame the Find Usages tool window with its results.
+**Capture** caret inside the `<fieldType name="text_general">` **declaration**
+(`managed-schema.xml:31`), press ⌥F7, frame the Find Usages tool window with its results.
 
-**Invoke it from a reference, not from the declaration.** With the caret inside
-`<fieldType name="text_general">` at line 31 the IDE answers *Cannot search for usages from this
-location*: the declaration is what references resolve *to*, and nothing registers it as a search
-target. This entry named the declaration until a capture pass tried it.
+**Invoke it from the declaration — the instruction this entry carried is now the wrong one.** It read
+*invoke from a reference, not from the declaration*, and recorded that the declaration answers
+*Cannot search for usages from this location*. That was true when the image was shot and was
+discovered by a capture pass rather than assumed, which is why it was written down.
+[Declarations as targets](../specs/plans/0002-solr-intellij-plugin-plan.md#step-28-declarations-as-targets)
+closed it: the declaration is a search target now, and demo step 27 performs the gesture from there.
+The reference position (`managed-schema.xml:68`) still works and lists the same four — the
+declaration is simply the one worth showing, being the one that used to refuse.
+
+**The count moved for an unrelated reason.** This entry promised three results, and the answer is
+four from either caret: the `*_t` dynamic field joined the demo schema declaring
+`type="text_general"`, so it references the type like any other field. That happened before this
+gesture changed, so a reshoot has two corrections to make, not one.
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 
-**Verifies** NAV-3.
+**Verifies** NAV-3. NAV-6 exercises the same declaration-target machinery from a *different*
+declaration — a `dynamicField` rather than this `fieldType` — and has no image of its own;
+the usage list this one frames is the same machinery answering the easier question.
 
 ### 8. Navigation from `solrconfig.xml` into the schema — `08-nav-solrconfig-field-reference.png`
 

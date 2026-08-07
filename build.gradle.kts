@@ -37,6 +37,15 @@ dependencies {
         // bundledPlugin("com.intellij.java").
         intellijIdea("2026.2")
         testFramework(TestFrameworkType.Platform)
+
+        // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this
+        // executable, and without a declaration it only ran where a previous build had already left
+        // it in the Gradle cache — which is every local machine, and a CI runner only sometimes. The
+        // verify job restores its cache read-only, so on a runner whose cache lacked the CLI the
+        // task failed with *IntelliJ Plugin Verifier executable not found*, having resolved nothing
+        // and produced no report. A gate that passes according to what a cache happens to hold is
+        // not a gate.
+        pluginVerifier()
     }
 }
 
