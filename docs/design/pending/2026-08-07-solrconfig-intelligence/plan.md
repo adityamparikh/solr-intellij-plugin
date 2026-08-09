@@ -33,23 +33,33 @@ time.
 ## Order
 
 ```
-PR A  groundwork ── no dependencies, start here ─┐
-                                                 ├─→ PR 1  element structure  (also PR 0 + Q1)
-PR 0  ── catalog extension ──────────────────────┼─→ PR 2  parameters
-   (separate design record)                      └─→ PR 3  near-miss inspection  (needs PR 2)
+OPEN, stacked, in review order:
 
-PR C  field operation capabilities ─→ PR B  field names in parameter values
-   (neither needs the catalog; both run beside PR A)
+  #111 read every parameter value tag, and share one configset file-kind test  → main
+  #112 say which operations a field supports                                   → #111
+  #113 complete schema field names inside a handler's parameters               → #112
 
-PR 4  class navigation  ── independent of all of the above, needs Q2
+STILL TO DO:
+
+  PR 0  catalog extension ──┬─→ PR 1  element structure  (also needs Q1)
+     (separate record)      ├─→ PR 2  parameter-name completion
+                            └─→ PR 3  near-miss inspection  (needs PR 2)
+
+  PR 4  class navigation ── independent of all of the above, needs Q2
 ```
+
+**The lettered PRs this record planned as A, B and C shipped as #111, #112 and #113**, in that
+dependency order rather than the order they were written: the capability model had to precede the
+completion that filters by it, or completion would have offered fields the inspections underline. The
+letters are kept below only so the argument for each is still findable; the branch names are what
+exist.
 
 **PR A exists because nothing else here is startable.** PR 1 waits on Q1, PRs 2 and 3 wait on the
 catalog, PR 4 waits on Q2 — read without PR A this plan has no entry point, which is a property of the
 dependencies rather than of the work. The unblocked pieces are the shared foundations the other four
 sit on, so they ship first and alone.
 
-### PR A — Groundwork: pin the present, remove the duplicates
+### PR A — Groundwork: pin the present, remove the duplicates — *shipped as #111*
 
 No user-visible change, deliberately. Three items, all unblocked today, all of them changes that would
 otherwise be made *underneath* a new feature whose own tests would mask a regression.
@@ -72,7 +82,7 @@ otherwise be made *underneath* a new feature whose own tests would mask a regres
 it changes no behaviour except which value tags are read. The field-reference tests are the ones to
 watch, since item 3 widens what the parser sees.
 
-### PR B — Field names in parameter values
+### PR B — Field names in parameter values — *shipped as #113*
 
 **Completion of schema field names inside the parameters the parser already knows hold them**, and
 quick documentation on a field name written in one. [FR-9 and FR-10](../../../../specs/0002-solrconfig-xml-intelligence.md#requirements).
@@ -105,7 +115,7 @@ and a `sort`'s second token offer nothing; hover on a field name in a `qf` answe
 question as whether the relevance inspection should flag one, and answering it in two places
 independently is how a plugin comes to suggest a field it then underlines.
 
-### PR C — Which operations a field supports, as a model fact
+### PR C — Which operations a field supports, as a model fact — *shipped as #112*
 
 **The rule Q4 settled belongs in `model`, not inside an inspection**, and the reason is the code track
 rather than this one. When SolrJ completion arrives it will ask the same question from the other side —
@@ -235,6 +245,39 @@ everything else in this plugin.
 **Gate:** Ctrl-click on `solr.SearchHandler` in the demo file lands in the class; an unresolvable
 class produces no warning anywhere.
 
+## What building it turned up
+
+Five things the design did not anticipate, recorded because each one is a fact about this file rather
+than about the pull request that found it.
+
+**The sibling-attribute echo is real.** The premise the descriptor change rests on was inferred from
+the plugin's own account of the schema rescue. It is now measured: `startup="lazy"` written on one
+`<requestHandler>` is offered inside another that does not carry it. PR 1 can be scoped against a
+fixture rather than against an inference.
+
+**Reading a constant as a field name was a live false positive, older than any of this work.**
+`plainFieldName` rejected glob, function, alias, transformer and parameter-reference syntax and had no
+rule for a number, so `<str name="boost">1.5</str>` was underlined with "no field named '1.5'". Widening
+the value tags is what made the numeric spellings — the ones anybody would actually write — reach it.
+**The lesson generalises to the rest of this plan: the syntax rules are where this file's surprises
+live, and every one found so far was found by a fixture rather than by reading.**
+
+**Sorting needs a single value, which no record had noticed.** A `multiValued` field has no defined
+order, so Solr rejects a plain sort and requires a selector. It is the only asymmetry between the facet
+rule and the sort rule, and it was missing from the design's table.
+
+**Quick documentation on a field name in a parameter already worked**, through a path nobody wrote for
+it: the provider declines the position, the platform resolves the reference there, and the provider
+answers for the target. Q3's sibling question is answered — the work was a test, not a feature.
+
+**Nothing in a package name says which file a feature serves**, because packages are organised by
+capability and the surface above them is "configuration files" — one surface for both. That is the
+documented principle and it stands, but the *gate* that decides file scope was written two ways: the
+schema side asked `isSchema`, and the configuration side compared a file name against a literal in four
+places. `isSolrConfig` now joins `isSchema`, so every feature declares its scope in one shape. **PR 1
+should follow that convention rather than adding a fifth spelling**, since widening the descriptor gate
+is exactly where a new one would appear.
+
 ## Open questions, and who closes them
 
 **Q1 — Where does the element vocabulary come from?** The specification names the shipped `_default`
@@ -291,8 +334,8 @@ what the inspection was written for, and what its other fixtures assert.
 Behaviour is [pinned by a test](../../../../src/test/kotlin/org/apache/solr/ide/configset/inspection/SolrNonIndexedRelevanceFieldInspectionTest.kt)
 written before the answer was known, so the fix flips a recorded expectation rather than discovering one.
 
-*Fixed by:* **PR C**, which must land before PR B — completion cannot offer a field the inspection then
-underlines.
+*Fixed in* **#112**, ahead of #113 as required — completion cannot offer a field the inspection then
+underlines, and #113 reads #112's mapping rather than a copy so the two cannot drift.
 
 ## What ships alongside
 

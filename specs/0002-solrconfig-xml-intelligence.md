@@ -196,6 +196,12 @@ nothing; `fq` holds query syntax and is [an open question](#open-questions) rath
 Likewise `sort` takes `field direction`, so the second token is not a field. The occurrence mapping
 that already locates field names within these values is what knows the difference.
 
+**A constant is not a field name either, and reading one as a field was a live defect.** `boost` takes a
+multiplier and `bf` an additive function, so a flat number in either is ordinary Solr — and the rule that
+rejects glob, function, alias and transformer syntax had no case for a number, so `<str name="boost">1.5</str>`
+produced a warning about a field nobody could declare. Both directions need it: a number must not be read
+as a reference, and must not be offered as one.
+
 **FR-11 — The non-indexed relevance warning must not fire on a field that carries doc values.** This
 corrects the inspection that already ships, and it is a requirement here because
 [FR-9](#requirements) cannot be built around a rule that is wrong: the list completion offers and the
@@ -253,7 +259,7 @@ its analyzer chain, imports no IntelliJ type, and is read by six surfaces. What 
 | Search and boost | `indexed`, or `docValues` for a non-text type | Partly, and wrongly, inside one inspection |
 | Filter | `indexed` or `docValues` | Nowhere — `fq` has no references at all |
 | **Facet** | `docValues`, or `indexed` and uninvertible | **Nowhere.** A `facet.field` naming a field with neither is accepted silently, and Solr fails the request |
-| **Sort** | `docValues`, or `indexed` and uninvertible; and single-valued | **Nowhere**, same gap |
+| **Sort** | the facet rule, **and** not `multiValued` — several values have no defined order, so Solr requires a selector | **Nowhere**, same gap |
 | Highlight | `stored`, and the chain for the faster highlighters | Nowhere |
 
 **Every rule there is a disjunction, and the plugin has never expressed one** — every property check
@@ -268,12 +274,13 @@ outright. Both are worth having for that reason.
 **FR-10 — Quick documentation on a field name in a parameter value.** Hovering `name` inside
 `<str name="qf">name^3</str>` answers with the field's documentation, as hovering its declaration does.
 
-**This may already work, and the first task is to find out rather than to build.**
+**It already works, through a path nobody wrote for it.**
 `getCustomDocumentationElement` claims attribute values and schema tags; a field name in `qf` is tag
 *text* and matches neither, so the provider returns null — and null lets the platform resolve the
-reference at the caret and document its target instead, which the reference contributor supplies. If
-that path works, this requirement is a test pinning an undocumented capability. If it does not, it is a
-small addition. **Either way the behaviour is currently unasserted and unclaimed in the documentation.**
+reference at the caret and document its target instead, which the reference contributor supplies. So
+this requirement is satisfied by a test pinning an undocumented capability rather than by new code.
+**Its value is that the behaviour was unasserted and unclaimed**, which is one refactor away from an
+unnoticed regression.
 
 ### Non-functional
 

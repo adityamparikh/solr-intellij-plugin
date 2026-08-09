@@ -822,6 +822,12 @@ placement decision this plan owns.
 The last two are the criteria a split loses, because both catch silent wrongness rather than visible failure: the guard
 never fires in a passing suite, and the fixture only matters before a change that would overwrite what it records.
 
+**In flight.** Three pull requests are open and stacked, covering action 5 and the groundwork the others need:
+#111 reads every parameter value tag and gives every editor feature one way to declare which configset file it serves;
+#112 moves *which operations a field supports* into the model, correcting the relevance warning and adding the faceting
+and sorting check that never existed; #113 completes schema field names inside a handler's parameters. Actions 1 through 4
+remain, and both open questions below remain open — nothing in this step is checked off until they merge.
+
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which grows to cover
