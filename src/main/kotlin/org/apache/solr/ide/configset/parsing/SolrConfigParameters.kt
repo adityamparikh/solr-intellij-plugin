@@ -39,8 +39,12 @@ internal object SolrConfigParameters {
      * also cover the `name` inside `name_prefix`.
      */
     fun fieldNameOccurrences(tag: XmlTag): List<FieldNameOccurrence> {
-        if (tag.name !in VALUE_TAGS) return emptyList()
+        if (tag.name !in SolrConfigParser.VALUE_TAGS) return emptyList()
         val parameterName = parameterNameOf(tag) ?: return emptyList()
+        // Before the parse, not after. [referencedFieldNames] builds and parses a synthetic document,
+        // and most parameters in a `defaults` list hold a number or a parser name — so on a typical
+        // handler this skips that work for the majority of tags on every highlighting pass.
+        if (!SolrConfigParser.holdsFieldNames(parameterName)) return emptyList()
         val text = tag.value.text
         val valueStart = tag.value.textRange.startOffset - tag.textRange.startOffset
 
@@ -123,20 +127,6 @@ internal object SolrConfigParameters {
     private fun escapeXml(text: String): String =
         text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
-    /**
-     * Tags whose text holds a parameter value.
-     *
-     * All of Solr's scalar value tags, not only `<str>`. A handler may write `<int name="rows">10</int>`
-     * or `<bool name="facet">true</bool>` and both are ordinary Solr, so reading `<str>` alone left the
-     * PSI half of this narrower than [SolrConfigParser], which places no restriction on the tag at all
-     * and reads any child carrying a `name`. The two halves disagreeing was invisible only because
-     * nothing consumes the parsed reference list directly — a `qf` written as an `<int>` produced a
-     * model reference with no position to underline it at.
-     *
-     * `<arr>` is absent deliberately: it holds no text of its own, and [parameterNameOf] reaches it as
-     * the *parent* of the values inside it.
-     */
-    private val VALUE_TAGS = setOf("str", "int", "long", "float", "double", "bool")
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")

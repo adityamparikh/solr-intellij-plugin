@@ -45,6 +45,11 @@ object SolrConfigParser {
                 // their precedence differs, which does not change whether a name is a field.
                 if (list.attributeOrNull("name") !in PARAMETER_SETS) continue
                 for (parameter in list.children()) {
+                    // The same tags the PSI half maps positions for. Reading *every* child was the
+                    // wider of the two answers, and the difference was invisible only because nothing
+                    // consumes this list directly: a parameter in a tag one half accepted and the
+                    // other did not yielded a reference with no position to underline it at.
+                    if (parameter.tagName !in VALUE_TAGS && parameter.tagName != "arr") continue
                     val parameterName = parameter.attributeOrNull("name") ?: continue
                     references += referencesIn(owner, parameterName, parameter)
                 }
@@ -56,6 +61,22 @@ object SolrConfigParser {
                 ?.textContent?.trim()?.takeIf { it.isNotEmpty() },
         )
     }
+
+    /**
+     * Whether [parameterName] is one this parser reads field names out of.
+     *
+     * Asked rather than restated by everything that needs the answer, so that the positions producing
+     * references and the positions offering them cannot diverge. It also lets a caller skip the work
+     * entirely: most parameters in a `<lst name="defaults">` hold a number or a parser name, and
+     * discovering that after parsing is discovering it too late.
+     *
+     * @param parameterName the parameter as `solrconfig.xml` spells it
+     * @return whether its value holds field names
+     */
+    internal fun holdsFieldNames(parameterName: String): Boolean =
+        parameterName in BOOSTABLE_PARAMETERS ||
+            parameterName in SORT_PARAMETERS ||
+            parameterName in PLAIN_PARAMETERS
 
     private fun referencesIn(owner: String, parameterName: String, parameter: Element): List<SolrFieldReference> {
         // An `arr` holds one value per child; a `str` holds them all in its text.
@@ -132,6 +153,14 @@ object SolrConfigParser {
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")
+
+    /**
+     * Tags whose text holds a parameter value, shared with the PSI half.
+     *
+     * Solr's scalar value tags. `arr` is handled beside this rather than in it, because it holds no
+     * text of its own — its children do.
+     */
+    internal val VALUE_TAGS = setOf("str", "int", "long", "float", "double", "bool")
 
     /** Parameters holding whitespace-separated field names, each optionally `^`-boosted. */
     private val BOOSTABLE_PARAMETERS = setOf("qf", "pf", "pf2", "pf3", "bf", "boost")
