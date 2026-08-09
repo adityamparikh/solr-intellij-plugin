@@ -33,6 +33,9 @@ and its prerequisite,
   replacing the platform's schema-less sibling echo.
 - **Parameter-name completion and quick documentation** inside `<lst name="defaults">`, `appends` and
   `invariants` of a request handler, search component or `initParams` block.
+- **Field-name completion inside the parameters already known to hold field names**, and quick
+  documentation on a field name written in one — the inverse of the unknown-field warning that already
+  ships, from the same two lists, and needing no generated data that does not exist.
 - **Quick documentation on the elements, attributes and classes** the plugin models, with a versioned
   Reference Guide link as the substantive half of the answer.
 - **Ctrl-click from a `class` attribute** to the Java class it names, when that class is on the
@@ -48,9 +51,17 @@ and its prerequisite,
 - **Modelling the whole file.** `<autoCommit>`, `<updateLog>`, `<circuitBreaker>` and the cache-sizing
   elements are structure no generator can derive and this specification does not hand-write. They
   fall to the permissive descriptor and stay silent, exactly as an unknown schema element does today.
-- **Parameter *values*.** `defType` has a closed set of parsers; `bf` holds a function query with its
-  own grammar. Rather than draw that line badly, values stay with the platform. The field-name
-  references already inside them are untouched.
+- **Parameter value *grammars*.** `defType` has a closed set of parsers; `rows` has none; `bf` holds a
+  function query with its own grammar, and `fq` holds full query syntax where a field name is a
+  fragment of the value rather than the whole of it. Rather than draw that line badly, value grammars
+  stay with the platform.
+
+  **This excludes grammars, not field names, and an earlier revision of this document conflated the
+  two.** Completing a function query is a parser problem; completing a *field name* into a parameter
+  the plugin already knows holds field names is the field list crossed with a sixteen-name list, both
+  of which exist today. See [FR-9](#requirements). The distinction matters because the conflated
+  version foreclosed the highest-value unblocked capability in this area on the strength of an argument
+  that only applies to `bf`.
 
   **This narrows the plan, deliberately, and the narrowing is recorded here because otherwise Step 25
   reads as unfulfilled.** That step's third action authorises two validations — "a misspelling of a
@@ -164,6 +175,36 @@ name would flag `pf3` as a misspelling of `pf2`.
 | A class the catalog does not know | `solrconfig.xml` accepts plugin classes from outside Solr. This is the false positive that would fire on every project with a custom component |
 | A known parameter in a handler that may not read it | Solr reads parameters permissively; an unread parameter is inert, not rejected |
 | An element the plugin does not model | Most of the file. The permissive descriptor is what keeps this quiet |
+
+**FR-9 — Field-name completion inside a field-holding parameter.** Inside the text of a parameter the
+parser already knows holds field names — `qf`, `pf`, `fl`, `df`, `sort` and the rest of the sixteen —
+completion offers the fields and dynamic-field patterns the schema declares.
+
+**This is the inverse of a capability that already ships**, which is the whole argument for it: the
+unknown-field inspection tells a reader that `descriptoin` is not a field, and the plugin holding the
+list needed to say so is the same list needed to offer `description` before it is mistyped. Today the
+completion contributor has no `solrconfig.xml` awareness at all, so a reader gets the correction and
+never the suggestion.
+
+**Scope is the sixteen names and nothing wider.** The parameter must be one the parser reads, because
+that list is what distinguishes a value holding field names from a value holding a number, a parser
+name or a function query — the same reason it exists for references. `ps` holds phrase slop and gets
+nothing; `fq` holds query syntax and is [an open question](#open-questions) rather than an omission.
+
+**Boost and sort syntax must survive.** `qf` completion offers `name`, not `name^3`, and a caret after
+`name^` is inside a boost rather than a field name — completing there would produce `name^name`.
+Likewise `sort` takes `field direction`, so the second token is not a field. The occurrence mapping
+that already locates field names within these values is what knows the difference.
+
+**FR-10 — Quick documentation on a field name in a parameter value.** Hovering `name` inside
+`<str name="qf">name^3</str>` answers with the field's documentation, as hovering its declaration does.
+
+**This may already work, and the first task is to find out rather than to build.**
+`getCustomDocumentationElement` claims attribute values and schema tags; a field name in `qf` is tag
+*text* and matches neither, so the provider returns null — and null lets the platform resolve the
+reference at the caret and document its target instead, which the reference contributor supplies. If
+that path works, this requirement is a test pinning an undocumented capability. If it does not, it is a
+small addition. **Either way the behaviour is currently unasserted and unclaimed in the documentation.**
 
 ### Non-functional
 
@@ -332,6 +373,9 @@ about.
 | Attribute completion inside `<requestHandler>` offers no schema field property | The second vocabulary is scoped |
 | Parameter completion offered under a handler's `defaults`, and not under an update processor chain's | The enclosing check |
 | The present-day attribute-completion behaviour in `solrconfig.xml` | Pins the sibling-echo claim before the design leans on it |
+| `qf` completion offers declared fields and dynamic patterns; `ps` completion offers nothing | FR-9's scope is the sixteen names, not every parameter |
+| A caret after `name^` in a `qf`, and the second token of a `sort`, offer no field | FR-9 does not complete into boost or direction syntax |
+| Hover on a field name inside `<str name="qf">` answers with the field | FR-10, whether by reference resolution or by a new branch |
 | The schema suite, unchanged, gating the descriptor commit | Widening the gate did not disturb the file that works |
 | `qf` still navigates; a dynamic-field suffix still resolves; the non-indexed-relevance warning still fires | Field references survive |
 
@@ -369,7 +413,14 @@ configset.
 2. **Optional Java dependency now, or defer class navigation?** A product decision the plan owns.
 3. **Does the catalog stay a linearly scanned per-line list** once it carries parameters, or does
    parameter lookup need an index?
-4. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
+4. **Does `fq` get field references at all?** It is the parameter a reader would most expect to be
+   covered and the one the sixteen-name list cannot hold, because `fq` takes query syntax — `category:books
+   AND price:[0 TO *]` — where a field name is a fragment of the value rather than the whole of it. Every
+   existing rule assumes the value is a field list. Covering it means parsing Solr query syntax far enough
+   to find the field positions, which is a feature rather than an extension, and doing it badly means false
+   warnings on correct filters. **Recorded as a question because silently omitting the parameter readers
+   most want is worse than declining it out loud.**
+5. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
    explicit convention that a slice shares its parent's number, is a housekeeping decision worth
    making before a third file arrives.
 

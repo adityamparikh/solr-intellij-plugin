@@ -1,7 +1,7 @@
 # solrconfig.xml as a first-class surface — the split
 
 **Goal:** the four actions of Step 25, delivered as separate pull requests, behind one that unblocks
-them.
+them — plus one the step did not ask for and should have, since it needs nothing that does not exist.
 
 **Specified in [`specs/0002-solrconfig-xml-intelligence.md`](../../../../specs/0002-solrconfig-xml-intelligence.md).**
 That document owns the requirements and the reasons; this one owns the order and what each PR gates
@@ -38,6 +38,7 @@ PR A  groundwork ── no dependencies, start here ─┐
 PR 0  ── catalog extension ──────────────────────┼─→ PR 2  parameters
    (separate design record)                      └─→ PR 3  near-miss inspection  (needs PR 2)
 
+PR B  field names in parameter values  ── needs no catalog, runs beside PR A
 PR 4  class navigation  ── independent of all of the above, needs Q2
 ```
 
@@ -68,6 +69,35 @@ otherwise be made *underneath* a new feature whose own tests would mask a regres
 **Gate:** the schema suite and the full existing suite are unchanged — this PR's whole claim is that
 it changes no behaviour except which value tags are read. The field-reference tests are the ones to
 watch, since item 3 widens what the parser sees.
+
+### PR B — Field names in parameter values
+
+**Completion of schema field names inside the parameters the parser already knows hold them**, and
+quick documentation on a field name written in one. [FR-9 and FR-10](../../../../specs/0002-solrconfig-xml-intelligence.md#requirements).
+
+**Reads no catalog and answers no open question, so it runs beside PR A rather than behind PR 0.** Both
+lists it needs exist: `SolrConfigParser`'s sixteen field-holding parameter names, and the schema's
+fields and dynamic patterns from the model. Nothing here waits on anything.
+
+**This is the inverse of a capability that already ships**, which is why it is worth more than its size.
+The unknown-field inspection tells a reader `descriptoin` is not a field; the list that lets it say so
+is the list that would have offered `description` first. Today the completion contributor has no
+`solrconfig.xml` awareness at all — verified, not inferred — so a reader gets the correction and never
+the suggestion.
+
+**Two things it must not do.** Complete into boost or direction syntax: `qf` offers `name` and not
+`name^3`, a caret after `name^` is inside a boost, and a `sort`'s second token is a direction. And
+widen beyond the sixteen — the parameter must be one the parser reads, or completion starts offering
+field names inside `rows` and `defType`.
+
+**Quick documentation may already work by accident.** `getCustomDocumentationElement` claims attribute
+values and schema tags, and a field name in `qf` is tag *text*, so the provider returns null — which
+lets the platform resolve the reference at the caret and document its target instead. **Find out before
+building**: if that path works this is a test pinning an unclaimed capability, and if it does not it is
+a small addition. Either way the behaviour is currently unasserted.
+
+**Gate:** `qf` offers declared fields and dynamic patterns; `ps` offers nothing; a caret after `name^`
+and a `sort`'s second token offer nothing; hover on a field name in a `qf` answers with the field.
 
 ### PR 0 — Catalog extension
 
@@ -164,6 +194,15 @@ config file and makes the feature present in IDEA and absent elsewhere.
 
 *Closed by:* the plan owner, not this record. It pulls a Phase 3 dependency forward, which is a
 product decision.
+
+**Q3 — Does `fq` get field references at all?** It is the parameter a reader would most expect to be
+covered and the one the sixteen-name list cannot hold: `fq` takes query syntax, where a field name is a
+fragment of the value rather than the whole of it, and every existing rule assumes a field list.
+Covering it means parsing Solr query syntax far enough to find the field positions — a feature rather
+than an extension, and one whose bad version puts false warnings on correct filters.
+
+*Closed by:* nothing in this plan. **It blocks no PR here and is recorded so that omitting the
+parameter readers most want is a decision rather than an oversight.**
 
 ## What ships alongside
 

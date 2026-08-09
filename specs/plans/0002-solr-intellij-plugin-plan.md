@@ -778,6 +778,17 @@ suite is the only thing that can fail.
    validating by absence wearing different clothes. Worth reopening as its own step once the catalog can prove closedness
    from bytecode rather than from a curated list.
 4. Navigation from a `class` attribute to the plugin it names, where that class is on the project's classpath.
+5. **Completion of schema field names inside the parameters already known to hold them** — `qf`, `pf`, `fl`, `sort` and
+   the rest of the sixteen — and quick documentation on a field name written in one. **A fifth action, which this step
+   did not ask for and should have.** It is the inverse of a capability that already ships: the unknown-field inspection
+   tells a reader that `descriptoin` is not a field, and the list that lets it say so is the list that would have offered
+   `description` before it was mistyped. It also depends on nothing — both the sixteen names and the schema's field list
+   exist today — so unlike actions 1 through 4 it waits on no catalog and no open question. The completion contributor
+   currently has no `solrconfig.xml` awareness whatsoever, so a reader gets the correction and never the suggestion.
+
+   Scoped to the sixteen and no wider, or completion starts offering field names inside `rows` and `defType`. Boost and
+   sort syntax stay untouched: `qf` offers `name` rather than `name^3`, a caret after `name^` is inside a boost, and a
+   `sort`'s second token is a direction rather than a field.
 
 **Success criteria:**
 
