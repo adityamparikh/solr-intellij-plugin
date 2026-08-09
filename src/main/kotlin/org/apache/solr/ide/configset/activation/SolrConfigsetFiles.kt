@@ -152,6 +152,17 @@ enum class SolrConfigsetFileKind(
     val isSchema: Boolean get() = this == SCHEMA_MANAGED || this == SCHEMA_CLASSIC
 
     /**
+     * Whether a file of this kind can hold a reference to a field: the schema and `solrconfig.xml`.
+     *
+     * The pairing several features need and none of them should restate. A field name is written in
+     * the schema that declares it, in a `copyField` that copies it and in a handler parameter that
+     * queries it — three positions across two file kinds — so anything walking a configset for field
+     * references, or supplying a vocabulary to both files, asks this rather than spelling out the
+     * disjunction. A second copy of the pairing is a second thing to forget when a kind is added.
+     */
+    val holdsFieldReferences: Boolean get() = isSchema || this == SOLR_CONFIG
+
+    /**
      * Whether a file of this kind activates features on its own account.
      *
      * True for everything except resources, which are recognized inside a configset but are never
