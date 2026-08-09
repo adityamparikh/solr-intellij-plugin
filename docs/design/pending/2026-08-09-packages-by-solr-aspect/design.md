@@ -88,7 +88,9 @@ The middle level is the one missing today, and adding it is the whole change. Th
 bottom levels are correct and survive verbatim.
 
 `model` remains outside all three and keeps its exception for the two reasons already recorded: both
-surfaces read it, and it is the only package with no IntelliJ types anywhere in it.
+surfaces read it, and it is the only package with no IntelliJ types anywhere in it. Three smaller
+packages sit outside the surfaces for a related reason — they span two — and the rule that stops that
+becoming a junk drawer is [below](#a-package-above-the-surfaces-must-name-the-two-it-spans).
 
 ### Why `model.schema` does not move under `configset.schema`
 
@@ -183,9 +185,11 @@ reaches that knowledge through `model`, never through `configset.schema`.
 org.apache.solr.ide
 ├── SolrBundle.kt                    the only file that does not move
 │
-├── settings/                        ← new; the plugin's own configuration UI
-│                                      Step 22 puts configset roots and connections on sibling
-│                                      pages, so this spans two surfaces and belongs above both
+│   ── three cross-surface packages; each names the surfaces it spans ──
+├── settings/                        configset + server: one settings group, two pages (Step 22)
+├── query/                           code + server: the query language, shown in a Java literal
+│                                    and in the console (Step 17, used by Step 13)
+├── drift/                           configset + server: the comparison that is neither's (Step 14)
 │
 ├── model/                           no IntelliJ types anywhere — rule unchanged
 │   ├── SolrConfigsetFacts.kt          one shape for both sources, by design
@@ -241,16 +245,28 @@ org.apache.solr.ide
 │   ├── http/                          the minimal HTTP and JSON client
 │   ├── reading/                       server → SolrConfigsetFacts
 │   ├── collections/                   Step 12
-│   ├── query/                         Step 13
-│   ├── drift/                         Step 14
+│   ├── console/                       Step 13 — the query console
 │   └── documents/                     Step 15
+│                                      (drift is not here; see below)
 │
 └── code/                            shape decided now, built by Steps 16–19
-    ├── (root)                         the recognizer interface and the module-dependency gate
-    ├── solrj/
-    ├── framework/                     Spring, Quarkus, Micronaut, MicroProfile
-    ├── camel/
-    └── query/                         Step 17's query-string language
+    │   ── the contract, and the shared downstream every recognizer feeds ──
+    ├── recognizer/                    the interface, its two finding kinds — an endpoint and a
+    │                                  field reference — and the module-dependency gate
+    ├── inspection/                    one check over field-reference findings, whichever
+    │                                  recognizer produced them
+    ├── completion/                    field names at a recognized position
+    ├── navigation/                    a field name in code → its schema declaration
+    │
+    │   ── one package per place Solr usage is recognized ──
+    ├── solrj/                         client construction, SolrQuery builders, raw parameter
+    │                                  strings, SolrInputDocument, @Field
+    ├── framework/                     a Solr URL *and its credentials*, per profile
+    │   ├── spring/                      profiles in separate files
+    │   ├── quarkus/                     profiles inline as a `%dev.` key prefix
+    │   ├── micronaut/                   environments
+    │   └── microprofile/                ordinals
+    └── camel/                         route URIs, option validation, field references
 ```
 
 ⚑ = the three files that are not pure moves. Each is one registered extension currently serving both
@@ -271,21 +287,84 @@ in the tree: one source is a package of six files and the other is a name in a d
 directory listing. A reader who finds `configset/reading/` and `server/reading/` has been told
 something true about how the plugin works before opening a file.
 
-### `settings` is above the surfaces, not inside one
+### A package above the surfaces must name the two it spans
 
-Step 22 specifies a project settings page carrying the detection switch and the marked configset
-roots, and — action 4 — "a connections page as a sibling". One `Languages & Frameworks → Solr` group
-spanning the configuration surface and the server surface. It reads `configset.activation` and later
-`server.connection`, and is imported by neither.
+`settings`, `query` and `drift` sit outside the three surfaces, which is the shape that decays into
+`common`, `shared` and `util` if it is left unguarded. The guard is a naming obligation:
 
-Filing it under either surface would make that surface's package the owner of the other's UI. It is
-the plugin's own configuration, so it sits beside `model` rather than inside a surface.
+> **A top-level package outside the surfaces earns its place by naming the surfaces it spans, and
+> the tree records which.** A package that cannot name two is a package that belongs inside one.
+
+- **`settings` — configset + server.** Step 22 specifies a project settings page with the detection
+  switch and the marked configset roots, and, in action 4, "a connections page as a sibling". One
+  `Languages & Frameworks → Solr` group over both surfaces. Filing it under either would make that
+  surface's package the owner of the other's UI.
+- **`query` — code + server.** See below.
+- **`drift` — configset + server.** See below.
+
+`model` spans all three and is the older instance of the same rule.
+
+### `drift` is not a server feature
+
+The specification names it under *comparing the repository against the server* and calls it "the
+feature that justifies having both halves". Filing it under `server` asserts the opposite — that it
+is something the server surface does — when without a repository there is no drift to show at all.
+
+The coupling argument does not save the placement either. A drift view under `server` would not
+actually import `configset`, because `SolrFieldModel` already carries both halves and already exposes
+`SolrAgreement`; it would read the merged model like everything else. So the objection is not that
+the import would be wrong. It is that **the tree would say something false about what the feature
+is**, and a tree whose only job is to say what things are cannot afford that.
+
+It is the one view in the plan belonging to two sources and neither, so it gets its own package
+naming both.
+
+**The considered alternative was splitting source from view** — reducing `server` to `http`,
+`connection` and `reading`, and giving the tool windows a sibling `toolwindow` package holding
+collections, console, drift and documents. That is more coherent, and it is where this should go if
+more cross-source views appear. It is rejected for now because it restructures five packages that do
+not exist yet in order to fix one misfiling, and the repository's standing rule is that packages are
+created when they have a file to hold.
+
+### The `code` surface: a contract, a shared downstream, and one package per recognizer
+
+The specification is unusually prescriptive here, and the first draft of this record did not follow
+it. *"The plugin has a small set of recognizers. Each knows how to spot Solr usage in one place, and
+each reports two kinds of finding: here is an endpoint, and here is a field reference. **Everything
+downstream is shared.**"*
+
+That sentence dictates the packages. Three things were wrong before:
+
+**The contract had no package, only a "root".** `code.recognizer` holds the interface, the two
+finding types and the module-dependency gate. It deserves a name because Steps 18 and 19 depend on
+getting it right — the plan warns that a recognizer written without the gate "assumes it may inspect
+anything, and retrofitting the gate afterwards means revisiting every recognizer built on top". The
+gate belongs to the contract, not to each implementation.
+
+**The shared downstream was missing entirely.** "Everything downstream is shared" means the
+inspection over field-reference findings, the completion, and the navigation to the schema are one
+implementation each, fed by every recognizer. Without packages for them, the second recognizer has
+nowhere to put its half and the third copies the first.
+
+**`framework` was one undifferentiated bucket.** The spec spends a paragraph on how the four dialects
+"differ in ways that matter" — Spring's profile files, Quarkus's inline `%dev.` prefixes with no
+profile-named file to find, Micronaut's environments, MicroProfile's ordinals. Four precedence
+models, and four different classpaths for the gate to test, so four recognizers. One package each.
+
+**`code.query` was the real error, and it contradicted this record's own argument.** The query-string
+language is not code's. Step 17 renders it inside a Java literal, Step 13's console completes with
+it, and Step 17's gutter action runs the literal's query *in that console*. Leaving it under `code`
+would make `server.console` import `code.query`. It is a cross-surface package by the rule above, so
+it moves to the top level and names its two surfaces.
 
 ### What is deliberately not extracted yet
 
-**A query-syntax package.** Three coming consumers need to know how a query-field value splits into
-field names: `solrconfig.xml`'s `qf` today, Step 13's query console, and Step 17's query string
-inside a Java literal. That is the signature of a fourth cross-cutting concern.
+**`model.query`, the pure half of the query knowledge.** The top-level `query` package above is the
+IntelliJ side — the `Language`, its lexer and highlighter, and the injection into a Java literal,
+none of which exists before Step 17. Underneath it sits a different question: how a query-field value
+splits into field names. Three consumers need that — `solrconfig.xml`'s `qf` today, Step 13's
+console, and Step 17's literal — and it is pure, so it belongs in `model` alongside every other rule
+that needs no IDE to test.
 
 It is not extracted here, because the knowledge does not currently exist as a separable thing.
 `SolrConfigParameters` does not own the rule — it reaches it by **building a synthetic `<config>`
@@ -357,10 +436,13 @@ both to the `configset` root package rather than to defend the name.
 `org.apache.solr.ide.configset.schema.documentation`. Kotlin imports absorb it; the `# Package`
 headings in `docs/Module.md` get longer, and there are about twice as many of them.
 
-**`server` and `code` are decided on paper.** Their shape is inferred from step descriptions rather
-than from code, so it may be wrong in detail. It costs nothing to record and is cheap to revise,
-because neither has files to move beyond `SolrConnectionSettings` — but it should not be read as more
-settled than it is.
+**`server` and `code` are decided on paper, and the first draft of this record got `code` wrong.**
+It gave the recognizer contract no package, omitted the shared downstream the specification is
+explicit about, collapsed four framework dialects into one bucket, and filed the query language under
+`code` where the console could not reach it. All four were caught by re-reading the specification
+rather than by writing any code. That is the honest measure of how much these two trees are worth:
+enough to argue about now, not enough to trust without re-reading the step before building it.
+Neither has files to move beyond `SolrConnectionSettings`, so revising them stays cheap.
 
 ## Delivery
 
