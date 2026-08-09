@@ -45,7 +45,14 @@ dependencies {
         // task failed with *IntelliJ Plugin Verifier executable not found*, having resolved nothing
         // and produced no report. A gate that passes according to what a cache happens to hold is
         // not a gate.
-        pluginVerifier()
+        //
+        // **Pinned, and that is the same argument carried one step further.** The argument-less
+        // overload defaults to `Constraints.LATEST_VERSION`, which resolves whatever the newest
+        // published verifier is at build time — so the gate's answer could change with no commit in
+        // this repository, and would change on each machine as its dynamic-version cache expired.
+        // Declaring the tool but not its version leaves the same hole a shape smaller. Bumping this
+        // is a commit, exactly as the action SHAs in `.github/workflows` are.
+        pluginVerifier("1.409")
     }
 }
 
