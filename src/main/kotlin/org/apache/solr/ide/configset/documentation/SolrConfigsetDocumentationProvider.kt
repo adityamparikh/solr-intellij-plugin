@@ -21,7 +21,7 @@ import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.schema.SolrFieldProperty
 import org.apache.solr.ide.model.SolrReferenceGuide
 import org.apache.solr.ide.model.SolrVersionSelection
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
  * Quick documentation for fields, field types, factory tags, `class` values and factory attributes

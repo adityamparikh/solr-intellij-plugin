@@ -7,7 +7,7 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import org.apache.solr.ide.server.SolrConnectionSettings
+import org.apache.solr.ide.server.connection.SolrConnectionSettings
 
 /**
  * Base class for configset tests that touch [SolrConfigsetSettings] or

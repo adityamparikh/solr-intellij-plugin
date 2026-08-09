@@ -4,7 +4,8 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.editing.SolrInspections
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.schema.SolrFieldOperation
 
 /**

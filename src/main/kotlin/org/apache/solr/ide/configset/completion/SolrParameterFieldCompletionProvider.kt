@@ -12,7 +12,7 @@ import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.parsing.SolrConfigParser
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrFieldOperations

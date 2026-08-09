@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.parsing
+package org.apache.solr.ide.configset.reading
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -12,6 +12,8 @@ import com.intellij.psi.util.CachedValuesManager
 import org.apache.solr.ide.configset.activation.SolrConfigset
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
+import org.apache.solr.ide.configset.parsing.SolrConfigParser
+import org.apache.solr.ide.configset.parsing.SolrSchemaParser
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.SolrFieldModel
 

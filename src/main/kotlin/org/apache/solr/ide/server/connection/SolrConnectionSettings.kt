@@ -1,4 +1,4 @@
-package org.apache.solr.ide.server
+package org.apache.solr.ide.server.connection
 
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials

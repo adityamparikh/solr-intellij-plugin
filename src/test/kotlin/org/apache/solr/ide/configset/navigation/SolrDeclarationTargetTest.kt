@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.reference
+package org.apache.solr.ide.configset.navigation
 
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.PsiElement
@@ -9,6 +9,7 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
+import org.apache.solr.ide.configset.reference.SolrSchemaPsi
 
 /**
  * Find Usages from a declaration, asserted at the position where the behaviour is decided.

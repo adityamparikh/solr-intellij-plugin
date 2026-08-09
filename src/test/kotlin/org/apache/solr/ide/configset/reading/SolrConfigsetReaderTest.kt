@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.parsing
+package org.apache.solr.ide.configset.reading
 
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager

@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.reference
+package org.apache.solr.ide.configset.navigation
 
 import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.ElementDescriptionLocation
@@ -11,6 +11,9 @@ import com.intellij.usageView.UsageViewTypeLocation
 import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import org.apache.solr.ide.SolrBundle
+import org.apache.solr.ide.configset.reference.SolrConfigFieldReference
+import org.apache.solr.ide.configset.reference.SolrCopyFieldReference
+import org.apache.solr.ide.configset.reference.SolrFieldTypeReference
 
 /**
  * Tells the platform what a schema declaration is called, rather than letting it guess.

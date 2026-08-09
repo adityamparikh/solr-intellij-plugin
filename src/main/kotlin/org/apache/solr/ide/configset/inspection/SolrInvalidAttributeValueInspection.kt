@@ -6,10 +6,11 @@ import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.vocabulary.SolrAttributeVocabulary
-import org.apache.solr.ide.model.schema.SolrValueType
+import org.apache.solr.ide.configset.editing.SolrInspections
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrValueType
+import org.apache.solr.ide.model.vocabulary.SolrAttributeVocabulary
 
 /**
  * Reports an attribute value that cannot be what the attribute accepts.

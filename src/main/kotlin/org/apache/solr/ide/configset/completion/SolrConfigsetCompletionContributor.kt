@@ -15,7 +15,7 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel

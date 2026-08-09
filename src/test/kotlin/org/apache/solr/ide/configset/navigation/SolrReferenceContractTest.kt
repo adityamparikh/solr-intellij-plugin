@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.reference
+package org.apache.solr.ide.configset.navigation
 
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.pom.PomTargetPsiElement

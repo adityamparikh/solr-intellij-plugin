@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.inspection
+package org.apache.solr.ide.configset.editing
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemHighlightType

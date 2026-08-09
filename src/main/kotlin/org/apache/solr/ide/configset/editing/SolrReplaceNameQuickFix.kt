@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.inspection
+package org.apache.solr.ide.configset.editing
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -35,7 +35,8 @@ internal class SolrReplaceNameQuickFix(
      * Substitutes the replacement into whichever half of the attribute the problem was reported on.
      *
      * **Both halves, because the inspections report on both.** A wrong *value* is reported on the
-     * value element, and a wrong *name* on the name element — [SolrUnknownAttributeInspection]
+     * value element, and a wrong *name* on the name element —
+     * [SolrUnknownAttributeInspection][org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection]
      * deliberately underlines the name so it does not point at the half that is correct. Handling
      * only the value made every fix that inspection offered a no-op: the menu listed the right
      * spellings, and choosing one changed nothing.

@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.parsing
+package org.apache.solr.ide.configset.reading
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service

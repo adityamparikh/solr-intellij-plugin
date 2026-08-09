@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.parsing
+package org.apache.solr.ide.configset.reading
 
 import org.w3c.dom.Element
 import org.w3c.dom.Node

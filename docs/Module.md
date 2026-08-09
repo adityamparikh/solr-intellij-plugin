@@ -97,12 +97,34 @@ Deciding whether the plugin runs at all, and against which configset.
 [The two gates, the name tiers, and why the manual override is
 load-bearing](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#the-activation-decision).
 
-# Package org.apache.solr.ide.configset.parsing
+# Package org.apache.solr.ide.configset.reading
 
-Reading a configset off disk into the model, and caching the result.
+Turning a configset directory into a model, and caching the result: the reader
+that both aspects go through, the project-wide scan, and the hardened XML
+document loading both parsers share.
+
+Cross-aspect by nature — a configset is read as a whole — so it sits at the
+configset root rather than under `schema` or `solrconfig`.
 
 [The parsers, the cache and its dependency
 list](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#from-files-to-the-model).
+
+# Package org.apache.solr.ide.configset.parsing
+
+The per-file parsers, pure functions from text to facts.
+
+# Package org.apache.solr.ide.configset.editing
+
+The editor-path primitives both aspects share: the guard rails that keep an
+inspection off a correct file, and the quick-fix that offers the valid
+alternatives when a name does not resolve.
+
+# Package org.apache.solr.ide.configset.navigation
+
+The gestures that cross the file boundary by design. A field is declared in the
+schema and referenced from `solrconfig.xml`, so Find Usages, the declaration
+target and rename belong to the configset as a whole rather than to either
+aspect — filing them under one would make that aspect import the other.
 
 # Package org.apache.solr.ide.configset.inspection
 
@@ -166,10 +188,14 @@ want and the plugin can write, where staying silent is also a valid answer.
 [Why the boundary against
 inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetintention).
 
-# Package org.apache.solr.ide.server
+# Package org.apache.solr.ide.server.connection
 
-Talking to a live Solr server, and remembering how to reach one. Currently
-connection settings only, and unreachable from the editor path.
+Remembering how to reach a live Solr, and where that memory may be written. A
+configset root is a fact about the project and is shared; a connection is a fact
+about one developer's machine, so definitions persist to the per-user workspace
+file and credentials to the IDE's PasswordSafe.
+
+Unreachable from the editor path.
 
 [Where its state may be
 written](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideserver).

@@ -1,4 +1,4 @@
-package org.apache.solr.ide.server
+package org.apache.solr.ide.server.connection
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 

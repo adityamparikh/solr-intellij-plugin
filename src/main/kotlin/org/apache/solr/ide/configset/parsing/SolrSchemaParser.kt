@@ -1,18 +1,19 @@
 package org.apache.solr.ide.configset.parsing
 
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.attributeOrNull
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.attributesExcept
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.booleanAttribute
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.childrenNamed
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.descendantsNamed
+import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.schema.SolrAnalyzerChain
 import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
-import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldType
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.attributeOrNull
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.attributesExcept
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.booleanAttribute
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.childrenNamed
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.descendantsNamed
 import org.w3c.dom.Element
 
 /**

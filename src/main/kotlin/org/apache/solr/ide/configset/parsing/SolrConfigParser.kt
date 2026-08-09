@@ -1,11 +1,12 @@
 package org.apache.solr.ide.configset.parsing
 
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.attributeOrNull
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.children
+import org.apache.solr.ide.configset.reading.SolrXmlDocuments.descendantsNamed
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.apache.solr.ide.model.schema.SolrFieldReference
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.attributeOrNull
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.children
-import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.descendantsNamed
 import org.w3c.dom.Element
 
 /**

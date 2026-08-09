@@ -10,6 +10,7 @@ import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.editing.SolrInspections
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 
 /**

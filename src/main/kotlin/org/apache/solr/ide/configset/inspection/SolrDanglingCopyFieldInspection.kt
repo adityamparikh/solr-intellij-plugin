@@ -5,9 +5,10 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
-import org.apache.solr.ide.configset.activation.SolrSchemaTags
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.SolrBundle
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.editing.SolrInspections
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
  * Reports a `copyField` naming a field that does not exist.

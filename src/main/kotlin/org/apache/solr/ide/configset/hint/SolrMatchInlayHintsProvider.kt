@@ -18,7 +18,7 @@ import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.schema.SolrFieldType
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
  * Shows what each field matches, inline beside its declaration.

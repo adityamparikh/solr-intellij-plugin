@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.reference
+package org.apache.solr.ide.configset.navigation
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection

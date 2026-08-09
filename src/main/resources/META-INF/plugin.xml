@@ -62,14 +62,14 @@
              No language attribute — declaration searchers are registered globally and decline by
              inspecting the element, which the configset guard already does. -->
         <pom.declarationSearcher
-                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationSearcher"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDeclarationSearcher"/>
 
         <!-- A dynamic field supplies names it never spells, and the word index can only offer
              candidates that share a word with the pattern. Without this, Find Usages on
              <dynamicField name="*_t"> silently omits every name it actually supplies. Global and
              declining first, for the same reason as above. -->
         <referencesSearch
-                implementation="org.apache.solr.ide.configset.reference.SolrDynamicFieldSearcher"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDynamicFieldSearcher"/>
 
         <!-- What the two above look like once the platform renders them. Without the first, the
              Find Usages header and the rename dialog read "Solr Declaration Target" — the target's
@@ -77,9 +77,9 @@
              under "Unclassified". Both were found by a sandbox pass; neither is visible to a test
              that asserts what the search returns. -->
         <elementDescriptionProvider
-                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationDescriptionProvider"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDeclarationDescriptionProvider"/>
         <usageTypeProvider
-                implementation="org.apache.solr.ide.configset.reference.SolrUsageTypeProvider"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrUsageTypeProvider"/>
 
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the

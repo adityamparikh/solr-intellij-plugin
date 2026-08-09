@@ -1,5 +1,8 @@
-package org.apache.solr.ide.configset.parsing
+package org.apache.solr.ide.configset.reading
 
+import java.io.File
+import org.apache.solr.ide.configset.parsing.SolrConfigParser
+import org.apache.solr.ide.configset.parsing.SolrSchemaParser
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrMatchGranularity
@@ -10,7 +13,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Parses the committed demo configset — the fixture the demo runbook is written against.

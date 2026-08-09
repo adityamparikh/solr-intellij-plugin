@@ -13,7 +13,7 @@ import com.intellij.xml.impl.schema.AnyXmlElementDescriptor
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.documentation.SolrSchemaElements
-import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.schema.SolrFieldProperties
