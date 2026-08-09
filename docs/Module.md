@@ -122,10 +122,15 @@ schema and referenced from `solrconfig.xml`, so Find Usages, the declaration
 target and rename belong to the configset as a whole rather than to either
 aspect — filing them under one would make that aspect import the other.
 
+`SolrSchemaPsi` is here for the same reason. It answers *where was this
+declared*, which is the target end of every reference — including the ones a
+`solrconfig.xml` parameter makes — so it is graph machinery rather than
+schema-private.
+
 # Package org.apache.solr.ide.configset.schema
 
 Everything anchored in a schema file — `managed-schema.xml` or `schema.xml` —
-with the PSI lookup its gestures share at the root and one subpackage per gesture.
+one subpackage per gesture.
 
 A capability belongs here when the caret that triggers it is always in a schema
 file. Anything that traverses the configset instead lives at the configset root:

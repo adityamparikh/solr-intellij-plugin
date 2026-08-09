@@ -76,7 +76,7 @@ rather than declining to guess. That is the shape of the exception shrinking: a 
 ## Does the plugin pull sections out of the Solr Reference Guide?
 
 No, and that is deliberate. `SolrConfigsetDocumentationProvider` (in
-`org.apache.solr.ide.configset.documentation`) answers a narrower question the Reference Guide
+`org.apache.solr.ide.configset.schema.documentation`) answers a narrower question the Reference Guide
 cannot — not "what does `omitNorms` mean" in general, but what it is *for this field in this
 schema*, and whether that value came from the field, its type, or Solr's default. For the general
 explanation, it **links** to the guide instead of embedding any of its prose.

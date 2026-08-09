@@ -17,7 +17,7 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.navigation.SolrDeclarationReference
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
-import org.apache.solr.ide.configset.schema.SolrSchemaPsi
+import org.apache.solr.ide.configset.navigation.SolrSchemaPsi
 
 /**
  * Makes the names inside a schema file navigable.

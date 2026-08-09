@@ -153,8 +153,8 @@ See [testing and the build gates](testing-and-the-build-gates.md) for the full c
 
 ## What does not go here
 
-- **Anything needing a `Project`, a `PsiFile`, or a `VirtualFile.`** That is `configset.parsing`.
+- **Anything needing a `Project`, a `PsiFile`, or a `VirtualFile.`** That is `configset.reading`, or the aspect's own `parsing` package.
 - **Anything reading a Solr server.** That is `server`, and it is unreachable from the editor path.
 - **Presentation.** How a fact is worded for a user belongs in the feature that shows it —
-  `SolrFieldPresentation` and `SolrSchemaElements` are in `configset.documentation` for that reason.
+  `SolrFieldPresentation` and `SolrSchemaElements` are in `configset.schema.documentation` for that reason.
   The model says what is true; features decide how to say it.

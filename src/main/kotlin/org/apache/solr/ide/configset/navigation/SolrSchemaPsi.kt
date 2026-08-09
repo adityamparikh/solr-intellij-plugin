@@ -1,4 +1,4 @@
-package org.apache.solr.ide.configset.schema
+package org.apache.solr.ide.configset.navigation
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile

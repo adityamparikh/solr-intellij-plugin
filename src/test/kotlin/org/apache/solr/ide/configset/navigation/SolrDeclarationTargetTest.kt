@@ -9,7 +9,7 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
-import org.apache.solr.ide.configset.schema.SolrSchemaPsi
+import org.apache.solr.ide.configset.navigation.SolrSchemaPsi
 
 /**
  * Find Usages from a declaration, asserted at the position where the behaviour is decided.

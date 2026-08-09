@@ -18,7 +18,7 @@ places. That fan-out is the thing worth learning; the Kotlin is the easy part.
 
 ### 1. The inspection class
 
-`src/main/kotlin/org/apache/solr/ide/configset/inspection/SolrUnknownFieldTypeInspection.kt`
+`src/main/kotlin/org/apache/solr/ide/configset/schema/inspection/SolrUnknownFieldTypeInspection.kt`
 
 ```kotlin
 class SolrUnknownFieldTypeInspection : LocalInspectionTool() {
@@ -172,7 +172,7 @@ the configset does not declare.
     groupKey="inspection.group"
     enabledByDefault="true"
     level="WARNING"
-    implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
+    implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection"/>
 ```
 
 `shortName` is the coupling to the HTML file in step 6. `key` and `groupKey` resolve against the
@@ -188,7 +188,7 @@ explain *why* they are shaped the way they are, and that convention is worth kee
 
 ### 8. The test
 
-`src/test/kotlin/org/apache/solr/ide/configset/inspection/SolrUnknownFieldTypeInspectionTest.kt`
+`src/test/kotlin/org/apache/solr/ide/configset/schema/inspection/SolrUnknownFieldTypeInspectionTest.kt`
 
 ```kotlin
 class SolrUnknownFieldTypeInspectionTest : SolrConfigsetTestCase() {

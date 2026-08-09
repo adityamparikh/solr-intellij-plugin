@@ -13,7 +13,7 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.navigation.SolrDeclarationReference
 import org.apache.solr.ide.configset.solrconfig.SolrConfigParameters
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
-import org.apache.solr.ide.configset.schema.SolrSchemaPsi
+import org.apache.solr.ide.configset.navigation.SolrSchemaPsi
 
 /**
  * Makes the field names inside a `solrconfig.xml` handler parameter navigable.
