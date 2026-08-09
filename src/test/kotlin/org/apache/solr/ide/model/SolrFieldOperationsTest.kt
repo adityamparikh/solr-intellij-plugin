@@ -118,33 +118,6 @@ class SolrFieldOperationsTest {
         assertEquals(true, supports(SolrFieldOperation.SEARCH, attributes))
     }
 
-    // --- the parameter mapping ---------------------------------------------------------------------
-
-    /**
-     * One mapping for every caller. An inspection reporting a bad `facet.field` and a completion list
-     * filling one in have to agree about what a `facet.field` is *for*, or the plugin offers a field it
-     * then underlines.
-     */
-    @Test
-    fun `parameters map to the operation they ask for`() {
-        assertEquals(SolrFieldOperation.SEARCH, SolrFieldOperation.forParameter("qf"))
-        assertEquals(SolrFieldOperation.SEARCH, SolrFieldOperation.forParameter("pf3"))
-        assertEquals(SolrFieldOperation.FACET, SolrFieldOperation.forParameter("facet.pivot"))
-        assertEquals(SolrFieldOperation.SORT, SolrFieldOperation.forParameter("group.field"))
-    }
-
-    /**
-     * Null covers two cases worth not conflating: `fl` asks nothing of the index, while `bf` asks for a
-     * per-document value but writes it as a function query rather than a field list — so a rule applied
-     * to a whole token there would be applied to the wrong thing.
-     */
-    @Test
-    fun `parameters asking nothing this can answer map to null`() {
-        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl")) {
-            assertNull(parameter, SolrFieldOperation.forParameter(parameter))
-        }
-    }
-
     // --- the undetermined middle -----------------------------------------------------------------
 
     /**

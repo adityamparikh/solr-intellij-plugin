@@ -33,49 +33,6 @@ enum class SolrFieldOperation {
 
     /** Ordering results, as `sort` does. */
     SORT,
-    ;
-
-    /** Reading the mapping from a query parameter to the operation it asks for. */
-    companion object {
-
-        /**
-         * The operation [parameterName] asks of the field it names, or null when it asks nothing this
-         * can answer.
-         *
-         * **One mapping, however many callers.** The rule deciding whether a field can serve an
-         * operation lives in [SolrFieldOperations] for the sake of the surfaces that share it, and this
-         * table has exactly the same argument behind it: an inspection reporting a bad `facet.field` and
-         * a completion list filling one in must agree about what a `facet.field` is *for*, or the plugin
-         * offers a field it then underlines. A copy per caller would drift the first time a parameter
-         * was added to one of them.
-         *
-         * Null means *offer everything and report nothing*, and covers two different cases worth not
-         * conflating. `fl` returns a stored value and genuinely asks nothing of the index. `bf` and
-         * `boost` ask for something real — a per-document value — but their syntax is a function query
-         * rather than a field list, so a rule applied to a whole token there would be applied to the
-         * wrong thing.
-         *
-         * @param parameterName the parameter as `solrconfig.xml` spells it
-         * @return the operation it asks for, or null
-         */
-        fun forParameter(parameterName: String): SolrFieldOperation? = BY_PARAMETER[parameterName]
-
-        private val BY_PARAMETER = mapOf(
-            // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family:
-            // the parameters whose values become term and phrase queries.
-            "qf" to SEARCH,
-            "pf" to SEARCH,
-            "pf2" to SEARCH,
-            "pf3" to SEARCH,
-            // Every name in a pivot is faceted on, so a pivot is as much a facet as `facet.field`.
-            "facet.field" to FACET,
-            "facet.pivot" to FACET,
-            // Grouping orders documents by the field's value and fails the way sorting does.
-            "sort" to SORT,
-            "group.sort" to SORT,
-            "group.field" to SORT,
-        )
-    }
 }
 
 /**
@@ -122,16 +79,18 @@ object SolrFieldOperations {
         schemaVersion: SolrSchemaVersion,
         typeTraits: Set<SolrTypeTrait>? = null,
     ): Boolean? {
-        fun resolved(name: String): Boolean? {
-            val property = SolrFieldProperties.byName(name) ?: return null
-            return SolrFieldProperties
-                .resolve(property, field, fieldType, schemaVersion, typeTraits)
-                .value
-                ?.let { it == "true" }
-        }
+        fun resolved(property: SolrFieldProperty): Boolean? = SolrFieldProperties
+            .resolve(property, field, fieldType, schemaVersion, typeTraits)
+            .value
+            ?.equals("true")
 
-        val indexed = resolved("indexed")
-        val docValues = resolved("docValues")
+        val indexed = resolved(INDEXED)
+        val docValues = resolved(DOC_VALUES)
+
+        // What faceting and sorting both need: values readable per document, either straight from doc
+        // values or by un-inverting the index. Named once because sorting is this plus one condition,
+        // and writing the disjunction twice is how the two rules come to disagree about one field.
+        val perDocument by lazy { either(docValues, both(indexed, resolved(UNINVERTIBLE))) }
 
         return when (operation) {
             // Solr turns an exact match on a doc-values-only field into a single-value range query
@@ -145,18 +104,30 @@ object SolrFieldOperations {
             // un-inverting it into memory, which is what `uninvertible` governs — and it defaults
             // false from schema version 1.7, so an indexed-only field in a modern schema is genuinely
             // unfacetable.
-            SolrFieldOperation.FACET -> either(docValues, both(indexed, resolved("uninvertible")))
+            SolrFieldOperation.FACET -> perDocument
 
             // Sorting wants the same structure and one more thing: a single value per document. A
             // multiValued field has no defined order, so Solr rejects a plain sort on one and requires
             // a selector — `sort=field(prices,min) asc` — which is a different expression rather than a
             // bare field name, and not what a bare name in a `sort` is asking for.
-            SolrFieldOperation.SORT -> both(
-                either(docValues, both(indexed, resolved("uninvertible"))),
-                resolved("multiValued")?.not(),
-            )
+            SolrFieldOperation.SORT -> both(perDocument, resolved(MULTI_VALUED)?.not())
         }
     }
+
+    /**
+     * The properties these rules combine, looked up once rather than by name per call.
+     *
+     * `requireNotNull` because a name absent from the property table is a defect in this file rather
+     * than a fact about a schema, and resolving it to null would turn that defect into permanent
+     * silence — the one failure a table-driven rule can have and never show.
+     */
+    private val INDEXED = property("indexed")
+    private val DOC_VALUES = property("docValues")
+    private val UNINVERTIBLE = property("uninvertible")
+    private val MULTI_VALUED = property("multiValued")
+
+    private fun property(name: String): SolrFieldProperty =
+        requireNotNull(SolrFieldProperties.byName(name)) { "the property table must carry '$name'" }
 
     /**
      * Three-valued `or`: true wins over null, and null wins over false.

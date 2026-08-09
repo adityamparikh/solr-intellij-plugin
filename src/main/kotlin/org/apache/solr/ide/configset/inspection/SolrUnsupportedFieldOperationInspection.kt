@@ -1,16 +1,11 @@
 package org.apache.solr.ide.configset.inspection
 
 import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
-import com.intellij.psi.XmlElementVisitor
-import com.intellij.psi.xml.XmlTag
-import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.parsing.SolrConfigParameters
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.model.SolrFieldOperation
-import org.apache.solr.ide.model.SolrFieldOperations
 
 /**
  * Reports a faceting or sorting parameter in `solrconfig.xml` naming a field that cannot serve it.
@@ -28,12 +23,13 @@ import org.apache.solr.ide.model.SolrFieldOperations
  * *false* from schema version 1.7. A field that is perfectly searchable can therefore be unfacetable,
  * and the same field in a `qf` and a `facet.field` deserves a warning in one place and not the other.
  *
- * **Which parameters it examines comes from [SolrFieldOperation.forParameter]**, not from a list here.
- * This inspection takes every operation except searching, which [SolrNonIndexedRelevanceFieldInspection]
- * owns, so a parameter added to that mapping reaches whichever of the two asks its question rather than
- * neither.
+ * **Which parameters it examines follows from the operations it declares**, not from a list of parameter
+ * names here: `org.apache.solr.ide.configset.parsing.SolrConfigParser.operationFor` maps the names, and
+ * this inspection claims faceting and sorting while [SolrNonIndexedRelevanceFieldInspection] claims
+ * searching. Each names what it owns rather than excluding the other, so an operation added later
+ * belongs to neither until someone says which.
  *
- * **The rule is [SolrFieldOperations]', not this class's.** It is a disjunction over three properties
+ * **The rule is [org.apache.solr.ide.model.SolrFieldOperations]', not this class's.** It is a disjunction over three properties
  * with a version-dependent default in the middle of it, and it has readers outside the configuration
  * surface: the same question decides whether a SolrJ `addFacetField` will be rejected, and which
  * fields a query console should offer while a reader types a facet parameter.
@@ -62,44 +58,16 @@ class SolrUnsupportedFieldOperationInspection : LocalInspectionTool() {
      * @return a visitor over parameter values, or an empty one outside a configset
      */
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        if (holder.file.name != "solrconfig.xml") return PsiElementVisitor.EMPTY_VISITOR
+        if (SolrConfigsetFileKind.forFileName(holder.file.name)?.isSolrConfig != true) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-
-        return object : XmlElementVisitor() {
-            override fun visitXmlTag(tag: XmlTag) {
-                for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
-                    // Every operation except searching, which the sibling inspection owns. Split by
-                    // operation rather than by a second parameter list, so a parameter added to the
-                    // shared mapping reaches whichever inspection asks its question.
-                    val operation = SolrFieldOperation.forParameter(occurrence.parameterName)
-                        ?.takeIf { it != SolrFieldOperation.SEARCH }
-                        ?: continue
-                    if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
-                    // An undeclared field is the unknown-reference inspection's finding, and saying it
-                    // twice on one underline is worse than saying it once.
-                    val field = model.resolve(occurrence.fieldName) ?: continue
-                    val fieldType = model.typeOf(field)
-                    val supported = SolrFieldOperations.supports(
-                        operation,
-                        field,
-                        fieldType,
-                        model.schemaVersion,
-                        model.traitsOf(fieldType),
-                    )
-                    if (supported != false) continue
-                    holder.registerProblem(
-                        tag,
-                        SolrBundle.message(
-                            "inspection.unsupportedFieldOperation.unusable",
-                            occurrence.fieldName,
-                            occurrence.parameterName,
-                        ),
-                        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                        occurrence.rangeInTag,
-                    )
-                }
-            }
-        }
+        return SolrInspections.fieldOperationVisitor(
+            holder,
+            model,
+            setOf(SolrFieldOperation.FACET, SolrFieldOperation.SORT),
+            "inspection.unsupportedFieldOperation.unusable",
+        )
     }
 }

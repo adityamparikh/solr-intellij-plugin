@@ -1,17 +1,11 @@
 package org.apache.solr.ide.configset.inspection
 
 import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
-import com.intellij.psi.XmlElementVisitor
-import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
-import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 import org.apache.solr.ide.model.SolrFieldOperation
-import org.apache.solr.ide.model.SolrFieldOperations
 
 /**
  * Reports a query-field parameter in `solrconfig.xml` naming a field no query can search.
@@ -30,7 +24,8 @@ import org.apache.solr.ide.model.SolrFieldOperations
  * non-indexed field with doc values is correct and common. Flagging those would be a warning on a
  * working configuration, which is the failure this package is organised to avoid.
  *
- * **Whether a field is searchable is [SolrFieldOperations]' question, not this class's.** It was read
+ * **Whether a field is searchable is [org.apache.solr.ide.model.SolrFieldOperations]' question, not
+ * this class's, and the reporting rule is [SolrInspections.fieldOperationVisitor]'s.** It was read
  * here as `indexed="false"` and that was wrong: Solr turns an exact match on a doc-values-only field
  * into a single-value range query over the doc values rather than refusing it, so such a field *is*
  * searchable and this inspection warned about a working configuration. The rule is a disjunction over
@@ -78,39 +73,11 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
         }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-
-        return object : XmlElementVisitor() {
-            override fun visitXmlTag(tag: XmlTag) {
-                for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
-                    if (SolrFieldOperation.forParameter(occurrence.parameterName) != SolrFieldOperation.SEARCH) continue
-                    if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
-                    // An undeclared field is the other inspection's finding. Saying it twice, in two
-                    // vocabularies, on the same underline is worse than saying it once.
-                    val field = model.resolve(occurrence.fieldName) ?: continue
-                    val fieldType = model.typeOf(field)
-                    val searchable = SolrFieldOperations.supports(
-                        SolrFieldOperation.SEARCH,
-                        field,
-                        fieldType,
-                        model.schemaVersion,
-                        model.traitsOf(fieldType),
-                    )
-                    // Only a definite no. Null means a property the rule needs is undetermined — a
-                    // custom field type, most often — and asserting a default there is how this
-                    // inspection would start inventing one.
-                    if (searchable != false) continue
-                    holder.registerProblem(
-                        tag,
-                        SolrBundle.message(
-                            "inspection.nonIndexedRelevanceField.notSearchable",
-                            occurrence.fieldName,
-                            occurrence.parameterName,
-                        ),
-                        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                        occurrence.rangeInTag,
-                    )
-                }
-            }
-        }
+        return SolrInspections.fieldOperationVisitor(
+            holder,
+            model,
+            setOf(SolrFieldOperation.SEARCH),
+            "inspection.nonIndexedRelevanceField.notSearchable",
+        )
     }
 }

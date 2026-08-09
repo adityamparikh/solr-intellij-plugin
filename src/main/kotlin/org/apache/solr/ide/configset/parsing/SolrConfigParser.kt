@@ -1,6 +1,7 @@
 package org.apache.solr.ide.configset.parsing
 
 import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.model.SolrFieldOperation
 import org.apache.solr.ide.model.SolrFieldReference
 import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.attributeOrNull
 import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.children
@@ -73,6 +74,27 @@ object SolrConfigParser {
      * @param parameterName the parameter as `solrconfig.xml` spells it
      * @return whether its value holds field names
      */
+    /**
+     * The operation [parameterName] asks of the field it names, or null when it asks nothing that can
+     * be checked.
+     *
+     * **Here rather than in `model` because a parameter name is this file's vocabulary, not a fact
+     * about what a configset means.** `model` earns its exception by being what every surface reads;
+     * a table only the configuration surface can read would not qualify, and the SolrJ surface will
+     * map its own call names onto the same operations without going through `solrconfig.xml`
+     * spellings. It also has to agree with the three parameter sets below, and agreement is easier to
+     * keep when both live in one file.
+     *
+     * Null means *offer everything and report nothing*, covering two cases worth not conflating. `fl`
+     * returns a stored value and genuinely asks nothing of the index. `bf` and `boost` ask for
+     * something real — a per-document value — but write it as a function query rather than a field
+     * list, so a rule applied to a whole token there would be applied to the wrong thing.
+     *
+     * @param parameterName the parameter as `solrconfig.xml` spells it
+     * @return the operation it asks for, or null
+     */
+    internal fun operationFor(parameterName: String): SolrFieldOperation? = OPERATIONS[parameterName]
+
     internal fun holdsFieldNames(parameterName: String): Boolean =
         parameterName in BOOSTABLE_PARAMETERS ||
             parameterName in SORT_PARAMETERS ||
@@ -161,6 +183,28 @@ object SolrConfigParser {
      * text of its own — its children do.
      */
     internal val VALUE_TAGS = setOf("str", "int", "long", "float", "double", "bool")
+
+    /**
+     * What each parameter asks of the field it names, where the plugin can say.
+     *
+     * A subset of the three sets below: every entry here holds field names, and not every parameter
+     * holding field names asks a checkable question of them.
+     */
+    private val OPERATIONS = mapOf(
+        // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family: the
+        // parameters whose values become term and phrase queries.
+        "qf" to SolrFieldOperation.SEARCH,
+        "pf" to SolrFieldOperation.SEARCH,
+        "pf2" to SolrFieldOperation.SEARCH,
+        "pf3" to SolrFieldOperation.SEARCH,
+        // Every name in a pivot is faceted on, so a pivot is as much a facet as `facet.field`.
+        "facet.field" to SolrFieldOperation.FACET,
+        "facet.pivot" to SolrFieldOperation.FACET,
+        // Grouping orders documents by the field's value and fails the way sorting does.
+        "sort" to SolrFieldOperation.SORT,
+        "group.sort" to SolrFieldOperation.SORT,
+        "group.field" to SolrFieldOperation.SORT,
+    )
 
     /** Parameters holding whitespace-separated field names, each optionally `^`-boosted. */
     private val BOOSTABLE_PARAMETERS = setOf("qf", "pf", "pf2", "pf3", "bf", "boost")
