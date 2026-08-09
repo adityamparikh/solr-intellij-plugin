@@ -17,6 +17,12 @@ serve it.
   <code>facet.field</code> and none in a <code>qf</code>.
 </p>
 <p>
+  Sorting needs one more thing: a single value per document. Several values have no defined order, so
+  Solr rejects a plain sort on a <code>multiValued</code> field and requires a selector such as
+  <code>field(prices,min)</code>. That is why the warning names what the operation needs rather than
+  asserting which part is missing — a multiValued field may have doc values and still not sort.
+</p>
+<p>
   Five parameters are examined: <code>facet.field</code>, <code>facet.pivot</code>, <code>sort</code>,
   <code>group.sort</code> and <code>group.field</code>. Every property is resolved rather than read —
   from the field, then its field type, then Solr's default for the schema version. Where that cannot

@@ -385,6 +385,31 @@ schema.
 Say this out loud: those two files have no reference to each other. Solr itself only
 connects them when the core loads. If that name is wrong, you find out on deploy.
 
+### Step 24a. Offer the field before it is mistyped
+
+Stay in `solrconfig.xml`. Put the caret at the end of the `qf` value, type a space, and
+invoke completion. The schema's fields are offered — inside a string the platform has no
+vocabulary for at all — with `*_t` italicised, because it is a pattern rather than a
+field that exists.
+
+**The line to say is that this is the same knowledge as the previous step, pointed the
+other way.** Ctrl-click proves the name is right after it is written; the list offers it
+before it is typed. Both read the schema, so they cannot disagree.
+
+Then invoke completion inside the `rows` line and get nothing. `rows` holds a number, and
+every parameter in this file looks identical — the plugin offers fields only where a field
+name is what Solr expects.
+
+### Step 24b. Search it and sort it are different questions
+
+Add `<str name="sort">text asc</str>` to the same `defaults` block. It is underlined:
+`text` is `multiValued`, and several values have no defined order, so Solr rejects a plain
+sort on it. Hover to read what sorting needs.
+
+Then note that `text` is perfectly usable in the `qf` above it. **The same field, fine to
+search and impossible to sort** — which is the point worth making: the plugin models what
+each field can *do*, not merely whether it exists. Delete the sort line before moving on.
+
 ### Step 25. Show the dangling reference
 
 Scroll to the copy rule referencing `manufacturer`. It is underlined. Hover: the field
