@@ -109,7 +109,7 @@ private class SolrResourceFileReferenceProvider : PsiReferenceProvider() {
  * inspection speaking Solr's language, not the platform's generic unresolved-path warning, and
  * until that inspection exists the navigation should not bring a warning with it.
  *
- * **The type is what [SolrUsageTypeProvider] recognizes**, and it is the only thing that can be. A
+ * **The type is what [org.apache.solr.ide.configset.navigation.SolrUsageTypeProvider] recognizes**, and it is the only thing that can be. A
  * platform `FileReference` carries nothing saying who built it, and an attribute value in an XML
  * file may hold file references some other plugin contributed — so claiming every one found in XML
  * would label somebody else's usages as Solr's. Asking whether the set is this one is the narrow

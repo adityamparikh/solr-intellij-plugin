@@ -13,6 +13,7 @@ import com.intellij.usages.impl.rules.UsageTypeProvider
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.solrconfig.reference.SolrConfigFieldReference
 import org.apache.solr.ide.configset.schema.reference.SolrCopyFieldReference
+import org.apache.solr.ide.configset.schema.reference.SolrResourceFileReferenceSet
 import org.apache.solr.ide.configset.schema.reference.SolrFieldTypeReference
 
 /**
