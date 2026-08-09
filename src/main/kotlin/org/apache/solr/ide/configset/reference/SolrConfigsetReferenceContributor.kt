@@ -96,7 +96,7 @@ private class SolrResourceFileReferenceProvider : PsiReferenceProvider() {
             val path = piece.trim()
             if (path.isNotEmpty()) {
                 val start = valueStart + offset + piece.indexOf(path)
-                references += SoftFileReferenceSet(path, value, start).allReferences
+                references += SolrResourceFileReferenceSet(path, value, start).allReferences
             }
             offset += piece.length + 1
         }
@@ -105,13 +105,19 @@ private class SolrResourceFileReferenceProvider : PsiReferenceProvider() {
 }
 
 /**
- * The platform's file-path references, made soft.
+ * The platform's file-path references, made soft, and made recognizable as this plugin's.
  *
  * Soft for the reason every reference in this package is: a missing resource file deserves an
  * inspection speaking Solr's language, not the platform's generic unresolved-path warning, and
  * until that inspection exists the navigation should not bring a warning with it.
+ *
+ * **The type is what [SolrUsageTypeProvider] recognizes**, and it is the only thing that can be. A
+ * platform `FileReference` carries nothing saying who built it, and an attribute value in an XML
+ * file may hold file references some other plugin contributed — so claiming every one found in XML
+ * would label somebody else's usages as Solr's. Asking whether the set is this one is the narrow
+ * question with the answer that is actually known.
  */
-private class SoftFileReferenceSet(path: String, element: PsiElement, startInElement: Int) :
+internal class SolrResourceFileReferenceSet(path: String, element: PsiElement, startInElement: Int) :
     FileReferenceSet(path, element, startInElement, null, true) {
 
     override fun isSoft(): Boolean = true

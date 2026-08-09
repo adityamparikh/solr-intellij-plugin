@@ -3,6 +3,8 @@ package org.apache.solr.ide.configset.reference
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.ElementDescriptionUtil
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.parentOfType
+import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.usageView.UsageViewTypeLocation
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
@@ -100,6 +102,76 @@ class SolrDeclarationPresentationTest : SolrConfigsetTestCase() {
                 """<str name="qf">name^3 descri<caret>ption</str></lst></requestHandler></config>""",
         )
         assertEquals("Handler parameter in solrconfig.xml", usageTypeAtCaret())
+    }
+
+    /**
+     * **The fourth kind, and the one that was missing.** It was left out on the reasoning that a
+     * path points at a file rather than at a declaration and so would be grouped by the platform's
+     * own file rules. There are none for a `FileReference` in an XML attribute value, so Find Usages
+     * on `stopwords.txt` listed both correct results under *Unclassified*.
+     */
+    fun testAnAnalyzerReadingAResourceFileIsGroupedAsSuch() {
+        myFixture.addFileToProject("stopwords.txt", "the\n")
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="products">
+              <fieldType name="text" class="solr.TextField">
+                <analyzer>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                  <filter class="solr.StopFilterFactory" words="stop<caret>words.txt"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertEquals("Analyzer component reading this file", usageTypeAtCaret())
+    }
+
+    /**
+     * A `<charFilter>`'s `mapping` is the other resource carrier, and groups the same way.
+     *
+     * Worth its own case because the two tags are separate entries in `RESOURCE_CARRIERS`, and a
+     * classification keyed on the tag rather than on the reference would pass the case above and
+     * fail this one.
+     */
+    fun testACharFilterReadingAResourceFileIsGroupedTheSameWay() {
+        myFixture.addFileToProject("mapping-ISOLatin1Accent.txt", """"é" => "e"""" + "\n")
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="products">
+              <fieldType name="text" class="solr.TextField">
+                <analyzer>
+                  <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISO<caret>Latin1Accent.txt"/>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertEquals("Analyzer component reading this file", usageTypeAtCaret())
+    }
+
+    /**
+     * The same attribute outside a configset is grouped by nothing, because it references nothing.
+     *
+     * This pins the classification to the reference rather than to the text: `words="stopwords.txt"`
+     * reads identically here, and the only thing that differs is that no configset owns the file, so
+     * no provider contributed a reference to it. What it does *not* reach is the narrower question
+     * the production code asks — whether a file reference came from this plugin's own set rather
+     * than another plugin's — because arranging a foreign file reference inside an XML attribute
+     * takes a second plugin. That check is reasoned about where it is written, not asserted here.
+     */
+    fun testTheSameAttributeOutsideAConfigsetIsLeftUngrouped() {
+        myFixture.addFileToProject("stopwords.txt", "the\n")
+        myFixture.configureByText(
+            "notes.xml",
+            """<notes><filter class="solr.StopFilterFactory" words="stopwords.txt"/></notes>""",
+        )
+        val value = myFixture.file.findElementAt(myFixture.file.text.indexOf("stopwords.txt"))!!
+            .parentOfType<XmlAttributeValue>()!!
+        assertNull(SolrUsageTypeProvider().getUsageType(value))
     }
 
     /** An element holding none of this plugin's references keeps whatever grouping it had. */

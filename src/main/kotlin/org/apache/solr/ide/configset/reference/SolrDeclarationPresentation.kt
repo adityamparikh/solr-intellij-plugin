@@ -5,6 +5,7 @@ import com.intellij.psi.ElementDescriptionLocation
 import com.intellij.psi.ElementDescriptionProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.xml.XmlElement
 import com.intellij.usageView.UsageViewTypeLocation
 import com.intellij.usages.impl.rules.UsageType
@@ -42,13 +43,21 @@ class SolrDeclarationDescriptionProvider : ElementDescriptionProvider {
 }
 
 /**
- * Groups a declaration's usages by what each one is, instead of leaving them unclassified.
+ * Groups a usage by what it is, instead of leaving it unclassified.
  *
  * A configset references a field three ways, and they carry different weight when the question is
  * *what breaks if I change this*: a copy rule feeds one field from another, while a handler
  * parameter in `solrconfig.xml` shapes what a query searches — and it lives in the file the reader
  * is not looking at. Grouping by that is more use than grouping by nothing, which is what
  * *Unclassified* amounts to.
+ *
+ * **A resource file is the fourth, and it was left out on an assumption that was simply wrong.** The
+ * reasoning recorded here was that a `words="stopwords.txt"` points at a file rather than at a
+ * declaration, and so would be grouped by the platform's own file rules. There are no such rules for
+ * a [FileReference] inside an XML
+ * attribute value: nothing claims it, and Find Usages on `stopwords.txt` listed both correct results
+ * under *Unclassified*. Found in the sandbox, like the two defects above it — the headless suite
+ * asserts what a search returns, and every one of these is about what the returned thing is called.
  *
  * **The reference decides, not a second reading of the PSI.** Asking the element which references it
  * carries reuses the four providers' own judgement about what each position means, so this cannot
@@ -65,16 +74,23 @@ class SolrUsageTypeProvider : UsageTypeProvider {
      * registered provider over it. Nothing this plugin contributes sits outside XML, so the type
      * check settles the overwhelming majority without that work being done on anybody's behalf.
      *
+     * The first reference that is one of this plugin's decides. A resource attribute holding a
+     * comma-separated list carries several, and a path several more — one per segment — but they are
+     * all the same kind of usage, so which one answers does not matter.
+     *
      * @param element the element a usage was found in
      * @return its usage type, or null to leave the platform's grouping alone
      */
     override fun getUsageType(element: PsiElement): UsageType? {
         if (element !is XmlElement) return null
-        return when (element.references.firstOrNull { it.isSolrFieldReference }) {
-            is SolrFieldTypeReference -> FIELD_TYPE_REFERENCE
-            is SolrCopyFieldReference -> COPY_FIELD_END
-            is SolrConfigFieldReference -> HANDLER_PARAMETER
-            else -> null
+        return element.references.firstNotNullOfOrNull { reference ->
+            when {
+                reference is SolrFieldTypeReference -> FIELD_TYPE_REFERENCE
+                reference is SolrCopyFieldReference -> COPY_FIELD_END
+                reference is SolrConfigFieldReference -> HANDLER_PARAMETER
+                reference.isSolrResourceFile -> RESOURCE_FILE
+                else -> null
+            }
         }
     }
 
@@ -87,14 +103,20 @@ class SolrUsageTypeProvider : UsageTypeProvider {
 
         /** A field name inside a request handler's parameter, in the other file. */
         val HANDLER_PARAMETER = UsageType(SolrBundle.messagePointer("usageType.handlerParameter"))
+
+        /** A `<filter>` or `<charFilter>` reading the resource file being searched for. */
+        val RESOURCE_FILE = UsageType(SolrBundle.messagePointer("usageType.resourceFile"))
     }
 }
 
 /**
- * Whether this is one of the references that names a field or field type.
+ * Whether this is one of the resource-file references this plugin built.
  *
- * Excludes the resource-file references, which point at files rather than at declarations and are
- * already grouped perfectly well by the platform's own file rules.
+ * Asked of the reference set rather than of the reference, because a
+ * [FileReference] is the platform's
+ * own class and carries nothing saying who built it. Another plugin may contribute file references
+ * into an XML attribute value, and labelling those as Solr's would be the same overreach in the
+ * other direction.
  */
-private val PsiReference.isSolrFieldReference: Boolean
-    get() = this is SolrFieldTypeReference || this is SolrCopyFieldReference || this is SolrConfigFieldReference
+private val PsiReference.isSolrResourceFile: Boolean
+    get() = this is FileReference && fileReferenceSet is SolrResourceFileReferenceSet

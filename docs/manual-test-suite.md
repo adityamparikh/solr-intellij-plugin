@@ -136,6 +136,12 @@ gesture, caret placement, the Find Usages tool window.*
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
+- [ ] **NAV-8** — **How a resource file's usages are labelled**, which is NAV-7's question asked
+      of the fourth kind of reference. Find Usages on `stopwords.txt` itself — from the
+      Project view, or from the caret on the path — lists both
+      `<filter class="solr.StopFilterFactory">` occurrences under **Analyzer component
+      reading this file**, not *Unclassified*. This one shipped wrong: the classification
+      skipped file references on the assumption the platform grouped them, and nothing does.
 - [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at NAV-3 — the Find Usages
       tool window with its results, invoked from the `<fieldType name="text_general">`
       declaration, which is the gesture the demo now performs.
