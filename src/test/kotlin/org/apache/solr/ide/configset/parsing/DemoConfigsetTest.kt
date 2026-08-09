@@ -23,7 +23,14 @@ import java.io.File
  */
 class DemoConfigsetTest {
 
-    private val configsetDirectory = File(System.getProperty("user.dir"), "demo/solr/conf")
+    /**
+     * The committed demo configset, at the path the build told the test rather than one inferred
+     * from where the JVM happened to start. `user.dir` remains the fallback for a runner that does
+     * not set the property; it is the project directory under Gradle, but that is a launcher's
+     * choice rather than a fact about the repository.
+     */
+    private val configsetDirectory = System.getProperty("demo.configset.dir")?.let(::File)
+        ?: File(System.getProperty("user.dir"), "demo/solr/conf")
 
     private val model: SolrFieldModel by lazy {
         assertTrue(

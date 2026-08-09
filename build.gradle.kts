@@ -167,6 +167,19 @@ tasks.check {
     dependsOn(tasks.dokkaGenerate)
 }
 
+// Where the committed demo configset is, told to the tests that read it rather than inferred by
+// them. `DemoConfigsetTest` and `SolrDemoFindUsagesTest` exercise the files the demo is actually
+// driven on, so they need a path to real files on disk — and they had been deriving it from
+// `user.dir`, which is the project directory under Gradle but is a launcher's choice, not a fact
+// about the repository. The build knows the answer without inferring it, so it says so; the tests
+// keep the `user.dir` reading as a fallback for any runner that bypasses this task.
+//
+// Resolved at configuration time to a plain String, which is what keeps the configuration cache
+// able to store it.
+tasks.test {
+    systemProperty("demo.configset.dir", layout.projectDirectory.dir("demo/solr/conf").asFile.absolutePath)
+}
+
 // ---------------------------------------------------------------------------------------------
 // The generated class catalog. What it is, why it is generated, and how the bytecode extraction
 // works all live on `GenerateSolrCatalogTask` in buildSrc; this script declares only the policy —
