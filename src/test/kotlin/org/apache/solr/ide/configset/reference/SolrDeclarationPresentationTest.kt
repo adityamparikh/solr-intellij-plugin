@@ -109,6 +109,19 @@ class SolrDeclarationPresentationTest : SolrConfigsetTestCase() {
         assertNull(SolrUsageTypeProvider().getUsageType(tag))
     }
 
+    /**
+     * Everything outside XML is declined on the type alone.
+     *
+     * The assertion is the same *null* the case above produces, and the reason it is worth writing
+     * separately is that the two reach it differently: this one must not have to ask the element for
+     * its references first. Every usage view in the IDE consults this provider for every result of
+     * every search, and a Solr plugin has no business computing references over somebody's Java.
+     */
+    fun testAnElementOutsideXmlIsLeftUngrouped() {
+        myFixture.configureByText("notes.txt", "body_t")
+        assertNull(SolrUsageTypeProvider().getUsageType(myFixture.file.firstChild))
+    }
+
     /** Nothing is described for a target this plugin did not produce. */
     fun testAnUnrelatedElementIsLeftToThePlatform() {
         myFixture.configureByText("beans.xml", """<beans><bean id="a<caret>b"/></beans>""")

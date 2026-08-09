@@ -5,6 +5,7 @@ import com.intellij.psi.ElementDescriptionLocation
 import com.intellij.psi.ElementDescriptionProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.xml.XmlElement
 import com.intellij.usageView.UsageViewTypeLocation
 import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
@@ -58,16 +59,24 @@ class SolrUsageTypeProvider : UsageTypeProvider {
     /**
      * What kind of usage [element] holds, or null when it holds none of this plugin's.
      *
+     * **Declines on shape before asking for references**, for the reason the two searchers on this
+     * path give: every usage view in the IDE consults this, for every result of every search in
+     * every language, and asking an element for its references is the platform running each
+     * registered provider over it. Nothing this plugin contributes sits outside XML, so the type
+     * check settles the overwhelming majority without that work being done on anybody's behalf.
+     *
      * @param element the element a usage was found in
      * @return its usage type, or null to leave the platform's grouping alone
      */
-    override fun getUsageType(element: PsiElement): UsageType? =
-        when (element.references.firstOrNull { it.isSolrFieldReference }) {
+    override fun getUsageType(element: PsiElement): UsageType? {
+        if (element !is XmlElement) return null
+        return when (element.references.firstOrNull { it.isSolrFieldReference }) {
             is SolrFieldTypeReference -> FIELD_TYPE_REFERENCE
             is SolrCopyFieldReference -> COPY_FIELD_END
             is SolrConfigFieldReference -> HANDLER_PARAMETER
             else -> null
         }
+    }
 
     private companion object {
         /** A `<field>` naming the field type being searched for. */
