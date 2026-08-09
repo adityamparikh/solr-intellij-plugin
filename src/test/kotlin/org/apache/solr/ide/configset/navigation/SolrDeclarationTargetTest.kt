@@ -9,7 +9,7 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
-import org.apache.solr.ide.configset.reference.SolrSchemaPsi
+import org.apache.solr.ide.configset.schema.SolrSchemaPsi
 
 /**
  * Find Usages from a declaration, asserted at the position where the behaviour is decided.
@@ -211,7 +211,7 @@ class SolrDeclarationTargetTest : SolrConfigsetTestCase() {
      * **This assertion is narrower than the obvious one, and measurement is why.** The obvious
      * version — that the position yields nothing at all — is false, and was false before this step
      * existed: the platform answers an attribute name with the enclosing tag, through the descriptor
-     * machinery [org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider]
+     * machinery [org.apache.solr.ide.configset.schema.descriptor.SolrSchemaElementDescriptorProvider]
      * feeds. That is the platform's answer to *what attribute is this*, and it is not this step's to
      * remove. What must not appear here is a Solr *declaration* target, which would say the caret is
      * on the field `description` when it is on the word `name`.

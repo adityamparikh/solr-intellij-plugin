@@ -8,6 +8,7 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider
+import org.apache.solr.ide.configset.schema.SolrSchemaPsi
 
 /**
  * Navigation from a `solrconfig.xml` handler parameter to the schema field it names.

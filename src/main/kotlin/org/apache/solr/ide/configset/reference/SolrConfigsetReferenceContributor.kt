@@ -15,11 +15,12 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
-import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
+import org.apache.solr.ide.configset.schema.SolrSchemaPsi
 
 /**
  * Makes the names inside a configset navigable.
@@ -237,7 +238,7 @@ internal abstract class SolrDeclarationReference<T : PsiElement>(element: T, ran
  * exact answer rather than a guess. What this deliberately does *not* do is resolve a pattern to the
  * concrete fields it happens to match: which fields those are depends on the documents indexed, not
  * on the schema, so any such target would be invented. That is the same line
- * [org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection] draws when it stays
+ * [org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInspection] draws when it stays
  * silent on globs — here it costs a navigation nobody could have trusted, and there it prevents a
  * warning on a correct file.
  *
@@ -272,7 +273,7 @@ internal class SolrCopyFieldReference(element: XmlAttributeValue) :
  *
  * **Soft, deliberately.** A hard reference that fails to resolve is reported by the platform's own
  * unresolved-reference inspection, which would put a second warning on a type name that
- * [org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection] already reports — in the platform's vocabulary rather than
+ * [org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection] already reports — in the platform's vocabulary rather than
  * Solr's, and saying less. Soft references navigate when they resolve and stay quiet when they do
  * not, which leaves the diagnosis with the inspection that can phrase it properly.
  */

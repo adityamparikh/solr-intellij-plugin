@@ -2,7 +2,7 @@ package org.apache.solr.ide.configset.reading
 
 import java.io.File
 import org.apache.solr.ide.configset.parsing.SolrConfigParser
-import org.apache.solr.ide.configset.parsing.SolrSchemaParser
+import org.apache.solr.ide.configset.schema.parsing.SolrSchemaParser
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrMatchGranularity
@@ -149,7 +149,7 @@ class DemoConfigsetTest {
     /**
      * The demo's opening, as the inspections see it. Demo step 25 puts the dangling-copyField
      * underline on screen; `legacy`'s undeclared type is the fixture's second planted finding, added
-     * for [SolrMatchInlayHintsProvider][org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider]'s
+     * for [SolrMatchInlayHintsProvider][org.apache.solr.ide.configset.schema.hint.SolrMatchInlayHintsProvider]'s
      * two different silences. Worth pinning that exactly these two things in the committed fixture
      * are reportable — and which, so a third finding anywhere else is caught here rather than on
      * stage.

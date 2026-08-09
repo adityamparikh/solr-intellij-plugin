@@ -34,7 +34,7 @@ import org.apache.solr.ide.configset.activation.SolrSchemaTags
  *
  * **The delegation is load-bearing rather than a convenience.** The target wraps the very
  * [XmlAttributeValue] that
- * [SolrSchemaPsi][org.apache.solr.ide.configset.reference.SolrSchemaPsi] hands back, because that
+ * [SolrSchemaPsi][org.apache.solr.ide.configset.schema.SolrSchemaPsi] hands back, because that
  * identity is what `isReferenceTo` compares. A target pointing anywhere else would make Find Usages and Ctrl-click disagree about
  * which references exist, which is the one thing this step must not do. Rename inherits that same
  * identity: [SolrDeclarationTarget] is what Shift+F6 rewrites, and the references it updates are the

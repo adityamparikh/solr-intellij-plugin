@@ -36,7 +36,7 @@ internal class SolrReplaceNameQuickFix(
      *
      * **Both halves, because the inspections report on both.** A wrong *value* is reported on the
      * value element, and a wrong *name* on the name element —
-     * [SolrUnknownAttributeInspection][org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection]
+     * [SolrUnknownAttributeInspection][org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection]
      * deliberately underlines the name so it does not point at the half that is correct. Handling
      * only the value made every fix that inspection offered a no-op: the menu listed the right
      * spellings, and choosing one changed nothing.

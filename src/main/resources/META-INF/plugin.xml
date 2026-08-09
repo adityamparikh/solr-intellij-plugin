@@ -32,13 +32,13 @@
                 nameKey="inlay.matchCapability.name"
                 group="OTHER_GROUP"
                 isEnabledByDefault="true"
-                implementationClass="org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider"/>
+                implementationClass="org.apache.solr.ide.configset.schema.hint.SolrMatchInlayHintsProvider"/>
 
         <!-- Element descriptors for schema files. A schema has no XSD, so without these the
              platform guesses: attribute completion echoes whatever same-named sibling tags carry.
              The descriptors are deliberately permissive — validation stays with the inspections. -->
         <xml.elementDescriptorProvider
-                implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
+                implementation="org.apache.solr.ide.configset.schema.descriptor.SolrSchemaElementDescriptorProvider"/>
 
         <!-- Quick documentation, answering a different question at each position. On a field, its
              type, or a factory tag, it resolves the values in effect and where each came from; on a
@@ -103,7 +103,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownFieldType"
@@ -113,7 +113,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection"/>
         <!-- Value and attribute-name checks. Both read the generated catalog, so both are silent on
              a class it does not know: a custom plugin must not be underlined for being custom. -->
         <localInspection
@@ -125,7 +125,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrInvalidAttributeValueInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrInvalidAttributeValueInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownAttribute"
@@ -135,7 +135,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownFieldReference"
@@ -187,7 +187,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrAnalyzerChainOrderInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrAnalyzerChainOrderInspection"/>
         <!-- The one finding here that is not a defect: a type nothing uses is dead weight, not a
              mistake, so it is drawn as an unused declaration rather than underlined. Enabled by
              default all the same — the grey-out costs a reader nothing, and dead configuration is
@@ -201,7 +201,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnusedFieldTypeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnusedFieldTypeInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to
@@ -209,12 +209,12 @@
         <intentionAction>
             <language>XML</language>
             <category>Solr</category>
-            <className>org.apache.solr.ide.configset.intention.SolrAddPrefixCompanionIntention</className>
+            <className>org.apache.solr.ide.configset.schema.intention.SolrAddPrefixCompanionIntention</className>
         </intentionAction>
         <intentionAction>
             <language>XML</language>
             <category>Solr</category>
-            <className>org.apache.solr.ide.configset.intention.SolrAddExactCompanionIntention</className>
+            <className>org.apache.solr.ide.configset.schema.intention.SolrAddExactCompanionIntention</className>
         </intentionAction>
     </extensions>
 </idea-plugin>

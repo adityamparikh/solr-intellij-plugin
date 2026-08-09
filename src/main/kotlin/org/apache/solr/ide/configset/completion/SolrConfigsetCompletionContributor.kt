@@ -24,7 +24,7 @@ import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
-import org.apache.solr.ide.configset.documentation.SolrSchemaElements
+import org.apache.solr.ide.configset.schema.documentation.SolrSchemaElements
 
 /**
  * Completes the attribute values in a configset whose valid answers are knowable.

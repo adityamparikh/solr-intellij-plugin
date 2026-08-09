@@ -1,8 +1,8 @@
 package org.apache.solr.ide.configset.documentation
 
 import com.intellij.lang.documentation.AbstractDocumentationProvider
-import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
@@ -11,17 +11,19 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
+import org.apache.solr.ide.configset.reading.SolrConfigsetReader
+import org.apache.solr.ide.configset.schema.documentation.SolrFieldPresentation
+import org.apache.solr.ide.configset.schema.documentation.SolrSchemaElements
+import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrReferenceGuide
+import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldProperty
 import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
 import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassEntry
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
-import org.apache.solr.ide.model.schema.SolrField
-import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.schema.SolrFieldProperties
-import org.apache.solr.ide.model.schema.SolrFieldProperty
-import org.apache.solr.ide.model.SolrReferenceGuide
-import org.apache.solr.ide.model.SolrVersionSelection
-import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
  * Quick documentation for fields, field types, factory tags, `class` values and factory attributes

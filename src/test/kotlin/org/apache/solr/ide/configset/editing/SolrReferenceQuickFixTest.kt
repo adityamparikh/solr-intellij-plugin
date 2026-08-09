@@ -1,9 +1,9 @@
 package org.apache.solr.ide.configset.editing
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
-import org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection
-import org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection
-import org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection
+import org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInspection
+import org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection
+import org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection
 
 /**
  * The fixes offered alongside the two reference inspections.

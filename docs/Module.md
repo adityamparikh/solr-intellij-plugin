@@ -126,11 +126,26 @@ schema and referenced from `solrconfig.xml`, so Find Usages, the declaration
 target and rename belong to the configset as a whole rather than to either
 aspect — filing them under one would make that aspect import the other.
 
-# Package org.apache.solr.ide.configset.inspection
+# Package org.apache.solr.ide.configset.schema
 
-Reporting references that go nowhere — a dangling `copyField`, a field naming an
-undeclared type, and a handler parameter naming a field the schema never
-declares.
+Everything anchored in a schema file — `managed-schema.xml` or `schema.xml` —
+with the PSI lookup its gestures share at the root and one subpackage per gesture.
+
+A capability belongs here when the caret that triggers it is always in a schema
+file. Anything that traverses the configset instead lives at the configset root:
+that is why Find Usages and rename are in `configset.navigation` and not here.
+
+# Package org.apache.solr.ide.configset.schema.parsing
+
+Reading a schema file into facts. A pure function from text to
+`SolrConfigsetFacts`, using the JDK's DOM rather than IntelliJ's XML PSI, which
+is what lets it be tested without an IDE.
+
+# Package org.apache.solr.ide.configset.schema.inspection
+
+Reporting what is wrong in a schema file: a dangling `copyField`, a field naming
+an undeclared type, an attribute that does not exist or cannot hold the value
+written, an analyzer chain in an impossible order, a field type nothing uses.
 
 [Why the clean fixtures matter more than the flagged
 ones](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetinspection).
@@ -143,7 +158,16 @@ the caret.
 [Why only closed sets are
 completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetcompletion).
 
-# Package org.apache.solr.ide.configset.descriptor
+# Package org.apache.solr.ide.configset.schema.documentation
+
+What a hover over a schema element, a field, or a field type explains: the
+resolved property table, where each value came from, and what the field can
+actually match.
+
+[What it answers that the Reference Guide
+cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetdocumentation).
+
+# Package org.apache.solr.ide.configset.schema.descriptor
 
 Owning the XML element descriptors for schema files, so the platform's answers
 come from the plugin's knowledge instead of from schema-less guessing — which
@@ -170,14 +194,14 @@ cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/cod
 [Why it links to the guide rather than copying it, and why the generated catalog keeps only a
 one-sentence summary](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/faq.md).
 
-# Package org.apache.solr.ide.configset.hint
+# Package org.apache.solr.ide.configset.schema.hint
 
 Showing what each field matches, inline beside its declaration.
 
 [Why an inlay rather than a
 tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsethint).
 
-# Package org.apache.solr.ide.configset.intention
+# Package org.apache.solr.ide.configset.schema.intention
 
 Offering to improve a file that is already correct.
 
