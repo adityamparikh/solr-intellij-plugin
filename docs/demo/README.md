@@ -402,10 +402,17 @@ Undo. Confirm the file is clean.
 
 ### Step 27. Find Usages on a field type
 
-Invoke Find Usages on `text_general`. Every field using it appears.
+Put the caret on the `<fieldType name="text_general">` **declaration** and invoke Find
+Usages. Every field using it appears.
 
 Say: this is the question "what breaks if I change this analyser chain", which today is
-answered with grep.
+answered with grep. Note that the caret is on the declaration — the place a reader
+reaches for the gesture, and the place it has to work from.
+
+Then put the caret on `<dynamicField name="*_t">` and invoke it again. The `pf` parameter
+in `solrconfig.xml` appears, naming `body_t` — a field no `<field>` declares, whose name
+the pattern supplies and never spells. Say: grep for `*_t` never finds this, and neither
+does an editor that only matches text.
 
 ### Step 28. Show the hint on a string field
 

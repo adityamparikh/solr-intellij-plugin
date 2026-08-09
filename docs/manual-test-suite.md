@@ -112,22 +112,33 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] **NAV-2** — Cmd+Click a `<copyField>` `source` and `dest` jumps to each field's
       declaration.
 - [ ] **NAV-3** — Find Usages (⌥F7) on a field's `type="text_general"` lists every field
-      declared with that type. Invoke it from a reference: on the
-      `<fieldType name="text_general">` declaration itself the IDE answers *Cannot search
-      for usages from this location*.
+      declared with that type, and the search invoked on the
+      `<fieldType name="text_general">` **declaration** returns the same set. Both
+      directions, because the declaration is where a reader reaches for the gesture and it
+      refused until declarations became targets.
 - [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages **from a reference** —
-      the parameter itself, or a `copyField` end — lists the parameter among its usages.
-      NAV-3's caveat is not about field types: a *field* declaration refuses the search
-      too, so `<field name="description">` answers *Cannot search for usages from this
-      location* exactly as the `<fieldType>` one does.
+      in `name^3 description` navigates on its own, and Find Usages lists the parameter
+      among its usages — invoked from the parameter, from a `copyField` end, and from the
+      `<field name="description">` declaration alike.
+- [ ] **NAV-6** — Find Usages on `<dynamicField name="*_t">` in the schema reports the
+      `pf` parameter naming `body_t` in `solrconfig.xml` — a name the pattern supplies and
+      never spells, which the word index alone cannot reach. The result is highlighted at
+      `body_t` itself, not across the whole parameter value.
+- [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
+      In NAV-3's window the header reads **Field type** over `text_general`, and the results
+      group under **Field declaring this type** — not *Solr Declaration Target*, which is the
+      plugin's own class name leaking through the platform's fallback, and not
+      *Unclassified*. In NAV-6's, the header reads **Dynamic field** and the group reads
+      **Handler parameter in solrconfig.xml**. A correct result list under either of those
+      two wrong labels reads as broken to everyone but its author.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
 - [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at NAV-3 — the Find Usages
-      tool window with its results, invoked from a `type="text_general"` reference.
+      tool window with its results, invoked from the `<fieldType name="text_general">`
+      declaration, which is the gesture the demo now performs.
       [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
