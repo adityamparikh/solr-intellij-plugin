@@ -192,11 +192,20 @@ class SolrNonIndexedRelevanceFieldInspectionTest : SolrConfigsetTestCase() {
     }
 
     /**
-     * An undeclared field type silences the *inherited* answer, not a declared one. The field says
-     * `indexed="false"` itself, which is definite however unknown its type is.
+     * A field declaring `indexed="false"` on an undeclared type is *not* reported, which reverses what
+     * this fixture asserted while the rule read one property.
+     *
+     * `indexed="false"` is still definite. Searchability is not, because it is a disjunction: doc values
+     * would rescue the field, and whether it has them cannot be answered when the type naming their
+     * default does not exist. "Not indexed" was a fact this inspection could state; "not searchable" is
+     * the claim it actually makes, and it cannot state that one here.
+     *
+     * **Losing the warning costs the reader nothing**, because the schema is already wrong in a way
+     * another inspection reports: the field names a type that is not declared. Adding a speculative
+     * second warning on top of a definite first one is not a service.
      */
-    fun testAFieldDeclaringNonIndexedItselfIsFlaggedEvenWithAnUndeclaredType() {
-        checkConfig(handler("""<str name="qf">${notIndexed("orphan_off", "qf")}</str>"""))
+    fun testAFieldDeclaringNonIndexedItselfWithAnUndeclaredTypeIsNotReported() {
+        checkConfig(handler("""<str name="qf">orphan_off</str>"""))
     }
 
     /** Every occurrence is underlined, not merely the first. */
@@ -214,24 +223,34 @@ class SolrNonIndexedRelevanceFieldInspectionTest : SolrConfigsetTestCase() {
     }
 
     /**
-     * A doc-values-only field in a `qf`, recording what happens today rather than asserting it is
-     * right.
+     * A doc-values-only field in a `qf` is clean, which reverses what this fixture first recorded.
      *
-     * `popularity` is `indexed="false" docValues="true"`, and the clean fixtures above rely on that
-     * combination being ordinary for `bf`, `sort` and `facet.field`. In a `qf` the inspection fires,
-     * because it resolves `indexed` and nothing else.
+     * `popularity` is `indexed="false" docValues="true"`, and the clean cases above already rely on
+     * that combination being ordinary for `bf`, `sort` and `facet.field`. It was flagged in a `qf`,
+     * because the inspection read `indexed` and nothing else.
      *
-     * **Whether that is correct is an open question about Solr, not about this code.** Solr can answer
-     * term and range queries against a doc-values-only primitive field by scanning doc values instead
-     * of consulting the index — slower, but functional — which would make this warning a false
-     * positive on a working configuration, the failure this package is organised to avoid. Two things
-     * narrow it: `TextField` does not support doc values, so a non-indexed *text* field in a `qf` is
-     * definitively unsearchable and is the case the inspection was written for; and a doc-values-only
-     * `StrField` in a `qf` is unusual. This test exists so that a decision either way changes a
-     * recorded expectation rather than discovering one.
+     * **Solr answers the query.** `FieldType.getFieldQuery` opens with `hasDocValues() && !indexed()`
+     * and on that branch delegates to `getRangeQuery` with the value as both bounds, reaching
+     * `SortedSetDocValuesField.newSlowRangeQuery` — an exact match becomes a single-value doc-values
+     * range query. Slower than a term lookup, and functional. `StrField` overrides none of it, and the
+     * branch is byte-identical on both supported Solr lines.
+     *
+     * The warning was therefore firing on a working configuration. Silence rather than a reworded
+     * message is the repair: a doc-values range query is constant-scoring, so a boost still multiplies
+     * by the boost, and the field is searchable *and* boostable. What it is not is ranked by term
+     * statistics — a distinction too fine for an inspection to be drawing.
      */
-    fun testADocValuesOnlyFieldInAQueryFieldIsFlaggedToday() {
-        checkConfig(handler("""<str name="qf">${notIndexed("popularity", "qf")}</str>"""))
+    fun testADocValuesOnlyFieldInAQueryFieldIsClean() {
+        checkConfig(handler("""<str name="qf">popularity</str>"""))
+    }
+
+    /**
+     * And the case the inspection was written for is untouched. `TextField` overrides `getFieldQuery`
+     * for the analysis path and declares no doc-values support at all, so a non-indexed text field in
+     * a `qf` is genuinely unsearchable — no doc values can rescue it.
+     */
+    fun testANonIndexedTextFieldInAQueryFieldIsStillFlagged() {
+        checkConfig(handler("""<str name="qf">${notIndexed("body", "qf")}</str>"""))
     }
 
     /** `appends` and `invariants` supply the same parameters, differing only in precedence. */

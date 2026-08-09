@@ -172,7 +172,7 @@ enum class SolrConfigsetFileKind(
      * references, or supplying a vocabulary to both files, asks this rather than spelling out the
      * disjunction. A second copy of the pairing is a second thing to forget when a kind is added.
      */
-    val holdsFieldReferences: Boolean get() = isSchema || this == SOLR_CONFIG
+    val holdsFieldReferences: Boolean get() = isSchema || isSolrConfig
 
     /**
      * Whether a file of this kind activates features on its own account.
@@ -208,8 +208,17 @@ enum class SolrConfigsetFileKind(
          * @param fileName a bare file name, not a path
          * @return the matching kind, or null if the name is not a recognized configset file name
          */
-        fun forFileName(fileName: String): SolrConfigsetFileKind? =
-            entries.firstOrNull { fileName in it.fileNames }
+        fun forFileName(fileName: String): SolrConfigsetFileKind? = BY_FILE_NAME[fileName]
+
+        /**
+         * Every recognized file name, to its kind.
+         *
+         * A map rather than a scan because the reference contributor asks this per tag while declining
+         * a file, where its own comment promises the cheapest possible decline. Scanning twelve entries
+         * and testing a set membership on each was cheap in absolute terms and needlessly so.
+         */
+        private val BY_FILE_NAME: Map<String, SolrConfigsetFileKind> =
+            entries.flatMap { kind -> kind.fileNames.map { it to kind } }.toMap()
 
         /**
          * The kind matching a directory called [directoryName], or null.
