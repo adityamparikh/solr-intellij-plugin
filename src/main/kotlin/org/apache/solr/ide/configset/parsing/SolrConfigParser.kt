@@ -96,8 +96,25 @@ object SolrConfigParser {
         val name = token.trim()
         if (name.isEmpty()) return null
         if (name.any { it in EXCLUDED_CHARACTERS }) return null
+        if (name.isNumericLiteral()) return null
         return name
     }
+
+    /**
+     * Whether the token is a number rather than a name.
+     *
+     * A constant is legal in two of these parameters and is not a field: `boost` takes a multiplier and
+     * `bf` an additive function, so `<float name="boost">1.5</float>` is an ordinary way to write a flat
+     * boost — and reading `1.5` as a field name produced a warning about a field nobody could declare.
+     * The same value is writable as a `<str>`, so this belongs beside the other syntax rules rather than
+     * with the tags that reach them.
+     *
+     * The first character is checked before parsing so that `NaN` and `Infinity`, which
+     * [String.toDoubleOrNull] accepts, stay available as field names. They are poor names and they are
+     * the author's to choose.
+     */
+    private fun String.isNumericLiteral(): Boolean =
+        (first().isDigit() || first() in NUMBER_LEADS) && toDoubleOrNull() != null
 
     private val WHITESPACE = Regex("\\s+")
 
@@ -109,6 +126,9 @@ object SolrConfigParser {
      * a field would produce a "no such field" warning on syntax that is entirely correct.
      */
     private val EXCLUDED_CHARACTERS = charArrayOf('*', '(', ')', ':', '$', '{', '}', '"', '\'', '[', ']')
+
+    /** Characters a number may start with, besides a digit. */
+    private val NUMBER_LEADS = charArrayOf('-', '+', '.')
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")

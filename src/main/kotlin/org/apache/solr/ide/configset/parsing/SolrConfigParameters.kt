@@ -91,8 +91,16 @@ internal object SolrConfigParameters {
      * have nothing to do with queries — an update processor chain, for one — and the parser already
      * declines to read those. Without this, positions would be reported that the model itself says
      * hold no field references.
+     *
+     * **Internal rather than private so that completion can ask the same question.** Offering parameter
+     * names, or field names inside a parameter, depends on this exact position test, and a second copy
+     * of it would agree until the day an update processor chain grew another parameter-list spelling.
+     * One predicate, three callers.
+     *
+     * @param tag the candidate parameter list, usually a value tag's parent
+     * @return whether its contents are query parameters
      */
-    private fun enclosingIsParameterList(tag: XmlTag?): Boolean =
+    internal fun enclosingIsParameterList(tag: XmlTag?): Boolean =
         tag?.name == "lst" &&
             tag.getAttributeValue("name") in PARAMETER_SETS &&
             tag.parentTag?.name in PARAMETER_CARRIERS
@@ -115,8 +123,20 @@ internal object SolrConfigParameters {
     private fun escapeXml(text: String): String =
         text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
-    /** Tags whose text holds a parameter value. */
-    private val VALUE_TAGS = setOf("str")
+    /**
+     * Tags whose text holds a parameter value.
+     *
+     * All of Solr's scalar value tags, not only `<str>`. A handler may write `<int name="rows">10</int>`
+     * or `<bool name="facet">true</bool>` and both are ordinary Solr, so reading `<str>` alone left the
+     * PSI half of this narrower than [SolrConfigParser], which places no restriction on the tag at all
+     * and reads any child carrying a `name`. The two halves disagreeing was invisible only because
+     * nothing consumes the parsed reference list directly — a `qf` written as an `<int>` produced a
+     * model reference with no position to underline it at.
+     *
+     * `<arr>` is absent deliberately: it holds no text of its own, and [parameterNameOf] reaches it as
+     * the *parent* of the values inside it.
+     */
+    private val VALUE_TAGS = setOf("str", "int", "long", "float", "double", "bool")
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")

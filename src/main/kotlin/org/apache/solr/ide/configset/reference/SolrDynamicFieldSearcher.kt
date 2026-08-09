@@ -147,7 +147,3 @@ class SolrDynamicFieldSearcher :
             .mapNotNull { manager.findFile(it) }
     }
 }
-
-/** Whether a file of this kind can hold a reference to a field: the schema and `solrconfig.xml`. */
-private val SolrConfigsetFileKind.holdsFieldReferences: Boolean
-    get() = isSchema || this == SolrConfigsetFileKind.SOLR_CONFIG
