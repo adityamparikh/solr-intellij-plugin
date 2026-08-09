@@ -27,6 +27,7 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
           <field name="rescued" type="string" indexed="true" docValues="false" uninvertible="true"/>
           <field name="popularity" type="string" indexed="false" docValues="true"/>
           <field name="custom" type="nosuchtype" indexed="true"/>
+          <field name="tags" type="string" docValues="true" multiValued="true"/>
           <dynamicField name="*_dv" type="string" docValues="true"/>
           <dynamicField name="*_nodv" type="string" indexed="true" docValues="false"/>
         </schema>
@@ -164,6 +165,19 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
         checkConfig(
             handler("""<arr name="facet.field"><str>${unusable("colour_nodv", "facet.field")}</str></arr>"""),
         )
+    }
+
+    /**
+     * A multiValued field sorts nowhere. Several values have no defined order, so Solr rejects a plain
+     * sort and requires a selector — `field(tags,min)` — which is not what a bare name here asks for.
+     */
+    fun testSortingOnAMultiValuedFieldIsFlagged() {
+        checkConfig(handler("""<str name="sort">${unusable("tags", "sort")} asc</str>"""))
+    }
+
+    /** And faceting on the same field is exactly what multiValued fields are for. */
+    fun testFacetingOnAMultiValuedFieldIsClean() {
+        checkConfig(handler("""<arr name="facet.field"><str>tags</str></arr>"""))
     }
 
     /** A field that is searchable and unfacetable is the split this inspection exists to express. */

@@ -98,6 +98,53 @@ class SolrFieldOperationsTest {
         assertEquals(true, supports(SolrFieldOperation.FACET, attributes))
     }
 
+    /**
+     * A multiValued field can be faceted and cannot be sorted, which is the one asymmetry between the
+     * two operations. Solr rejects a plain sort on it because several values have no defined order, and
+     * requires a selector — `sort=field(prices,min) asc` — which is a different expression rather than
+     * the bare field name a `sort` parameter holds.
+     */
+    @Test
+    fun `a multiValued field can be faceted and not sorted`() {
+        val attributes = mapOf("docValues" to "true", "multiValued" to "true")
+        assertEquals(true, supports(SolrFieldOperation.FACET, attributes))
+        assertEquals(false, supports(SolrFieldOperation.SORT, attributes))
+    }
+
+    /** And searching a multiValued field is ordinary, so the extra condition stays out of that rule. */
+    @Test
+    fun `a multiValued field is searchable`() {
+        val attributes = mapOf("indexed" to "true", "multiValued" to "true")
+        assertEquals(true, supports(SolrFieldOperation.SEARCH, attributes))
+    }
+
+    // --- the parameter mapping ---------------------------------------------------------------------
+
+    /**
+     * One mapping for every caller. An inspection reporting a bad `facet.field` and a completion list
+     * filling one in have to agree about what a `facet.field` is *for*, or the plugin offers a field it
+     * then underlines.
+     */
+    @Test
+    fun `parameters map to the operation they ask for`() {
+        assertEquals(SolrFieldOperation.SEARCH, SolrFieldOperation.forParameter("qf"))
+        assertEquals(SolrFieldOperation.SEARCH, SolrFieldOperation.forParameter("pf3"))
+        assertEquals(SolrFieldOperation.FACET, SolrFieldOperation.forParameter("facet.pivot"))
+        assertEquals(SolrFieldOperation.SORT, SolrFieldOperation.forParameter("group.field"))
+    }
+
+    /**
+     * Null covers two cases worth not conflating: `fl` asks nothing of the index, while `bf` asks for a
+     * per-document value but writes it as a function query rather than a field list — so a rule applied
+     * to a whole token there would be applied to the wrong thing.
+     */
+    @Test
+    fun `parameters asking nothing this can answer map to null`() {
+        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl")) {
+            assertNull(parameter, SolrFieldOperation.forParameter(parameter))
+        }
+    }
+
     // --- the undetermined middle -----------------------------------------------------------------
 
     /**

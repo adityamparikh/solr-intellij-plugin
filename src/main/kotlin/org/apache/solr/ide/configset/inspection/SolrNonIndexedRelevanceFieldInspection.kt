@@ -82,7 +82,7 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
         return object : XmlElementVisitor() {
             override fun visitXmlTag(tag: XmlTag) {
                 for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
-                    if (occurrence.parameterName !in QUERY_FIELD_PARAMETERS) continue
+                    if (SolrFieldOperation.forParameter(occurrence.parameterName) != SolrFieldOperation.SEARCH) continue
                     if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
                     // An undeclared field is the other inspection's finding. Saying it twice, in two
                     // vocabularies, on the same underline is worse than saying it once.
@@ -112,18 +112,5 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
                 }
             }
         }
-    }
-
-    private companion object {
-
-        /**
-         * The parameters whose values become queries against the inverted index.
-         *
-         * DisMax's `qf` and edismax's inheritance of it, plus the phrase-field family. Deliberately
-         * short: every parameter added here is a new way to be wrong about a correct file, and the
-         * ones that look adjacent — `bf`, `boost`, `sort`, `facet.field` — are all served by doc
-         * values rather than by the index, so `indexed="false"` says nothing about them.
-         */
-        val QUERY_FIELD_PARAMETERS = setOf("qf", "pf", "pf2", "pf3")
     }
 }

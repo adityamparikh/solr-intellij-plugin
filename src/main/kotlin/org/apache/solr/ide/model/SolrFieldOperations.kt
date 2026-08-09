@@ -33,6 +33,49 @@ enum class SolrFieldOperation {
 
     /** Ordering results, as `sort` does. */
     SORT,
+    ;
+
+    /** Reading the mapping from a query parameter to the operation it asks for. */
+    companion object {
+
+        /**
+         * The operation [parameterName] asks of the field it names, or null when it asks nothing this
+         * can answer.
+         *
+         * **One mapping, however many callers.** The rule deciding whether a field can serve an
+         * operation lives in [SolrFieldOperations] for the sake of the surfaces that share it, and this
+         * table has exactly the same argument behind it: an inspection reporting a bad `facet.field` and
+         * a completion list filling one in must agree about what a `facet.field` is *for*, or the plugin
+         * offers a field it then underlines. A copy per caller would drift the first time a parameter
+         * was added to one of them.
+         *
+         * Null means *offer everything and report nothing*, and covers two different cases worth not
+         * conflating. `fl` returns a stored value and genuinely asks nothing of the index. `bf` and
+         * `boost` ask for something real — a per-document value — but their syntax is a function query
+         * rather than a field list, so a rule applied to a whole token there would be applied to the
+         * wrong thing.
+         *
+         * @param parameterName the parameter as `solrconfig.xml` spells it
+         * @return the operation it asks for, or null
+         */
+        fun forParameter(parameterName: String): SolrFieldOperation? = BY_PARAMETER[parameterName]
+
+        private val BY_PARAMETER = mapOf(
+            // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family:
+            // the parameters whose values become term and phrase queries.
+            "qf" to SEARCH,
+            "pf" to SEARCH,
+            "pf2" to SEARCH,
+            "pf3" to SEARCH,
+            // Every name in a pivot is faceted on, so a pivot is as much a facet as `facet.field`.
+            "facet.field" to FACET,
+            "facet.pivot" to FACET,
+            // Grouping orders documents by the field's value and fails the way sorting does.
+            "sort" to SORT,
+            "group.sort" to SORT,
+            "group.field" to SORT,
+        )
+    }
 }
 
 /**
@@ -98,12 +141,20 @@ object SolrFieldOperations {
             // statistics — a distinction too fine for a warning, which is why this returns true.
             SolrFieldOperation.SEARCH, SolrFieldOperation.FILTER -> either(indexed, docValues)
 
-            // Doc values are read directly. An indexed field without them can still be faceted or
-            // sorted by un-inverting it into memory, which is what `uninvertible` governs — and it
-            // defaults false from schema version 1.7, so an indexed-only field in a modern schema is
-            // genuinely unfacetable.
-            SolrFieldOperation.FACET, SolrFieldOperation.SORT ->
-                either(docValues, both(indexed, resolved("uninvertible")))
+            // Doc values are read directly. An indexed field without them can still be faceted by
+            // un-inverting it into memory, which is what `uninvertible` governs — and it defaults
+            // false from schema version 1.7, so an indexed-only field in a modern schema is genuinely
+            // unfacetable.
+            SolrFieldOperation.FACET -> either(docValues, both(indexed, resolved("uninvertible")))
+
+            // Sorting wants the same structure and one more thing: a single value per document. A
+            // multiValued field has no defined order, so Solr rejects a plain sort on one and requires
+            // a selector — `sort=field(prices,min) asc` — which is a different expression rather than a
+            // bare field name, and not what a bare name in a `sort` is asking for.
+            SolrFieldOperation.SORT -> both(
+                either(docValues, both(indexed, resolved("uninvertible"))),
+                resolved("multiValued")?.not(),
+            )
         }
     }
 

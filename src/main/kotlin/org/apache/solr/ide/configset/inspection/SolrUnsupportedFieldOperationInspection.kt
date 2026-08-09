@@ -28,6 +28,11 @@ import org.apache.solr.ide.model.SolrFieldOperations
  * *false* from schema version 1.7. A field that is perfectly searchable can therefore be unfacetable,
  * and the same field in a `qf` and a `facet.field` deserves a warning in one place and not the other.
  *
+ * **Which parameters it examines comes from [SolrFieldOperation.forParameter]**, not from a list here.
+ * This inspection takes every operation except searching, which [SolrNonIndexedRelevanceFieldInspection]
+ * owns, so a parameter added to that mapping reaches whichever of the two asks its question rather than
+ * neither.
+ *
  * **The rule is [SolrFieldOperations]', not this class's.** It is a disjunction over three properties
  * with a version-dependent default in the middle of it, and it has readers outside the configuration
  * surface: the same question decides whether a SolrJ `addFacetField` will be rejected, and which
@@ -64,7 +69,12 @@ class SolrUnsupportedFieldOperationInspection : LocalInspectionTool() {
         return object : XmlElementVisitor() {
             override fun visitXmlTag(tag: XmlTag) {
                 for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
-                    val operation = OPERATIONS[occurrence.parameterName] ?: continue
+                    // Every operation except searching, which the sibling inspection owns. Split by
+                    // operation rather than by a second parameter list, so a parameter added to the
+                    // shared mapping reaches whichever inspection asks its question.
+                    val operation = SolrFieldOperation.forParameter(occurrence.parameterName)
+                        ?.takeIf { it != SolrFieldOperation.SEARCH }
+                        ?: continue
                     if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
                     // An undeclared field is the unknown-reference inspection's finding, and saying it
                     // twice on one underline is worse than saying it once.
@@ -91,24 +101,5 @@ class SolrUnsupportedFieldOperationInspection : LocalInspectionTool() {
                 }
             }
         }
-    }
-
-    private companion object {
-
-        /**
-         * The parameters that read a field's values per document, and the operation each asks for.
-         *
-         * Kept to the parameters whose *whole value* is a field list, because that is what the
-         * occurrence mapping can locate. `group.field` joins the sort family because grouping orders
-         * documents by that field's value and fails the same way. `facet.pivot` takes a comma-separated
-         * list of fields to facet on, so every name in it is faceted.
-         */
-        val OPERATIONS = mapOf(
-            "facet.field" to SolrFieldOperation.FACET,
-            "facet.pivot" to SolrFieldOperation.FACET,
-            "sort" to SolrFieldOperation.SORT,
-            "group.sort" to SolrFieldOperation.SORT,
-            "group.field" to SolrFieldOperation.SORT,
-        )
     }
 }
