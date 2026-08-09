@@ -13,6 +13,11 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  * these positions; a target that reported itself unwritable would make rename refuse with no
  * explanation. Feature tests cannot see either — completion is asked of the contributor, and rename
  * in a fixture never consults writability — so they are asserted directly.
+ *
+ * [SolrDeclarationReference] states the variants promise once, so these three cases are no longer
+ * three implementations to check. They still earn their place: what they pin is that each provider
+ * hands back a reference carrying that contract at all, which is the thing a fourth position could
+ * quietly get wrong.
  */
 class SolrReferenceContractTest : SolrConfigsetTestCase() {
 

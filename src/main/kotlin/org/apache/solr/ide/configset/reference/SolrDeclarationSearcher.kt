@@ -124,11 +124,14 @@ internal class SolrDeclarationTarget(private val value: XmlAttributeValue) :
         }
 
     /**
-     * Whether the declaration can be edited.
+     * Whether the platform can write to this declaration.
      *
-     * Asked of the file rather than answered `true`, because a configset opened read-only — from a
-     * dependency jar, or a checkout the user has no write access to — must refuse the rename rather
-     * than fail part-way through it, with the schema rewritten and `solrconfig.xml` not.
+     * Not the plugin asking whether a write is *allowed* — it never does, and Solr's own
+     * distinction between hand-edited and API-managed files plays no part here. This is the
+     * platform's own question, asked before it starts a refactoring, and the file is the only thing
+     * that can answer it: a configset opened out of a dependency jar is physically read-only, and a
+     * rename that discovered that half-way through would leave the schema rewritten and
+     * `solrconfig.xml` not.
      */
     override fun isWritable(): Boolean = value.isWritable
 

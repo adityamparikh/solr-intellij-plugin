@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.reference
 
+import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.XmlPatterns
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
@@ -172,20 +173,53 @@ private class SolrCopyFieldReferenceProvider : PsiReferenceProvider() {
 }
 
 /**
- * Whether a reference spelling [spelling] and resolving to [declaration] may be rewritten by rename.
+ * A name written inside a configset, pointing at the schema declaration that supplies it.
  *
- * **It may exactly when it spells the declaration's name.** Most references do, and for those this
- * is always true. The exception is the one [SolrDynamicFieldSearcher] introduced: a `qf` naming
- * `body_t` is a genuine usage of `<dynamicField name="*_t">`, but the two relations rename conflates
- * — *is a usage of* and *should become the new name* — come apart there. Substituting the new
- * pattern would write `*_txt` where a field name belongs, which Solr rejects outright.
- *
- * The name left behind matches nothing afterwards, and that is deliberate rather than overlooked:
- * [org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection] reports it from the
- * same position, in Solr's vocabulary, so the consequence is visible rather than silent.
+ * The three positions differ in where they sit and how they resolve; what they share are the two
+ * promises below, which `SolrReferenceContractTest` asserts because no feature test reaches either.
+ * Stating them once is the point of this class — a fourth reference position gets them by
+ * construction rather than by remembering.
  */
-private fun mayBeRewritten(declaration: PsiElement?, spelling: String): Boolean =
-    (declaration as? XmlAttributeValue)?.value?.equals(spelling) ?: true
+internal abstract class SolrDeclarationReference<T : PsiElement>(element: T, rangeInElement: TextRange) :
+    PsiReferenceBase<T>(element, rangeInElement, true) {
+
+    /**
+     * Rewrites this occurrence to [newElementName] — unless it is a name a dynamic pattern supplied.
+     *
+     * **A reference may be rewritten exactly when it spells its declaration's name.** Most do, and
+     * for those this is always true. The exception is the one [SolrDynamicFieldSearcher] introduced:
+     * a `qf` naming `body_t` is a genuine usage of `<dynamicField name="*_t">`, but the two relations
+     * rename conflates — *is a usage of* and *should become the new name* — come apart there.
+     * Substituting the new pattern would write `*_txt` where a field name belongs, which Solr rejects
+     * outright.
+     *
+     * The name left behind matches nothing afterwards, and that is deliberate rather than
+     * overlooked: [org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection]
+     * reports it from the same position, in Solr's vocabulary, so the consequence is visible rather
+     * than silent.
+     *
+     * **The comparison is against [getValue] rather than any name parsed on the way in, because
+     * [getValue] is the text `super` is about to overwrite** — so the question asked is exactly the
+     * question that matters. An unresolved reference is left alone: the platform only offers what a
+     * search already resolved to this declaration, so failing to resolve here means the ground moved
+     * mid-refactoring, and declining is the conservative answer.
+     */
+    final override fun handleElementRename(newElementName: String): PsiElement =
+        if ((resolve() as? XmlAttributeValue)?.value == value) {
+            super.handleElementRename(newElementName)
+        } else {
+            element
+        }
+
+    /**
+     * No completion variants, at any of these positions.
+     *
+     * [org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor] already owns
+     * them, and offers field and type names with what each one matches attached. A reference
+     * returning variants as well would put every name in the popup twice.
+     */
+    final override fun getVariants(): Array<Any> = emptyArray()
+}
 
 /**
  * A reference from `source="title"` or `dest="text"` to the field declaring that name.
@@ -209,7 +243,7 @@ private fun mayBeRewritten(declaration: PsiElement?, spelling: String): Boolean 
  * Soft, for the reason [SolrFieldTypeReference] is soft.
  */
 internal class SolrCopyFieldReference(element: XmlAttributeValue) :
-    PsiReferenceBase<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element), true) {
+    SolrDeclarationReference<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element)) {
 
     /**
      * The `name` attribute of the declaration supplying this name — declared outright, or the
@@ -223,20 +257,6 @@ internal class SolrCopyFieldReference(element: XmlAttributeValue) :
             ?.resolve(value)?.name ?: return null
         return SolrSchemaPsi.findField(file, declared)
     }
-
-    /**
-     * Rewrites this end to [newElementName], unless it is a name a dynamic pattern supplied.
-     *
-     * See [mayBeRewritten] for why the two cases part company.
-     */
-    override fun handleElementRename(newElementName: String): PsiElement =
-        if (mayBeRewritten(resolve(), value)) super.handleElementRename(newElementName) else element
-
-    /**
-     * No completion variants; the completion contributor already offers the fields here, with what
-     * each one matches attached.
-     */
-    override fun getVariants(): Array<Any> = emptyArray()
 }
 
 /**
@@ -249,7 +269,7 @@ internal class SolrCopyFieldReference(element: XmlAttributeValue) :
  * not, which leaves the diagnosis with the inspection that can phrase it properly.
  */
 internal class SolrFieldTypeReference(element: XmlAttributeValue) :
-    PsiReferenceBase<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element), true) {
+    SolrDeclarationReference<XmlAttributeValue>(element, ElementManipulators.getValueTextRange(element)) {
 
     /**
      * The `name` attribute of the declaring `fieldType`, or null when nothing declares it.
@@ -259,14 +279,6 @@ internal class SolrFieldTypeReference(element: XmlAttributeValue) :
      */
     override fun resolve(): PsiElement? =
         SolrSchemaPsi.findFieldType(element.containingFile, value)
-
-    /**
-     * No completion variants.
-     *
-     * Completion for this position is contributed by [org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor], which can
-     * show what each type matches. Returning variants here as well would produce every type twice.
-     */
-    override fun getVariants(): Array<Any> = emptyArray()
 }
 
 /**
@@ -284,7 +296,7 @@ internal class SolrFieldTypeReference(element: XmlAttributeValue) :
 internal class SolrConfigFieldReference(
     tag: XmlTag,
     private val occurrence: SolrConfigParameters.FieldNameOccurrence,
-) : PsiReferenceBase<XmlTag>(tag, occurrence.rangeInTag, true) {
+) : SolrDeclarationReference<XmlTag>(tag, occurrence.rangeInTag) {
 
     /**
      * The `name` attribute of the declaration supplying this name in the owning configset's
@@ -303,23 +315,4 @@ internal class SolrConfigFieldReference(
         val schema = SolrSchemaPsi.schemaFileOf(file) ?: return null
         return SolrSchemaPsi.findField(schema, declared)
     }
-
-    /**
-     * Rewrites this occurrence to [newElementName], unless it is a name a dynamic pattern supplied.
-     *
-     * See [mayBeRewritten]. This is the position where getting it wrong is worst: the parameter is
-     * in the other file, so a reader reviewing the rename in the schema would not see the damage.
-     */
-    override fun handleElementRename(newElementName: String): PsiElement =
-        if (mayBeRewritten(resolve(), occurrence.fieldName)) {
-            super.handleElementRename(newElementName)
-        } else {
-            element
-        }
-
-    /**
-     * No completion variants; what may be offered in a parameter value is the completion
-     * contributor's decision, not this reference's.
-     */
-    override fun getVariants(): Array<Any> = emptyArray()
 }
