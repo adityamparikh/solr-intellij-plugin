@@ -1,7 +1,7 @@
 package org.apache.solr.ide.configset.navigation
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
-import org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection
+import org.apache.solr.ide.configset.solrconfig.inspection.SolrUnknownFieldReferenceInspection
 import java.io.File
 
 /**

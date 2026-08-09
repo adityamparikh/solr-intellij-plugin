@@ -8,8 +8,8 @@ import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.parsing.SolrConfigParameters
-import org.apache.solr.ide.configset.parsing.SolrConfigParser
+import org.apache.solr.ide.configset.solrconfig.SolrConfigParameters
+import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.apache.solr.ide.model.schema.SolrFieldOperations

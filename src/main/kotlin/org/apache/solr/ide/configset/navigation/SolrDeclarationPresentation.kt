@@ -11,9 +11,9 @@ import com.intellij.usageView.UsageViewTypeLocation
 import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.reference.SolrConfigFieldReference
-import org.apache.solr.ide.configset.reference.SolrCopyFieldReference
-import org.apache.solr.ide.configset.reference.SolrFieldTypeReference
+import org.apache.solr.ide.configset.solrconfig.reference.SolrConfigFieldReference
+import org.apache.solr.ide.configset.schema.reference.SolrCopyFieldReference
+import org.apache.solr.ide.configset.schema.reference.SolrFieldTypeReference
 
 /**
  * Tells the platform what a schema declaration is called, rather than letting it guess.

@@ -1,8 +1,8 @@
 package org.apache.solr.ide.configset.reading
 
 import java.io.File
-import org.apache.solr.ide.configset.parsing.SolrConfigParser
 import org.apache.solr.ide.configset.schema.parsing.SolrSchemaParser
+import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser
 import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrMatchGranularity

@@ -26,7 +26,7 @@ import org.apache.solr.ide.configset.activation.SolrSchemaTags
  * `<dynamicField name="*_t">` is referenced two ways. A `copyField dest="*_t"` writes the pattern
  * literally, and the default search finds it. A handler's `qf` naming `body_t` refers to the same
  * declaration just as genuinely —
- * [SolrConfigFieldReference][org.apache.solr.ide.configset.reference.SolrConfigFieldReference]
+ * [SolrConfigFieldReference][org.apache.solr.ide.configset.solrconfig.reference.SolrConfigFieldReference]
  * resolves it there — and the default
  * search *cannot* find it, for a reason no amount of care in the reference would fix:
  * `ReferencesSearch` picks candidates out of the word index before asking any reference to confirm

@@ -47,14 +47,20 @@
              class is and what it accepts, which is identity rather than resolution. -->
         <lang.documentationProvider
                 language="XML"
-                implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
+                implementationClass="org.apache.solr.ide.configset.schema.documentation.SolrSchemaDocumentationProvider"/>
 
         <!-- References. A configset is held together by string references — a field names its
              type, a copyField names two fields — and none of them is a reference as far as the
              editor is concerned until this makes it one. -->
         <psi.referenceContributor
                 language="XML"
-                implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
+                implementation="org.apache.solr.ide.configset.schema.reference.SolrSchemaReferenceContributor"/>
+        <!-- The solrconfig.xml half, registered separately: it answers for a different file and a
+             different element, and each contributor is consulted for every XML file in the project,
+             so narrower patterns cost less to decline. -->
+        <psi.referenceContributor
+                language="XML"
+                implementation="org.apache.solr.ide.configset.solrconfig.reference.SolrConfigReferenceContributor"/>
 
         <!-- The other end of those references. The contributor above anchors every reference at a
              use site, which makes Ctrl-click work and left Find Usages refusing from the
@@ -89,7 +95,12 @@
         <completion.contributor
                 language="XML"
                 order="first"
-                implementationClass="org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor"/>
+                implementationClass="org.apache.solr.ide.configset.schema.completion.SolrSchemaCompletionContributor"/>
+        <!-- Field names inside a solrconfig.xml handler parameter's text, which is the one
+             answerable position that is neither an attribute value nor a tag name. -->
+        <completion.contributor
+                language="XML"
+                implementationClass="org.apache.solr.ide.configset.solrconfig.completion.SolrConfigCompletionContributor"/>
 
         <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
              authoritative enough to claim a hard error, and an error on a file the user is midway
