@@ -1,0 +1,29 @@
+<html>
+<body>
+Reports a faceting or sorting parameter in <code>solrconfig.xml</code> that names a field which cannot
+serve it.
+<p>
+  This is the one Solr inspection that guards against silence rather than against a false positive. A
+  <code>facet.field</code> or <code>sort</code> naming a field with neither doc values nor an
+  un-invertible index is not a subtle inefficiency — it is a request Solr refuses, so the handler
+  carrying it answers every query with an error. Nothing in the configset says so, and the schema looks
+  fine on its own.
+</p>
+<p>
+  Faceting and sorting read a field's values per document rather than its terms. Doc values serve them
+  directly; an inverted index serves them only by being un-inverted into memory first, which is what
+  <code>uninvertible</code> governs — and it defaults <em>false</em> from schema version 1.7. So a
+  field that is perfectly searchable can be unfacetable, and the same field may deserve a warning in a
+  <code>facet.field</code> and none in a <code>qf</code>.
+</p>
+<p>
+  Five parameters are examined: <code>facet.field</code>, <code>facet.pivot</code>, <code>sort</code>,
+  <code>group.sort</code> and <code>group.field</code>. Every property is resolved rather than read —
+  from the field, then its field type, then Solr's default for the schema version. Where that cannot
+  reach an answer, such as a field type naming a class this build has never seen, nothing is reported.
+</p>
+<p><small>Example: <code>&lt;str name="facet.field"&gt;category&lt;/str&gt;</code> where the schema
+  declares <code>&lt;field name="category" type="string" indexed="true" docValues="false"/&gt;</code>
+  and <code>&lt;schema version="1.7"&gt;</code>.</small></p>
+</body>
+</html>
