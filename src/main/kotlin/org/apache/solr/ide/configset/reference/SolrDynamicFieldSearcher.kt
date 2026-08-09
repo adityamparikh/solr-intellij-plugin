@@ -125,7 +125,7 @@ class SolrDynamicFieldSearcher :
         } ?: return null
 
         val attribute = value.parentOfType<XmlAttribute>() ?: return null
-        if (attribute.name != "name") return null
+        if (attribute.name != SolrSchemaTags.NAME) return null
         val tag = attribute.parentOfType<XmlTag>() ?: return null
         if (tag.name != SolrSchemaTags.DYNAMIC_FIELD) return null
         return value

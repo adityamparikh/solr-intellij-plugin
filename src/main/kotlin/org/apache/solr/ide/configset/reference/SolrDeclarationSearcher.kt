@@ -66,7 +66,7 @@ class SolrDeclarationSearcher : PomDeclarationSearcher() {
     override fun findDeclarationsAt(element: PsiElement, offsetInElement: Int, consumer: Consumer<in PomTarget>) {
         val value = element as? XmlAttributeValue ?: return
         val attribute = value.parentOfType<XmlAttribute>() ?: return
-        if (attribute.name != NAME_ATTRIBUTE) return
+        if (attribute.name != SolrSchemaTags.NAME) return
         val tag = attribute.parentOfType<XmlTag>() ?: return
         if (tag.name !in SolrSchemaTags.FIELD && tag.name !in SolrSchemaTags.FIELD_TYPE) return
         if (value.value.isEmpty()) return
@@ -76,11 +76,6 @@ class SolrDeclarationSearcher : PomDeclarationSearcher() {
         if (!SolrConfigsetDetector.isConfigsetFile(value.containingFile)) return
 
         consumer.consume(SolrDeclarationTarget(value))
-    }
-
-    private companion object {
-        /** The attribute a declaration writes its name in. */
-        const val NAME_ATTRIBUTE = "name"
     }
 }
 
