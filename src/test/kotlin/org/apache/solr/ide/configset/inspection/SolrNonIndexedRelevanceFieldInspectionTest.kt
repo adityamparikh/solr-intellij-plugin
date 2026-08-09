@@ -213,6 +213,27 @@ class SolrNonIndexedRelevanceFieldInspectionTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * A doc-values-only field in a `qf`, recording what happens today rather than asserting it is
+     * right.
+     *
+     * `popularity` is `indexed="false" docValues="true"`, and the clean fixtures above rely on that
+     * combination being ordinary for `bf`, `sort` and `facet.field`. In a `qf` the inspection fires,
+     * because it resolves `indexed` and nothing else.
+     *
+     * **Whether that is correct is an open question about Solr, not about this code.** Solr can answer
+     * term and range queries against a doc-values-only primitive field by scanning doc values instead
+     * of consulting the index — slower, but functional — which would make this warning a false
+     * positive on a working configuration, the failure this package is organised to avoid. Two things
+     * narrow it: `TextField` does not support doc values, so a non-indexed *text* field in a `qf` is
+     * definitively unsearchable and is the case the inspection was written for; and a doc-values-only
+     * `StrField` in a `qf` is unusual. This test exists so that a decision either way changes a
+     * recorded expectation rather than discovering one.
+     */
+    fun testADocValuesOnlyFieldInAQueryFieldIsFlaggedToday() {
+        checkConfig(handler("""<str name="qf">${notIndexed("popularity", "qf")}</str>"""))
+    }
+
     /** `appends` and `invariants` supply the same parameters, differing only in precedence. */
     fun testInvariantsAreInspectedLikeDefaults() {
         checkConfig(
