@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlTag
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
@@ -45,7 +46,9 @@ class SolrUnknownFieldReferenceInspection : LocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         // Only `solrconfig.xml` carries these; running the visitor over a schema would be wasted
         // work on every keystroke.
-        if (holder.file.name != "solrconfig.xml") return PsiElementVisitor.EMPTY_VISITOR
+        if (SolrConfigsetFileKind.forFileName(holder.file.name)?.isSolrConfig != true) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file) ?: return PsiElementVisitor.EMPTY_VISITOR
 
         return object : XmlElementVisitor() {

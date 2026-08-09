@@ -152,6 +152,18 @@ enum class SolrConfigsetFileKind(
     val isSchema: Boolean get() = this == SCHEMA_MANAGED || this == SCHEMA_CLASSIC
 
     /**
+     * Whether this kind is `solrconfig.xml`.
+     *
+     * Trivial, and it exists for the same reason [isSchema] does: it is how a feature *declares which
+     * file it serves*. The packages here are organised by capability — inspection, completion,
+     * reference — so nothing above this line says whether a given inspection reads the schema or the
+     * configuration, and a reader has to find the gate at the top of `buildVisitor` to know. Asking
+     * `isSolrConfig` or [isSchema] makes that gate the same shape everywhere and greppable, where four
+     * hand-written comparisons against a file-name literal were neither.
+     */
+    val isSolrConfig: Boolean get() = this == SOLR_CONFIG
+
+    /**
      * Whether a file of this kind can hold a reference to a field: the schema and `solrconfig.xml`.
      *
      * The pairing several features need and none of them should restate. A field name is written in

@@ -14,6 +14,7 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
@@ -122,7 +123,9 @@ private class SolrConfigFieldReferenceProvider : PsiReferenceProvider() {
         val tag = element as? XmlTag ?: return PsiReference.EMPTY_ARRAY
         // The file-name check runs first because it is the cheapest way to decline the `<str>`
         // tags of every other XML file the pattern lets through.
-        if (tag.containingFile.name != "solrconfig.xml") return PsiReference.EMPTY_ARRAY
+        if (SolrConfigsetFileKind.forFileName(tag.containingFile.name)?.isSolrConfig != true) {
+            return PsiReference.EMPTY_ARRAY
+        }
         if (!SolrConfigsetDetector.isConfigsetFile(tag.containingFile)) return PsiReference.EMPTY_ARRAY
 
         val occurrences = SolrConfigParameters.fieldNameOccurrences(tag)
