@@ -181,7 +181,10 @@ from an editor feature that was never wired up.
 Widen the descriptor gate from `kind.isSchema` to PR A's shared file-kind predicate, and give the
 descriptor a second vocabulary.
 
-**Blocked on Q1** (below), and on PR A for the predicate. Landing this before Q1 closes means transcribing two files by hand and
+**No longer blocked.** Q1 is closed, and closing it also split this PR's dependency in two: the element
+*names* come from `SolrConfig.plugins` directly, so element completion waits on nothing, while attribute
+completion still needs PR 0 to know what a named class accepts. Worth landing in that order rather than
+waiting for the catalog to do either. Landing this before Q1 closes means transcribing two files by hand and
 possibly throwing it away.
 
 **Split within the PR:** the descriptor-gate change lands as its own commit, gated on the *schema*
@@ -280,15 +283,31 @@ is exactly where a new one would appear.
 
 ## Open questions, and who closes them
 
-**Q1 — Where does the element vocabulary come from?** The specification names the shipped `_default`
-and `sample_techproducts_configs` configsets as ground truth, and `solr-core-10.0.0.jar` contains no
-`.xml` resources at all — verified by listing the artifact. The candidate that would retire the
-question is `SolrConfig$SolrPluginInfo`, already on the scanned classpath: if it enumerates
-`solrconfig.xml`'s legal plugin elements in a bytecode-readable form, this becomes one more generator
-pass instead of two vendored files.
+**Q1 — Where does the element vocabulary come from? — CLOSED: Solr declares them, so the generator
+reads them.**
 
-*Closed by:* one investigation against the resolved jar, sized in hours. **Do it before PR 1 is
-scoped**, not during it.
+`SolrConfig` carries `public static final List<SolrPluginInfo> plugins`, and each entry pairs a `tag`
+string with the `Class<?>` that tag's `class` attribute must implement. Both are plain constants in the
+static initializer, so one pass yields **23 element names and the superclass each one requires**. Read
+off the resolved artifacts for both supported lines; the two lists are **identical**, which is the check
+that would have caught a vocabulary that moved between lines.
+
+The tarball and the vendored files are both retired. The two shipped configsets stay exactly what the
+specification wants them for — the zero-findings fixture — which was never what the tarball question was
+about.
+
+**The generated answer is better than the transcribed one, not merely cheaper.** Three of the 23 are not
+bare element names: `indexConfig/deletionPolicy`, `updateHandler/updateLog` and `//listener`. That is
+nesting, and `//` means the element may appear at any depth — structure two example files could only
+imply, and only for the elements those two files happen to use.
+
+**The `clazz` beside each tag is [the catalog record's](../2026-08-07-solrconfig-catalog/design.md) root
+list, generated.** That record hand-wrote seven roots and flagged them as the kind of thing that moves
+between lines; all seven are confirmed, and sixteen more are declared that it never listed —
+`QParserPlugin`, `ValueSourceParser`, `TransformerFactory`, `QueryConverter`, `SolrEventListener`,
+`Expressible` and `InitParams` among them. Its standing failure mode was *a generator producing a
+plausible short list rather than an error*; a list read from the declaration Solr itself parses with
+turns a renamed root into a build-time absence instead of a silently empty kind.
 
 **Q2 — Optional Java dependency, or defer class navigation to Phase 3?** `plugin.xml` carries
 `com.intellij.modules.java` commented out and marked Phase 3. The optional-dependency route costs one

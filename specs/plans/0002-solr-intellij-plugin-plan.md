@@ -833,13 +833,18 @@ remain, and both open questions below remain open — nothing in this step is ch
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which grows to cover
 this vocabulary.
 
-**Two open questions, both to be closed before the actions they block are scoped rather than during.** Where the element
-vocabulary comes from: the shipped configsets this step names as ground truth are not on any path the build has today —
-`solr-core` carries no XML resources and those files ship in the distribution tarball — so the candidate worth
-investigating first is whether `SolrConfig`'s own plugin-info declaration enumerates the legal elements readably, which
-would make this one more generator pass instead of two vendored files. And whether the commented-out
+**Where the element vocabulary comes from is settled: Solr declares it.** `SolrConfig` carries
+`public static final List<SolrPluginInfo> plugins`, pairing each element `tag` with the `Class<?>` its `class` attribute
+must implement, both as plain constants — so one generator pass yields 23 element names and the superclass each requires,
+identically on both supported lines. The distribution tarball and the vendored-files fallback are both retired, and the
+shipped configsets stay what this step's criteria want them for: the zero-findings fixture. Three of the 23 carry a parent
+path rather than a bare name, so the declaration supplies nesting that two example files could only have implied. The same
+list also generates the plugin-class roots the catalog step was going to hand-write, and declares sixteen more than that
+table had.
+
+**One open question remains, and it is a product decision this plan owns.** Whether the commented-out
 `com.intellij.modules.java` dependency arrives now as an optional dependency, making class navigation present in IDEA and
-absent elsewhere, or action 4 defers to Phase 3. The second is a product decision this plan owns.
+absent elsewhere, or action 4 defers to Phase 3.
 
 ### Step 26: Showing that an attribute restates the default
 

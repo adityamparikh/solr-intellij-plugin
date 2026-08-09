@@ -344,25 +344,28 @@ recalled:
 every symptom of a generator that produced an empty kind looks identical to a completion contributor
 that was never wired up.
 
-### Element structure: the ground truth is not currently reachable
+### Element structure: Solr declares its own element names
 
-The parent specification treats the two configsets Solr ships as settled ground truth for element
-structure. **They are not on any path the build has today** — `solr-core` contains no XML resources;
-those configsets ship in the distribution tarball, and the build resolves Maven artifacts. Three
-routes, and the choice must be made explicitly rather than in passing:
+The parent specification treats the two configsets Solr ships as ground truth for element structure,
+and **they are not on any path the build has today** — `solr-core` contains no XML resources; those
+configsets ship in the distribution tarball, and the build resolves Maven artifacts. That left three
+routes: download the tarball per line, vendor two files per line, or derive the elements from Solr's
+own declaration.
 
-| Route | Cost |
-|---|---|
-| Resolve the distribution tarball as a build dependency | A ~200MB download per supported line, for two small files, in a build already slow on first run |
-| Vendor the two files per line into test resources | ALv2 files with an ASF provenance note; goes stale silently when a line's default configset changes |
-| Derive the legal plugin elements from `SolrConfig`'s own plugin-info declaration | The *generated* answer this plugin prefers; makes the shipped configsets a fixture rather than a data source, and retires the tarball question |
+**The third is settled and the other two are retired.** `SolrConfig` carries
+`public static final List<SolrPluginInfo> plugins`, and each entry pairs a `tag` string with the
+`Class<?>` that tag's `class` attribute must implement. Both are plain constants in the static
+initializer, so one pass over the jar yields **23 element names and the superclass each one requires** —
+read off the resolved artifacts for both supported lines, where the two lists are identical.
 
-**The third is to be investigated first**, and whether that declaration enumerates element names in a
-bytecode-readable form is the **first question this work must answer**. It changes the element half
-from "transcribe two files" to "one more generator pass".
+**The generated answer is strictly better than the transcribed one, not merely cheaper.** Three of the
+23 are not bare names — `indexConfig/deletionPolicy`, `updateHandler/updateLog` and `//listener` — so
+the declaration carries *nesting*, and `//` means the element may appear at any depth. Two example
+files could only have implied that, and only for the elements those two files happen to use.
 
-Whichever route wins, the two configsets remain the zero-findings fixture — that criterion is about
-the inspections, not about where the vocabulary came from.
+**The two configsets remain the zero-findings fixture.** That criterion is about the inspections rather
+than about where the vocabulary came from, and it is the one thing the tarball question was never
+about.
 
 ### Widen the descriptor gate; keep the permissiveness
 
@@ -486,13 +489,10 @@ configset.
 
 ## Open Questions
 
-1. **Does `SolrConfig`'s plugin-info declaration enumerate the legal plugin elements in a
-   bytecode-readable form?** First question to answer; it decides the element-structure route and
-   possibly retires the tarball question.
-2. **Optional Java dependency now, or defer class navigation?** A product decision the plan owns.
-3. **Does the catalog stay a linearly scanned per-line list** once it carries parameters, or does
+1. **Optional Java dependency now, or defer class navigation?** A product decision the plan owns.
+2. **Does the catalog stay a linearly scanned per-line list** once it carries parameters, or does
    parameter lookup need an index?
-4. **Does `fq` get field references at all?** It is the parameter a reader would most expect to be
+3. **Does `fq` get field references at all?** It is the parameter a reader would most expect to be
    covered and the one the sixteen-name list cannot hold, because `fq` takes query syntax — `category:books
    AND price:[0 TO *]` — where a field name is a fragment of the value rather than the whole of it. Every
    existing rule assumes the value is a field list. Covering it means parsing Solr query syntax far enough
@@ -507,7 +507,7 @@ configset.
    with the same three-tier resolution as `indexed`, and inlay hints, the exact-companion intention and
    quick documentation all already read it. What is missing is a consumer, not a fact.
 
-5. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
+4. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
    explicit convention that a slice shares its parent's number, is a housekeeping decision worth
    making before a third file arrives.
 
