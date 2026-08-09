@@ -252,24 +252,23 @@ org.apache.solr.ide
 └── code/                            shape decided now, built by Steps 16–19
     │   ── the contract, and the shared downstream every recognizer feeds ──
     ├── recognizer/                    the interface, its two finding kinds — an endpoint and a
-    │                                  field reference — and the module-dependency gate
+    │                                  field reference — the module-dependency gate, and the
+    │                                  heuristic every endpoint recognizer needs: keys that
+    │                                  mention Solr, values shaped like a Solr endpoint
     ├── inspection/                    one check over field-reference findings, whichever
     │                                  recognizer produced them
     ├── completion/                    field names at a recognized position
     ├── navigation/                    a field name in code → its schema declaration
     │
-    │   ── recognizers over code: endpoints *and* field references ──
+    │   ── one package per recognizer, flat: one library, one gate, one package ──
     ├── solrj/                         client construction, SolrQuery builders, raw parameter
     │                                  strings, SolrInputDocument, @Field
     ├── camel/                         route URIs, their option vocabulary, and field references
     │                                  in route parameters and document construction
-    │
-    │   ── recognizers over application configuration: endpoints only ──
-    └── appconfig/                     a Solr URL *and its credentials*, resolved per profile
-        ├── spring/                      profiles in separate files
-        ├── quarkus/                     profiles inline as a `%dev.` key prefix
-        ├── micronaut/                   environments
-        └── microprofile/                ordinals
+    ├── spring/                        a Solr URL and its credentials; profiles in separate files
+    ├── quarkus/                       …profiles inline as a `%dev.` key prefix
+    ├── micronaut/                     …environments
+    └── microprofile/                  …ordinals
 ```
 
 ⚑ = the three files that are not pure moves. Each is one registered extension currently serving both
@@ -349,31 +348,35 @@ inspection over field-reference findings, the completion, and the navigation to 
 implementation each, fed by every recognizer. Without packages for them, the second recognizer has
 nowhere to put its half and the third copies the first.
 
-**`framework` was one undifferentiated bucket, and the wrong name for the group.** The spec spends a
-paragraph on how the four dialects "differ in ways that matter" — Spring's profile files, Quarkus's
-inline `%dev.` prefixes with no profile-named file to find, Micronaut's environments, MicroProfile's
-ordinals. Four precedence models, and four different classpaths for the gate to test, so four
-recognizers, one package each.
+**`framework` was one undifferentiated bucket.** The spec spends a paragraph on how the four dialects
+"differ in ways that matter" — Spring's profile files, Quarkus's inline `%dev.` prefixes with no
+profile-named file to find, Micronaut's environments, MicroProfile's ordinals. Four precedence
+models, and four different classpaths for the gate to test, so four recognizers.
 
-The name had to change because Camel is a framework too, and putting it in a package called
-`framework` would group it with the recognizers it least resembles. **What the four share is not
-being frameworks — it is reading application configuration and reporting an endpoint.** Compare what
-each reports:
+**They are flat siblings of SolrJ and Camel, with no grouping package over them.** Two intermediate
+groupings were tried and both were wrong. `framework` fails on its own name, since Camel is a
+framework too and the name would group it with the recognizers it least resembles. An `appconfig`
+grouping — the four that read application configuration and report endpoints only — survives longer
+and still fails, for three reasons worth recording so it is not proposed a third time:
 
-| Recognizer | Endpoint | Field references | Own vocabulary |
-|---|---|---|---|
-| SolrJ | yes | yes | — |
-| Camel | yes | yes | URI options |
-| Spring, Quarkus, Micronaut, MicroProfile | yes (with credential) | **no** | — |
+- **The spec rules it out in as many words.** "One recognizer, **not a new subsystem**." A parent
+  package over four recognizers is a subsystem, and the sentence exists to stop the cost of
+  supporting one more framework from being anything but one more package.
+- **The grouping owns no code.** The machinery that looked shared is not exclusive to those four.
+  Spotting an endpoint — "values that look like Solr endpoints and keys that mention Solr" — is
+  stated generally in the spec and is as true of a Camel URI as of a Spring property, so it belongs
+  in `code.recognizer` with the rest of the contract. Credential pairing is not exclusive either; a
+  Camel URI carries credentials in its query string. Move both to where they belong and the parent
+  package is an empty folder.
+- **The classification is unstable.** "Reports endpoints only" is a fact about Step 18's current
+  scope, not about what those recognizers are. The first Spring recognizer that reports a field
+  reference — a `@SolrDocument` bean, a query string in a property — would have to change packages
+  to keep the taxonomy true. A grouping that reclassifies its members when scope grows is worse than
+  no grouping.
 
-Step 18 lists no field-reference action at all; every one of its actions resolves a URL and its
-credential. Step 19 checks "field references in route parameters and document construction" and
-validates a URI option set. So Camel is a sibling of SolrJ — both read code, both report both kinds
-of finding — and the four config dialects are the group that is different, which is why they are the
-ones with a shared parent. `appconfig` names what they share.
-
-That also makes the group's boundary testable rather than aesthetic: **a recognizer joins `appconfig`
-if it reads application configuration and reports endpoints only.** Camel fails both halves.
+What is left is the rule the gate already implies and the spec already states: **one library, one
+gate, one package.** Six recognizers, six siblings, and adding the seventh costs exactly one
+directory.
 
 **`code.query` was the real error, and it contradicted this record's own argument.** The query-string
 language is not code's. Step 17 renders it inside a Java literal, Step 13's console completes with
