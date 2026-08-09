@@ -95,6 +95,44 @@ object SolrConfigParser {
      */
     internal fun operationFor(parameterName: String): SolrFieldOperation? = OPERATIONS[parameterName]
 
+    /**
+     * The partial field name at [caretOffset] inside [value], or null when that offset is not in one.
+     *
+     * **Here because this is the grammar, and the grammar is already here.** Completion needs to know
+     * where a field name starts and whether the caret is in one at all. The alternative was handing it
+     * the separator set, the boost marker and the sort-clause rule as three predicates and letting it
+     * reassemble a parser from them — which it did, and the copy disagreed: it treated a comma as a
+     * boundary in a `qf`, where [fieldNamesIn] splits boostable parameters on whitespace alone, so
+     * completion offered names at a position no reference would ever resolve. The invariant the feature
+     * is sold on — a name offered is a name that resolves — cannot survive the rule existing twice.
+     *
+     * An empty return is a real answer: the caret sits where a field name may start and nothing has been
+     * typed yet.
+     *
+     * @param parameterName the parameter as `solrconfig.xml` spells it
+     * @param value the parameter's whole text
+     * @param caretOffset an offset within [value]
+     * @return the token being typed, possibly empty, or null when a field name cannot go there
+     */
+    internal fun fieldTokenAt(parameterName: String, value: String, caretOffset: Int): String? {
+        if (!holdsFieldNames(parameterName)) return null
+        val before = value.substring(0, caretOffset.coerceIn(0, value.length))
+
+        // The same splits [fieldNamesIn] performs, so the boundaries agree by construction rather than
+        // by two people remembering the same thing.
+        val boostable = parameterName in BOOSTABLE_PARAMETERS
+        val separators = if (boostable) WHITESPACE_CHARACTERS else WHITESPACE_CHARACTERS + ','
+        val token = before.takeLastWhile { it !in separators }
+
+        // A `^` puts the caret inside a boost rather than in the name it boosts.
+        if (boostable && '^' in token) return null
+        // A sort clause is `field direction`, so only its first token is a field.
+        if (parameterName in SORT_PARAMETERS && before.substringAfterLast(',').trimStart() != token) {
+            return null
+        }
+        return token
+    }
+
     internal fun holdsFieldNames(parameterName: String): Boolean =
         parameterName in BOOSTABLE_PARAMETERS ||
             parameterName in SORT_PARAMETERS ||
@@ -160,6 +198,9 @@ object SolrConfigParser {
         (first().isDigit() || first() in NUMBER_LEADS) && toDoubleOrNull() != null
 
     private val WHITESPACE = Regex("\\s+")
+
+    /** The characters [WHITESPACE] matches, for the caller that needs them one at a time. */
+    private val WHITESPACE_CHARACTERS = charArrayOf(' ', '\t', '\n', '\r')
 
     /**
      * Characters that mark a token as syntax rather than a field name.
