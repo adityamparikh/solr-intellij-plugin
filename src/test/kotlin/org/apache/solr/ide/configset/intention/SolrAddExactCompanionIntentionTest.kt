@@ -3,8 +3,8 @@ package org.apache.solr.ide.configset.intention
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrMatchGranularity
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrMatchGranularity
 
 /**
  * The `_exact` intention end to end.

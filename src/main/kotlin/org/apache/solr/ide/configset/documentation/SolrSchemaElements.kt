@@ -1,7 +1,7 @@
 package org.apache.solr.ide.configset.documentation
 
-import org.apache.solr.ide.model.SolrClassEntry
-import org.apache.solr.ide.model.SolrClassKind
+import org.apache.solr.ide.model.vocabulary.SolrClassEntry
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel
 
 /**

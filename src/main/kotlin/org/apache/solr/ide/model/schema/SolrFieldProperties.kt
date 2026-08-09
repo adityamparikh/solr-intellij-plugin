@@ -1,4 +1,4 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 /**
  * Where a property's effective value came from.
@@ -53,7 +53,7 @@ enum class SolrPropertyOrigin {
  * truncating a sentence, which is how a hint ends up saying "The original value is not retu…".
  *
  * Held here rather than in either feature's presentation code for the reason
- * [org.apache.solr.ide.model.SolrMatchCapability.summary] already gives: the same field described
+ * [org.apache.solr.ide.model.schema.SolrMatchCapability.summary] already gives: the same field described
  * two ways is two chances to be doubted.
  *
  * @property whenTrue the consequence of the value being `true`, as a sentence for the popup

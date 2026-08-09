@@ -1,4 +1,4 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 /**
  * A fact about a field type's implementing class that decides what one of its properties defaults to.

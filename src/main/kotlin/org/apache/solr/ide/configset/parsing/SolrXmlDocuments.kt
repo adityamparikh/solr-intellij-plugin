@@ -96,7 +96,7 @@ internal object SolrXmlDocuments {
      * Case-insensitive because Solr reads these through `Boolean.parseBoolean`, which is: a schema
      * writing `indexed="TRUE"` is one Solr loads. Matching case exactly would have made the property
      * read as *unspecified* and silently resolved to the type's default instead — a wrong answer on
-     * a correct file, arrived at quietly. [org.apache.solr.ide.model.SolrValueType] already accepts
+     * a correct file, arrived at quietly. [org.apache.solr.ide.model.schema.SolrValueType] already accepts
      * either case when validating, so a case-sensitive read here also disagreed with this plugin's
      * own inspection.
      *

@@ -1,9 +1,9 @@
 package org.apache.solr.ide.configset.intention
 
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrPrefixSupport
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrPrefixSupport
 
 /**
  * Decides whether a field can be given an efficiently prefix-matchable companion, and with what.

@@ -1,8 +1,8 @@
 package org.apache.solr.ide.configset.parsing
 
 import org.apache.solr.ide.model.SolrConfigsetFacts
-import org.apache.solr.ide.model.SolrFieldOperation
-import org.apache.solr.ide.model.SolrFieldReference
+import org.apache.solr.ide.model.schema.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldReference
 import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.attributeOrNull
 import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.children
 import org.apache.solr.ide.configset.parsing.SolrXmlDocuments.descendantsNamed

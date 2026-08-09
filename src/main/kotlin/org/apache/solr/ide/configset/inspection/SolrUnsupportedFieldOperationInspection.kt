@@ -5,7 +5,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 
 /**
  * Reports a faceting or sorting parameter in `solrconfig.xml` naming a field that cannot serve it.
@@ -29,7 +29,7 @@ import org.apache.solr.ide.model.SolrFieldOperation
  * searching. Each names what it owns rather than excluding the other, so an operation added later
  * belongs to neither until someone says which.
  *
- * **The rule is [org.apache.solr.ide.model.SolrFieldOperations]', not this class's.** It is a disjunction over three properties
+ * **The rule is [org.apache.solr.ide.model.schema.SolrFieldOperations]', not this class's.** It is a disjunction over three properties
  * with a version-dependent default in the middle of it, and it has readers outside the configuration
  * surface: the same question decides whether a SolrJ `addFacetField` will be rejected, and which
  * fields a query console should offer while a reader types a facet parameter.

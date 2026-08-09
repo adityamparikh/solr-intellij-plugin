@@ -1,7 +1,7 @@
 package org.apache.solr.ide.configset.intention
 
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
 
 /**

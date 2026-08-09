@@ -1,11 +1,11 @@
 package org.apache.solr.ide.configset.intention
 
-import org.apache.solr.ide.model.SolrAnalyzerChain
-import org.apache.solr.ide.model.SolrAnalyzerComponent
+import org.apache.solr.ide.model.schema.SolrAnalyzerChain
+import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
 import org.apache.solr.ide.model.SolrFact
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrFieldType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

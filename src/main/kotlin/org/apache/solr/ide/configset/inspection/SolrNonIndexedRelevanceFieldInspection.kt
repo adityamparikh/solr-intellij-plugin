@@ -5,7 +5,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 
 /**
  * Reports a query-field parameter in `solrconfig.xml` naming a field no query can search.
@@ -24,7 +24,7 @@ import org.apache.solr.ide.model.SolrFieldOperation
  * non-indexed field with doc values is correct and common. Flagging those would be a warning on a
  * working configuration, which is the failure this package is organised to avoid.
  *
- * **Whether a field is searchable is [org.apache.solr.ide.model.SolrFieldOperations]' question, not
+ * **Whether a field is searchable is [org.apache.solr.ide.model.schema.SolrFieldOperations]' question, not
  * this class's, and the reporting rule is [SolrInspections.fieldOperationVisitor]'s.** It was read
  * here as `indexed="false"` and that was wrong: Solr turns an exact match on a doc-values-only field
  * into a single-value range query over the doc values rather than refusing it, so such a field *is*

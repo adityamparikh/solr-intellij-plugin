@@ -1,5 +1,10 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.schema.SolrCopyField
+import org.apache.solr.ide.model.schema.SolrDynamicField
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldReference
+import org.apache.solr.ide.model.schema.SolrFieldType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

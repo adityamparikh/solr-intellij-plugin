@@ -1,4 +1,4 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

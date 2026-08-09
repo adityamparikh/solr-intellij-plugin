@@ -16,12 +16,12 @@ import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrClassCatalog
-import org.apache.solr.ide.model.SolrClassKind
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldProperties
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrSchemaVersion
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrSchemaVersion
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.documentation.SolrSchemaElements

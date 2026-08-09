@@ -1,5 +1,16 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.schema.SolrCopyField
+import org.apache.solr.ide.model.schema.SolrDynamicField
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldReference
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrGlob
+import org.apache.solr.ide.model.schema.SolrSchemaVersion
+import org.apache.solr.ide.model.schema.SolrTypeTrait
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
+
 /**
  * Where a fact in the model came from, and whether its two sources agree.
  *

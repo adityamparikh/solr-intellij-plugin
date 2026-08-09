@@ -1,10 +1,10 @@
 package org.apache.solr.ide.configset.parsing
 
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrMatchGranularity
-import org.apache.solr.ide.model.SolrMatchTrait
-import org.apache.solr.ide.model.SolrPrefixSupport
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrMatchGranularity
+import org.apache.solr.ide.model.schema.SolrMatchTrait
+import org.apache.solr.ide.model.schema.SolrPrefixSupport
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

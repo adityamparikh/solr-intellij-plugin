@@ -1,5 +1,7 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.vocabulary
 
+import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrValueType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

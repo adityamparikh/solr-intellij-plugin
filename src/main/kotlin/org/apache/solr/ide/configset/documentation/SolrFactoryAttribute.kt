@@ -1,11 +1,11 @@
 package org.apache.solr.ide.configset.documentation
 
-import org.apache.solr.ide.model.SolrClassAttribute
+import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
 
 /**
  * Where one factory attribute's effective value came from.
  *
- * Deliberately narrower than [org.apache.solr.ide.model.SolrPropertyOrigin]. A factory has no type
+ * Deliberately narrower than [org.apache.solr.ide.model.schema.SolrPropertyOrigin]. A factory has no type
  * layer and no schema-version defaults — only what the tag wrote and what the catalog recorded as
  * Solr's literal fallback — so the four states below are the whole story. Collapsing required and
  * unset into a single "unknown" would lose the one fact the catalog *can* cite about a missing

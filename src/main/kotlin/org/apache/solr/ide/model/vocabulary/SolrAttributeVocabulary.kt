@@ -1,4 +1,9 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.vocabulary
+
+import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldProperty
+import org.apache.solr.ide.model.schema.SolrValueType
 
 /**
  * What each schema element accepts, and whether that list is the whole story.

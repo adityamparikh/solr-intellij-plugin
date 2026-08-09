@@ -2,7 +2,7 @@ package org.apache.solr.ide.configset.parsing
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.apache.solr.ide.model.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.junit.Assert.assertNull
 import org.junit.Test
 

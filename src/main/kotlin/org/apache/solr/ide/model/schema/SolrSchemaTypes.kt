@@ -1,4 +1,4 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 /**
  * One component of an analyzer chain — a char filter, a tokenizer or a token filter.

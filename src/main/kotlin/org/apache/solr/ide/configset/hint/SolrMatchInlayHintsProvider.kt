@@ -13,11 +13,11 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldProperties
-import org.apache.solr.ide.model.SolrFieldType
-import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
 
 /**
@@ -31,7 +31,7 @@ import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
  * missing type removes the middle tier without removing the fall-through, so every default would be
  * attributed to Solr when the type that might have overridden it does not exist.
  *
- * Where [org.apache.solr.ide.model.SolrMatchAnalysis] is not confident the match half is dropped and
+ * Where [org.apache.solr.ide.model.schema.SolrMatchAnalysis] is not confident the match half is dropped and
  * the storage shape stands alone. An unrecognised factory means the chain was not fully understood,
  * and a wrong claim about what a field matches is worse than no claim — but it says nothing about
  * `stored` or `multiValued`, and withholding those was withholding a fact the plugin is certain of.

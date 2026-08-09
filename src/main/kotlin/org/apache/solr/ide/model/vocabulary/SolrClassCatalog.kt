@@ -1,4 +1,8 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.vocabulary
+
+import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrTypeTrait
+import org.apache.solr.ide.model.schema.SolrValueType
 
 /**
  * A kind of class a configset can name in a `class` attribute.

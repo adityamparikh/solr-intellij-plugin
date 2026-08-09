@@ -1,11 +1,12 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 /**
  * The `version` attribute on a schema's root element, which decides what several field attributes
  * default to.
  *
  * **This is a third version number, and not either one the plugin already tracks.**
- * [SolrVersionSelection] is the Solr *line* a configset targets, derived from `luceneMatchVersion`
+ * [SolrVersionSelection][org.apache.solr.ide.model.SolrVersionSelection] is the Solr *line* a
+ * configset targets, derived from `luceneMatchVersion`
  * in `solrconfig.xml`, and it decides which generated catalog to read. This is a property of the
  * schema file itself, it runs from `1.0` to `1.7`, and it decides what Solr falls back to for an
  * attribute the file does not declare.

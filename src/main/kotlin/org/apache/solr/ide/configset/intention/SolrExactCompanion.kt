@@ -1,9 +1,9 @@
 package org.apache.solr.ide.configset.intention
 
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldType
-import org.apache.solr.ide.model.SolrMatchGranularity
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrMatchGranularity
 
 /**
  * Decides whether a tokenised field can be given a companion that matches its whole value.
@@ -63,7 +63,7 @@ object SolrExactCompanion {
      * rather than to distinguish these.
      *
      * Matching the class by simple name accepts `solr.StrField` and the fully qualified spelling
-     * alike, the same way [org.apache.solr.ide.model.SolrMatchAnalysis] reads factory names.
+     * alike, the same way [org.apache.solr.ide.model.schema.SolrMatchAnalysis] reads factory names.
      *
      * @param fieldType a declared type
      * @return true if a copy rule may target a field of this type

@@ -1,10 +1,10 @@
 package org.apache.solr.ide.configset.intention
 
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldType
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrMatchCapability
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrMatchCapability
 
 /**
  * What adding a capability to one field would take.

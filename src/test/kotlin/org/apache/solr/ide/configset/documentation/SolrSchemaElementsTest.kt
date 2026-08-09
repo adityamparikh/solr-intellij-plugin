@@ -1,13 +1,13 @@
 package org.apache.solr.ide.configset.documentation
 
-import org.apache.solr.ide.model.SolrClassEntry
-import org.apache.solr.ide.model.SolrClassKind
+import org.apache.solr.ide.model.vocabulary.SolrClassEntry
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.SolrConfigsetFacts
-import org.apache.solr.ide.model.SolrCopyField
-import org.apache.solr.ide.model.SolrDynamicField
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrCopyField
+import org.apache.solr.ide.model.schema.SolrDynamicField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrFieldType
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

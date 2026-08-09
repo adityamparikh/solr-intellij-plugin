@@ -1,4 +1,4 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
 /**
  * Whether a field is indexed as one value or broken into tokens.
@@ -72,7 +72,7 @@ data class SolrMatchEvidence(val trait: SolrMatchTrait, val factory: String)
  *
  * This is the plugin's most surprising output and the one most likely to tell an experienced user
  * something they did not know, so it is also the one that has to be right. It is a pure function of
- * the chain — see [org.apache.solr.ide.model.SolrMatchAnalysis] — and carries [evidence] so that
+ * the chain — see [org.apache.solr.ide.model.schema.SolrMatchAnalysis] — and carries [evidence] so that
  * every claim can name the factory behind it.
  *
  * @property granularity whole value or tokens

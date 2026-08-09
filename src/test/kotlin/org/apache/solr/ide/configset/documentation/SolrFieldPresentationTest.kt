@@ -1,15 +1,15 @@
 package org.apache.solr.ide.configset.documentation
 
-import org.apache.solr.ide.model.SolrAnalyzerChain
-import org.apache.solr.ide.model.SolrAnalyzerComponent
-import org.apache.solr.ide.model.SolrClassAttribute
-import org.apache.solr.ide.model.SolrClassEntry
-import org.apache.solr.ide.model.SolrClassKind
-import org.apache.solr.ide.model.SolrField
-import org.apache.solr.ide.model.SolrFieldProperties
-import org.apache.solr.ide.model.SolrFieldType
-import org.apache.solr.ide.model.SolrSchemaVersion
-import org.apache.solr.ide.model.SolrValueType
+import org.apache.solr.ide.model.schema.SolrAnalyzerChain
+import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
+import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
+import org.apache.solr.ide.model.vocabulary.SolrClassEntry
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrSchemaVersion
+import org.apache.solr.ide.model.schema.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

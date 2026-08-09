@@ -11,9 +11,9 @@ import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.parsing.SolrConfigParser
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldOperation
-import org.apache.solr.ide.model.SolrFieldOperations
-import org.apache.solr.ide.model.SolrTypeTrait
+import org.apache.solr.ide.model.schema.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperations
+import org.apache.solr.ide.model.schema.SolrTypeTrait
 
 /**
  * Shared ground rules for the configset inspections.

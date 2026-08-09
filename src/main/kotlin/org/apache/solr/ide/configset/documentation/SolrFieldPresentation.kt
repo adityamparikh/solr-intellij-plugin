@@ -1,23 +1,23 @@
 package org.apache.solr.ide.configset.documentation
 
-import org.apache.solr.ide.model.SolrClassAttribute
-import org.apache.solr.ide.model.SolrClassEntry
-import org.apache.solr.ide.model.SolrClassKind
-import org.apache.solr.ide.model.SolrEffectiveProperty
-import org.apache.solr.ide.model.SolrField
-import org.apache.solr.ide.model.SolrFieldProperties
-import org.apache.solr.ide.model.SolrFieldProperty
-import org.apache.solr.ide.model.SolrFieldType
-import org.apache.solr.ide.model.SolrMatchAnalysis
-import org.apache.solr.ide.model.SolrMatchCapability
-import org.apache.solr.ide.model.SolrMatchGranularity
-import org.apache.solr.ide.model.SolrMatchTrait
-import org.apache.solr.ide.model.SolrPrefixSupport
-import org.apache.solr.ide.model.SolrPropertyOrigin
+import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
+import org.apache.solr.ide.model.vocabulary.SolrClassEntry
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
+import org.apache.solr.ide.model.schema.SolrEffectiveProperty
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldProperty
+import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrMatchCapability
+import org.apache.solr.ide.model.schema.SolrMatchGranularity
+import org.apache.solr.ide.model.schema.SolrMatchTrait
+import org.apache.solr.ide.model.schema.SolrPrefixSupport
+import org.apache.solr.ide.model.schema.SolrPropertyOrigin
 import org.apache.solr.ide.model.SolrReferenceGuide
-import org.apache.solr.ide.model.SolrSchemaVersion
-import org.apache.solr.ide.model.SolrTypeTrait
-import org.apache.solr.ide.model.SolrValueType
+import org.apache.solr.ide.model.schema.SolrSchemaVersion
+import org.apache.solr.ide.model.schema.SolrTypeTrait
+import org.apache.solr.ide.model.schema.SolrValueType
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**

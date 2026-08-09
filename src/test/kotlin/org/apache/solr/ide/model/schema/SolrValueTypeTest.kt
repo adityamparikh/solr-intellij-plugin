@@ -1,5 +1,6 @@
-package org.apache.solr.ide.model
+package org.apache.solr.ide.model.schema
 
+import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

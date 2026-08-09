@@ -13,10 +13,10 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigParameters
 import org.apache.solr.ide.configset.parsing.SolrConfigParser
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrField
+import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrFieldOperations
-import org.apache.solr.ide.model.SolrTypeTrait
+import org.apache.solr.ide.model.schema.SolrFieldOperations
+import org.apache.solr.ide.model.schema.SolrTypeTrait
 
 /**
  * Offers the schema's field names inside a `solrconfig.xml` parameter that holds them.

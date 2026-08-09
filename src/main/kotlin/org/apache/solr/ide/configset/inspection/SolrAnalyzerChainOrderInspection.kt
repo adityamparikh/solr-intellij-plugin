@@ -10,7 +10,7 @@ import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
-import org.apache.solr.ide.model.SolrMatchAnalysis
+import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 
 /**
  * Reports an analyzer component placed where the components above it have made its work impossible.

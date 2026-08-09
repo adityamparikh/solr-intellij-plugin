@@ -14,9 +14,9 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.documentation.SolrSchemaElements
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrClassCatalog
-import org.apache.solr.ide.model.SolrClassKind
-import org.apache.solr.ide.model.SolrFieldProperties
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
+import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**

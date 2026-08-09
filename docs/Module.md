@@ -58,12 +58,37 @@ localization bundle; feature code lives in subpackages.
 # Package org.apache.solr.ide.model
 
 What the plugin knows about a configset's fields, as data — and the one package
-that is not a feature. It is what both surfaces read, and the only package with
-no IntelliJ types in it, which is what lets the correctness-critical code be
-tested without a running IDE.
+that is not a feature. It is what both surfaces read, and the only tree with no
+IntelliJ types in it, which is what lets the correctness-critical code be tested
+without a running IDE.
+
+This package itself holds what is independent of any one source: `SolrConfigsetFacts`,
+the shape a parser produces; `SolrFieldModel` with `SolrFact` and `SolrAgreement`,
+which merge a repository half with a server half; and `SolrReferenceGuide`.
 
 [Why it is shared, and what `SolrFact`, `SolrMatchAnalysis` and `SolrClassCatalog`
 are for](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolridemodel).
+
+# Package org.apache.solr.ide.model.schema
+
+What a field *is*, whichever source described it — properties and their
+resolution, field types and their traits, schema versions, and the match analysis
+that says what a chain can actually match.
+
+Everything here is knowledge a server reader needs in order to interpret what it
+fetched, which is the test that separates this package from
+`org.apache.solr.ide.model.vocabulary`: Solr's schema API returns `indexed`,
+`stored`, `omitNorms` and analyzer chains, so all of it applies to a collection
+just as it applies to a file.
+
+# Package org.apache.solr.ide.model.vocabulary
+
+What a configuration file may legally contain: which attributes each element
+accepts, and the generated catalog of classes a `class` attribute may name.
+
+Distinct from `org.apache.solr.ide.model.schema` because a server never needs it.
+These answers are about XML elements and attributes, and Solr's schema API returns
+JSON — so nothing here will ever have a server half.
 
 # Package org.apache.solr.ide.configset.activation
 
