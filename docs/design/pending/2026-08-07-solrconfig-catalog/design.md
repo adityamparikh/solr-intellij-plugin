@@ -92,12 +92,29 @@ implementations beneath them — so they need the same pass with more roots.
 the resolved artifact rather than by recalling Solr's package layout. That settles the cheapest way
 this table could have been wrong.
 
-**It does not settle Solr 9**, and the roots are the kind of thing that moves between lines — the
-catalog already records that Solr 10 dropped four field-type classes and added one. The generator's
-standing failure mode applies with full force: *the way a generator fails is by producing a
-plausible short list rather than an error*, and a root missing on one line yields an empty kind with
-no error at all. So the per-kind representative assertions below are not belt-and-braces; they are
-the only thing standing between a renamed root and a feature that silently offers nothing.
+**This table should not be hand-written at all, and closing
+[Q1](../2026-08-07-solrconfig-intelligence/plan.md) is what showed why.** `SolrConfig` carries
+`public static final List<SolrPluginInfo> plugins`, and each entry pairs the element `tag` with the
+`Class<?>` that tag's `class` attribute must implement — both plain constants in the static
+initializer. So the roots are declared by the same list Solr parses `solrconfig.xml` with, and reading
+them is the same pass that yields the element names.
+
+All seven above are confirmed by it. **Sixteen more are declared that this record never listed**,
+including `QParserPlugin` (`<queryParser>`), `ValueSourceParser`, `TransformerFactory`,
+`QueryConverter`, `SolrEventListener`, `Expressible` and `InitParams` — so the hand-written table was
+not merely fragile, it was short, which is the failure this record names two paragraphs down.
+
+**That retires the worry rather than mitigating it.** The roots are the kind of thing that moves
+between lines — this catalog already records that Solr 10 dropped four field-type classes and added
+one — and the generator's standing failure mode is *producing a plausible short list rather than an
+error*. A root read from `SolrConfig.plugins` cannot go quietly missing: if Solr renames or removes
+one, the tag disappears from the generated list on that line and the per-kind assertion for it fails,
+which is a build-time absence rather than an empty kind nobody notices. The 23 tags are **identical on
+9.10.1 and 10.0.0**, verified, so the pass has a clean baseline to drift from.
+
+The per-kind representative assertions below stay, and they are still what stands between a renamed
+root and a feature that silently offers nothing — they simply now have a generated list to check
+against rather than this table.
 
 **Abstract classes and internal base classes must be excluded**, or the completion list offers
 `SearchHandler`'s abstract ancestors as things to write. The existing pass does not face this
