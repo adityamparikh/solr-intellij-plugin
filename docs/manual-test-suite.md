@@ -293,6 +293,19 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       the section that is dead configuration rather than a defect, and the presentation is
       the claim being checked. The demo's other three types stay lit, so a rule that dims
       every type would fail here rather than pass silently.
+- [ ] **INSP-10** — In `solrconfig.xml`, add `<str name="sort">text asc</str>` to the `/select`
+      handler's `defaults`. `text` is underlined: it is `multiValued`, so several values have no
+      defined order and Solr rejects a plain sort on it. **The message names what sorting needs
+      rather than asserting which part is missing** — this field is indexed and, at the demo's
+      `version="1.6"`, un-invertible, so a message blaming doc values would be false here.
+- [ ] **INSP-11** — With the schema still at `version="1.6"`, add
+      `<arr name="facet.field"><str>category</str></arr>`. **Nothing fires** — `uninvertible`
+      defaults *true* below 1.7, so an indexed field with no doc values can still be faceted by
+      un-inverting it. Now change the schema root to `version="1.7"` as DOC-6 does: the same
+      `category` is underlined, because that default flips. Undo the version edit.
+- [ ] **INSP-12** — In the same handler, `<str name="qf">category</str>` stays clean while
+      INSP-11's facet is underlined. **The same field, searchable and unfacetable at once** — the
+      check that the two inspections ask different questions rather than one question twice.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -351,6 +364,30 @@ popup, against the demo configset's declared Solr line.*
 
 ---
 
+## 9. Completion — field names inside `solrconfig.xml` parameters (PRM)
+
+*Automated: `SolrParameterFieldCompletionTest`, `SolrConfigFieldReferenceTest`. Manual adds: the
+popup where a reader actually meets it, inside a string the platform has no vocabulary for.*
+
+This is the inverse of INSP-1's warning. The list that lets an inspection say `descriptoin` is not a
+field is the list that offers `description` first, and until it shipped the plugin only ever
+corrected.
+
+- [ ] **PRM-1** — In the `/select` handler, put the caret inside `<str name="qf">` after the
+      existing value and invoke completion. The schema's fields are offered, and `*_t` appears
+      italicised as a dynamic pattern rather than a field that exists.
+- [ ] **PRM-2** — Completion inside `<str name="rows">` offers no field names. `rows` holds a
+      number, and every parameter in the file looks alike — this is the check that the offer is
+      scoped to the parameters known to hold field names.
+- [ ] **PRM-3** — With the caret immediately after the `^` in `name^3`, completion offers no
+      field. A boost is not a field name, and completing there would produce `name^name`.
+- [ ] **PRM-4** — In a `<str name="sort">`, completion offers fields at the start of a clause and
+      nothing after `text ` — the second token of a sort clause is a direction, not a field.
+- [ ] **PRM-5** — F1 on a field name inside the `qf` shows *the field's* documentation — its type
+      and analyzer chain — not the `<str>` element's. **This works through reference resolution
+      rather than a documentation branch written for it**, so it is the gesture most likely to
+      disappear silently when either provider changes.
+
 ## Not yet in the suite
 
 Checks join a section above when their feature ships; **which features those are is the
@@ -364,7 +401,9 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
-- `solrconfig.xml`'s own structure: element completion and validation
+- `solrconfig.xml`'s own *structure*: element and attribute completion, and navigation from a
+  `class` attribute to the plugin it names. What the legal elements are is settled — Solr declares
+  them in `SolrConfig.plugins` — but nothing reads them yet
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
@@ -373,10 +412,12 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The relevance-parameter check on a non-indexed field, which is built and registered but
   has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
   automatically; what manual would add is the live reaction the INSP checks exist for
-- **Do not read INSP's length as an inspection count** — eight inspection classes exist, and
-  the eight INSP checks above are scenarios over seven of them: INSP-1 and INSP-3 are both the
-  dangling-`copyField` inspection, once on a written edit and once on a live deletion, and
-  INSP-9 restores the baseline rather than testing anything
+- **Do not read INSP's length as an inspection count** — nine inspection classes exist, and the
+  INSP checks above are scenarios over them rather than one apiece: INSP-1 and INSP-3 are both the
+  dangling-`copyField` inspection, once on a written edit and once on a live deletion; INSP-10 to
+  INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
+  that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
+  anything
 
 ## Pass log
 

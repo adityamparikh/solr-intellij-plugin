@@ -44,7 +44,7 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
         """<requestHandler name="/select"><lst name="defaults">${parameters.joinToString("")}</lst></requestHandler>"""
 
     private fun unusable(field: String, parameter: String) =
-        """<warning descr="Solr: '$field' has no doc values and cannot be un-inverted, so '$parameter' will fail">$field</warning>"""
+        """<warning descr="Solr: '$parameter' will fail on '$field' — it needs doc values or an un-invertible index, and for sorting a single value per document">$field</warning>"""
 
     // --- clean fixtures, written first -----------------------------------------------------------
 
