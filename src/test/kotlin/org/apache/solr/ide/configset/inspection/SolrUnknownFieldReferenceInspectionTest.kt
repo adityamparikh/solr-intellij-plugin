@@ -133,6 +133,48 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
         checkConfig(handler("""<arr name="facet.field"><str>id</str><str>name</str></arr>"""))
     }
 
+    /**
+     * Solr's other scalar value tags carry parameters too, and a field name in one is as real.
+     *
+     * `<str>` is the spelling every example uses, which is why reading it alone went unnoticed: the
+     * parser places no restriction on the tag at all, so a `qf` written as an `<int>` produced a model
+     * reference that no position could underline. Contrived as Solr, and the point is that Solr accepts
+     * it — nothing rejects a numeric tag holding text.
+     */
+    fun testFieldNamesInSolrsOtherValueTagsAreRead() {
+        checkConfig(
+            handler(
+                """<int name="qf"><warning descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</warning></int>""",
+                """<bool name="df"><warning descr="Solr: no field named 'alsomissing' is declared in the schema">alsomissing</warning></bool>""",
+            ),
+        )
+    }
+
+    /** And a declared field in one of them is as clean. */
+    fun testDeclaredFieldsInOtherValueTagsAreClean() {
+        checkConfig(handler("""<int name="qf">name</int>""", """<long name="fl">id</long>"""))
+    }
+
+    /**
+     * A constant boost is not a field name, in any tag that can hold it.
+     *
+     * `boost` takes a multiplier and `bf` an additive function, so a flat number in either is ordinary
+     * Solr — and `<float name="boost">1.5</float>` is the natural way to write one. Reading `1.5` as a
+     * field produced a warning about a field nobody could declare, on a file that was entirely correct.
+     * The `<str>` spelling of the same value had the defect first; widening the value tags is what made
+     * the numeric spellings reach it.
+     */
+    fun testAConstantBoostIsNotReadAsAFieldName() {
+        checkConfig(
+            handler(
+                """<float name="boost">1.5</float>""",
+                """<str name="boost">2</str>""",
+                """<str name="bf">3.16e-11</str>""",
+                """<str name="qf">-2.5</str>""",
+            ),
+        )
+    }
+
     /** An unnamed `str` outside an `arr` supplies no parameter name, so nothing is examined. */
     fun testAnUnnamedValueOutsideAnArrIsIgnored() {
         checkConfig(handler("""<str>nosuchfield</str>"""))

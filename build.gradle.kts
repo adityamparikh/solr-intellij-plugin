@@ -37,6 +37,22 @@ dependencies {
         // bundledPlugin("com.intellij.java").
         intellijIdea("2026.2")
         testFramework(TestFrameworkType.Platform)
+
+        // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this
+        // executable, and without a declaration it only ran where a previous build had already left
+        // it in the Gradle cache — which is every local machine, and a CI runner only sometimes. The
+        // verify job restores its cache read-only, so on a runner whose cache lacked the CLI the
+        // task failed with *IntelliJ Plugin Verifier executable not found*, having resolved nothing
+        // and produced no report. A gate that passes according to what a cache happens to hold is
+        // not a gate.
+        //
+        // **Pinned, and that is the same argument carried one step further.** The argument-less
+        // overload defaults to `Constraints.LATEST_VERSION`, which resolves whatever the newest
+        // published verifier is at build time — so the gate's answer could change with no commit in
+        // this repository, and would change on each machine as its dynamic-version cache expired.
+        // Declaring the tool but not its version leaves the same hole a shape smaller. Bumping this
+        // is a commit, exactly as the action SHAs in `.github/workflows` are.
+        pluginVerifier("1.409")
     }
 }
 
@@ -149,6 +165,19 @@ dokka {
 // keep in sync.
 tasks.check {
     dependsOn(tasks.dokkaGenerate)
+}
+
+// Where the committed demo configset is, told to the tests that read it rather than inferred by
+// them. `DemoConfigsetTest` and `SolrDemoFindUsagesTest` exercise the files the demo is actually
+// driven on, so they need a path to real files on disk — and they had been deriving it from
+// `user.dir`, which is the project directory under Gradle but is a launcher's choice, not a fact
+// about the repository. The build knows the answer without inferring it, so it says so; the tests
+// keep the `user.dir` reading as a fallback for any runner that bypasses this task.
+//
+// Resolved at configuration time to a plain String, which is what keeps the configuration cache
+// able to store it.
+tasks.test {
+    systemProperty("demo.configset.dir", layout.projectDirectory.dir("demo/solr/conf").asFile.absolutePath)
 }
 
 // ---------------------------------------------------------------------------------------------

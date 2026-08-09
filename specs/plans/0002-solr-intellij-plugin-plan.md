@@ -465,19 +465,22 @@ recovery for.
 - [x] Searching a declaration's references reaches every one of them, including across the file
   boundary — `ReferencesSearch` on a `<field>` returns the `qf` parameter naming it.
 
-**One clause of the original criterion moved out.** It read *"All four reference kinds resolve; Find
-Usages returns every reference"*, and the second half was ticked in error. The search half is real and
-asserted, but nothing here made a *declaration* into a target the platform will accept, so the Alt-F7
-the clause describes answers *Cannot search for usages from this location* — as
-[the manual suite's NAV-3 and NAV-4](../../docs/manual-test-suite.md) record after a real pass. That
-half now belongs to [declarations as targets](#step-28-declarations-as-targets). Everything this step
-built is done and none of it changes.
+**One clause of the original criterion moved out, and has since been delivered elsewhere.** It read
+*"All four reference kinds resolve; Find Usages returns every reference"*, and the second half was
+ticked in error: the search half is real and asserted here, but nothing in this step made a
+*declaration* into a target the platform will accept, so the Alt-F7 the clause describes answered
+*Cannot search for usages from this location*. That half moved to
+[declarations as targets](#step-28-declarations-as-targets) and landed there, which is where the
+Alt-F7 criterion and its fixtures now live. Everything this step built is done and none of it
+changed.
 
 **Acceptance:** demo steps
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
 [23 — *navigate along a copyField*](../../docs/demo/README.md#step-23-navigate-along-a-copyfield),
-[24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary)
-and [27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type).
+and [24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary).
+Demo step 27 moved to [declarations as targets](#step-28-declarations-as-targets) with the criterion
+it belongs to: it now performs the search from the declaration, which is the gesture this step
+refused.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
@@ -744,27 +747,99 @@ was read only for the field names it mentions, which gave the most-edited file i
 **This is the largest step in the configuration surface and should be split when it starts.**
 It is written as one step because the pieces share a dependency and a shape, not because it is one pull request.
 
+[The design record](../../docs/design/pending/2026-08-07-solrconfig-intelligence/design.md) supplies the design this step
+was written without, [`specs/0002-solrconfig-xml-intelligence.md`](../0002-solrconfig-xml-intelligence.md) specifies the
+requirements, and [the plan beside the design](../../docs/design/pending/2026-08-07-solrconfig-intelligence/plan.md) is
+the split this step asked for: five pull requests, of which only the first is startable today.
+
+**Nothing here is startable until the groundwork lands, and that is a property of the dependencies rather than of the
+work.** Action 1 waits on where the element vocabulary comes from, actions 2 and 3 wait on the catalog, action 4 waits on
+whether Java PSI arrives as an optional dependency. The unblocked pieces are the shared foundations the other four sit
+on — pinning what attribute completion does in this file today, collapsing the duplicate "schema and `solrconfig.xml`"
+file-kind predicate, and widening the parameter reader beyond `<str>` — and they ship first and alone, while the schema
+suite is the only thing that can fail.
+
 **Actions:**
 
-1. Element and attribute completion for `solrconfig.xml`'s structure, from the catalog, with the shipped `_default` and
-   `sample_techproducts_configs` files as ground truth for what nests inside what.
+1. Element and attribute completion for `solrconfig.xml`'s structure, from the catalog, replacing the platform's
+   schema-less sibling echo. **Where the vocabulary for what nests inside what comes from is the first open question
+   below** — this step was written naming the shipped `_default` and `sample_techproducts_configs` files as ground truth,
+   and they remain the zero-findings fixture either way, but they are not currently a reachable data source.
 2. Parameter-name completion inside `defaults`, `appends` and `invariants`, and documentation on each parameter.
-3. Validation of what the catalog positively knows to be wrong: a misspelling of a name it knows, a value outside a set
-   it knows to be closed. **Never validation by absence** — a parameter the generator did not find is not thereby
-   invalid, and `solrconfig.xml` accepts plugin classes from outside Solr. Flagging the unknown would produce a false
-   positive on every project with a custom component.
+3. Validation of what the catalog positively knows to be wrong, which is one rule: a misspelling of a parameter name it
+   knows, corrected by a quick fix. **Never validation by absence** — a parameter the generator did not find is not
+   thereby invalid, and `solrconfig.xml` accepts plugin classes from outside Solr. Flagging the unknown would produce a
+   false positive on every project with a custom component.
+
+   **This action originally carried a second rule — a value outside a set the catalog knows to be closed — and the
+   specification declines it.** Closedness is knowable for only a minority of parameters: `defType` has a closed set of
+   parsers, `rows` does not, and `bf` holds a function query with its own grammar. An inspection firing on the knowable
+   minority while silent on the rest teaches the reader that an unflagged value was checked, which is the same failure as
+   validating by absence wearing different clothes. Worth reopening as its own step once the catalog can prove closedness
+   from bytecode rather than from a curated list.
 4. Navigation from a `class` attribute to the plugin it names, where that class is on the project's classpath.
+5. **Completion of schema field names inside the parameters already known to hold them** — `qf`, `pf`, `fl`, `sort` and
+   the rest of the sixteen — and quick documentation on a field name written in one. **A fifth action, which this step
+   did not ask for and should have.** It is the inverse of a capability that already ships: the unknown-field inspection
+   tells a reader that `descriptoin` is not a field, and the list that lets it say so is the list that would have offered
+   `description` before it was mistyped. It also depends on nothing — both the sixteen names and the schema's field list
+   exist today — so unlike actions 1 through 4 it waits on no catalog and no open question. The completion contributor
+   currently has no `solrconfig.xml` awareness whatsoever, so a reader gets the correction and never the suggestion.
+
+   Scoped to the sixteen and no wider, or completion starts offering field names inside `rows` and `defType`. Boost and
+   sort syntax stay untouched: `qf` offers `name` rather than `name^3`, a caret after `name^` is inside a boost, and a
+   `sort`'s second token is a direction rather than a field.
+
+**Which operations a field supports has to be settled first, and it is not an Editor-track concern.** Action 5 cannot
+offer a field the inspections then underline, so the rule deciding whether a field is searchable, filterable, facetable or
+sortable has to exist before it — and that rule has a consumer in every track. The configuration surface asks whether a
+`qf` or `facet.field` names a field that can serve it; the code track asks whether an `addFacetField("x")` will be
+rejected; the query console asks which fields completion should *offer* while a reader composes a query against a live
+core. The specification promises "a single shared model of what fields exist and what they can do", and this is the second
+half of that sentence, currently living inside one Editor-track inspection.
+
+It also corrects that inspection. Solr answers a query against a doc-values-only field — `FieldType.getFieldQuery`
+branches on `hasDocValues() && !indexed()` and reaches `SortedSetDocValuesField.newSlowRangeQuery`, byte-identically on
+both supported lines — so the present warning is a false positive there, while `facet.field` and `sort` naming a field
+with *neither* `indexed` nor `docValues` are accepted silently and rejected by Solr. Every one of these rules is a
+disjunction, and the plugin has never expressed one: every property check today resolves a single property and compares
+it. **This may deserve its own step in the model area rather than a slot under an Editor-track step**, which is a
+placement decision this plan owns.
 
 **Success criteria:**
 
 - [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.
 - [ ] A custom plugin class and its parameters produce no findings either.
 - [ ] Completion and documentation answer inside a request handler.
+- [ ] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
+      names one edit apart, so an edit-distance rule that fires on a name the catalog *knows* would report `pf3` as a
+      misspelling of `pf2`. The rule fires only on a name the catalog does not know.
+- [ ] What attribute completion offers in `solrconfig.xml` today is pinned by a fixture before the descriptor gate moves.
+      The claim that the platform's schema-less mode echoes sibling attributes here is inferred from this plugin's own
+      account of the platform, not measured, and this file is made of same-named tags — so it is the worst case for that
+      echo and the most important one to have measured rather than assumed.
+
+The last two are the criteria a split loses, because both catch silent wrongness rather than visible failure: the guard
+never fires in a passing suite, and the fixture only matters before a change that would overwrite what it records.
+
+**In flight.** Three pull requests are open and stacked, covering action 5 and the groundwork the others need:
+`#111` reads every parameter value tag and gives every editor feature one way to declare which configset file it serves;
+`#112` moves *which operations a field supports* into the model, correcting the relevance warning and adding the faceting
+and sorting check that never existed; `#113` completes schema field names inside a handler's parameters. Actions 1 through 4
+remain, and both open questions below remain open — nothing in this step is checked off until they merge.
 
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which grows to cover
 this vocabulary.
+
+**Two open questions, both to be closed before the actions they block are scoped rather than during.** Where the element
+vocabulary comes from: the shipped configsets this step names as ground truth are not on any path the build has today —
+`solr-core` carries no XML resources and those files ship in the distribution tarball — so the candidate worth
+investigating first is whether `SolrConfig`'s own plugin-info declaration enumerates the legal elements readably, which
+would make this one more generator pass instead of two vendored files. And whether the commented-out
+`com.intellij.modules.java` dependency arrives now as an optional dependency, making class navigation present in IDEA and
+absent elsewhere, or action 4 defers to Phase 3. The second is a product decision this plan owns.
 
 ### Step 26: Showing that an attribute restates the default
 
@@ -892,7 +967,7 @@ the file boundary. This step inverts the three, which is how it proves itself.
 
 **Actions:**
 
-1. A `PomDeclarationSearcher` producing a renameable target for the `name` attribute value of
+1. A `PomDeclarationSearcher` producing a named target for the `name` attribute value of
    `field`, `dynamicField` and `fieldType` in a schema file of a detected configset. The target
    delegates to the same `XmlAttributeValue` `SolrSchemaPsi` already returns, because that identity
    is what `isReferenceTo` compares — a target pointing anywhere else would make Find Usages and
@@ -914,16 +989,26 @@ this one is the search direction only.
 
 **Success criteria:**
 
-- [ ] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
+- [x] Alt-F7 on a `<field>`, `<dynamicField>` or `<fieldType>` declaration lists every reference,
   including the ones in `solrconfig.xml`; `SolrDeclarationTargetTest`'s three `yieldsNoTarget`
   assertions invert, and its reference and search assertions still hold unchanged.
-- [ ] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
+- [x] A dynamic field reports the names its pattern supplies as well as its literal spellings, each
   at the range of the name itself rather than the whole parameter value.
-- [ ] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
+- [x] Nothing outside a configset yields a Solr target, and neither does a `name` attribute the
   plugin does not model — `<requestHandler name="/select">` among them.
-- [ ] A same-named field in a second configset in the same project is not reported; Solr resolves per
+- [x] A same-named field in a second configset in the same project is not reported; Solr resolves per
   configset and so does this.
-- [ ] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does.
+- [x] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does. NAV-6 was
+  added alongside them for the dynamic-field gesture, which no existing check covered.
+
+**Two claims in the design record were wrong, and the build said so.** `RenameableDelegatePsiTarget`
+was named as the ready-made target class; it requires a `PsiNamedElement`, which an
+`XmlAttributeValue` is not — the very fact that made a declaration searcher necessary, met again one
+layer down. The target is a `DelegatePsiTarget` carrying a name instead, and rename keeps its own
+fixtures in [Step 8](#step-8-rename) rather than inheriting an untested capability here. The second:
+a caret on the attribute *name* was said to yield no target at all, and it yields the enclosing tag —
+the platform's own descriptor answer, present before this step and not this step's to remove. The
+criterion that matters, and the one asserted, is that it yields no Solr *declaration* target.
 
 **Acceptance:**
 [demo step 27 — *Find Usages on a field type*](../../docs/demo/README.md#step-27-find-usages-on-a-field-type)
@@ -955,8 +1040,24 @@ the configset walk.
 
 **Success criteria:**
 
-- [ ] Every resolved reference updates; no dangling references after rename.
-- [ ] No scaffold fixtures remain under `src/test/testData/`.
+- [x] Every resolved reference updates; no dangling references after rename.
+- [x] No scaffold fixtures remain under `src/test/testData/`. The directory is gone; nothing read
+  `foo.xml` or `foo_after.xml`, which is why they survived this long.
+
+**A dynamic field rewrites only the references that spell it, and that is a decision rather than a
+limitation.** [Declarations as targets](#step-28-declarations-as-targets) made a name the pattern
+*supplies* — `body_t` under `<dynamicField name="*_t">` — a reported usage, which is correct and is
+the point of it. Rename conflates two relations that part company exactly there: *is a usage of* and
+*should become the new name*. Left alone, `PsiReferenceBase` substitutes the declaration's new name
+into the reference's range and writes `qf">name^3 *_txt` — a pattern where a field name belongs,
+which Solr rejects. So the rewrite is confined to references spelling the declaration literally.
+
+The name left behind then matches nothing, and the alternative considered was carrying it across —
+`body_t` to `body_txt`, mechanical rather than invented, since the model already matches the two.
+That was not taken: the consequence of leaving it is *reported* rather than silent, because
+`SolrUnknownFieldReferenceInspection` fires on the orphaned name from the same position, in Solr's
+vocabulary. `SolrRenameTest` asserts the report as well as the omission, since the omission alone
+would be the silent breakage this plugin's posture forbids.
 
 **Acceptance:**
 [demo step 34 — *rename across files*](../../docs/demo/README.md#step-34-rename-across-files). Renaming a field updates

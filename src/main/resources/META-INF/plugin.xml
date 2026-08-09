@@ -56,6 +56,31 @@
                 language="XML"
                 implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
 
+        <!-- The other end of those references. The contributor above anchors every reference at a
+             use site, which makes Ctrl-click work and left Find Usages refusing from the
+             declaration: the platform had no way to turn that caret into something to search for.
+             No language attribute — declaration searchers are registered globally and decline by
+             inspecting the element, which the configset guard already does. -->
+        <pom.declarationSearcher
+                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationSearcher"/>
+
+        <!-- A dynamic field supplies names it never spells, and the word index can only offer
+             candidates that share a word with the pattern. Without this, Find Usages on
+             <dynamicField name="*_t"> silently omits every name it actually supplies. Global and
+             declining first, for the same reason as above. -->
+        <referencesSearch
+                implementation="org.apache.solr.ide.configset.reference.SolrDynamicFieldSearcher"/>
+
+        <!-- What the two above look like once the platform renders them. Without the first, the
+             Find Usages header and the rename dialog read "Solr Declaration Target" — the target's
+             own class name, which is the platform's fallback. Without the second, every usage lands
+             under "Unclassified". Both were found by a sandbox pass; neither is visible to a test
+             that asserts what the search returns. -->
+        <elementDescriptionProvider
+                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationDescriptionProvider"/>
+        <usageTypeProvider
+                implementation="org.apache.solr.ide.configset.reference.SolrUsageTypeProvider"/>
+
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
              values not on it are wrong. -->
@@ -135,6 +160,21 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+        <!-- The one inspection here that guards against silence rather than against a false positive:
+             a facet or sort naming a field with neither doc values nor an un-invertible index is a
+             request Solr refuses outright, and nothing in the configset says so. Separate from the
+             check above because searching and faceting want different structures — a field can be
+             searchable and unfacetable — and because the parameter sets do not overlap. -->
+        <localInspection
+                language="XML"
+                shortName="SolrUnsupportedFieldOperation"
+                bundle="messages.SolrBundle"
+                key="inspection.unsupportedFieldOperation.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnsupportedFieldOperationInspection"/>
         <!-- The hardest schema defect to see by reading: every class exists and every attribute is
              legal, and the filter still never runs. Registered for XML like the rest; both rules it
              carries are provable from the order of the chain alone. -->

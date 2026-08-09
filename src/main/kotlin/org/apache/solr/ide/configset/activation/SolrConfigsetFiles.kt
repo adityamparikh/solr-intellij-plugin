@@ -152,6 +152,29 @@ enum class SolrConfigsetFileKind(
     val isSchema: Boolean get() = this == SCHEMA_MANAGED || this == SCHEMA_CLASSIC
 
     /**
+     * Whether this kind is `solrconfig.xml`.
+     *
+     * Trivial, and it exists for the same reason [isSchema] does: it is how a feature *declares which
+     * file it serves*. The packages here are organised by capability — inspection, completion,
+     * reference — so nothing above this line says whether a given inspection reads the schema or the
+     * configuration, and a reader has to find the gate at the top of `buildVisitor` to know. Asking
+     * `isSolrConfig` or [isSchema] makes that gate the same shape everywhere and greppable, where four
+     * hand-written comparisons against a file-name literal were neither.
+     */
+    val isSolrConfig: Boolean get() = this == SOLR_CONFIG
+
+    /**
+     * Whether a file of this kind can hold a reference to a field: the schema and `solrconfig.xml`.
+     *
+     * The pairing several features need and none of them should restate. A field name is written in
+     * the schema that declares it, in a `copyField` that copies it and in a handler parameter that
+     * queries it — three positions across two file kinds — so anything walking a configset for field
+     * references, or supplying a vocabulary to both files, asks this rather than spelling out the
+     * disjunction. A second copy of the pairing is a second thing to forget when a kind is added.
+     */
+    val holdsFieldReferences: Boolean get() = isSchema || isSolrConfig
+
+    /**
      * Whether a file of this kind activates features on its own account.
      *
      * True for everything except resources, which are recognized inside a configset but are never
@@ -185,8 +208,17 @@ enum class SolrConfigsetFileKind(
          * @param fileName a bare file name, not a path
          * @return the matching kind, or null if the name is not a recognized configset file name
          */
-        fun forFileName(fileName: String): SolrConfigsetFileKind? =
-            entries.firstOrNull { fileName in it.fileNames }
+        fun forFileName(fileName: String): SolrConfigsetFileKind? = BY_FILE_NAME[fileName]
+
+        /**
+         * Every recognized file name, to its kind.
+         *
+         * A map rather than a scan because the reference contributor asks this per tag while declining
+         * a file, where its own comment promises the cheapest possible decline. Scanning twelve entries
+         * and testing a set membership on each was cheap in absolute terms and needlessly so.
+         */
+        private val BY_FILE_NAME: Map<String, SolrConfigsetFileKind> =
+            entries.flatMap { kind -> kind.fileNames.map { it to kind } }.toMap()
 
         /**
          * The kind matching a directory called [directoryName], or null.
@@ -220,8 +252,27 @@ enum class SolrConfigsetFileKind(
  */
 object SolrSchemaTags {
 
+    /**
+     * The attribute a declaration writes its name in.
+     *
+     * The one entry here that is not a tag name, and it is here rather than beside its readers
+     * because it is the same fact about Solr's vocabulary. `name` is also the commonest attribute
+     * in XML, so a reader of this constant is never asking it alone — the tag decides whether the
+     * attribute means a declaration, exactly as [COPY_FIELD_ENDS] and [RESOURCE_ATTRIBUTES] do.
+     */
+    const val NAME: String = "name"
+
     /** Tags that declare a field: a concrete one, or a dynamic pattern. */
     val FIELD: Set<String> = setOf("field", "dynamicField")
+
+    /**
+     * The tag declaring a dynamic field on its own.
+     *
+     * Named separately from [FIELD] for the readers that must tell the two apart rather than
+     * accept either — a dynamic field supplies names it does not spell, so what is true of
+     * searching for one is not true of searching for a concrete field.
+     */
+    const val DYNAMIC_FIELD: String = "dynamicField"
 
     /** Tags that declare a field type. Solr accepts both spellings and real configsets use both. */
     val FIELD_TYPE: Set<String> = setOf("fieldType", "fieldtype")

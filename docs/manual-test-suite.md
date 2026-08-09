@@ -112,22 +112,33 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] **NAV-2** — Cmd+Click a `<copyField>` `source` and `dest` jumps to each field's
       declaration.
 - [ ] **NAV-3** — Find Usages (⌥F7) on a field's `type="text_general"` lists every field
-      declared with that type. Invoke it from a reference: on the
-      `<fieldType name="text_general">` declaration itself the IDE answers *Cannot search
-      for usages from this location*.
+      declared with that type, and the search invoked on the
+      `<fieldType name="text_general">` **declaration** returns the same set. Both
+      directions, because the declaration is where a reader reaches for the gesture and it
+      refused until declarations became targets.
 - [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
       (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages **from a reference** —
-      the parameter itself, or a `copyField` end — lists the parameter among its usages.
-      NAV-3's caveat is not about field types: a *field* declaration refuses the search
-      too, so `<field name="description">` answers *Cannot search for usages from this
-      location* exactly as the `<fieldType>` one does.
+      in `name^3 description` navigates on its own, and Find Usages lists the parameter
+      among its usages — invoked from the parameter, from a `copyField` end, and from the
+      `<field name="description">` declaration alike.
+- [ ] **NAV-6** — Find Usages on `<dynamicField name="*_t">` in the schema reports the
+      `pf` parameter naming `body_t` in `solrconfig.xml` — a name the pattern supplies and
+      never spells, which the word index alone cannot reach. The result is highlighted at
+      `body_t` itself, not across the whole parameter value.
+- [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
+      In NAV-3's window the header reads **Field type** over `text_general`, and the results
+      group under **Field declaring this type** — not *Solr Declaration Target*, which is the
+      plugin's own class name leaking through the platform's fallback, and not
+      *Unclassified*. In NAV-6's, the header reads **Dynamic field** and the group reads
+      **Handler parameter in solrconfig.xml**. A correct result list under either of those
+      two wrong labels reads as broken to everyone but its author.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
 - [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at NAV-3 — the Find Usages
-      tool window with its results, invoked from a `type="text_general"` reference.
+      tool window with its results, invoked from the `<fieldType name="text_general">`
+      declaration, which is the gesture the demo now performs.
       [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
@@ -137,6 +148,31 @@ gesture, caret placement, the Find Usages tool window.*
       NAV-5 itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
       tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
+
+## 4a. Rename (REN)
+
+*Renaming is the reference graph read backwards and then written to. Every check here ends
+in an undo — these edit both files, and the demo has to come back clean for the sections
+below.*
+
+- [ ] **REN-1** — Caret on `category` in `<field name="category">` at
+      `managed-schema.xml:70`, press Shift+F6. **Read the dialog before typing:** it must
+      say *Rename **field** 'category'*, not *Rename Solr Declaration Target 'category'* —
+      the same description NAV-7 checks, reached by a second refactoring.
+- [ ] **REN-2** — Complete that rename to `product_category`. The declaration updates, and
+      so does the `qf` line in `solrconfig.xml:28` — the cross-file half, and the one a
+      hand-edit misses. **Undo, and confirm both files are clean.**
+- [ ] **REN-3** — Rename `text_general` from its `<fieldType>` declaration at line 31: every
+      field's `type=` follows, including the `*_t` dynamic field's. **Undo.**
+- [ ] **REN-4** — **The one that is deliberately partial.** Rename `<dynamicField name="*_t">`
+      at line 84 to `*_txt`. The declaration updates and any reference *spelling* the pattern
+      updates with it — but the `pf` naming `body_t` in `solrconfig.xml` is left exactly as
+      written, because `body_t` is a name the pattern supplied and rewriting it to `*_txt`
+      would put a glob where a field name belongs.
+- [ ] **REN-5** — Still in REN-4's state, look at that `pf`: `body_t` is now underlined by the
+      unknown-field inspection, because nothing declares it any more. **That report is what
+      makes REN-4 defensible** — the configset is broken, and the plugin says so, rather than
+      leaving it silently wrong. **Undo REN-4 and confirm the underline goes.**
 
 ## 5. Quick documentation (DOC)
 
@@ -317,7 +353,6 @@ list below is what the suite does not yet cover, and says nothing about what is 
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
 - Alt-Enter intentions generating an `_exact`/`_prefix` companion field
-- Rename refactoring on fields and field types
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection

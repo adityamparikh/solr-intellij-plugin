@@ -2,6 +2,8 @@ package org.apache.solr.ide.configset.parsing
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.apache.solr.ide.model.SolrFieldOperation
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** Field-reference extraction from `solrconfig.xml`, the file boundary the plugin exists to close. */
@@ -143,5 +145,41 @@ class SolrConfigParserTest {
         assertEquals("10.0.0", facts.luceneMatchVersion)
         assertTrue(facts.fieldReferences.isEmpty())
         assertTrue("a declared version alone means the facts are not empty", !facts.isEmpty)
+    }
+
+    // --- which operation a parameter asks for ------------------------------------------------------
+
+    /**
+     * One mapping for every caller. An inspection reporting a bad `facet.field` and a completion list
+     * filling one in have to agree about what a `facet.field` is *for*, or the plugin offers a field it
+     * then underlines. It lives here rather than in `model` because a parameter name is this file's
+     * vocabulary, and because it has to stay in step with the three field-name sets beside it.
+     */
+    @Test
+    fun `parameters map to the operation they ask for`() {
+        assertEquals(SolrFieldOperation.SEARCH, SolrConfigParser.operationFor("qf"))
+        assertEquals(SolrFieldOperation.SEARCH, SolrConfigParser.operationFor("pf3"))
+        assertEquals(SolrFieldOperation.FACET, SolrConfigParser.operationFor("facet.pivot"))
+        assertEquals(SolrFieldOperation.SORT, SolrConfigParser.operationFor("group.field"))
+    }
+
+    /**
+     * Null covers two cases worth not conflating: `fl` asks nothing of the index, while `bf` asks for a
+     * per-document value but writes it as a function query rather than a field list — so a rule applied
+     * to a whole token there would be applied to the wrong thing.
+     */
+    @Test
+    fun `parameters asking nothing checkable map to null`() {
+        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl")) {
+            assertNull(parameter, SolrConfigParser.operationFor(parameter))
+        }
+    }
+
+    /** Every parameter with an operation must be one the parser reads field names out of. */
+    @Test
+    fun `every mapped parameter holds field names`() {
+        for (parameter in listOf("qf", "pf", "pf2", "pf3", "facet.field", "facet.pivot", "sort", "group.sort", "group.field")) {
+            assertTrue(parameter, SolrConfigParser.holdsFieldNames(parameter))
+        }
     }
 }

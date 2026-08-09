@@ -39,8 +39,12 @@ internal object SolrConfigParameters {
      * also cover the `name` inside `name_prefix`.
      */
     fun fieldNameOccurrences(tag: XmlTag): List<FieldNameOccurrence> {
-        if (tag.name !in VALUE_TAGS) return emptyList()
+        if (tag.name !in SolrConfigParser.VALUE_TAGS) return emptyList()
         val parameterName = parameterNameOf(tag) ?: return emptyList()
+        // Before the parse, not after. [referencedFieldNames] builds and parses a synthetic document,
+        // and most parameters in a `defaults` list hold a number or a parser name — so on a typical
+        // handler this skips that work for the majority of tags on every highlighting pass.
+        if (!SolrConfigParser.holdsFieldNames(parameterName)) return emptyList()
         val text = tag.value.text
         val valueStart = tag.value.textRange.startOffset - tag.textRange.startOffset
 
@@ -75,8 +79,16 @@ internal object SolrConfigParameters {
      *
      * An `<str>` inside an `<arr name="facet.field">` takes its parameter name from the array; one
      * directly under a `<lst name="defaults">` carries its own.
+     *
+     * **Internal because completion asks the same question.** Offering field names inside a parameter
+     * value needs to know which parameter the caret is in, and that means both spellings — the tag's own
+     * `name`, or the enclosing `arr`'s — plus the parameter-list check that makes either meaningful. A
+     * second copy would drift from this one at the first of those three that changed.
+     *
+     * @param tag a candidate value tag
+     * @return the parameter name, or null when the tag is not a parameter value
      */
-    private fun parameterNameOf(tag: XmlTag): String? {
+    internal fun parameterNameOf(tag: XmlTag): String? {
         val own = tag.getAttributeValue("name")
         if (own != null) return own.takeIf { enclosingIsParameterList(tag.parentTag) }
         val parent = tag.parentTag ?: return null
@@ -91,8 +103,16 @@ internal object SolrConfigParameters {
      * have nothing to do with queries — an update processor chain, for one — and the parser already
      * declines to read those. Without this, positions would be reported that the model itself says
      * hold no field references.
+     *
+     * **Internal rather than private so that completion can ask the same question.** Offering parameter
+     * names, or field names inside a parameter, depends on this exact position test, and a second copy
+     * of it would agree until the day an update processor chain grew another parameter-list spelling.
+     * One predicate, three callers.
+     *
+     * @param tag the candidate parameter list, usually a value tag's parent
+     * @return whether its contents are query parameters
      */
-    private fun enclosingIsParameterList(tag: XmlTag?): Boolean =
+    internal fun enclosingIsParameterList(tag: XmlTag?): Boolean =
         tag?.name == "lst" &&
             tag.getAttributeValue("name") in PARAMETER_SETS &&
             tag.parentTag?.name in PARAMETER_CARRIERS
@@ -115,8 +135,6 @@ internal object SolrConfigParameters {
     private fun escapeXml(text: String): String =
         text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
-    /** Tags whose text holds a parameter value. */
-    private val VALUE_TAGS = setOf("str")
 
     /** `lst` names whose contents are query parameters. */
     private val PARAMETER_SETS = setOf("defaults", "appends", "invariants")

@@ -98,9 +98,16 @@ this offset in this element", and answers with a `PomTarget` that the platform c
 usable PSI element. It is the platform's own answer to *a declaration that is not its own named
 element*, which is exactly the shape of a Solr schema.
 
-The target delegates to the `XmlAttributeValue` that `SolrSchemaPsi` already returns —
-`RenameableDelegatePsiTarget` is the ready-made class for this, and being renameable is what makes
-Step 8 a smaller change later rather than a second foundation.
+The target delegates to the `XmlAttributeValue` that `SolrSchemaPsi` already returns.
+
+**This paragraph named `RenameableDelegatePsiTarget` as the ready-made class for it, and that was
+wrong — the compiler said so on the first build.** That class takes a `PsiNamedElement`, and an
+`XmlAttributeValue` is not one; it is the same fact that made a declaration searcher necessary in
+the first place, met again one layer down. What ships is a `DelegatePsiTarget` carrying a name of
+its own, because `ReferencesSearch` needs a word to look for and takes it from the target's name.
+Rename therefore inherits the identity but not a ready-made rename, which is the honest place to
+leave it: Step 8 writes the renaming with the fixtures that prove it, rather than this step
+claiming an untested capability on the way past.
 
 **The delegation is load-bearing, not a convenience.** The target's element must be *the same
 element* every existing reference resolves to, because that identity is what `isReferenceTo`
@@ -182,6 +189,7 @@ Bounds, stated rather than discovered later:
 | entered only for a `dynamicField` target | concrete fields keep the default word-index path, which already works and is faster |
 | scoped to the owning configset | a same-named field in a *different* configset is not a usage — Solr resolves per configset, so this is correctness, not a shortcut |
 | declines before doing any work for any other target | the executor is consulted on every `ReferencesSearch` in the project, so the first check must be the cheap one |
+| intersected with the caller's own search scope | the configset is the *upper* bound. A caller that narrowed the search has said which results it wants, and a walk that put the excluded file back would answer a question nobody asked. Added after a fixture caught the walk ignoring a `LocalSearchScope` |
 
 Each usage is reported at the occurrence's own range, so `name^3 body_t` highlights `body_t` alone —
 the ranges `SolrConfigParameters` already computes for the references.
@@ -212,8 +220,13 @@ than new tests grading their own homework.
   beside it, since the executor adds to the default result rather than replacing it.
 - **The negative cases carry the weight, as they do for the intentions.** A `name=` attribute in a
   non-configset XML file yields no Solr target; `<requestHandler name="/select">` yields none; a
-  caret on the attribute *name* rather than its value yields none; and a same-named field in a
-  second configset in the same project is not reported.
+  `<field>` tag written into `solrconfig.xml` yields none, since only a schema declares fields; and
+  a same-named field in a second configset in the same project is not reported.
+- **A caret on the attribute *name* yields no Solr target — but it does not yield nothing**, which
+  is how this was first written and is false. Measured, the platform answers that position with the
+  enclosing tag, through the descriptor machinery `SolrSchemaElementDescriptorProvider` feeds, and
+  did so before this step existed. That answer is *what attribute is this*, not a claim about the
+  field named, and it is not this step's to remove. The assertion is therefore the narrower one.
 - The declaration's own name is not reported as a usage of itself.
 
 ## Registration
@@ -229,10 +242,13 @@ the model and the detector, and contact nothing.
 
 ## Risks
 
-- **The target and the reference targets are not equated.** The one genuine unknown, and the reason
-  the proving fixture comes first rather than last. If it fails, the fallback is to have the
-  references resolve to the POM-derived element instead of the raw attribute value — a change inside
-  `SolrSchemaPsi` and its four callers, contained but not free.
+- ~~**The target and the reference targets are not equated.**~~ **Settled, and it was the one genuine
+  unknown.** `testFindUsagesFromADeclarationReachesTheCrossFileReference` was written before the
+  searcher existed and passes with it: the platform equates the `PomTargetPsiElement` with the
+  `XmlAttributeValue` it delegates to, so `isReferenceTo` matches and every existing reference is
+  found unchanged. The fallback — resolving the references to the POM-derived element instead, a
+  change inside `SolrSchemaPsi` and its four callers — was not needed and is recorded here only
+  because a future move to the Symbol API would face the same question.
 - **A declaration searcher runs on every caret movement in every XML file, and the references
   executor on every search in the project.** Mitigated by the same ordering the reference providers
   use: cheapest check first, and the configset detector is cached. The executor's first act is to ask

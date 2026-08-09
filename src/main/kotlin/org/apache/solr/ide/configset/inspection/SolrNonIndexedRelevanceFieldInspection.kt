@@ -1,49 +1,48 @@
 package org.apache.solr.ide.configset.inspection
 
 import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
-import com.intellij.psi.XmlElementVisitor
-import com.intellij.psi.xml.XmlTag
-import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.configset.parsing.SolrConfigParameters
+import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.parsing.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrFieldProperties
+import org.apache.solr.ide.model.SolrFieldOperation
 
 /**
- * Reports a query-field parameter in `solrconfig.xml` naming a field the schema declares but does
- * not index.
+ * Reports a query-field parameter in `solrconfig.xml` naming a field no query can search.
  *
  * The sibling of [SolrUnknownFieldReferenceInspection], asking a harder question at the same
  * position. There the field is missing and a reader who goes looking can at least see that; here the
- * field is right there in the schema, spelled correctly, and the parameter still does nothing. A
- * `qf` naming an `indexed="false"` field contributes no clause to the query and no boost to the
- * score: the terms were never written to the inverted index, so there is nothing for the query
- * parser to match against. Solr does not complain, the handler still answers, and the results are
- * quietly ranked by everything except the field the author thought they had emphasised.
+ * field is right there in the schema, spelled correctly, and the parameter still does nothing — no
+ * clause in the query and no boost to the score, because nothing was written that the query parser
+ * could match against. Solr does not complain, the handler still answers, and the results are quietly
+ * ranked by everything except the field the author thought they had emphasised.
  *
  * **The parameters examined are `qf`, `pf`, `pf2` and `pf3` — the DisMax query- and phrase-field
- * family — and no others.** Those four are the ones whose values become term and phrase queries
- * against the inverted index, which is the structure `indexed` governs. `bf` and `boost` look like
- * they belong beside them and do not: their values are function queries, evaluated per document
- * from doc values or an un-inverted field, so `bf=popularity` over a non-indexed field with doc
- * values is correct and common. Flagging those would be a warning on a working configuration, which
- * is the failure this package is organised to avoid.
+ * family — and no others.** Those four are the ones whose values become term and phrase queries.
+ * `bf` and `boost` look like they belong beside them and do not: their values are function queries,
+ * evaluated per document from doc values or an un-inverted field, so `bf=popularity` over a
+ * non-indexed field with doc values is correct and common. Flagging those would be a warning on a
+ * working configuration, which is the failure this package is organised to avoid.
+ *
+ * **Whether a field is searchable is [org.apache.solr.ide.model.SolrFieldOperations]' question, not
+ * this class's, and the reporting rule is [SolrInspections.fieldOperationVisitor]'s.** It was read
+ * here as `indexed="false"` and that was wrong: Solr turns an exact match on a doc-values-only field
+ * into a single-value range query over the doc values rather than refusing it, so such a field *is*
+ * searchable and this inspection warned about a working configuration. The rule is a disjunction over
+ * two properties, it belongs to the model, and it has readers outside this file — the code surface
+ * asks it of a SolrJ call and a query console asks it while completing a parameter. Three
+ * implementations would be three chances to disagree.
  *
  * **A dynamic field is flagged like any other.** [org.apache.solr.ide.model.SolrFieldModel.resolve]
  * applies Solr's own longest-literal rule, so what a `qf` token resolves to here is what it resolves
- * to at query time, and its `indexed` is as real. This case earns its keep rather than merely being
+ * to at query time, and its properties are as real. This case earns its keep rather than merely being
  * consistent: a schema carrying the common `<dynamicField name="*" .../>` catch-all leaves the
  * unknown-field inspection with nothing to say about *any* name, and this is then the only check
  * that can tell the author their `qf` is searching an ignore rule.
  *
- * **`indexed` is resolved, never read.** The attribute is usually absent, and the answer then comes
- * from the field type, from the schema's declared `version`, or from Solr's default — a three-tier
- * resolution [SolrFieldProperties.resolve] already owns. Only an explicit, resolved `false` is
- * reported; [org.apache.solr.ide.model.SolrPropertyOrigin.UNDETERMINED] yields a null value and is
- * passed over in silence, because a field type whose class the catalog has never seen is exactly
- * where asserting a default would be inventing one.
+ * **Only a definite no is reported.** A null from the model means a property the rule needs is
+ * undetermined — a field type whose class the catalog has never seen — and that is exactly where
+ * asserting a default would be inventing one.
  *
  * No quick-fix is offered, and that is deliberate. The two repairs are to index the field or to name
  * a different one, and both are decisions about what the search is meant to do — the first edits
@@ -69,62 +68,16 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         // Only `solrconfig.xml` carries these; running the visitor over a schema would be wasted
         // work on every keystroke.
-        if (holder.file.name != "solrconfig.xml") return PsiElementVisitor.EMPTY_VISITOR
+        if (SolrConfigsetFileKind.forFileName(holder.file.name)?.isSolrConfig != true) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-
-        return object : XmlElementVisitor() {
-            override fun visitXmlTag(tag: XmlTag) {
-                for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
-                    if (occurrence.parameterName !in QUERY_FIELD_PARAMETERS) continue
-                    if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
-                    // An undeclared field is the other inspection's finding. Saying it twice, in two
-                    // vocabularies, on the same underline is worse than saying it once.
-                    val field = model.resolve(occurrence.fieldName) ?: continue
-                    val fieldType = model.typeOf(field)
-                    val indexed = SolrFieldProperties.resolve(
-                        INDEXED,
-                        field,
-                        fieldType,
-                        model.schemaVersion,
-                        model.traitsOf(fieldType),
-                    )
-                    if (indexed.value != "false") continue
-                    holder.registerProblem(
-                        tag,
-                        SolrBundle.message(
-                            "inspection.nonIndexedRelevanceField.notSearchable",
-                            occurrence.fieldName,
-                            occurrence.parameterName,
-                        ),
-                        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                        occurrence.rangeInTag,
-                    )
-                }
-            }
-        }
-    }
-
-    private companion object {
-
-        /**
-         * The parameters whose values become queries against the inverted index.
-         *
-         * DisMax's `qf` and edismax's inheritance of it, plus the phrase-field family. Deliberately
-         * short: every parameter added here is a new way to be wrong about a correct file, and the
-         * ones that look adjacent — `bf`, `boost`, `sort`, `facet.field` — are all served by doc
-         * values rather than by the index, so `indexed="false"` says nothing about them.
-         */
-        val QUERY_FIELD_PARAMETERS = setOf("qf", "pf", "pf2", "pf3")
-
-        /**
-         * The `indexed` property, looked up once rather than per occurrence.
-         *
-         * Read from the table rather than restated, so that a future version-conditional or
-         * type-conditional default is picked up here without this file changing.
-         */
-        val INDEXED = requireNotNull(SolrFieldProperties.byName("indexed")) {
-            "the property table must carry 'indexed'"
-        }
+        return SolrInspections.fieldOperationVisitor(
+            holder,
+            model,
+            setOf(SolrFieldOperation.SEARCH),
+            "inspection.nonIndexedRelevanceField.notSearchable",
+        )
     }
 }
