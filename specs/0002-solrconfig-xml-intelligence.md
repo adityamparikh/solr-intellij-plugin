@@ -196,6 +196,75 @@ nothing; `fq` holds query syntax and is [an open question](#open-questions) rath
 Likewise `sort` takes `field direction`, so the second token is not a field. The occurrence mapping
 that already locates field names within these values is what knows the difference.
 
+**FR-11 — The non-indexed relevance warning must not fire on a field that carries doc values.** This
+corrects the inspection that already ships, and it is a requirement here because
+[FR-9](#requirements) cannot be built around a rule that is wrong: the list completion offers and the
+inspection that judges what was written must agree, or the plugin suggests a field it then underlines.
+
+**Solr answers a query against a doc-values-only field, and the mechanism is explicit in the
+bytecode** — verified against both supported lines rather than recalled:
+
+`FieldType.getFieldQuery` opens with `hasDocValues() && !indexed()`, and on that branch delegates to
+`getRangeQuery` with the value as both bounds, which reaches
+`SortedSetDocValuesField.newSlowRangeQuery`. An exact match becomes a single-value doc-values range
+query. Slower than a term lookup, and functional. `StrField` overrides none of it. So a `qf` naming a
+doc-values-only string field *does* search it, and the warning's claim that it "cannot search or boost
+it" is false.
+
+**The inspection's original case is untouched and remains correct.** `TextField` overrides
+`getFieldQuery` for the analysis path and declares no doc-values support at all, so a non-indexed
+*text* field in a `qf` is genuinely unsearchable — which is what the inspection was written for and
+what its other fixtures assert.
+
+**One nuance worth carrying into the fix rather than discovering later.** A doc-values range query is
+constant-scoring, so a boost on such a field multiplies a constant rather than a relevance score. The
+field is searchable and boostable; what it is not is *ranked* by term statistics. That makes silence
+correct and makes a reworded warning the wrong repair.
+
+**FR-12 — Which operations a field supports is a fact about the model, not about an inspection.** The
+rule FR-11 corrects must live in `org.apache.solr.ide.model` beside the rest of the field model, and the
+configuration surface is the least important of its consumers.
+
+**It has one in each of the plugin's three tracks, which is what makes the model the only defensible
+home:**
+
+| Track | Asks |
+|---|---|
+| Configuration | Is this `qf`, `facet.field` or `sort` in `solrconfig.xml` naming a field that can serve it? |
+| Code | Can this `addFacetField("x")` or sort-by-`x` in SolrJ work, or will the server reject it? |
+| Query console | Which fields should completion *offer* for this parameter, when the reader is composing a query against a live core? |
+
+Three implementations of "is this field facetable" is three chances to disagree, across surfaces the
+parent specification exists to make agree — its stated purpose is connecting the three "through a single
+shared model of what fields exist and what they can do". **These rules are the "what they can do" half,
+and they currently live in one inspection.**
+
+The console consumer is the one that changes the shape rather than merely adding a caller: an inspection
+asks *is this wrong*, and completion asks *what may I write*. A rule that only answers the first as a
+boolean cannot rank or filter a completion list, so the model fact should name the operations a field
+supports rather than answer one question per call site.
+
+`SolrMatchCapability` is the precedent and the shape to follow: it models what a field can *match*, from
+its analyzer chain, imports no IntelliJ type, and is read by six surfaces. What is missing is its sibling
+— which *operations* a field supports.
+
+| Operation | Rule | Expressed today |
+|---|---|---|
+| Search and boost | `indexed`, or `docValues` for a non-text type | Partly, and wrongly, inside one inspection |
+| Filter | `indexed` or `docValues` | Nowhere — `fq` has no references at all |
+| **Facet** | `docValues`, or `indexed` and uninvertible | **Nowhere.** A `facet.field` naming a field with neither is accepted silently, and Solr fails the request |
+| **Sort** | `docValues`, or `indexed` and uninvertible; and single-valued | **Nowhere**, same gap |
+| Highlight | `stored`, and the chain for the faster highlighters | Nowhere |
+
+**Every rule there is a disjunction, and the plugin has never expressed one** — every property check
+today resolves one property and compares it. `SolrFieldProperties` already resolves `indexed`,
+`docValues`, `stored` and `multiValued` three tiers deep, so the facts are present and only the combining
+rule is absent.
+
+**The facet and sort rows are a different failure from the rest of this document.** Everywhere else the
+risk is firing on a correct file; there the plugin stays silent on a configuration Solr will reject
+outright. Both are worth having for that reason.
+
 **FR-10 — Quick documentation on a field name in a parameter value.** Hovering `name` inside
 `<str name="qf">name^3</str>` answers with the field's documentation, as hovering its declaration does.
 
@@ -429,18 +498,7 @@ configset.
    with the same three-tier resolution as `indexed`, and inlay hints, the exact-companion intention and
    quick documentation all already read it. What is missing is a consumer, not a fact.
 
-5. **Should the non-indexed relevance warning fire on a field that carries doc values?** This is a
-   question about the inspection that already ships, surfaced while specifying the above, and
-   [pinned by a test](#testing-strategy) rather than left to recollection. Solr can answer term and range
-   queries against a doc-values-only primitive field by scanning doc values instead of consulting the
-   index — slower, but functional — which would make the warning a false positive on a working
-   configuration. Two things narrow it: `TextField` does not support doc values, so a non-indexed *text*
-   field in a `qf` is definitively unsearchable and is the case the inspection was written for; and a
-   doc-values-only `StrField` in a `qf` is unusual, which is why nobody has hit it. **It bears directly on
-   [FR-9](#requirements)**: if completion offers field names into a `qf`, the list it offers and the
-   inspection that judges what was written must agree about this field, or the plugin suggests something
-   it then underlines.
-6. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
+5. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
    explicit convention that a slice shares its parent's number, is a housekeeping decision worth
    making before a third file arrives.
 

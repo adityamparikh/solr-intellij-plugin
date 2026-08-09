@@ -790,6 +790,22 @@ suite is the only thing that can fail.
    sort syntax stay untouched: `qf` offers `name` rather than `name^3`, a caret after `name^` is inside a boost, and a
    `sort`'s second token is a direction rather than a field.
 
+**Which operations a field supports has to be settled first, and it is not an Editor-track concern.** Action 5 cannot
+offer a field the inspections then underline, so the rule deciding whether a field is searchable, filterable, facetable or
+sortable has to exist before it — and that rule has a consumer in every track. The configuration surface asks whether a
+`qf` or `facet.field` names a field that can serve it; the code track asks whether an `addFacetField("x")` will be
+rejected; the query console asks which fields completion should *offer* while a reader composes a query against a live
+core. The specification promises "a single shared model of what fields exist and what they can do", and this is the second
+half of that sentence, currently living inside one Editor-track inspection.
+
+It also corrects that inspection. Solr answers a query against a doc-values-only field — `FieldType.getFieldQuery`
+branches on `hasDocValues() && !indexed()` and reaches `SortedSetDocValuesField.newSlowRangeQuery`, byte-identically on
+both supported lines — so the present warning is a false positive there, while `facet.field` and `sort` naming a field
+with *neither* `indexed` nor `docValues` are accepted silently and rejected by Solr. Every one of these rules is a
+disjunction, and the plugin has never expressed one: every property check today resolves a single property and compares
+it. **This may deserve its own step in the model area rather than a slot under an Editor-track step**, which is a
+placement decision this plan owns.
+
 **Success criteria:**
 
 - [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.

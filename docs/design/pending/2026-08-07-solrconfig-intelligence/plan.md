@@ -38,7 +38,9 @@ PR A  groundwork ── no dependencies, start here ─┐
 PR 0  ── catalog extension ──────────────────────┼─→ PR 2  parameters
    (separate design record)                      └─→ PR 3  near-miss inspection  (needs PR 2)
 
-PR B  field names in parameter values  ── needs no catalog, runs beside PR A
+PR C  field operation capabilities ─→ PR B  field names in parameter values
+   (neither needs the catalog; both run beside PR A)
+
 PR 4  class navigation  ── independent of all of the above, needs Q2
 ```
 
@@ -102,6 +104,59 @@ and a `sort`'s second token offer nothing; hover on a field name in a `qf` answe
 **Settle Q4 first.** Whether a doc-values-only field belongs in a `qf` completion list is the same
 question as whether the relevance inspection should flag one, and answering it in two places
 independently is how a plugin comes to suggest a field it then underlines.
+
+### PR C — Which operations a field supports, as a model fact
+
+**The rule Q4 settled belongs in `model`, not inside an inspection**, and the reason is the code track
+rather than this one. When SolrJ completion arrives it will ask the same question from the other side —
+whether `addFacetField("x")` or a sort on `x` can work — and a rule living inside a `solrconfig.xml`
+inspection is unreachable from there. Two implementations of "is this field facetable" is two chances to
+disagree, in two surfaces a reader expects to agree.
+
+**It has a consumer in each of the plugin's three tracks**, which is what makes `model` the only
+defensible home: the configuration surface asks whether a `qf`, `facet.field` or `sort` names a field that
+can serve it; the code track asks whether an `addFacetField("x")` will be rejected by the server; and the
+query console asks which fields completion should *offer* for a parameter while a reader composes a query.
+Three implementations is three chances to disagree, across the surfaces the parent specification exists to
+make agree — it promises "a single shared model of what fields exist and what they can do", and **these
+rules are the second half of that sentence.**
+
+The console consumer changes the shape rather than merely adding a caller. An inspection asks *is this
+wrong*; completion asks *what may I write*. A boolean per call site cannot rank or filter a completion
+list, so the model fact names the operations a field supports rather than answering one question per
+caller.
+
+**The precedent is exact.** `SolrMatchCapability` models what a field can *match*, derived from its
+analyzer chain, lives in `model` with no IntelliJ import, and is read by six surfaces — inlay hints, two
+intentions, documentation, completion and an inspection. What is missing is the sibling: which *operations*
+a field supports.
+
+**Because it spans all three tracks, the plan may want this as its own step** in the model area rather
+than as a pull request under Step 25, which is an Editor-track step. Recorded here rather than decided:
+the plan owns where a step sits.
+
+| Operation | Rule | Expressed today |
+|---|---|---|
+| Search / boost — `qf`, `pf` | `indexed`, **or** `docValues` for a non-text type (Q4) | Partly, and wrongly, inside one inspection |
+| Filter — `fq` | `indexed` **or** `docValues` | Nowhere. `fq` has no references at all — Q3 |
+| **Facet — `facet.field`** | `docValues`, **or** `indexed` and uninvertible | **Nowhere.** A `facet.field` naming a field with neither is silently accepted, and Solr fails the request |
+| **Sort** | `docValues`, **or** `indexed` and uninvertible; and single-valued | **Nowhere**, same gap |
+| Highlight — `hl.fl` | `stored`, and the chain for the faster highlighters | Nowhere |
+
+**Every rule in that table is a disjunction, and the plugin has never expressed one.** Every property
+check today resolves one property and compares it. That is the shape change, and it is the reason this is
+its own PR rather than a line in another: `SolrFieldProperties` already resolves `indexed`, `docValues`,
+`stored` and `multiValued` three tiers deep, so the facts are present and only the combining rule is
+missing.
+
+**Scope discipline.** This PR moves the `qf` rule and adds the facet and sort rules, because those two are
+the ones whose absence lets a *broken* configuration through — the opposite failure from the rest of this
+plan, and the reason they are worth having. `fq` waits on Q3, and highlighting waits on someone wanting it.
+
+**Gate:** the doc-values-only `qf` fixture flips from flagged to clean; a `facet.field` and a `sort` naming
+a field with neither `indexed` nor `docValues` are flagged; `popularity` in a `facet.field` and a `sort`
+stays clean, as its existing fixtures already assert; and the non-indexed *text* field in a `qf` is still
+flagged.
 
 ### PR 0 — Catalog extension
 
@@ -215,20 +270,29 @@ consult. Every property check the plugin makes resolves one property and compare
 hints, the exact-companion intention and quick documentation all read it — so what is missing is a
 consumer rather than a fact.
 
-**Q4 — Should the non-indexed relevance warning fire on a field carrying doc values?** A question about
-the inspection that already ships, surfaced while specifying field-name completion. Solr can answer term
-and range queries against a doc-values-only primitive field by scanning doc values rather than consulting
-the index, which would make the warning a false positive on a working configuration. `TextField` does not
-support doc values, so a non-indexed *text* field in a `qf` is definitively unsearchable and is the case
-the inspection was written for; a doc-values-only `StrField` in a `qf` is unusual, which is why nobody has
-hit it.
+**Q4 — Should the non-indexed relevance warning fire on a field carrying doc values? — CLOSED: no, and
+it does today.**
 
-**Already pinned by a test rather than left to recollection** — the fixture schema carried the field and
-no case put it in a `qf`, so the one contentious position was the one unasserted. It fires today.
+`FieldType.getFieldQuery` opens with `hasDocValues() && !indexed()` and on that branch delegates to
+`getRangeQuery` with the value as both bounds, reaching `SortedSetDocValuesField.newSlowRangeQuery`. An
+exact match becomes a single-value doc-values range query — slower than a term lookup, and functional.
+`StrField` overrides none of it. **Byte-identical on 9.10.1 and 10.0.0**, read off the resolved artifacts
+rather than recalled.
 
-*Closed by:* a Solr fact, per field type and per line, and it should be settled before **PR B** rather
-than after: if completion offers field names into a `qf`, the list it offers and the inspection that
-judges what was written must agree, or the plugin suggests something it then underlines.
+So the warning is a false positive on a doc-values-only field, and the fix is silence rather than a
+reworded message: the field is searchable *and* boostable, since a constant-scoring range query still
+multiplies by the boost. What it is not is *ranked* by term statistics, which is a subtler claim than an
+inspection should be making.
+
+**The original case is untouched.** `TextField` overrides `getFieldQuery` for the analysis path and
+declares no doc-values support at all, so a non-indexed *text* field in a `qf` is genuinely unsearchable —
+what the inspection was written for, and what its other fixtures assert.
+
+Behaviour is [pinned by a test](../../../../src/test/kotlin/org/apache/solr/ide/configset/inspection/SolrNonIndexedRelevanceFieldInspectionTest.kt)
+written before the answer was known, so the fix flips a recorded expectation rather than discovering one.
+
+*Fixed by:* **PR C**, which must land before PR B — completion cannot offer a field the inspection then
+underlines.
 
 ## What ships alongside
 
