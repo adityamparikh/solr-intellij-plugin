@@ -7,6 +7,7 @@ import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
+import org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider
 
 /**
  * Navigation from a `solrconfig.xml` handler parameter to the schema field it names.
@@ -109,6 +110,59 @@ class SolrConfigFieldReferenceTest : SolrConfigsetTestCase() {
         assertTrue(
             "expected a reference from solrconfig.xml, got: ${references.map { it.element.containingFile.name }}",
             references.any { it.element.containingFile.name == "solrconfig.xml" },
+        )
+    }
+
+    /**
+     * Hover on a field name inside a qf parameter resolves to field documentation via reference
+     * resolution when SolrConfigsetDocumentationProvider declines the position.
+     *
+     * This is FR-10's regression coverage: the documentation provider's `getCustomDocumentationElement`
+     * claims attribute values and schema tags, but a field name in qf is tag *text* and matches
+     * neither, so the provider returns null. The platform then resolves the reference at the caret
+     * and documents its target instead, which the reference contributor supplies. Without this test,
+     * the behaviour is one refactor away from an unnoticed regression — either the documentation
+     * provider claiming tag text for a different feature, or the reference contributor changing its
+     * resolution order, would break hover on field names in parameters.
+     */
+    fun testHoverOnFieldNameInQfParameterResolvesDocumentation() {
+        myFixture.addFileToProject("managed-schema.xml", schema)
+        myFixture.configureByText(
+            "solrconfig.xml",
+            "<config><luceneMatchVersion>10.0.0</luceneMatchVersion>${handler("""<str name="qf">na<caret>me^3 description</str>""")}</config>",
+        )
+        val provider = SolrConfigsetDocumentationProvider()
+        // The documentation provider must decline this position (return null) because it's tag text,
+        // not an attribute value or schema element. This lets the platform fall through to reference
+        // resolution.
+        val customElement = provider.getCustomDocumentationElement(
+            myFixture.editor,
+            myFixture.file,
+            myFixture.file.findElementAt(myFixture.caretOffset),
+            myFixture.caretOffset,
+        )
+        assertNull(
+            "SolrConfigsetDocumentationProvider must decline field names in parameter text",
+            customElement,
+        )
+        // The platform resolves the reference and documents the target. We verify this by getting
+        // the quick documentation at the caret position, which will follow the reference to the field
+        // declaration if the reference contributor is working.
+        val reference = myFixture.getReferenceAtCaretPosition()
+        assertNotNull("expected a reference at the caret", reference)
+        val target = reference!!.resolve()
+        assertNotNull("expected the reference to resolve to the field declaration", target)
+        val targetTag = (target as XmlAttributeValue).parentOfType<XmlTag>()!!
+        assertEquals("field", targetTag.name)
+        assertEquals("name", targetTag.getAttributeValue("name"))
+        // Verify that documentation is available for the resolved target. The platform will call
+        // generateDoc on the resolved target, and the documentation provider should answer for
+        // the field declaration.
+        val doc = provider.generateDoc(target, target)
+        assertNotNull("expected documentation for the field declaration", doc)
+        assertTrue(
+            "expected the field name in the documentation: $doc",
+            doc!!.contains("name"),
         )
     }
 }
