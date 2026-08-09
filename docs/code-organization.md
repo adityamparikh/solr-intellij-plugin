@@ -55,13 +55,95 @@ applies to a collection. It returns JSON and has no elements or attributes, so n
 
 New packages are created when they have a file to hold, not in advance.
 
+## The tree
+
+Counts are files, to show weight rather than to be kept current.
+
+```
+org.apache.solr.ide
+├── SolrBundle                        every user-visible string, in one place
+│
+├── model                         (3) what a configset MEANS — no IntelliJ types anywhere in here
+│   ├── schema                    (8)   what a field IS: its type, what it can match, what it can do
+│   └── vocabulary                (2)   what a FILE may legally contain: element names, class names
+│
+├── configset                           the files in the repository — one of two sources of the model
+│   ├── activation                (6)   is this even a Solr project, and which configset owns this file
+│   ├── reading                   (3)   the whole DIRECTORY → one model. Platform-aware, and caches
+│   ├── editing                   (2)   guard rails both aspects' inspections and fixes share
+│   ├── navigation                (5)   the gestures that cross files: Find Usages, rename
+│   │
+│   ├── schema                          managed-schema.xml / schema.xml
+│   │   ├── parsing               (1)     one file's TEXT → facts. No IntelliJ types at all
+│   │   ├── inspection            (6)     the squiggly underline, and Alt+Enter fixes on it
+│   │   ├── intention             (6)     Alt+Enter on code that is already CORRECT
+│   │   ├── completion            (1)     the popup on Ctrl+Space
+│   │   ├── reference             (1)     what makes a string Ctrl+Clickable
+│   │   ├── documentation         (4)     the popup on F1 / hover
+│   │   ├── hint                  (1)     grey text the IDE draws that is not in the file
+│   │   └── descriptor            (1)     teaching the platform's XML support this file's shape
+│   │
+│   └── solrconfig                (1)   solrconfig.xml — same gestures, fewer of them so far
+│       ├── parsing               (1)
+│       ├── inspection            (3)
+│       ├── completion            (2)
+│       └── reference             (1)
+│
+└── server
+    └── connection                (1)   how to reach a running Solr, and remembering it
+```
+
+### If you have not written an IntelliJ plugin before
+
+Every leaf under an aspect is named for a **platform extension point** — a slot the IDE calls into.
+The names are the platform's, not this plugin's, so they are worth learning once. What each one *is*
+is best described by what the user sees:
+
+| Package | What the user sees | You are changing it when |
+|---|---|---|
+| `inspection` | A **squiggly underline**, an entry in the Problems view, and often an Alt+Enter fix on it | Something in the file is *wrong* and the plugin should say so |
+| `intention` | An **Alt+Enter menu item on a file with nothing wrong with it** — no underline | You are offering an improvement or a generated edit, not reporting a defect |
+| `completion` | The **popup on Ctrl+Space**, or as you type | You want to offer what may legally be written at the caret |
+| `reference` | **Ctrl+Click navigates**, Find Usages finds, rename updates | A string in one file names something declared elsewhere |
+| `documentation` | The **popup on F1**, or on hover | You want to explain the thing under the caret |
+| `hint` | **Grey text the IDE draws inline** that is not in the file and cannot be edited | You want to annotate code without changing it |
+| `descriptor` | Nothing directly — it changes what *other* features know | The platform's own XML support needs to be told this file's vocabulary |
+| `activation` | Whether the plugin does **anything at all** in this project | You are changing what counts as a Solr project or configset |
+| `parsing` | Nothing directly — everything else reads its output | You are changing what the plugin understands from **one file's text**. Imports no IntelliJ type, so its tests are plain JUnit over a string |
+| `reading` | Nothing directly — it produces the model every feature reads | You are changing how the **whole directory** becomes one model, or how that is cached. Platform-aware: `Project`, `VirtualFile`, `Service` |
+
+**The distinction that catches people is `inspection` versus `intention`.** Both put items behind
+Alt+Enter. An inspection first says *this is wrong* — so it must not fire on a correct file, which is
+[the rule this codebase cares about most](#rules-that-hold-across-every-package). An intention says
+*here is something you might want*, and firing on a correct file is the whole point. If your change
+would underline something, it is an inspection; if it would not, it is an intention.
+
+**`reference` is worth more than it looks.** Implementing it once gets Ctrl+Click, Find Usages *and*
+rename, because the platform builds all three on the same abstraction — which is why a string that
+should be navigable is a reference rather than three separate features.
+
+**`parsing` and `reading` are two words for what looks like one job, and the difference is the most
+useful thing in this tree.** A parser turns *one file's text* into facts and knows nothing else — no
+directory, no caching, and **no IntelliJ types at all**, which is what lets `SolrSchemaParser` and
+`SolrConfigParser` be tested as plain JUnit over a string rather than inside a running IDE. `reading`
+is the job above them: locate the configset's files, hand each to the right parser, merge the results
+into one model, and cache it through the platform. It is full of `Project`, `VirtualFile` and
+`Service`, and it is the only place that needs to be.
+
+So the boundary between them is **where the platform enters**, and it is worth preserving on purpose:
+a fact you can derive from a file's text belongs in `parsing`, where the test costs a millisecond. The
+moment a change needs to know which file it is looking at, or wants to remember an answer, it has
+crossed into `reading` — and [the caching rule](#rules-that-hold-across-every-package) applies.
+
 ## Where does my change go?
 
-Two questions now, in order: **which file is the caret in**, then **what is the gesture**.
+Two questions now, in order: **which file is the caret in**, then **what is the gesture**. If the
+gesture names mean nothing to you yet, [the table above](#if-you-have-not-written-an-intellij-plugin-before)
+describes each one by what the user sees.
 
 | If you are changing… | schema files | `solrconfig.xml` |
 |---|---|---|
-| How the file is read into the model | `configset.schema.parsing` | `configset.solrconfig.parsing` |
+| How **one file's text** becomes facts — no IntelliJ types, plain-JUnit tested | `configset.schema.parsing` | `configset.solrconfig.parsing` |
 | Something the editor reports as wrong | `configset.schema.inspection` | `configset.solrconfig.inspection` |
 | What is offered at the caret | `configset.schema.completion` | `configset.solrconfig.completion` |
 | Which strings become references | `configset.schema.reference` | `configset.solrconfig.reference` |
@@ -76,7 +158,7 @@ And the parts that belong to no single file:
 |---|---|---|
 | What a configset *means* — fields, types, analyzer chains, what a field can match | `model.schema` | [Extend the field model](how-to/extend-the-field-model.md) |
 | What a configuration file may legally contain | `model.vocabulary` | [Extend the field model](how-to/extend-the-field-model.md) |
-| Turning a configset directory into a model, or caching it | `configset.reading` | [Extend the field model](how-to/extend-the-field-model.md) |
+| How the **whole directory** becomes one model, and the cache in front of it — the first place the platform appears | `configset.reading` | [Extend the field model](how-to/extend-the-field-model.md) |
 | Whether the plugin runs at all, or which configset owns a file | `configset.activation` | The [activation decision](#the-activation-decision) below |
 | Ctrl-click, Find Usages, rename | `configset.navigation` | [Add an editor feature](how-to/add-an-editor-feature.md) |
 | Guard rails shared by both aspects' inspections and fixes | `configset.editing` | [Add an editor feature](how-to/add-an-editor-feature.md) |
