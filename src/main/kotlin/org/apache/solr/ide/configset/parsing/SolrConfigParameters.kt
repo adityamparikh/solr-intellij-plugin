@@ -79,8 +79,16 @@ internal object SolrConfigParameters {
      *
      * An `<str>` inside an `<arr name="facet.field">` takes its parameter name from the array; one
      * directly under a `<lst name="defaults">` carries its own.
+     *
+     * **Internal because completion asks the same question.** Offering field names inside a parameter
+     * value needs to know which parameter the caret is in, and that means both spellings — the tag's own
+     * `name`, or the enclosing `arr`'s — plus the parameter-list check that makes either meaningful. A
+     * second copy would drift from this one at the first of those three that changed.
+     *
+     * @param tag a candidate value tag
+     * @return the parameter name, or null when the tag is not a parameter value
      */
-    private fun parameterNameOf(tag: XmlTag): String? {
+    internal fun parameterNameOf(tag: XmlTag): String? {
         val own = tag.getAttributeValue("name")
         if (own != null) return own.takeIf { enclosingIsParameterList(tag.parentTag) }
         val parent = tag.parentTag ?: return null

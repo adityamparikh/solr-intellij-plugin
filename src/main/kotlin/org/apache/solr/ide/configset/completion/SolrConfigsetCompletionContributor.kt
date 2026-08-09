@@ -63,6 +63,13 @@ class SolrConfigsetCompletionContributor : CompletionContributor() {
         // question value completion never asks, and the one that matters to a reader who has not
         // learned the vocabulary yet.
         extend(CompletionType.BASIC, PlatformPatterns.psiElement().inside(XmlPatterns.xmlTag()), SolrSchemaVocabularyCompletionProvider())
+        // Field names inside a handler parameter's *text* — `<str name="qf">|</str>` — which is the one
+        // answerable position in a configset that is neither an attribute value nor a tag name.
+        extend(
+            CompletionType.BASIC,
+            PlatformPatterns.psiElement().inside(XmlPatterns.xmlText()),
+            SolrParameterFieldCompletionProvider(),
+        )
     }
 }
 
