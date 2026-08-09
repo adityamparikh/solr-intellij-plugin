@@ -99,6 +99,10 @@ a small addition. Either way the behaviour is currently unasserted.
 **Gate:** `qf` offers declared fields and dynamic patterns; `ps` offers nothing; a caret after `name^`
 and a `sort`'s second token offer nothing; hover on a field name in a `qf` answers with the field.
 
+**Settle Q4 first.** Whether a doc-values-only field belongs in a `qf` completion list is the same
+question as whether the relevance inspection should flag one, and answering it in two places
+independently is how a plugin comes to suggest a field it then underlines.
+
 ### PR 0 — Catalog extension
 
 Not this record's. [The catalog design](../2026-08-07-solrconfig-catalog/design.md) owns it, and it
@@ -203,6 +207,28 @@ than an extension, and one whose bad version puts false warnings on correct filt
 
 *Closed by:* nothing in this plan. **It blocks no PR here and is recorded so that omitting the
 parameter readers most want is a decision rather than an oversight.**
+
+**The rule `fq` would need is a disjunction, and nothing here expresses one yet.** A field is filterable
+if it is indexed **or** carries doc values, because Solr scans doc values when there is no index to
+consult. Every property check the plugin makes resolves one property and compares it. The data is present
+— `docValues` sits in the property table with the same three-tier resolution as `indexed`, and inlay
+hints, the exact-companion intention and quick documentation all read it — so what is missing is a
+consumer rather than a fact.
+
+**Q4 — Should the non-indexed relevance warning fire on a field carrying doc values?** A question about
+the inspection that already ships, surfaced while specifying field-name completion. Solr can answer term
+and range queries against a doc-values-only primitive field by scanning doc values rather than consulting
+the index, which would make the warning a false positive on a working configuration. `TextField` does not
+support doc values, so a non-indexed *text* field in a `qf` is definitively unsearchable and is the case
+the inspection was written for; a doc-values-only `StrField` in a `qf` is unusual, which is why nobody has
+hit it.
+
+**Already pinned by a test rather than left to recollection** — the fixture schema carried the field and
+no case put it in a `qf`, so the one contentious position was the one unasserted. It fires today.
+
+*Closed by:* a Solr fact, per field type and per line, and it should be settled before **PR B** rather
+than after: if completion offers field names into a `qf`, the list it offers and the inspection that
+judges what was written must agree, or the plugin suggests something it then underlines.
 
 ## What ships alongside
 

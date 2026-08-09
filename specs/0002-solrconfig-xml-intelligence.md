@@ -376,6 +376,7 @@ about.
 | `qf` completion offers declared fields and dynamic patterns; `ps` completion offers nothing | FR-9's scope is the sixteen names, not every parameter |
 | A caret after `name^` in a `qf`, and the second token of a `sort`, offer no field | FR-9 does not complete into boost or direction syntax |
 | Hover on a field name inside `<str name="qf">` answers with the field | FR-10, whether by reference resolution or by a new branch |
+| A doc-values-only field in a `qf` is flagged **today** | Pins the behaviour behind [open question 5](#open-questions) before anyone decides it. Already written: the fixture schema carried the field and no case put it in a `qf`, so the one contentious position was the one left unasserted |
 | The schema suite, unchanged, gating the descriptor commit | Widening the gate did not disturb the file that works |
 | `qf` still navigates; a dynamic-field suffix still resolves; the non-indexed-relevance warning still fires | Field references survive |
 
@@ -420,7 +421,26 @@ configset.
    to find the field positions, which is a feature rather than an extension, and doing it badly means false
    warnings on correct filters. **Recorded as a question because silently omitting the parameter readers
    most want is worse than declining it out loud.**
-5. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
+
+   **When `fq` does get references, the property rule it needs is a disjunction, which is new.** A field
+   is filterable if it is indexed **or** carries doc values — Solr will scan doc values when there is no
+   index to consult. Every property check the plugin makes today resolves one property and compares it,
+   so this is the first rule that cannot. The data is all present: `docValues` is in the property table
+   with the same three-tier resolution as `indexed`, and inlay hints, the exact-companion intention and
+   quick documentation all already read it. What is missing is a consumer, not a fact.
+
+5. **Should the non-indexed relevance warning fire on a field that carries doc values?** This is a
+   question about the inspection that already ships, surfaced while specifying the above, and
+   [pinned by a test](#testing-strategy) rather than left to recollection. Solr can answer term and range
+   queries against a doc-values-only primitive field by scanning doc values instead of consulting the
+   index — slower, but functional — which would make the warning a false positive on a working
+   configuration. Two things narrow it: `TextField` does not support doc values, so a non-indexed *text*
+   field in a `qf` is definitively unsearchable and is the case the inspection was written for; and a
+   doc-values-only `StrField` in a `qf` is unusual, which is why nobody has hit it. **It bears directly on
+   [FR-9](#requirements)**: if completion offers field names into a `qf`, the list it offers and the
+   inspection that judges what was written must agree about this field, or the plugin suggests something
+   it then underlines.
+6. **This file is numbered `0002`, which the parent specification already uses.** Renumbering, or an
    explicit convention that a slice shares its parent's number, is a housekeeping decision worth
    making before a third file arrives.
 
