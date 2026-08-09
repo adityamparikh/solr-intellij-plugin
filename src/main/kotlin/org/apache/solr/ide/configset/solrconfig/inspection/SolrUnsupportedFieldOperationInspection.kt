@@ -4,7 +4,6 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
-import org.apache.solr.ide.configset.editing.SolrInspections
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.schema.SolrFieldOperation
 
@@ -25,7 +24,7 @@ import org.apache.solr.ide.model.schema.SolrFieldOperation
  * and the same field in a `qf` and a `facet.field` deserves a warning in one place and not the other.
  *
  * **Which parameters it examines follows from the operations it declares**, not from a list of parameter
- * names here: `org.apache.solr.ide.configset.solrconfig.SolrConfigParser.operationFor` maps the names, and
+ * names here: `org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser.operationFor` maps the names, and
  * this inspection claims faceting and sorting while [SolrNonIndexedRelevanceFieldInspection] claims
  * searching. Each names what it owns rather than excluding the other, so an operation added later
  * belongs to neither until someone says which.
@@ -64,7 +63,7 @@ class SolrUnsupportedFieldOperationInspection : LocalInspectionTool() {
         }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-        return SolrInspections.fieldOperationVisitor(
+        return fieldOperationVisitor(
             holder,
             model,
             setOf(SolrFieldOperation.FACET, SolrFieldOperation.SORT),

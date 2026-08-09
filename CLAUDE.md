@@ -71,7 +71,7 @@ server reader would need the thing to interpret what it fetched.
 
 **`configset.schema` and `configset.solrconfig` must never import each other.** They share downward
 only, through `model`, `configset.reading`, `configset.editing` and `configset.navigation`. A
-capability files under an aspect when the caret that triggers it is always in that aspect's file;
+capability falls under an aspect when the caret that triggers it is always in that aspect's file;
 one that traverses the configset — Find Usages, rename — belongs to `configset.navigation`, because
 filing it under `schema` would make that aspect depend on the other.
 

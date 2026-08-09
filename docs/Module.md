@@ -149,7 +149,7 @@ an undeclared type, an attribute that does not exist or cannot hold the value
 written, an analyzer chain in an impossible order, a field type nothing uses.
 
 [Why the clean fixtures matter more than the flagged
-ones](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetinspection).
+ones](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemainspection-and-orgapachesolrideconfigsetsolrconfiginspection).
 
 # Package org.apache.solr.ide.configset.schema.documentation
 
@@ -158,7 +158,7 @@ resolved property table, where each value came from, and what the field can
 actually match.
 
 [What it answers that the Reference Guide
-cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetdocumentation).
+cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemadocumentation).
 
 # Package org.apache.solr.ide.configset.schema.descriptor
 
@@ -175,7 +175,7 @@ when not to fire.
 Showing what each field matches, inline beside its declaration.
 
 [Why an inlay rather than a
-tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsethint).
+tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemahint).
 
 # Package org.apache.solr.ide.configset.schema.intention
 
@@ -186,7 +186,7 @@ field without prefix support is not wrong. What belongs here is anything the use
 want and the plugin can write, where staying silent is also a valid answer.
 
 [Why the boundary against
-inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetintention).
+inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemaintention).
 
 # Package org.apache.solr.ide.configset.schema.completion
 
@@ -194,7 +194,7 @@ Offering the values a schema attribute can legally take, and the vocabulary lega
 at the caret.
 
 [Why only closed sets are
-completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetcompletion).
+completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemacompletion-and-orgapachesolrideconfigsetsolrconfigcompletion).
 
 # Package org.apache.solr.ide.configset.schema.reference
 
@@ -203,7 +203,7 @@ understands: a field's `type`, both ends of a `copyField`, and an analyzer
 component's resource files.
 
 [Why they are soft, and how far a glob is
-followed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetreference).
+followed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemareference-orgapachesolrideconfigsetsolrconfigreference-and-orgapachesolrideconfigsetnavigation).
 
 # Package org.apache.solr.ide.configset.solrconfig
 
@@ -252,4 +252,4 @@ file and credentials to the IDE's PasswordSafe.
 Unreachable from the editor path.
 
 [Where its state may be
-written](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideserver).
+written](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideserverconnection).

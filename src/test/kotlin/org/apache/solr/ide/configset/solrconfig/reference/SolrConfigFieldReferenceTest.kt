@@ -50,6 +50,20 @@ class SolrConfigFieldReferenceTest : SolrConfigsetTestCase() {
         assertEquals("description", declaration.getAttributeValue("name"))
     }
 
+    /**
+     * A parameter written in one of Solr's other scalar value tags navigates like a `<str>`.
+     *
+     * The three gestures over these values have to agree about which tags carry them. Completion and
+     * the inspections read the parser's set of six; this contributor was registered on `str` alone, so
+     * a `qf` written as `<int name="qf">` was inspected and completed and silently not navigable — the
+     * one of the three failures a reader would blame on themselves.
+     */
+    fun testAParameterInANonStringValueTagResolves() {
+        val declaration = declaringTagAt(handler("""<int name="qf">descri<caret>ption</int>"""))
+        assertEquals("field", declaration.name)
+        assertEquals("description", declaration.getAttributeValue("name"))
+    }
+
     /** `qf` holds several names with boost markup; each name is its own reference. */
     fun testEachNameInAWeightedListResolvesOnItsOwn() {
         val declaration = declaringTagAt(handler("""<str name="qf">name^3 descri<caret>ption</str>"""))

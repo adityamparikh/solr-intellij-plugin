@@ -23,7 +23,7 @@ The middle level is what makes the tree say what a change is *about* rather than
 extension point it uses. `SolrSchemaParser` and `SolrConfigParser` read entirely different files and
 share no vocabulary; as peers in one `parsing` package only their class names said so.
 
-**A capability files under an aspect when the caret that triggers it is always in that aspect's
+**A capability falls under an aspect when the caret that triggers it is always in that aspect's
 file.** An inspection visits tags in one file and reports there; a completion provider answers at a
 caret in one file; a reference contributor decides which tags in which file carry references. A
 capability that traverses the configset by nature does not: Find Usages starts on a schema

@@ -4,7 +4,6 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
-import org.apache.solr.ide.configset.editing.SolrInspections
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.schema.SolrFieldOperation
 
@@ -26,7 +25,7 @@ import org.apache.solr.ide.model.schema.SolrFieldOperation
  * working configuration, which is the failure this package is organised to avoid.
  *
  * **Whether a field is searchable is [org.apache.solr.ide.model.schema.SolrFieldOperations]' question, not
- * this class's, and the reporting rule is [SolrInspections.fieldOperationVisitor]'s.** It was read
+ * this class's, and the reporting rule is [fieldOperationVisitor]'s.** It was read
  * here as `indexed="false"` and that was wrong: Solr turns an exact match on a doc-values-only field
  * into a single-value range query over the doc values rather than refusing it, so such a field *is*
  * searchable and this inspection warned about a working configuration. The rule is a disjunction over
@@ -74,7 +73,7 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
         }
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-        return SolrInspections.fieldOperationVisitor(
+        return fieldOperationVisitor(
             holder,
             model,
             setOf(SolrFieldOperation.SEARCH),

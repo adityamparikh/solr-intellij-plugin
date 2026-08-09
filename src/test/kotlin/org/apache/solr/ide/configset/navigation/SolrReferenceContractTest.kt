@@ -35,7 +35,7 @@ class SolrReferenceContractTest : SolrConfigsetTestCase() {
 
     /**
      * **Completion for these positions belongs to the contributor, and only to it.**
-     * `SolrConfigsetCompletionContributor` offers field and type names with what each one matches
+     * `SolrSchemaCompletionContributor` and `SolrConfigCompletionContributor` offers field and type names with what each one matches
      * attached. A reference returning variants as well would put every name in the popup twice.
      */
     fun testAFieldTypeReferenceOffersNoVariantsOfItsOwn() {

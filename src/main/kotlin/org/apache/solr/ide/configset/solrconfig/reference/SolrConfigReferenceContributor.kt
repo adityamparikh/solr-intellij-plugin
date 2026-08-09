@@ -10,6 +10,7 @@ import com.intellij.psi.xml.XmlTag
 import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
+import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser
 import org.apache.solr.ide.configset.navigation.SolrDeclarationReference
 import org.apache.solr.ide.configset.solrconfig.SolrConfigParameters
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
@@ -33,10 +34,14 @@ class SolrConfigReferenceContributor : PsiReferenceContributor() {
      * @param registrar the platform's registry of reference providers
      */
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        // Narrowed to the one tag name that holds parameter values: registering on every tag would
-        // consult this provider for every element in every XML file before it could decline.
+        // Narrowed to the tags that hold parameter values: registering on every tag would consult
+        // this provider for every element in every XML file before it could decline.
+        //
+        // **The set is the parser's, not a shorter one of this file's own.** It was `str` alone while
+        // `SolrConfigParameters` read six tags, so a `qf` written as `<int name="qf">` was inspected
+        // and completed but not navigable — the one gesture of the three that silently did nothing.
         registrar.registerReferenceProvider(
-            XmlPatterns.xmlTag().withLocalName("str"),
+            XmlPatterns.xmlTag().withLocalName(*SolrConfigParser.VALUE_TAGS.toTypedArray()),
             SolrConfigFieldReferenceProvider(),
         )
     }
@@ -47,7 +52,7 @@ private class SolrConfigFieldReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val tag = element as? XmlTag ?: return PsiReference.EMPTY_ARRAY
-        // The file-name check runs first because it is the cheapest way to decline the `<str>`
+        // The file-name check runs first because it is the cheapest way to decline the value
         // tags of every other XML file the pattern lets through.
         if (SolrConfigsetFileKind.forFileName(tag.containingFile.name)?.isSolrConfig != true) {
             return PsiReference.EMPTY_ARRAY

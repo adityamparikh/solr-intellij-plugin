@@ -49,9 +49,11 @@ internal abstract class SolrDeclarationReference<T : PsiElement>(element: T, ran
     /**
      * No completion variants, at any of these positions.
      *
-     * [org.apache.solr.ide.configset.schema.completion.SolrSchemaCompletionContributor] already owns
-     * them, and offers field and type names with what each one matches attached. A reference
-     * returning variants as well would put every name in the popup twice.
+     * The completion contributors already own them — the schema's positions belong to
+     * [org.apache.solr.ide.configset.schema.completion.SolrSchemaCompletionContributor], and a handler
+     * parameter's field names to `org.apache.solr.ide.configset.solrconfig.completion.SolrConfigCompletionContributor`
+     * — and both offer names with what each one matches attached. A reference returning variants as
+     * well would put every name in the popup twice.
      */
     final override fun getVariants(): Array<Any> = emptyArray()
 }
