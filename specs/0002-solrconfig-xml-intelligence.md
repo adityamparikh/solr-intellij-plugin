@@ -280,7 +280,9 @@ outright. Both are worth having for that reason.
 reference at the caret and document its target instead, which the reference contributor supplies. So
 this requirement is satisfied by a test pinning an undocumented capability rather than by new code.
 **Its value is that the behaviour was unasserted and unclaimed**, which is one refactor away from an
-unnoticed regression.
+unnoticed regression. **Regression coverage:** `SolrConfigFieldReferenceTest.testHoverOnFieldNameInQfParameterResolvesDocumentation`
+asserts that hover on a field name inside a `qf` parameter resolves to the field's documentation via
+reference resolution when `SolrConfigsetDocumentationProvider` declines the position.
 
 ### Non-functional
 

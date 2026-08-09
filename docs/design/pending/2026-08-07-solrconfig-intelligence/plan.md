@@ -102,11 +102,11 @@ the suggestion.
 widen beyond the sixteen — the parameter must be one the parser reads, or completion starts offering
 field names inside `rows` and `defType`.
 
-**Quick documentation may already work by accident.** `getCustomDocumentationElement` claims attribute
+**Quick documentation already works through reference resolution.** `getCustomDocumentationElement` claims attribute
 values and schema tags, and a field name in `qf` is tag *text*, so the provider returns null — which
-lets the platform resolve the reference at the caret and document its target instead. **Find out before
-building**: if that path works this is a test pinning an unclaimed capability, and if it does not it is
-a small addition. Either way the behaviour is currently unasserted.
+lets the platform resolve the reference at the caret and document its target instead. **Regression coverage:**
+`SolrConfigFieldReferenceTest.testHoverOnFieldNameInQfParameterResolvesDocumentation` asserts this path, ensuring
+the behaviour does not regress when either the documentation provider or reference contributor changes.
 
 **Gate:** `qf` offers declared fields and dynamic patterns; `ps` offers nothing; a caret after `name^`
 and a `sort`'s second token offer nothing; hover on a field name in a `qf` answers with the field.
