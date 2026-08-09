@@ -1,10 +1,11 @@
 package org.apache.solr.ide.configset.reference
 
 import com.intellij.pom.PomDeclarationSearcher
-import com.intellij.pom.PomNamedTarget
+import com.intellij.pom.PomRenameableTarget
 import com.intellij.pom.PomTarget
 import com.intellij.psi.PsiElement
 import com.intellij.psi.DelegatePsiTarget
+import com.intellij.psi.ElementManipulators
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
@@ -34,9 +35,9 @@ import org.apache.solr.ide.configset.activation.SolrSchemaTags
  * **The delegation is load-bearing rather than a convenience.** The target wraps the very
  * [XmlAttributeValue] that [SolrSchemaPsi] hands back, because that identity is what `isReferenceTo`
  * compares. A target pointing anywhere else would make Find Usages and Ctrl-click disagree about
- * which references exist, which is the one thing this step must not do. Rename inherits that identity
- * when Step 8 comes to it — a target whose name is the string the user means is most of what rename
- * needs — but the renaming itself, and the fixtures that prove it, stay there.
+ * which references exist, which is the one thing this step must not do. Rename inherits that same
+ * identity: [SolrDeclarationTarget] is what Shift+F6 rewrites, and the references it updates are the
+ * ones this target was already equated with, so the two refactorings cannot disagree either.
  *
  * Dumb-aware like everything else on this path, and the same promise about data sources: it reads
  * schema PSI and the detector, and contacts nothing.
@@ -93,11 +94,11 @@ class SolrDeclarationSearcher : PomDeclarationSearcher() {
  *
  * The platform's ready-made `RenameableDelegatePsiTarget` cannot be used here: it requires a
  * `PsiNamedElement`, and an [XmlAttributeValue] is not one. That is the same fact that made a
- * declaration searcher necessary in the first place, met a second time one layer down. Rename is
- * Step 8's, and the rename-specific behaviour it needs belongs there with its own fixtures.
+ * declaration searcher necessary in the first place, met a second time one layer down — so the
+ * renameable half is written out rather than inherited.
  */
 internal class SolrDeclarationTarget(private val value: XmlAttributeValue) :
-    DelegatePsiTarget(value), PomNamedTarget {
+    DelegatePsiTarget(value), PomRenameableTarget<Any> {
 
     /** The declared name, as the schema spells it. */
     override fun getName(): String = value.value
@@ -121,4 +122,28 @@ internal class SolrDeclarationTarget(private val value: XmlAttributeValue) :
                 else -> SolrBundle.message("declaration.kind.field")
             }
         }
+
+    /**
+     * Whether the platform can write to this declaration.
+     *
+     * Not the plugin asking whether a write is *allowed* — it never does, and Solr's own
+     * distinction between hand-edited and API-managed files plays no part here. This is the
+     * platform's own question, asked before it starts a refactoring, and the file is the only thing
+     * that can answer it: a configset opened out of a dependency jar is physically read-only, and a
+     * rename that discovered that half-way through would leave the schema rewritten and
+     * `solrconfig.xml` not.
+     */
+    override fun isWritable(): Boolean = value.isWritable
+
+    /**
+     * Rewrites the declared name.
+     *
+     * Only the declaration itself; the references are the platform's to update, through the
+     * `handleElementRename` of the same reference objects that resolved to this target. That split
+     * is what keeps rename honest — it can only rewrite what navigation could already find.
+     */
+    override fun setName(newName: String): Any {
+        ElementManipulators.handleContentChange(value, newName)
+        return this
+    }
 }
