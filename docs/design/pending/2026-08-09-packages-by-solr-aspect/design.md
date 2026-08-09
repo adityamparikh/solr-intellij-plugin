@@ -1,4 +1,4 @@
-# Packages by Solr aspect: making the tree say which file a change is about
+    # Packages by Solr aspect: making the tree say which file a change is about
 
 Counts and line numbers below are taken from `main` at 73f4508. Two pull requests in flight add files
 to this tree; both land inside the structure proposed here without changing its shape, which is noted
@@ -90,6 +90,53 @@ bottom levels are correct and survive verbatim.
 `model` remains outside all three and keeps its exception for the two reasons already recorded: both
 surfaces read it, and it is the only package with no IntelliJ types anywhere in it.
 
+### Why `model.schema` does not move under `configset.schema`
+
+It is the obvious objection to the tree below — if `schema` is a subject, why does schema knowledge
+sit outside the surface that reads it? — and answering it from today's imports gives the wrong
+answer. Every consumer of `model` is currently under `configset`, because the server reader has not
+landed. Measuring the code as it stands would prove the model belongs to the configuration surface,
+and would be wrong for exactly one release.
+
+The type settles it. `SolrFieldModel`'s atom is `SolrFact<T>(repository: T?, server: T?)`, with
+`require(repository != null || server != null)` and an `effective` accessor that prefers the
+repository. **It exists specifically to carry a server value.** Filing it under `configset` would put
+the configuration-files surface in charge of a type whose purpose is to hold the other surface's
+half, and `SolrConfigsetFacts` says the same thing in its own KDoc: one shape serves both sources so
+that neither is privileged.
+
+Three imports would go wrong the moment the Server track lands: Step 14's drift view rendering
+`indexed=true` against the server's `false`, Step 11's reader parsing the schema API into the same
+facts, and Step 16's SolrJ recognizer checking field references. Each would reach from one surface
+into another surface's internals.
+
+### `model` was doing two jobs, and one file was on the wrong side
+
+The objection is still worth taking seriously, because it finds something real. `model` has been
+serving as *the source-independent domain* and as *the pure, IntelliJ-free, plain-JUnit-testable
+package*, and those are different jobs. `SolrAttributeVocabulary` qualifies for the second and not
+the first.
+
+Its two entry points take an XML tag name and an attribute name. The server has no tags and no
+attributes — the schema API returns JSON — so it will never have a server half. It is not knowledge
+about what a field *is*; it is knowledge about what the *file* may contain.
+
+The test that separates them: **does the server reader need this to interpret what it fetched?** Yes
+for everything in `model.schema` — the schema API returns `indexed`, `stored`, `omitNorms` and
+analyzer chains. No for `SolrAttributeVocabulary`.
+
+It joins `SolrClassCatalog` in `model.vocabulary` rather than getting a package of its own, because
+they are one concept and already one call: `SolrAttributeVocabulary` delegates to the catalog for
+analysis-factory attributes at lines 82 and 125, and Step 25 grows both together — "element and
+attribute completion for `solrconfig.xml`'s structure, **from the catalog**." That also makes
+`vocabulary` cross-*aspect* while staying configset-only, which is why it is a sibling of
+`model.schema` rather than a child of either aspect.
+
+**`model.vocabulary` could defensibly live at `configset.vocabulary`**, since no server or code
+feature will read it. It stays in `model` because both files are pure, and `model` being *the*
+IntelliJ-free tree is what keeps the test-tier rule a single sentence. Splitting purity across two
+trees buys a truer boundary at the cost of the rule contributors actually have to remember.
+
 ### Which capability belongs to an aspect, and which does not
 
 The tempting rule — *file by the file the code acts on* — is right for most of the tree and wrong in
@@ -144,11 +191,13 @@ org.apache.solr.ide
 │   ├── SolrConfigsetFacts.kt          one shape for both sources, by design
 │   ├── SolrFieldModel.kt              SolrFact / SolrAgreement — the merge spine
 │   ├── SolrReferenceGuide.kt          documentation links by Solr version
-│   ├── catalog/
-│   │   └── SolrClassCatalog.kt        generated; Step 25 grows it to solrconfig plugins
-│   └── schema/                        SolrAttributeVocabulary, SolrFieldProperties,
-│                                      SolrSchemaTypes, SolrSchemaVersion, SolrTypeTrait,
-│                                      SolrValueType, SolrMatchAnalysis, SolrMatchCapability
+│   ├── vocabulary/                    what a configuration file may legally contain
+│   │   ├── SolrAttributeVocabulary.kt   which attributes each element accepts
+│   │   └── SolrClassCatalog.kt          generated; Step 25 grows it to solrconfig plugins
+│   └── schema/                        what a field *is*, whichever source said so —
+│                                      SolrFieldProperties, SolrSchemaTypes, SolrSchemaVersion,
+│                                      SolrTypeTrait, SolrValueType, SolrMatchAnalysis,
+│                                      SolrMatchCapability
 │                                      (`model/solrconfig/` is created by Step 25, not before)
 │
 ├── configset/
@@ -318,7 +367,7 @@ settled than it is.
 Five pull requests, in dependency order, each independently green. Only the first four move code;
 the rest of `server` and all of `code` are recorded shape, built when their steps arrive.
 
-1. **`model` split** — `schema/` and `catalog/` subpackages. No IntelliJ types involved and no
+1. **`model` split** — `schema/` and `vocabulary/` subpackages. No IntelliJ types involved and no
    `plugin.xml` change, so it proves the mechanics at the lowest risk.
 2. **Surface roots** — under `configset`: `parsing` → `reading`, new `editing`, new `navigation`,
    `activation` untouched. Under `server`: its one existing file, `SolrConnectionSettings`, to
