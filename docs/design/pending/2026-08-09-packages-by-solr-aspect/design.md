@@ -258,15 +258,18 @@ org.apache.solr.ide
     ├── completion/                    field names at a recognized position
     ├── navigation/                    a field name in code → its schema declaration
     │
-    │   ── one package per place Solr usage is recognized ──
+    │   ── recognizers over code: endpoints *and* field references ──
     ├── solrj/                         client construction, SolrQuery builders, raw parameter
     │                                  strings, SolrInputDocument, @Field
-    ├── framework/                     a Solr URL *and its credentials*, per profile
-    │   ├── spring/                      profiles in separate files
-    │   ├── quarkus/                     profiles inline as a `%dev.` key prefix
-    │   ├── micronaut/                   environments
-    │   └── microprofile/                ordinals
-    └── camel/                         route URIs, option validation, field references
+    ├── camel/                         route URIs, their option vocabulary, and field references
+    │                                  in route parameters and document construction
+    │
+    │   ── recognizers over application configuration: endpoints only ──
+    └── appconfig/                     a Solr URL *and its credentials*, resolved per profile
+        ├── spring/                      profiles in separate files
+        ├── quarkus/                     profiles inline as a `%dev.` key prefix
+        ├── micronaut/                   environments
+        └── microprofile/                ordinals
 ```
 
 ⚑ = the three files that are not pure moves. Each is one registered extension currently serving both
@@ -346,10 +349,31 @@ inspection over field-reference findings, the completion, and the navigation to 
 implementation each, fed by every recognizer. Without packages for them, the second recognizer has
 nowhere to put its half and the third copies the first.
 
-**`framework` was one undifferentiated bucket.** The spec spends a paragraph on how the four dialects
-"differ in ways that matter" — Spring's profile files, Quarkus's inline `%dev.` prefixes with no
-profile-named file to find, Micronaut's environments, MicroProfile's ordinals. Four precedence
-models, and four different classpaths for the gate to test, so four recognizers. One package each.
+**`framework` was one undifferentiated bucket, and the wrong name for the group.** The spec spends a
+paragraph on how the four dialects "differ in ways that matter" — Spring's profile files, Quarkus's
+inline `%dev.` prefixes with no profile-named file to find, Micronaut's environments, MicroProfile's
+ordinals. Four precedence models, and four different classpaths for the gate to test, so four
+recognizers, one package each.
+
+The name had to change because Camel is a framework too, and putting it in a package called
+`framework` would group it with the recognizers it least resembles. **What the four share is not
+being frameworks — it is reading application configuration and reporting an endpoint.** Compare what
+each reports:
+
+| Recognizer | Endpoint | Field references | Own vocabulary |
+|---|---|---|---|
+| SolrJ | yes | yes | — |
+| Camel | yes | yes | URI options |
+| Spring, Quarkus, Micronaut, MicroProfile | yes (with credential) | **no** | — |
+
+Step 18 lists no field-reference action at all; every one of its actions resolves a URL and its
+credential. Step 19 checks "field references in route parameters and document construction" and
+validates a URI option set. So Camel is a sibling of SolrJ — both read code, both report both kinds
+of finding — and the four config dialects are the group that is different, which is why they are the
+ones with a shared parent. `appconfig` names what they share.
+
+That also makes the group's boundary testable rather than aesthetic: **a recognizer joins `appconfig`
+if it reads application configuration and reports endpoints only.** Camel fails both halves.
 
 **`code.query` was the real error, and it contradicted this record's own argument.** The query-string
 language is not code's. Step 17 renders it inside a Java literal, Step 13's console completes with
