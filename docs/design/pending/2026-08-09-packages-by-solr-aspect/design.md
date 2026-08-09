@@ -484,10 +484,51 @@ the rest of `server` and all of `code` are recorded shape, built when their step
 3. **`configset.schema.*`** — the largest by file count and almost entirely pure moves.
 4. **`configset.solrconfig.*`** — small today, and the only one carrying real edits: all three ⚑
    splits happen here. Separate precisely because it is not just a move.
-5. **Documentation** — [`docs/code-organization.md`](../../../code-organization.md)'s "where does my
-   change go?" table becomes two-dimensional, its "the packages" section is rewritten,
-   [`docs/Module.md`](../../../Module.md) grows from twelve `# Package` blocks to about two dozen,
-   and [`docs/how-to/add-an-editor-feature.md`](../../../how-to/add-an-editor-feature.md) gains the
-   aspect question ahead of the gesture question.
+5. **Prose documentation** — the rewrites listed under [the documentation that moves with the
+   code](#the-documentation-that-moves-with-the-code) below.
 
 **Sequenced before Step 25**, which is the reason for the whole exercise.
+
+### The documentation that moves with the code
+
+**`docs/Module.md` cannot wait for the last pull request.** It is a Dokka input, and the
+documentation gate runs `failOnWarning`, so a `# Package` heading naming a package that no longer
+exists is a candidate to fail the build in the pull request that moved it rather than the one that
+documents it. **Each of the four code pull requests carries its own `Module.md` edit**; only prose
+defers to the fifth. Pull request 1 settles the question empirically, since it is the first to rename
+a package heading.
+
+An audit of everything outside `src/` that names a package, so this is a checklist rather than a
+recollection:
+
+| Living — must be updated | References |
+|---|---|
+| `docs/code-organization.md` | 13 — the "where does my change go?" table becomes two-dimensional, and "the packages" is rewritten |
+| `docs/Module.md` | 11 — twelve `# Package` blocks become about two dozen; see above on timing |
+| `docs/faq.md` | 2 |
+| `docs/how-to/add-an-editor-feature.md` | 1 — gains the aspect question ahead of the gesture question |
+| `docs/how-to/extend-the-field-model.md` | 1 — `model` is no longer flat |
+| `docs/how-to/testing-and-the-build-gates.md` | short names only — the "no IntelliJ types" rule now reads per subpackage |
+| `CLAUDE.md` | 1 path, plus package short names in the rules section |
+| `docs/design/pending/2026-08-04-declaration-targets/design.md` | 1 — `pending/` is live, and its target lands in `configset.navigation` |
+
+**Historical — must not be updated.** The six files under `docs/design/archive/` name packages that
+were correct when written. [`docs/design/README.md`](../../../design/README.md) settles it: archived
+records are "historical record, not living documentation — if the described behavior and the code
+disagree, the code is right." Rewriting them would forge the record to agree with a decision taken
+afterwards.
+
+**The plan needs the same distinction applied inside one file.** Of its ten references, one is a
+standing rule — the test tiers naming `org.apache.solr.ide.model` — and must be updated. The rest sit
+in *what shipped* notes, which are historical in exactly the sense the archive is, and should be left
+alone. The plan already demonstrates why that is safe rather than sloppy: two of those notes name
+`org.apache.solr.ide.repository`, a package that has never existed in the code, and nothing has
+broken in the time since.
+
+**Verified not affected, so nobody has to wonder.** `build.gradle.kts`'s two references are
+`buildSrc`'s own `org.apache.solr.ide.build` package and a Kover exclusion for `SolrBundle`, which
+does not move. The generated class catalog is emitted as *resources* rather than as Kotlin source,
+and `SolrClassCatalog` loads it through an absolute path — `getResourceAsStream("/solr-catalog/…")`
+at line 213 — so moving that class into `model.vocabulary` cannot break resource resolution. A
+package-relative lookup there would have been a silent failure at runtime rather than a compile
+error, which is why it was checked rather than assumed.
