@@ -123,6 +123,25 @@ deleting it costs one slower run and nothing else.
 Do not go looking for the cause in the code under test — this failure is upstream of it, and
 `git stash` will not clear it either.
 
+## What the fixtures structurally cannot see
+
+Every fixture test builds its subject directly — `myFixture.enableInspections(SomeInspection())`,
+`SolrSchemaParser.parse(text)` — which is what makes them fast and precise, and also means **nothing in
+the suite goes through `plugin.xml`**. A registration names its class as a string, so a wrong name
+compiles and every test passes while the platform finds nothing to load.
+
+That is not hypothetical: a package rename moved three inspections and left three registrations pointing
+at the package that used to hold them. `./gradlew build` was green and all three were dead in the IDE.
+
+**`verifyPlugin` does not close this, which was checked rather than assumed.** With one
+`implementationClass` pointed at a deleted package, the IntelliJ Plugin Verifier reports nothing and the
+task succeeds — it verifies API compatibility against IDE builds, not that this descriptor's own class
+names resolve. It is worth running for what it does cover, and CI runs it as its own job.
+
+`SolrPluginDescriptorTest` is what closes it: plain JUnit, reflection over every class name in
+`plugin.xml`, milliseconds, and it runs in `./gradlew build` beside everything else. **If you add an
+extension point, that test already covers it** — there is nothing to remember.
+
 ## The documentation gate
 
 Dokka runs with `reportUndocumented` and `failOnWarning`, and `dokkaGenerate` is a dependency of
