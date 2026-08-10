@@ -33,9 +33,16 @@ dependencies {
     intellijPlatform {
         // IntelliJ IDEA is a single unified distribution as of 2025.3 (Community/Ultimate merged),
         // so we target the unified `intellijIdea(...)` artifact. XML PSI (configset parsing) is part
-        // of platform core, so no extra bundledPlugin is needed yet. Phase 3 will add
-        // bundledPlugin("com.intellij.java").
+        // of platform core.
         intellijIdea("2026.2")
+
+        // Java PSI, for resolving the class a `class` attribute names. Needed to *compile* the
+        // reference provider and to test it; the plugin itself depends on `com.intellij.modules.java`
+        // **optionally**, so the provider is registered only where Java PSI exists and the rest of the
+        // plugin works in an IDE without it. This is the dependency the comment above used to defer to
+        // Phase 3 — it arrives early because class navigation is the one Step 25 action that needs
+        // nothing else, and Phase 3 will need it unconditionally regardless.
+        bundledPlugin("com.intellij.java")
         testFramework(TestFrameworkType.Platform)
 
         // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this

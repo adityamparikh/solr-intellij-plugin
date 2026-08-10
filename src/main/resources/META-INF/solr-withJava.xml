@@ -1,0 +1,15 @@
+<!--
+  Registered only where `com.intellij.modules.java` is present.
+
+  One extension, and it is here rather than in `plugin.xml` because it is the only thing in this
+  plugin that touches Java PSI. Everything else reads a configset's own text, so the plugin loads and
+  works in an IDE with no Java support at all — this file is what keeps that true while still giving
+  IntelliJ IDEA the gesture a reader reaches for first on an unfamiliar `class` value.
+-->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <psi.referenceContributor
+                language="XML"
+                implementation="org.apache.solr.ide.configset.navigation.SolrClassReferenceContributor"/>
+    </extensions>
+</idea-plugin>
