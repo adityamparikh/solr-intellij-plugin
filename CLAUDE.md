@@ -69,9 +69,14 @@ third of the suite be plain JUnit 4 with no fixture. Inside it, `model.schema` i
 and `model.vocabulary` is what a configuration file may legally contain — the test being whether a
 server reader would need the thing to interpret what it fetched.
 
-**`configset.schema` and `configset.solrconfig` must never import each other.** They share downward
-only, through `model`, `configset.reading`, `configset.editing` and `configset.navigation`. A
-capability falls under an aspect when the caret that triggers it is always in that aspect's file;
+**`configset.schema` and `configset.solrconfig` must never import each other.** That is the whole
+prohibition, and it is one-directional rather than a ban on the two aspects appearing together: a
+shared package **may** import both, because composing them is what makes it shared.
+`configset.reading` imports both parsers, since dispatching on the file kind is its job, and
+`configset.navigation` imports both aspects' reference types, since labelling usages from either is
+its job. What neither aspect may do is reach sideways for the other.
+
+A capability falls under an aspect when the caret that triggers it is always in that aspect's file;
 one that traverses the configset — Find Usages, rename — belongs to `configset.navigation`, because
 filing it under `schema` would make that aspect depend on the other.
 

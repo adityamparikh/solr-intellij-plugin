@@ -17,7 +17,7 @@ import java.io.File
  *
  * **The rest of the Find Usages suite uses fixtures chosen to exercise one rule; this one uses the
  * files the demo is actually driven on**, for the reason
- * [org.apache.solr.ide.configset.parsing.DemoConfigsetTest] gives about the parser: a feature that
+ * [org.apache.solr.ide.configset.reading.DemoConfigsetTest] gives about the parser: a feature that
  * works on every synthetic case and not on the fixture it will be demonstrated with is a feature
  * that fails in front of an audience. It also pins the demo's shape, so removing the dynamic field
  * or the `pf` that references it fails a build rather than being discovered on stage.

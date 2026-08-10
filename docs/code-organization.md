@@ -31,6 +31,15 @@ declaration and must reach `solrconfig.xml`, and rename must update the `qf` lin
 configset root, in `configset.navigation`, because filing them under `schema` would make
 `configset.schema` import `configset.solrconfig`.
 
+**The prohibition is one-directional, and reading it as symmetry gets two correct files wrong.**
+Neither aspect may import the other. A package *above* the aspects may import both, and two of them
+must: `configset.reading` names both parsers because choosing between them by file kind is the whole
+of its job, and `configset.navigation` names both aspects' reference types because a usage-type
+provider has to label a hit from either. That is not a leak — it is the composition the shared layer
+exists to perform, and it is the reason those capabilities sit above the aspects rather than inside
+one. The test is direction, not co-occurrence: sideways between aspects is forbidden, downward from
+the shared layer into both is the design.
+
 `org.apache.solr.ide.model` is outside the surfaces, and earns it twice over. It is what both
 sources read — `SolrFact` exists precisely to hold a repository value *and* a server value — so
 filing it under either would be wrong. And it is the only tree with no IntelliJ types anywhere in

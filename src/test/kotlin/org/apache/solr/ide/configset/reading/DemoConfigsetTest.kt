@@ -131,7 +131,7 @@ class DemoConfigsetTest {
 
     /**
      * The two planted silences the inlay hint shows, pinned at the model level rather than through
-     * the hint provider — [SolrMatchInlayHintsProviderTest][org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProviderTest]
+     * the hint provider — [SolrMatchInlayHintsProviderTest][org.apache.solr.ide.configset.schema.hint.SolrMatchInlayHintsProviderTest]
      * covers the rendering. `notes`' analyser names a factory the plugin does not recognise, so match
      * analysis must not be confident about it; `legacy` names a type the schema never declares, so it
      * has no field type to analyse at all.

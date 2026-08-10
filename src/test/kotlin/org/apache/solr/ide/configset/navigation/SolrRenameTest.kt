@@ -19,7 +19,7 @@ class SolrRenameTest : SolrConfigsetTestCase() {
      *
      * The synthetic fixtures below each isolate one rule; this one proves the gesture works on the
      * committed file, for the reason
-     * [org.apache.solr.ide.configset.parsing.DemoConfigsetTest] gives — a refactoring that works on
+     * [org.apache.solr.ide.configset.reading.DemoConfigsetTest] gives — a refactoring that works on
      * every crafted case and not on the demo fixture fails in front of an audience. It also pins the
      * `qf` that makes the step worth performing: delete `category` from it and this fails a build
      * rather than the demo.
