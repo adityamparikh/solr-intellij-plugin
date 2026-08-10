@@ -117,16 +117,23 @@ class SolrConfigsetDocumentationProviderTest : SolrConfigsetTestCase() {
     }
 
     /**
-     * An attribute the plugin has nothing to say about still falls back to its element.
+     * The `class` attribute now explains itself rather than deferring to its element.
      *
-     * The caret here is on the *name* `class`, not its value. The value half now answers with
-     * the named class itself; the name half keeps falling back to the element, which answers
-     * the "what is this element" a reader mid-tag is actually asking.
+     * **This assertion is the reverse of the one it replaces, and the reasoning it replaces was
+     * wrong.** That version had the name half fall back to the element, on the grounds that a reader
+     * mid-tag is asking "what is this element". A sandbox pass found the opposite: with the element
+     * answering and the attribute's *value* answering, an attribute name that says nothing reads as
+     * the plugin not knowing the file. A reader who wanted the element hovers the element.
+     *
+     * The fallback itself is not gone — it still catches every attribute
+     * [org.apache.solr.ide.model.SolrAttributeMeanings] does not describe, which
+     * `SolrAttributeDocumentationTest` pins on a `copyField`'s `name`.
      */
-    fun testAnUnknownAttributeFallsBackToItsElement() {
+    fun testTheClassAttributeExplainsItselfRatherThanItsElement() {
         val doc = docAtCaret(caretInside("class"))
         assertNotNull(doc)
-        assertTrue("expected the fieldType element's explanation: $doc", doc!!.contains("Declares a field type"))
+        assertTrue("expected the attribute's own meaning: $doc", doc!!.contains("implementing this type"))
+        assertFalse("the element description belongs to the element: $doc", doc.contains("Declares a field type"))
     }
 
     /**

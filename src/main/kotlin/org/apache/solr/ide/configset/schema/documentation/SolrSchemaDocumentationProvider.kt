@@ -20,6 +20,7 @@ import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.schema.SolrFieldProperty
+import org.apache.solr.ide.model.vocabulary.SolrAttributeMeanings
 import org.apache.solr.ide.model.vocabulary.SolrClassAttribute
 import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassEntry
@@ -85,6 +86,14 @@ class SolrSchemaDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
         contextElement?.parentOfType<XmlAttribute>(withSelf = true)
             ?.takeIf { documentedClassAttribute(it) != null }
             ?.let { return it }
+        // The structural attributes — `name`, `class`, `type`, `source`, `dest` — claimed last, so
+        // they only take a caret the property and factory tables both declined. Without this the
+        // caret falls through to the tag and hovering `class` answers with what a `<fieldType>` is,
+        // which is a reasonable answer to a question nobody asked — the same mistake the property
+        // half of this method exists to correct.
+        contextElement?.parentOfType<XmlAttribute>(withSelf = true)
+            ?.takeIf { it.parentOfType<XmlTag>()?.let { tag -> SolrAttributeMeanings.of(tag.name, it.name) } != null }
+            ?.let { return it }
         // Falling through to the tag means hovering the element itself answers. Without this, every
         // question the plugin can answer required the caret to be inside an attribute value — a
         // gesture a reader makes only once they already suspect something. Analysis factory tags
@@ -109,7 +118,8 @@ class SolrSchemaDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
         }
         if (element is XmlAttribute) {
             propertyDocumentation(element)?.let { return it }
-            return classAttributeDocumentation(element)
+            classAttributeDocumentation(element)?.let { return it }
+            return structuralAttributeDocumentation(element)
         }
         val value = element as? XmlAttributeValue ?: return null
         val file = value.containingFile ?: return null
@@ -257,6 +267,29 @@ class SolrSchemaDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
             schemaVersion = model.schemaVersion,
             typeClassName = field?.let { model.typeOf(it) }?.className?.takeIf { it.isNotEmpty() },
         )
+    }
+
+    /**
+     * The popup for a structural attribute — `name`, `class`, `type`, `source`, `dest`.
+     *
+     * **The last of the three caret positions to answer.** The element explained itself and so did
+     * an attribute's value; the attribute's own name said nothing, which reads as the plugin not
+     * knowing the file when the attribute beside it answers.
+     *
+     * `version` on the schema root gets a second paragraph, because the model already resolves what
+     * it decides for every field-property popup and this is the attribute that causes it.
+     */
+    private fun structuralAttributeDocumentation(attribute: XmlAttribute): String? {
+        val tag = attribute.parentOfType<XmlTag>() ?: return null
+        if (!SolrConfigsetDetector.isConfigsetFile(attribute.containingFile)) return null
+
+        val meaning = SolrAttributeMeanings.of(tag.name, attribute.name) ?: return null
+        val detail = if (tag.name == "schema" && attribute.name == "version") {
+            modelFor(tag)?.let { SolrAttributeMeanings.ofSchemaVersion(it.schemaVersion) }
+        } else {
+            null
+        }
+        return SolrFieldPresentation.attributeMeaning(attribute.name, meaning, detail)
     }
 
     /**
