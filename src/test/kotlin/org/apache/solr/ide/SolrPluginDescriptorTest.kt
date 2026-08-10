@@ -33,8 +33,18 @@ class SolrPluginDescriptorTest {
 
     @Test
     fun `every class named in plugin xml resolves`() {
-        val descriptor = checkNotNull(javaClass.getResourceAsStream("/META-INF/plugin.xml")) {
-            "plugin.xml is not on the test classpath"
+        for (descriptor in DESCRIPTORS) resolveEveryClassIn(descriptor)
+    }
+
+    /**
+     * **Every descriptor, not only `plugin.xml`.** An optional dependency puts its extensions in a
+     * separate file, and a registration nobody checks is exactly what this test exists to catch — so
+     * the list of files to walk has to grow with them. A missing file fails rather than passing
+     * vacuously, because a descriptor that stops being on the classpath is itself the defect.
+     */
+    private fun resolveEveryClassIn(name: String) {
+        val descriptor = checkNotNull(javaClass.getResourceAsStream("/META-INF/$name")) {
+            "$name is not on the test classpath"
         }
         val document = DocumentBuilderFactory.newInstance()
             .also { it.isNamespaceAware = false }
@@ -64,14 +74,14 @@ class SolrPluginDescriptorTest {
 
         // A guard against the walk silently finding nothing — a namespace-aware parser, a moved
         // resource or a typo in the attribute scan would otherwise make this test vacuously green.
-        assertTrue("expected plugin.xml to name many of our classes, found ${names.size}", names.size > 15)
+        assertTrue("expected $name to name at least one of our classes", names.isNotEmpty())
 
         val loader = javaClass.classLoader
         val missing = names.filter { (_, fqn) ->
             runCatching { Class.forName(fqn, false, loader) }.isFailure
         }
         assertTrue(
-            "plugin.xml names classes that do not exist:\n" +
+            "$name names classes that do not exist:\n" +
                 missing.joinToString("\n") { (where, fqn) -> "  $where → $fqn" },
             missing.isEmpty(),
         )
@@ -79,5 +89,11 @@ class SolrPluginDescriptorTest {
 
     private companion object {
         const val OUR_PACKAGE = "org.apache.solr.ide"
+
+        /**
+         * The descriptors the plugin ships. `solr-withJava.xml` is loaded only where Java PSI exists,
+         * and its one registration is as capable of naming a class that has moved as any other.
+         */
+        val DESCRIPTORS = listOf("plugin.xml", "solr-withJava.xml")
     }
 }

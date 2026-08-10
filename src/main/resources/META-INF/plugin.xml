@@ -13,7 +13,14 @@
     <depends>com.intellij.modules.platform</depends>
     <!-- Configset XML PSI: reference resolution, inspections, completion over schema.xml/solrconfig.xml -->
     <depends>com.intellij.modules.xml</depends>
-    <!-- Phase 3 (SolrJ in Java/Kotlin): <depends>com.intellij.modules.java</depends> -->
+    <!-- Java PSI, optionally. Everything in `solr-withJava.xml` is registered only where the Java
+         module is present, which is how the platform expresses "this feature needs Java and the rest
+         of the plugin does not". In IntelliJ IDEA that is always; in a hypothetical non-Java IDE the
+         class reference is simply absent rather than the plugin failing to load.
+
+         Phase 3 (SolrJ in Java/Kotlin) will need this as a hard dependency. Optional now because
+         class navigation is the one action that needs nothing else built first. -->
+    <depends optional="true" config-file="solr-withJava.xml">com.intellij.modules.java</depends>
 
     <resource-bundle>messages.SolrBundle</resource-bundle>
 
