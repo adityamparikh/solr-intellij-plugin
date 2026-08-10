@@ -1,5 +1,7 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
+
 /**
  * Builds links into the Apache Solr Reference Guide.
  *
@@ -78,7 +80,8 @@ object SolrReferenceGuide {
     /**
      * The guide page describing field type definitions and the properties fields may carry.
      *
-     * This is the page behind every entry in [SolrFieldProperties]: it holds the property table
+     * This is the page behind every entry in
+     * [SolrFieldProperties][org.apache.solr.ide.model.schema.SolrFieldProperties]: it holds the property table
      * with descriptions, accepted values and defaults.
      *
      * @param version the Solr line the configset targets

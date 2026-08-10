@@ -32,13 +32,13 @@
                 nameKey="inlay.matchCapability.name"
                 group="OTHER_GROUP"
                 isEnabledByDefault="true"
-                implementationClass="org.apache.solr.ide.configset.hint.SolrMatchInlayHintsProvider"/>
+                implementationClass="org.apache.solr.ide.configset.schema.hint.SolrMatchInlayHintsProvider"/>
 
         <!-- Element descriptors for schema files. A schema has no XSD, so without these the
              platform guesses: attribute completion echoes whatever same-named sibling tags carry.
              The descriptors are deliberately permissive — validation stays with the inspections. -->
         <xml.elementDescriptorProvider
-                implementation="org.apache.solr.ide.configset.descriptor.SolrSchemaElementDescriptorProvider"/>
+                implementation="org.apache.solr.ide.configset.schema.descriptor.SolrSchemaElementDescriptorProvider"/>
 
         <!-- Quick documentation, answering a different question at each position. On a field, its
              type, or a factory tag, it resolves the values in effect and where each came from; on a
@@ -47,14 +47,20 @@
              class is and what it accepts, which is identity rather than resolution. -->
         <lang.documentationProvider
                 language="XML"
-                implementationClass="org.apache.solr.ide.configset.documentation.SolrConfigsetDocumentationProvider"/>
+                implementationClass="org.apache.solr.ide.configset.schema.documentation.SolrSchemaDocumentationProvider"/>
 
         <!-- References. A configset is held together by string references — a field names its
              type, a copyField names two fields — and none of them is a reference as far as the
              editor is concerned until this makes it one. -->
         <psi.referenceContributor
                 language="XML"
-                implementation="org.apache.solr.ide.configset.reference.SolrConfigsetReferenceContributor"/>
+                implementation="org.apache.solr.ide.configset.schema.reference.SolrSchemaReferenceContributor"/>
+        <!-- The solrconfig.xml half, registered separately: it answers for a different file and a
+             different element, and each contributor is consulted for every XML file in the project,
+             so narrower patterns cost less to decline. -->
+        <psi.referenceContributor
+                language="XML"
+                implementation="org.apache.solr.ide.configset.solrconfig.reference.SolrConfigReferenceContributor"/>
 
         <!-- The other end of those references. The contributor above anchors every reference at a
              use site, which makes Ctrl-click work and left Find Usages refusing from the
@@ -62,14 +68,14 @@
              No language attribute — declaration searchers are registered globally and decline by
              inspecting the element, which the configset guard already does. -->
         <pom.declarationSearcher
-                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationSearcher"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDeclarationSearcher"/>
 
         <!-- A dynamic field supplies names it never spells, and the word index can only offer
              candidates that share a word with the pattern. Without this, Find Usages on
              <dynamicField name="*_t"> silently omits every name it actually supplies. Global and
              declining first, for the same reason as above. -->
         <referencesSearch
-                implementation="org.apache.solr.ide.configset.reference.SolrDynamicFieldSearcher"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDynamicFieldSearcher"/>
 
         <!-- What the two above look like once the platform renders them. Without the first, the
              Find Usages header and the rename dialog read "Solr Declaration Target" — the target's
@@ -77,9 +83,9 @@
              under "Unclassified". Both were found by a sandbox pass; neither is visible to a test
              that asserts what the search returns. -->
         <elementDescriptionProvider
-                implementation="org.apache.solr.ide.configset.reference.SolrDeclarationDescriptionProvider"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrDeclarationDescriptionProvider"/>
         <usageTypeProvider
-                implementation="org.apache.solr.ide.configset.reference.SolrUsageTypeProvider"/>
+                implementation="org.apache.solr.ide.configset.navigation.SolrUsageTypeProvider"/>
 
         <!-- Completion for the attribute values whose valid answers are a closed set. Positions
              where any value is legal are left to the platform, because a partial list implies the
@@ -89,7 +95,12 @@
         <completion.contributor
                 language="XML"
                 order="first"
-                implementationClass="org.apache.solr.ide.configset.completion.SolrConfigsetCompletionContributor"/>
+                implementationClass="org.apache.solr.ide.configset.schema.completion.SolrSchemaCompletionContributor"/>
+        <!-- Field names inside a solrconfig.xml handler parameter's text, which is the one
+             answerable position that is neither an attribute value nor a tag name. -->
+        <completion.contributor
+                language="XML"
+                implementationClass="org.apache.solr.ide.configset.solrconfig.completion.SolrConfigCompletionContributor"/>
 
         <!-- Inspections. Warning rather than error: the plugin's model of a half-typed file is not
              authoritative enough to claim a hard error, and an error on a file the user is midway
@@ -103,7 +114,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrDanglingCopyFieldInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownFieldType"
@@ -113,7 +124,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldTypeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection"/>
         <!-- Value and attribute-name checks. Both read the generated catalog, so both are silent on
              a class it does not know: a custom plugin must not be underlined for being custom. -->
         <localInspection
@@ -125,7 +136,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrInvalidAttributeValueInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrInvalidAttributeValueInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownAttribute"
@@ -135,7 +146,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownAttributeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownFieldReference"
@@ -145,7 +156,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnknownFieldReferenceInspection"/>
+                implementationClass="org.apache.solr.ide.configset.solrconfig.inspection.SolrUnknownFieldReferenceInspection"/>
         <!-- Reads the same handler parameters as the check above and asks the next question of them:
              the field is declared, but can it be searched? Separate rather than folded in, because a
              user who trusts one may not want the other — and because the two examine different
@@ -159,7 +170,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrNonIndexedRelevanceFieldInspection"/>
+                implementationClass="org.apache.solr.ide.configset.solrconfig.inspection.SolrNonIndexedRelevanceFieldInspection"/>
         <!-- The one inspection here that guards against silence rather than against a false positive:
              a facet or sort naming a field with neither doc values nor an un-invertible index is a
              request Solr refuses outright, and nothing in the configset says so. Separate from the
@@ -174,7 +185,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnsupportedFieldOperationInspection"/>
+                implementationClass="org.apache.solr.ide.configset.solrconfig.inspection.SolrUnsupportedFieldOperationInspection"/>
         <!-- The hardest schema defect to see by reading: every class exists and every attribute is
              legal, and the filter still never runs. Registered for XML like the rest; both rules it
              carries are provable from the order of the chain alone. -->
@@ -187,7 +198,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrAnalyzerChainOrderInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrAnalyzerChainOrderInspection"/>
         <!-- The one finding here that is not a defect: a type nothing uses is dead weight, not a
              mistake, so it is drawn as an unused declaration rather than underlined. Enabled by
              default all the same — the grey-out costs a reader nothing, and dead configuration is
@@ -201,7 +212,7 @@
                 groupKey="inspection.group"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="org.apache.solr.ide.configset.inspection.SolrUnusedFieldTypeInspection"/>
+                implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnusedFieldTypeInspection"/>
 
         <!-- An intention rather than an inspection quick-fix, because a field without prefix
              support is correct Solr. Underlining it would be manufacturing a problem in order to
@@ -209,12 +220,12 @@
         <intentionAction>
             <language>XML</language>
             <category>Solr</category>
-            <className>org.apache.solr.ide.configset.intention.SolrAddPrefixCompanionIntention</className>
+            <className>org.apache.solr.ide.configset.schema.intention.SolrAddPrefixCompanionIntention</className>
         </intentionAction>
         <intentionAction>
             <language>XML</language>
             <category>Solr</category>
-            <className>org.apache.solr.ide.configset.intention.SolrAddExactCompanionIntention</className>
+            <className>org.apache.solr.ide.configset.schema.intention.SolrAddExactCompanionIntention</className>
         </intentionAction>
     </extensions>
 </idea-plugin>

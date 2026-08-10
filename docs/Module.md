@@ -58,12 +58,37 @@ localization bundle; feature code lives in subpackages.
 # Package org.apache.solr.ide.model
 
 What the plugin knows about a configset's fields, as data — and the one package
-that is not a feature. It is what both surfaces read, and the only package with
-no IntelliJ types in it, which is what lets the correctness-critical code be
-tested without a running IDE.
+that is not a feature. It is what both surfaces read, and the only tree with no
+IntelliJ types in it, which is what lets the correctness-critical code be tested
+without a running IDE.
+
+This package itself holds what is independent of any one source: `SolrConfigsetFacts`,
+the shape a parser produces; `SolrFieldModel` with `SolrFact` and `SolrAgreement`,
+which merge a repository half with a server half; and `SolrReferenceGuide`.
 
 [Why it is shared, and what `SolrFact`, `SolrMatchAnalysis` and `SolrClassCatalog`
 are for](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolridemodel).
+
+# Package org.apache.solr.ide.model.schema
+
+What a field *is*, whichever source described it — properties and their
+resolution, field types and their traits, schema versions, and the match analysis
+that says what a chain can actually match.
+
+Everything here is knowledge a server reader needs in order to interpret what it
+fetched, which is the test that separates this package from
+`org.apache.solr.ide.model.vocabulary`: Solr's schema API returns `indexed`,
+`stored`, `omitNorms` and analyzer chains, so all of it applies to a collection
+just as it applies to a file.
+
+# Package org.apache.solr.ide.model.vocabulary
+
+What a configuration file may legally contain: which attributes each element
+accepts, and the generated catalog of classes a `class` attribute may name.
+
+Distinct from `org.apache.solr.ide.model.schema` because a server never needs it.
+These answers are about XML elements and attributes, and Solr's schema API returns
+JSON — so nothing here will ever have a server half.
 
 # Package org.apache.solr.ide.configset.activation
 
@@ -72,31 +97,70 @@ Deciding whether the plugin runs at all, and against which configset.
 [The two gates, the name tiers, and why the manual override is
 load-bearing](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#the-activation-decision).
 
-# Package org.apache.solr.ide.configset.parsing
+# Package org.apache.solr.ide.configset.reading
 
-Reading a configset off disk into the model, and caching the result.
+Turning a configset directory into a model, and caching the result: the reader
+that both aspects go through, the project-wide scan, and the hardened XML
+document loading both parsers share.
+
+Cross-aspect by nature — a configset is read as a whole — so it sits at the
+configset root rather than under `schema` or `solrconfig`.
 
 [The parsers, the cache and its dependency
 list](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#from-files-to-the-model).
 
-# Package org.apache.solr.ide.configset.inspection
+# Package org.apache.solr.ide.configset.editing
 
-Reporting references that go nowhere — a dangling `copyField`, a field naming an
-undeclared type, and a handler parameter naming a field the schema never
-declares.
+The editor-path primitives both aspects share: the guard rails that keep an
+inspection off a correct file, and the quick-fix that offers the valid
+alternatives when a name does not resolve.
+
+# Package org.apache.solr.ide.configset.navigation
+
+The gestures that cross the file boundary by design. A field is declared in the
+schema and referenced from `solrconfig.xml`, so Find Usages, the declaration
+target and rename belong to the configset as a whole rather than to either
+aspect — filing them under one would make that aspect import the other.
+
+`SolrSchemaPsi` is here for the same reason. It answers *where was this
+declared*, which is the target end of every reference — including the ones a
+`solrconfig.xml` parameter makes — so it is graph machinery rather than
+schema-private.
+
+# Package org.apache.solr.ide.configset.schema
+
+Everything anchored in a schema file — `managed-schema.xml` or `schema.xml` —
+one subpackage per gesture.
+
+A capability belongs here when the caret that triggers it is always in a schema
+file. Anything that traverses the configset instead lives at the configset root:
+that is why Find Usages and rename are in `configset.navigation` and not here.
+
+# Package org.apache.solr.ide.configset.schema.parsing
+
+Reading a schema file into facts. A pure function from text to
+`SolrConfigsetFacts`, using the JDK's DOM rather than IntelliJ's XML PSI, which
+is what lets it be tested without an IDE.
+
+# Package org.apache.solr.ide.configset.schema.inspection
+
+Reporting what is wrong in a schema file: a dangling `copyField`, a field naming
+an undeclared type, an attribute that does not exist or cannot hold the value
+written, an analyzer chain in an impossible order, a field type nothing uses.
 
 [Why the clean fixtures matter more than the flagged
-ones](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetinspection).
+ones](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemainspection-and-orgapachesolrideconfigsetsolrconfiginspection).
 
-# Package org.apache.solr.ide.configset.completion
+# Package org.apache.solr.ide.configset.schema.documentation
 
-Offering the values an attribute can legally take, and the vocabulary legal at
-the caret.
+What a hover over a schema element, a field, or a field type explains: the
+resolved property table, where each value came from, and what the field can
+actually match.
 
-[Why only closed sets are
-completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetcompletion).
+[What it answers that the Reference Guide
+cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemadocumentation).
 
-# Package org.apache.solr.ide.configset.descriptor
+# Package org.apache.solr.ide.configset.schema.descriptor
 
 Owning the XML element descriptors for schema files, so the platform's answers
 come from the plugin's knowledge instead of from schema-less guessing — which
@@ -106,31 +170,14 @@ Deliberately permissive: every unknown attribute and element resolves rather
 than being flagged, because validation is the inspections' job and they know
 when not to fire.
 
-# Package org.apache.solr.ide.configset.reference
-
-Turning the strings that hold a configset together into references the editor
-understands.
-
-[Why they are soft, and how far a glob is
-followed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetreference).
-
-# Package org.apache.solr.ide.configset.documentation
-
-Quick documentation on a schema element, on a field, and on its type.
-
-[What it answers that the Reference Guide
-cannot](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetdocumentation).
-[Why it links to the guide rather than copying it, and why the generated catalog keeps only a
-one-sentence summary](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/faq.md).
-
-# Package org.apache.solr.ide.configset.hint
+# Package org.apache.solr.ide.configset.schema.hint
 
 Showing what each field matches, inline beside its declaration.
 
 [Why an inlay rather than a
-tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsethint).
+tooltip](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemahint).
 
-# Package org.apache.solr.ide.configset.intention
+# Package org.apache.solr.ide.configset.schema.intention
 
 Offering to improve a file that is already correct.
 
@@ -139,12 +186,70 @@ field without prefix support is not wrong. What belongs here is anything the use
 want and the plugin can write, where staying silent is also a valid answer.
 
 [Why the boundary against
-inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetintention).
+inspections](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemaintention).
 
-# Package org.apache.solr.ide.server
+# Package org.apache.solr.ide.configset.schema.completion
 
-Talking to a live Solr server, and remembering how to reach one. Currently
-connection settings only, and unreachable from the editor path.
+Offering the values a schema attribute can legally take, and the vocabulary legal
+at the caret.
+
+[Why only closed sets are
+completed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemacompletion-and-orgapachesolrideconfigsetsolrconfigcompletion).
+
+# Package org.apache.solr.ide.configset.schema.reference
+
+Turning the strings that hold a schema together into references the editor
+understands: a field's `type`, both ends of a `copyField`, and an analyzer
+component's resource files.
+
+[Why they are soft, and how far a glob is
+followed](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideconfigsetschemareference-orgapachesolrideconfigsetsolrconfigreference-and-orgapachesolrideconfigsetnavigation).
+
+# Package org.apache.solr.ide.configset.solrconfig
+
+Everything anchored in `solrconfig.xml`, with the parameter-to-PSI mapping its
+gestures share at the root and one subpackage per gesture.
+
+The file the plugin's users edit most, and the one with no Schema API
+alternative. Its gestures consult schema knowledge constantly — a `qf` names
+fields the schema declares — but they reach it through `model`, never through
+`configset.schema`, which is what keeps the two aspects independent.
+
+# Package org.apache.solr.ide.configset.solrconfig.parsing
+
+Reading `solrconfig.xml` into facts: the field references its handler parameters
+make, and the operations those parameters imply.
+
+# Package org.apache.solr.ide.configset.solrconfig.inspection
+
+Reporting what is wrong in `solrconfig.xml`: a parameter naming a field the
+schema never declares, a query field no query can search, and a parameter asking
+of a field an operation its type does not support.
+
+All three fire only on `solrconfig.xml`. That used to be a guard repeated in each
+visitor; it is now the package they live in.
+
+# Package org.apache.solr.ide.configset.solrconfig.completion
+
+Offering the schema's field names inside a handler parameter's text — the one
+answerable position in `solrconfig.xml` that is neither an attribute value nor a
+tag name.
+
+# Package org.apache.solr.ide.configset.solrconfig.reference
+
+Turning the field names inside a handler parameter into references to their
+schema declarations. These are the references that cross the file boundary, and
+the reason Find Usages on a schema declaration finds anything outside its own
+file.
+
+# Package org.apache.solr.ide.server.connection
+
+Remembering how to reach a live Solr, and where that memory may be written. A
+configset root is a fact about the project and is shared; a connection is a fact
+about one developer's machine, so definitions persist to the per-user workspace
+file and credentials to the IDE's PasswordSafe.
+
+Unreachable from the editor path.
 
 [Where its state may be
-written](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideserver).
+written](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/code-organization.md#orgapachesolrideserverconnection).

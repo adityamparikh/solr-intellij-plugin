@@ -64,8 +64,21 @@ in this plugin reads an index. A future feature that does must drop the declarat
 `DumbService`. Note the mechanism differs by extension point: inspections and completion override
 `isDumbAware()`, documentation and inlay providers implement the `DumbAware` marker interface.
 
-**Nothing in `org.apache.solr.ide.model` imports an IntelliJ type.** That is what lets a third of the
-suite be plain JUnit 4 with no fixture.
+**Nothing in the `org.apache.solr.ide.model` tree imports an IntelliJ type.** That is what lets a
+third of the suite be plain JUnit 4 with no fixture. Inside it, `model.schema` is what a field *is*
+and `model.vocabulary` is what a configuration file may legally contain — the test being whether a
+server reader would need the thing to interpret what it fetched.
+
+**`configset.schema` and `configset.solrconfig` must never import each other.** That is the whole
+prohibition, and it is one-directional rather than a ban on the two aspects appearing together: a
+shared package **may** import both, because composing them is what makes it shared.
+`configset.reading` imports both parsers, since dispatching on the file kind is its job, and
+`configset.navigation` imports both aspects' reference types, since labelling usages from either is
+its job. What neither aspect may do is reach sideways for the other.
+
+A capability falls under an aspect when the caret that triggers it is always in that aspect's file;
+one that traverses the configset — Find Usages, rename — belongs to `configset.navigation`, because
+filing it under `schema` would make that aspect depend on the other.
 
 **Nothing on the editor path contacts a server**, and detection signals stay cheap, local and cached
 because detection runs on every file the user opens.

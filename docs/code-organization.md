@@ -9,40 +9,88 @@ owns which of it is built — **do not infer status from this file**.
 
 ## The organising principle
 
-Packages are organised **by feature, and by feature again inside**.
+Packages are organised **by surface, then by subject, then by gesture** — and the third level
+collapses wherever there is only one gesture.
 
 The specification describes three surfaces — configuration files, a live server, and Java/Kotlin
 code — unified by one model of what fields exist and what they can do. Those surfaces are the top
-level. Within a surface, each package is **one capability, not one layer**: there is no `service`
-package, no `util`, no `impl`. A capability owns its own parsing-to-presentation slice.
+level. Inside a surface comes *which Solr thing this is about*: for `configset` that is the file,
+`schema` or `solrconfig`. Only then comes the IDE gesture — `inspection`, `completion`, `reference`,
+`documentation` — and each of those is **one capability, not one layer**: there is no `service`
+package, no `util`, no `impl`.
 
-`org.apache.solr.ide.model` is the single exception, and it earns the exception twice over. It is
-what both surfaces read, so filing it under either would be wrong. And it is the only package with
-no IntelliJ types anywhere in it, which is what lets the correctness-critical code be tested as a
-plain unit test over a string rather than inside a running IDE.
+The middle level is what makes the tree say what a change is *about* rather than only which
+extension point it uses. `SolrSchemaParser` and `SolrConfigParser` read entirely different files and
+share no vocabulary; as peers in one `parsing` package only their class names said so.
+
+**A capability falls under an aspect when the caret that triggers it is always in that aspect's
+file.** An inspection visits tags in one file and reports there; a completion provider answers at a
+caret in one file; a reference contributor decides which tags in which file carry references. A
+capability that traverses the configset by nature does not: Find Usages starts on a schema
+declaration and must reach `solrconfig.xml`, and rename must update the `qf` line. Those live at the
+configset root, in `configset.navigation`, because filing them under `schema` would make
+`configset.schema` import `configset.solrconfig`.
+
+**The prohibition is one-directional, and reading it as symmetry gets two correct files wrong.**
+Neither aspect may import the other. A package *above* the aspects may import both, and two of them
+must: `configset.reading` names both parsers because choosing between them by file kind is the whole
+of its job, and `configset.navigation` names both aspects' reference types because a usage-type
+provider has to label a hit from either. That is not a leak — it is the composition the shared layer
+exists to perform, and it is the reason those capabilities sit above the aspects rather than inside
+one. The test is direction, not co-occurrence: sideways between aspects is forbidden, downward from
+the shared layer into both is the design.
+
+`org.apache.solr.ide.model` is outside the surfaces, and earns it twice over. It is what both
+sources read — `SolrFact` exists precisely to hold a repository value *and* a server value — so
+filing it under either would be wrong. And it is the only tree with no IntelliJ types anywhere in
+it, which is what lets the correctness-critical code be tested as a plain unit test over a string
+rather than inside a running IDE.
+
+Inside `model` the same distinction runs again. `model.schema` is what a field *is*, whichever
+source described it; `model.vocabulary` is what a configuration file may legally contain. The test
+that separates them: **would the server reader need this to interpret what it fetched?** Solr's
+schema API returns `indexed`, `stored`, `omitNorms` and analyzer chains, so all of `model.schema`
+applies to a collection. It returns JSON and has no elements or attributes, so nothing in
+`model.vocabulary` will ever have a server half.
 
 New packages are created when they have a file to hold, not in advance.
 
 ## Where does my change go?
 
+Two questions now, in order: **which file is the caret in**, then **what is the gesture**.
+
+| If you are changing… | schema files | `solrconfig.xml` |
+|---|---|---|
+| How the file is read into the model | `configset.schema.parsing` | `configset.solrconfig.parsing` |
+| Something the editor reports as wrong | `configset.schema.inspection` | `configset.solrconfig.inspection` |
+| What is offered at the caret | `configset.schema.completion` | `configset.solrconfig.completion` |
+| Which strings become references | `configset.schema.reference` | `configset.solrconfig.reference` |
+| What a hover explains | `configset.schema.documentation` | *(arrives with `solrconfig.xml` support)* |
+| Something shown inline without being asked | `configset.schema.hint` | — |
+| Something offered on a file already correct | `configset.schema.intention` | — |
+| What the platform's XML support knows | `configset.schema.descriptor` | — |
+
+And the parts that belong to no single file:
+
 | If you are changing… | It goes in | Read first |
 |---|---|---|
-| What a configset *means* — fields, types, analyzer chains, what a field can match | `model` | [Extend the field model](how-to/extend-the-field-model.md) |
-| How a file is read into that meaning | `configset.parsing` | [Extend the field model](how-to/extend-the-field-model.md) |
+| What a configset *means* — fields, types, analyzer chains, what a field can match | `model.schema` | [Extend the field model](how-to/extend-the-field-model.md) |
+| What a configuration file may legally contain | `model.vocabulary` | [Extend the field model](how-to/extend-the-field-model.md) |
+| Turning a configset directory into a model, or caching it | `configset.reading` | [Extend the field model](how-to/extend-the-field-model.md) |
 | Whether the plugin runs at all, or which configset owns a file | `configset.activation` | The [activation decision](#the-activation-decision) below |
-| Something the editor reports as wrong | `configset.inspection` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| Something the editor offers to improve, on a file that is already correct | `configset.intention` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| What is offered at the caret | `configset.completion` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| Ctrl-click, Find Usages, rename | `configset.reference` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| What a hover explains | `configset.documentation` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| Something shown inline in the editor without being asked | `configset.hint` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| Reaching a running Solr, or remembering how to | `server` | Nothing talks to a server yet |
+| Ctrl-click, Find Usages, rename | `configset.navigation` | [Add an editor feature](how-to/add-an-editor-feature.md) |
+| Guard rails shared by both aspects' inspections and fixes | `configset.editing` | [Add an editor feature](how-to/add-an-editor-feature.md) |
+| Reaching a running Solr, or remembering how to | `server.connection` | Nothing talks to a server yet |
 | A user-visible string | `org.apache.solr.ide` (`SolrBundle`) | — |
 
 If your change spans two of these, that is usually correct and not a smell — an inspection reads the
-model and reports through the platform, and both halves belong where they are. What is a smell is a
-capability package importing another capability package. They share through `model` and
-`configset.parsing`, never through each other.
+model and reports through the platform, and both halves belong where they are.
+
+**What is a smell is `configset.schema` importing `configset.solrconfig`, or the reverse.** They
+share downward only, through `model`, `configset.reading`, `configset.editing` and
+`configset.navigation`. A solrconfig inspection that needs to know whether a field is indexed reads
+that from `model`, never from the schema aspect — which is exactly what
+`SolrNonIndexedRelevanceFieldInspection` does.
 
 ## Rules that hold across every package
 
@@ -135,7 +183,7 @@ flowchart LR
     Ask --> Hint["hint"]
 ```
 
-`SolrConfigsetReader.modelFor(PsiFile)` lives in `parsing` rather than beside any one feature,
+`SolrConfigsetReader.modelFor(PsiFile)` lives in `configset.reading` rather than beside any one feature,
 because otherwise four features would import the fifth.
 
 The parsers are **pure functions from text to facts**, using the JDK's DOM rather than IntelliJ's XML
@@ -195,11 +243,11 @@ line and changes between lines; see the `generateSolrCatalog` block in `build.gr
 Deciding whether the plugin runs at all, and against which configset. See [the activation
 decision](#the-activation-decision).
 
-### `org.apache.solr.ide.configset.parsing`
+### `org.apache.solr.ide.configset.reading`
 
 Reading a configset off disk into the model. See [from files to the model](#from-files-to-the-model).
 
-### `org.apache.solr.ide.configset.inspection`
+### `org.apache.solr.ide.configset.schema.inspection` and `org.apache.solr.ide.configset.solrconfig.inspection`
 
 Reporting references that go nowhere: a dangling `copyField`, a field naming an undeclared type, and
 — crossing the file boundary nothing else checks — a handler parameter in `solrconfig.xml` naming a
@@ -217,7 +265,7 @@ one typo with eighty menu items. The inspection computed that set in order to de
 and leaving the reader to find it is the difference between an editor that helps and one that
 complains.
 
-### `org.apache.solr.ide.configset.completion`
+### `org.apache.solr.ide.configset.schema.completion` and `org.apache.solr.ide.configset.solrconfig.completion`
 
 Offering the values an attribute can legally take — and answering two questions, not one. *What value
 goes here*, and *what may I write at all*: the elements legal at the caret, and the attributes an
@@ -230,7 +278,7 @@ partial list in an open-ended position is worse than none. `true`/`false` are ma
 Solr would use if the attribute were absent — except where that default depends on the field type, in
 which case neither is marked, because claiming one would assert something Solr does not.
 
-### `org.apache.solr.ide.configset.reference`
+### `org.apache.solr.ide.configset.schema.reference`, `org.apache.solr.ide.configset.solrconfig.reference` and `org.apache.solr.ide.configset.navigation`
 
 Turning the strings that hold a configset together into references the editor understands.
 
@@ -247,7 +295,7 @@ draw when they stay silent on globs.
 `SolrSchemaPsi` exists because the model holds no PSI: it can say a field type exists but not where
 it was written, and navigation needs the second answer.
 
-### `org.apache.solr.ide.configset.documentation`
+### `org.apache.solr.ide.configset.schema.documentation`
 
 Quick documentation on a schema element, on a field, and on its type.
 
@@ -267,7 +315,7 @@ Documentation links to the Reference Guide rather than copying it, at the versio
 declares. Links are page-level — anchors drift between releases and field types have no per-class
 anchor at all — and **nothing on the editor path fetches a URL**.
 
-### `org.apache.solr.ide.configset.hint`
+### `org.apache.solr.ide.configset.schema.hint`
 
 Showing what each field matches, inline beside its declaration.
 
@@ -276,11 +324,11 @@ match a prefix will never hover over it to find out. Nothing is shown where the 
 confident, or where a field names a type the configset does not declare — a wrong claim here is worse
 than a missing one, and this is the output most likely to be quoted back.
 
-### `org.apache.solr.ide.configset.intention`
+### `org.apache.solr.ide.configset.schema.intention`
 
 Offering to improve a file that is already correct.
 
-**The boundary against `configset.inspection` is the point of a separate package.** An inspection
+**The boundary against `configset.schema.inspection` is the point of a separate package.** An inspection
 claims something is wrong, and the standing rule is that inspections do not fire on a correct file. A
 field that cannot match a prefix is correct Solr — underlining it in order to have somewhere to hang
 a fix would be manufacturing a problem. An intention carries no such claim: nothing is highlighted,
@@ -291,7 +339,7 @@ the cases that decide *not* to offer can be tested without booting an IDE. Those
 the most: an intention offered where it does not apply is acted on, which is worse than one that is
 simply missing.
 
-### `org.apache.solr.ide.server`
+### `org.apache.solr.ide.server.connection`
 
 Talking to a live Solr server, and remembering how to reach one. Currently connection settings only.
 
@@ -304,8 +352,8 @@ Nothing in this package may be reached from the editor path.
 
 ## Where later work goes
 
-- `org.apache.solr.ide.configset.*` — the configuration-files surface, split by capability.
-- `org.apache.solr.ide.server` — the live-server surface, and the HTTP client when it lands.
+- `org.apache.solr.ide.configset.*` — the configuration-files surface, split by file and then by gesture.
+- `org.apache.solr.ide.server.*` — the live-server surface, and the HTTP client when it lands.
 - Recognizers for Java and Kotlin code get their own surface when the first one is written.
 
 Packages are created when they have a file to hold, not before.

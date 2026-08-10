@@ -6,7 +6,7 @@ Navigation runs one way. Ctrl-click from `type="text_general"` lands on the decl
 on that declaration and the IDE answers *Cannot search for usages from this location*.
 
 The half that looks hard is already built. Every reference in
-`org.apache.solr.ide.configset.reference` is anchored at a **use site** — `type=`, a `copyField` end,
+`configset.schema.reference` and `configset.solrconfig.reference` is anchored at a **use site** — `type=`, a `copyField` end,
 a handler parameter in `solrconfig.xml`, a filter's resource attribute — and each resolves to the
 `name` attribute value of the declaration, found by `SolrSchemaPsi`. Searching that graph in the
 reverse direction works today: `SolrConfigFieldReferenceTest` calls `ReferencesSearch.search` on

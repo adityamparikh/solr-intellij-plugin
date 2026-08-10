@@ -1,5 +1,11 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.schema.SolrCopyField
+import org.apache.solr.ide.model.schema.SolrDynamicField
+import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldReference
+import org.apache.solr.ide.model.schema.SolrFieldType
+
 /**
  * Everything one source knows about a configset, before merging.
  *
