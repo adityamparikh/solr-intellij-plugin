@@ -36,10 +36,17 @@ class SolrClassReferenceTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * Resolves **this plugin's** reference at the caret, not whichever reference answers first.
+     *
+     * The platform contributes its own references into XML attribute values, so accepting any
+     * resolution would let the positive cases pass with this contributor removed entirely — the exact
+     * shape of a test that passes for the wrong reason.
+     */
     private fun resolveAtCaret(): Any? {
         val value = myFixture.file.findElementAt(myFixture.caretOffset)!!
             .parentOfType<XmlAttributeValue>(withSelf = true)!!
-        return value.references.firstNotNullOfOrNull { it.resolve() }
+        return value.references.filterIsInstance<SolrClassReference>().firstNotNullOfOrNull { it.resolve() }
     }
 
     // --- what resolves ---------------------------------------------------------------------------
@@ -71,6 +78,64 @@ class SolrClassReferenceTest : SolrConfigsetTestCase() {
         assertTrue("expected a Java class", resolveAtCaret() is PsiClass)
     }
 
+    // --- rename ----------------------------------------------------------------------------------
+
+    /**
+     * Renaming the class rewrites the value, and a `solr.`-prefixed value keeps its prefix.
+     *
+     * Making a `class` value navigable is what exposes it to rename, so the two arrive together. The
+     * inherited behaviour replaces the reference's whole range with the new simple name, which would
+     * turn `solr.StrField` into `Renamed` — a configset Solr can no longer load, produced by a
+     * refactoring the reader trusted.
+     */
+    fun testRenamingAPrefixedClassKeepsSolrsSpelling() {
+        myFixture.addFileToProject(
+            "src/org/apache/solr/schema/StrField.java",
+            """
+            package org.apache.solr.schema;
+            public class StrField {}
+            """.trimIndent(),
+        )
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema("""<fieldType name="s2" class="solr.Str<caret>Field"/>"""),
+        )
+        val reference = myFixture.file.findElementAt(myFixture.caretOffset)!!
+            .parentOfType<XmlAttributeValue>(withSelf = true)!!
+            .references.filterIsInstance<SolrClassReference>().single()
+
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+            reference.handleElementRename("RenamedField")
+        }
+
+        assertTrue(
+            "the prefix must survive the rename: ${myFixture.file.text}",
+            myFixture.file.text.contains("""class="solr.RenamedField""""),
+        )
+    }
+
+    /** An unprefixed value takes the new name as written, because that is what it named before. */
+    fun testRenamingAFullyQualifiedClassWritesTheNewName() {
+        givenACustomFactory()
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema("""<fieldType name="custom" class="com.example.MyToken<caret>izerFactory"/>"""),
+        )
+        val reference = myFixture.file.findElementAt(myFixture.caretOffset)!!
+            .parentOfType<XmlAttributeValue>(withSelf = true)!!
+            .references.filterIsInstance<SolrClassReference>().single()
+
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+            reference.handleElementRename("com.example.Renamed")
+        }
+
+        assertTrue(
+            "expected the written name: ${myFixture.file.text}",
+            myFixture.file.text.contains("com.example.Renamed"),
+        )
+        assertFalse("no prefix should appear", myFixture.file.text.contains("solr.com.example"))
+    }
+
     // --- what must resolve to nothing -------------------------------------------------------------
 
     /**
@@ -85,8 +150,10 @@ class SolrClassReferenceTest : SolrConfigsetTestCase() {
             schema("""<fieldType name="custom" class="com.example.NotHer<caret>eAtAll"/>"""),
         )
         assertNull(resolveAtCaret())
-        // And nothing is reported about it — the point of the soft reference.
-        myFixture.checkHighlighting(true, false, false)
+        // And nothing is reported about it — the point of the soft reference. Every category is
+        // checked, including infos and weak warnings: a soft reference that produced a weak warning
+        // would satisfy an errors-and-warnings-only check while breaking the promise this asserts.
+        myFixture.checkHighlighting(true, true, true)
     }
 
     /**

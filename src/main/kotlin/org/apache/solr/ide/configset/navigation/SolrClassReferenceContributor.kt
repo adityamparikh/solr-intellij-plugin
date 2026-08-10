@@ -114,6 +114,31 @@ internal class SolrClassReference(
     }
 
     /**
+     * Rewrites the value when the class it names is renamed, keeping Solr's own spelling.
+     *
+     * **The inherited behaviour is wrong here, which is the only reason this exists.**
+     * [PsiReferenceBase.handleElementRename] replaces the reference's whole range with the new class
+     * name, so renaming `StrField` through Java would turn `solr.StrField` into `NewName` — dropping
+     * the prefix, and leaving a configset Solr can no longer load. Making a `class` value navigable
+     * is what exposes it to rename at all, so the two arrive together.
+     *
+     * The prefix is restored rather than the rename refused, because refusing would leave the file
+     * naming a class that no longer exists. `solr.` abbreviates Solr's own packages, so a class that
+     * was written with it is still written with it under a new name.
+     *
+     * @param newElementName the class's new simple name
+     * @return the element, with its value rewritten
+     */
+    override fun handleElementRename(newElementName: String): PsiElement {
+        val replacement = if (written.startsWith(SOLR_PREFIX)) {
+            SOLR_PREFIX + newElementName.substringAfterLast('.')
+        } else {
+            newElementName
+        }
+        return super.handleElementRename(replacement)
+    }
+
+    /**
      * Empty on purpose: completion for `class` values is the completion contributor's, and it offers
      * the catalog's classes with what each one does attached. A reference contributing variants as
      * well would put every name in the popup twice.
