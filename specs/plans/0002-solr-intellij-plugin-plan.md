@@ -1046,7 +1046,7 @@ root. **Found in a sandbox pass rather than by reading the code**, which is now 
 this provider that no test could see: a suite that asserts what a provider answers cannot notice what
 it declines.
 
-`SolrConfigsetDocumentationProvider.documentedProperty` holds two of the three causes in four lines —
+`SolrSchemaDocumentationProvider.documentedProperty` holds two of the three causes in four lines —
 a tag check that excludes `<schema>` outright, and a `byName` lookup that knows only *field
 properties*, so `name` and `class` fall through even on the tags that pass the check. The third is
 different in kind: a factory attribute does answer, and answers *a whole number*, which is a type

@@ -14,7 +14,7 @@ import org.apache.solr.ide.model.schema.SolrVersionRange
  *
  * **Written by hand, and that is the deliberate part.** The catalog is generated from bytecode
  * because it is thousands of attributes that move with every Solr line, and
- * [the factory catalog][SolrClassCatalog] proves each one's value type, default and requiredness
+ * [SolrClassCatalog] proves each one's value type, default and requiredness
  * from the class that reads it. None of that can say what an attribute *does* — Javadoc is written
  * per class, so no generated source carries per-attribute prose, which is why an earlier revision
  * declined to show any.

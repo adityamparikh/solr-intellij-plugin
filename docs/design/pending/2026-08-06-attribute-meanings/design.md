@@ -14,7 +14,7 @@ happened for this provider and worth noting: what a provider *declines* to answe
 test suite that only asserts what it does answer.
 
 Three separate causes sit behind one symptom, and
-`SolrConfigsetDocumentationProvider.documentedProperty` shows two of them in four lines:
+`SolrSchemaDocumentationProvider.documentedProperty` shows two of them in four lines:
 
 ```kotlin
 if (tag.name !in SolrSchemaTags.FIELD && tag.name !in SolrSchemaTags.FIELD_TYPE) return null

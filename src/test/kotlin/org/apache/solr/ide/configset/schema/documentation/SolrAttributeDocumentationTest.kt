@@ -72,6 +72,33 @@ class SolrAttributeDocumentationTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A catalog-backed attribute with no handwritten meaning keeps exactly the popup it had.
+     *
+     * **This is the contract, not a nicety.** The meanings are hand-written for the two dozen
+     * attributes a reader actually hovers, so most of the catalog's thousands have none — and the
+     * failure that matters for a feature like this is a popup appearing, or changing, where nothing
+     * should. `maxShingleSize` is catalog-backed on `solr.ShingleFilterFactory` and deliberately
+     * undescribed, so its popup must still carry `Read by` and must not grow a `Does` row.
+     */
+    fun testAnUndescribedFactoryAttributeKeepsItsCatalogRowsAndGainsNothing() {
+        val doc = documentationAtCaret(
+            """
+            <schema name="t" version="1.6">
+              <fieldType name="shingled" class="solr.TextField">
+                <analyzer>
+                  <tokenizer class="solr.StandardTokenizerFactory"/>
+                  <filter class="solr.ShingleFilterFactory" maxShing<caret>leSize="3"/>
+                </analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        assertNotNull("expected the catalog's attribute popup", doc)
+        assertTrue("the catalog rows must survive: $doc", "Read by" in doc!!)
+        assertFalse("an undescribed attribute must not gain a meaning: $doc", "Does" in doc)
+    }
+
+    /**
      * **The one the user asked for.** `minGramSize` reported *a whole number*, which is a type
      * rather than an answer.
      */
