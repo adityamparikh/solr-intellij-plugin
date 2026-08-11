@@ -319,14 +319,21 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       defined order and Solr rejects a plain sort on it. **The message names what sorting needs
       rather than asserting which part is missing** — this field is indexed and, at the demo's
       `version="1.6"`, un-invertible, so a message blaming doc values would be false here.
-- [ ] **INSP-11** — With the schema still at `version="1.6"`, add
-      `<arr name="facet.field"><str>category</str></arr>`. **Nothing fires** — `uninvertible`
-      defaults *true* below 1.7, so an indexed field with no doc values can still be faceted by
-      un-inverting it. Now change the schema root to `version="1.7"` as DOC-6 does: the same
-      `category` is underlined, because that default flips. Undo the version edit.
-- [ ] **INSP-12** — In the same handler, `<str name="qf">category</str>` stays clean while
-      INSP-11's facet is underlined. **The same field, searchable and unfacetable at once** — the
-      check that the two inspections ask different questions rather than one question twice.
+- [ ] **INSP-11** — In `solrconfig.xml`, add `<arr name="facet.field"><str>category</str></arr>` to
+      the `/select` handler's `defaults`. **Nothing fires**, and it keeps not firing when the schema
+      root is changed to `version="1.7"`. That second half is the correction a sandbox pass made to
+      this check: 1.7 is *also* the version at which `solr.StrField` gains doc values by default —
+      the catalog records it as `primitive,docValuesByDefault` — so flipping the version makes
+      `category` **more** facetable, not less. The version flip cannot demonstrate an unfacetable
+      field on a `string`, and a check that expected it to was testing the wrong lever.
+      To see the warning, declare the absence rather than defaulting it: add `docValues="false"` to
+      `category` in the schema. `category` in the `facet.field` is then underlined, and at 1.6 it is
+      not, because `uninvertible` defaults true below 1.7. Undo both edits.
+- [ ] **INSP-12** — With INSP-11's `docValues="false"` still on `category`, `<str name="qf">category</str>`
+      stays clean while the `facet.field` is underlined. **The same field, searchable and unfacetable at
+      once** — the check that the two inspections ask different questions rather than one question twice.
+      The completion side shows the same split with no edit at all: PRM-4's `sort` list withholds `text`
+      where the `qf` list offers it.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -468,12 +475,21 @@ Seven checks, all green, and two of them told me more than they were written to.
 - **INSP-11, clean half** — a `facet.field` on `category` fires nothing at the demo's `version="1.6"`,
   because `uninvertible` defaults true below 1.7.
 
-**Not reached: INSP-11's version-flip half, and INSP-12.** Both need the schema at `version="1.7"`, and
-the method failed rather than the plugin: the schema was open in the sandbox editor, so an edit written
-to disk was overwritten by the IDE's own buffer, and the file was still at 1.6 when I read the result.
-Neither check is known to be broken; neither was looked at. **Whoever presses these next should change
-the version through the editor rather than on disk** — which is what DOC-6 already does, and the reason
-it does.
+**INSP-11's version flip was pressed on the second attempt, and it found that the check was wrong.**
+With the schema at `version="1.7"` and the `facet.field` in place, the file was **completely clean** —
+no warning at all. That is correct behaviour: 1.7 is *also* the version at which `solr.StrField` gains
+doc values by default, which the generated catalog records for it as `primitive,docValuesByDefault`,
+so flipping the version makes `category` **more** facetable rather than less. A version flip cannot
+demonstrate an unfacetable `string` field, and the check as written was testing the wrong lever. Both
+INSP-11 and INSP-12 are rewritten around a declared `docValues="false"`, which is an absence the schema
+states rather than one a default supplies.
+
+**The mechanical lesson, which cost two attempts.** An edit written to disk is reverted by the IDE
+whenever it holds that file in an open editor — the first attempt read 1.6 back within milliseconds and
+looked like a failed write. Closing all tabs first makes disk edits stick, and the same write then
+persisted indefinitely. Also: **Go to File is ⇧⌘N in this keymap, not ⇧⌘O**; the wrong shortcut typed a
+file name into `solrconfig.xml` and left it malformed. The IDE's own empty-editor screen lists the
+correct shortcuts, which is the cheapest place to check.
 
 **On driving the sandbox at all.** Two hazards are worth writing down. The sandbox runs as a process
 named `java`, while a developer's own IDE is `idea` — sending keystrokes to the wrong one edits real
@@ -498,7 +514,7 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-10 | 029fb18 | Claude | PRM-1, PRM-2, PRM-3, PRM-4, PRM-5, INSP-10, INSP-11 (clean half) | **not completed** | seven checks pressed and green, including both halves of PRM-4; INSP-11's version-flip half and INSP-12 were not reached. Driven through macOS accessibility scripting against the sandbox — see the notes below |
+| 2026-08-10 | 029fb18 | Claude | PRM-1, PRM-2, PRM-3, PRM-4, PRM-5, INSP-10, INSP-11 | **not completed** | eight checks pressed and green, including both halves of PRM-4 and of INSP-11. INSP-11's version flip found the *check* wrong rather than the plugin, and both it and INSP-12 are rewritten as a result; INSP-12 itself was not pressed. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
