@@ -43,8 +43,21 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
     private fun handler(vararg parameters: String) =
         """<requestHandler name="/select"><lst name="defaults">${parameters.joinToString("")}</lst></requestHandler>"""
 
-    private fun unusable(field: String, parameter: String) =
-        """<warning descr="Solr: '$parameter' will fail on '$field' — it needs doc values or an un-invertible index, and for sorting a single value per document">$field</warning>"""
+    /**
+     * The faceting warning, which names what *faceting* needs and nothing else.
+     *
+     * Separate from [unsortable] on purpose. One shared message read *"it needs doc values or an
+     * un-invertible index, and for sorting a single value per document"* for both operations, so a
+     * faceting warning told the reader about a single-value requirement that faceting does not have —
+     * and multiValued fields are exactly what one usually facets on. No fixture could see it, because a
+     * fixture interpolates the same template it verifies; it took reading the rendered popup.
+     */
+    private fun unfacetable(field: String, parameter: String) =
+        """<warning descr="Solr: '$parameter' will fail on '$field' — faceting needs doc values, or an index Solr may un-invert">$field</warning>"""
+
+    /** The sorting warning, which carries the single-value requirement because sorting has one. */
+    private fun unsortable(field: String, parameter: String) =
+        """<warning descr="Solr: '$parameter' will fail on '$field' — sorting needs doc values, or an index Solr may un-invert, and a single value per document">$field</warning>"""
 
     // --- clean fixtures, written first -----------------------------------------------------------
 
@@ -136,24 +149,24 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
     /** The defect: a request Solr refuses, on a configset that looks correct. */
     fun testFacetingOnAFieldWithNeitherIsFlagged() {
         checkConfig(
-            handler("""<arr name="facet.field"><str>${unusable("category", "facet.field")}</str></arr>"""),
+            handler("""<arr name="facet.field"><str>${unfacetable("category", "facet.field")}</str></arr>"""),
         )
     }
 
     /** Sorting fails the same way and for the same reason. */
     fun testSortingOnAFieldWithNeitherIsFlagged() {
-        checkConfig(handler("""<str name="sort">${unusable("category", "sort")} desc</str>"""))
+        checkConfig(handler("""<str name="sort">${unsortable("category", "sort")} desc</str>"""))
     }
 
     /** Grouping orders documents by the field's value, so it needs what sorting needs. */
     fun testGroupingOnAFieldWithNeitherIsFlagged() {
-        checkConfig(handler("""<str name="group.field">${unusable("category", "group.field")}</str>"""))
+        checkConfig(handler("""<str name="group.field">${unsortable("category", "group.field")}</str>"""))
     }
 
     /** Every name in a pivot is faceted on. */
     fun testAPivotNamingAnUnfacetableFieldIsFlagged() {
         checkConfig(
-            handler("""<str name="facet.pivot">id,${unusable("category", "facet.pivot")}</str>"""),
+            handler("""<str name="facet.pivot">id,${unfacetable("category", "facet.pivot")}</str>"""),
         )
     }
 
@@ -163,7 +176,7 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
      */
     fun testADynamicFieldWithoutDocValuesIsFlagged() {
         checkConfig(
-            handler("""<arr name="facet.field"><str>${unusable("colour_nodv", "facet.field")}</str></arr>"""),
+            handler("""<arr name="facet.field"><str>${unfacetable("colour_nodv", "facet.field")}</str></arr>"""),
         )
     }
 
@@ -172,7 +185,7 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
      * sort and requires a selector — `field(tags,min)` — which is not what a bare name here asks for.
      */
     fun testSortingOnAMultiValuedFieldIsFlagged() {
-        checkConfig(handler("""<str name="sort">${unusable("tags", "sort")} asc</str>"""))
+        checkConfig(handler("""<str name="sort">${unsortable("tags", "sort")} asc</str>"""))
     }
 
     /** And faceting on the same field is exactly what multiValued fields are for. */
@@ -185,8 +198,25 @@ class SolrUnsupportedFieldOperationInspectionTest : SolrConfigsetTestCase() {
         checkConfig(
             handler(
                 """<str name="qf">category^2</str>""",
-                """<arr name="facet.field"><str>${unusable("category", "facet.field")}</str></arr>""",
+                """<arr name="facet.field"><str>${unfacetable("category", "facet.field")}</str></arr>""",
             ),
         )
+    }
+
+    /**
+     * The two warnings say different things, and neither mentions the other's requirement.
+     *
+     * **The check the suite was missing.** Every other assertion here interpolates the same template it
+     * verifies, so one message naming the union of both operations' requirements agreed with itself
+     * everywhere and was visible only by reading a rendered popup in a sandbox. This asserts the
+     * property that was actually violated: a faceting warning must not talk about single values,
+     * because faceting has no such requirement and multiValued fields are exactly what one facets on.
+     */
+    fun testEachOperationsWarningNamesOnlyItsOwnRequirements() {
+        val facet = unfacetable("category", "facet.field")
+        val sort = unsortable("category", "sort")
+        assertFalse("a faceting warning must not mention single values: $facet", "single value" in facet)
+        assertTrue("a sorting warning must mention single values: $sort", "single value" in sort)
+        assertTrue("both must name doc values", "doc values" in facet && "doc values" in sort)
     }
 }

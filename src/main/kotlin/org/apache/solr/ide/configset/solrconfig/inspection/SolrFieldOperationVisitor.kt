@@ -14,7 +14,8 @@ import org.apache.solr.ide.model.schema.SolrFieldOperations
 import org.apache.solr.ide.model.schema.SolrTypeTrait
 
 /**
- * A visitor reporting every parameter in a `solrconfig.xml` whose field cannot serve [operations].
+ * A visitor reporting every parameter in a `solrconfig.xml` whose field cannot serve the operation
+ * that parameter asks for.
  *
  * **Shared between the two inspections that ask it, and no wider.** It lived in `configset.editing`
  * beside the rules both aspects use, which made a package every aspect depends on depend in turn on
@@ -37,22 +38,25 @@ import org.apache.solr.ide.model.schema.SolrTypeTrait
  *
  * @param holder collects the problems found
  * @param model the configset's field model
- * @param operations the operations this inspection owns
- * @param messageKey the bundle key for its warning, taking the field name then the parameter name
+ * @param messages the operations this inspection owns, each mapped to the bundle key for its warning,
+ *   which takes the field name then the parameter name. One map rather than a set and a single key,
+ *   because an operation and what to say when a field cannot serve it are the same fact — separating
+ *   them produced one message for both, which told a reader that faceting needs a single value per
+ *   document. That is sorting's requirement; faceting has none, and multiValued fields are exactly
+ *   what one facets on
  * @return the visitor
  */
 internal fun fieldOperationVisitor(
     holder: ProblemsHolder,
     model: SolrFieldModel,
-    operations: Set<SolrFieldOperation>,
-    messageKey: String,
+    messages: Map<SolrFieldOperation, String>,
 ): XmlElementVisitor {
     val traitsByType = HashMap<String, Set<SolrTypeTrait>?>()
     return object : XmlElementVisitor() {
         override fun visitXmlTag(tag: XmlTag) {
             for (occurrence in SolrConfigParameters.fieldNameOccurrences(tag)) {
                 val operation = SolrConfigParser.operationFor(occurrence.parameterName) ?: continue
-                if (operation !in operations) continue
+                val messageKey = messages[operation] ?: continue
                 if (!SolrInspections.isCheckableFieldName(occurrence.fieldName)) continue
                 // An undeclared field is the unknown-reference inspection's finding, and saying it
                 // twice on one underline is worse than saying it once.
