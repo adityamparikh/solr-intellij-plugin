@@ -833,14 +833,25 @@ remain, and both open questions below remain open — nothing in this step is ch
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which grows to cover
 this vocabulary.
 
-**Where the element vocabulary comes from is settled: Solr declares it.** `SolrConfig` carries
-`public static final List<SolrPluginInfo> plugins`, pairing each element `tag` with the `Class<?>` its `class` attribute
-must implement, both as plain constants — so one generator pass yields 23 element names and the superclass each requires,
-identically on both supported lines. The distribution tarball and the vendored-files fallback are both retired, and the
-shipped configsets stay what this step's criteria want them for: the zero-findings fixture. Three of the 23 carry a parent
-path rather than a bare name, so the declaration supplies nesting that two example files could only have implied. The same
-list also generates the plugin-class roots the catalog step was going to hand-write, and declares sixteen more than that
-table had.
+**Where the element vocabulary comes from is half settled, and a sandbox pass showed which half.** The
+plugin elements are declared: `SolrConfig` carries `public static final List<SolrPluginInfo> plugins`,
+pairing each element `tag` with the `Class<?>` its `class` attribute must implement, both as plain
+constants — so one generator pass yields 23 element names and the superclass each requires, identically
+on both supported lines, three of them carrying a parent path so nesting comes with them. That same list
+also generates the plugin-class roots the catalog step was going to hand-write, and declares sixteen more
+than that table had.
+
+**The configuration elements are a second source, and three of them are neither.**
+`EditableSolrConfigAttributes.json`, shipped inside `solr-core` on both lines, describes `updateHandler`,
+`query` and `requestDispatcher` as a nested tree of 40 leaf attributes, each typed and marked as attribute
+or child element. But `<config>`, `luceneMatchVersion` and `dataDir` appear in neither list — they are
+plain fields read through `get("…")`, and not runtime-editable so the JSON omits them. Hovering exactly
+those three is the first thing a reader tries, and it is what showed the earlier claim that this was
+settled to be too strong. Either a third source turns up or they are a small hand-written set, recorded
+as such.
+
+The distribution tarball and the vendored-files fallback are both retired regardless, and the shipped
+configsets stay what this step's criteria want them for: the zero-findings fixture.
 
 **One open question remains, and it is a product decision this plan owns.** Whether the commented-out
 `com.intellij.modules.java` dependency arrives now as an optional dependency, making class navigation present in IDEA and

@@ -51,10 +51,17 @@ and its prerequisite,
 - **Modelling the whole file.** `<autoCommit>`, `<updateLog>`, `<circuitBreaker>` and the cache-sizing
   elements are structure no generator can derive and this specification does not hand-write. They
   fall to the permissive descriptor and stay silent, exactly as an unknown schema element does today.
-- **Parameter value *grammars*.** `defType` has a closed set of parsers; `rows` has none; `bf` holds a
-  function query with its own grammar, and `fq` holds full query syntax where a field name is a
-  fragment of the value rather than the whole of it. Rather than draw that line badly, value grammars
-  stay with the platform.
+- **Parameter value *grammars*.** `rows` has no closed set; `bf` holds a function query with its own
+  grammar; `fq` holds full query syntax where a field name is a fragment of the value rather than the
+  whole of it. Rather than draw that line badly, value grammars stay with the platform.
+
+  **`defType` is no longer among them, and this is the third time this non-goal has been too broad.**
+  It was already noted here as having a closed set of parsers, and the set turns out to be *generated
+  rather than hand-written*: `queryParser → QParserPlugin` is one of the pairs `SolrConfig.plugins`
+  declares, so the catalog enumerating that root enumerates exactly the legal `defType` values, per
+  supported line, with each parser's class to document it from. The same reasoning that admitted field
+  names — the list exists, it is derivable, and declining it cost a reader the answer — applies
+  unchanged. Offer the parsers; keep refusing the grammars.
 
   **This excludes grammars, not field names, and an earlier revision of this document conflated the
   two.** Completing a function query is a parser problem; completing a *field name* into a parameter
@@ -344,28 +351,32 @@ recalled:
 every symptom of a generator that produced an empty kind looks identical to a completion contributor
 that was never wired up.
 
-### Element structure: Solr declares its own element names
+### Element structure: Solr declares it, in two places and not quite all of it
 
-The parent specification treats the two configsets Solr ships as ground truth for element structure,
-and **they are not on any path the build has today** — `solr-core` contains no XML resources; those
-configsets ship in the distribution tarball, and the build resolves Maven artifacts. That left three
-routes: download the tarball per line, vendor two files per line, or derive the elements from Solr's
-own declaration.
+The parent specification treats the two configsets Solr ships as ground truth, and they are not on any
+path the build has today. Two generated sources replace them, and between them they do not cover
+everything — which is worth stating precisely, because an earlier revision of this document claimed they
+did.
 
-**The third is settled and the other two are retired.** `SolrConfig` carries
-`public static final List<SolrPluginInfo> plugins`, and each entry pairs a `tag` string with the
-`Class<?>` that tag's `class` attribute must implement. Both are plain constants in the static
-initializer, so one pass over the jar yields **23 element names and the superclass each one requires** —
-read off the resolved artifacts for both supported lines, where the two lists are identical.
+**The plugin elements come from `SolrConfig.plugins`.** Each entry pairs a `tag` with the `Class<?>` that
+tag's `class` attribute must implement, both plain constants, so one pass yields **23 element names and
+the superclass each requires** — identical on both supported lines. Three carry a parent path rather
+than a bare name, so the declaration supplies nesting as well.
 
-**The generated answer is strictly better than the transcribed one, not merely cheaper.** Three of the
-23 are not bare names — `indexConfig/deletionPolicy`, `updateHandler/updateLog` and `//listener` — so
-the declaration carries *nesting*, and `//` means the element may appear at any depth. Two example
-files could only have implied that, and only for the elements those two files happen to use.
+**The editable configuration subtrees come from `EditableSolrConfigAttributes.json`**, a resource inside
+`solr-core` on both lines. It describes `updateHandler`, `query` and `requestDispatcher` as a nested tree
+of **40 leaf attributes**, each with a type code that also distinguishes an attribute from a child
+element. Nesting, attribute names and value types, in JSON.
+
+**Neither covers `<config>`, `luceneMatchVersion` or `dataDir`**, and a reader hovering those is the
+commonest thing to try first. They are plain fields on `SolrConfig` read through `get("…")` rather than
+entries in any list, and they are not runtime-editable so the JSON omits them too. Either a third source
+turns up in the jar or they are hand-written — a handful of elements, which is a far smaller commitment
+than the two vendored configsets this replaced, and it must be recorded as hand-written rather than
+presented as generated.
 
 **The two configsets remain the zero-findings fixture.** That criterion is about the inspections rather
-than about where the vocabulary came from, and it is the one thing the tarball question was never
-about.
+than about where the vocabulary came from.
 
 ### Widen the descriptor gate; keep the permissiveness
 
