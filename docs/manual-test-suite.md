@@ -484,6 +484,20 @@ demonstrate an unfacetable `string` field, and the check as written was testing 
 INSP-11 and INSP-12 are rewritten around a declared `docValues="false"`, which is an absence the schema
 states rather than one a default supplies.
 
+**INSP-12 was then pressed against the rewritten setup, and passes.** With `category` carrying
+`docValues="false"` and the schema at `version="1.7"`, exactly one warning appears in the file, on
+`category` inside the `facet.field`, reading *Solr: 'facet.field' will fail on 'category' — it needs doc
+values or an un-invertible index, and for sorting a single value per document*. The same `category` in
+the `qf` two lines above is unmarked. One field, searchable and unfacetable, and the two inspections
+disagreeing about it exactly as they should.
+
+**One wart, seen only by reading the rendered message.** That warning mentions *sorting* while
+reporting a *facet*. The text was deliberately made cause-neutral — it lists what the operation needs
+rather than asserting which part is missing — and the cost of that choice is a clause about sorting in a
+faceting warning. It is honest and slightly noisy. Splitting the bundle key per operation would fix it,
+at the price of the shared visitor needing to choose between them; worth doing when something else
+touches that message, not on its own.
+
 **The mechanical lesson, which cost two attempts.** An edit written to disk is reverted by the IDE
 whenever it holds that file in an open editor — the first attempt read 1.6 back within milliseconds and
 looked like a failed write. Closing all tabs first makes disk edits stick, and the same write then
@@ -514,7 +528,7 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-10 | 029fb18 | Claude | PRM-1, PRM-2, PRM-3, PRM-4, PRM-5, INSP-10, INSP-11 | **not completed** | eight checks pressed and green, including both halves of PRM-4 and of INSP-11. INSP-11's version flip found the *check* wrong rather than the plugin, and both it and INSP-12 are rewritten as a result; INSP-12 itself was not pressed. Driven through macOS accessibility scripting against the sandbox — see the notes below |
+| 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
