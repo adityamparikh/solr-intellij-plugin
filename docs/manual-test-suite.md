@@ -422,8 +422,9 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
-- `solrconfig.xml`'s own *structure*: element and attribute completion, and navigation from a
-  `class` attribute to the plugin it names. What the legal elements are is settled — Solr declares
+- `solrconfig.xml`'s own *structure*: element and attribute completion. Navigation from a `class`
+  attribute now exists and has no gesture here yet — it needs one, including the case that matters,
+  a `solr.`-prefixed handler class that resolves to nothing until the catalog carries it. What the legal elements are is settled — Solr declares
   them in `SolrConfig.plugins` — but nothing reads them yet
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
@@ -439,6 +440,47 @@ finding one of these gestures alive means the suite is behind, not that somethin
   INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
   that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
   anything
+
+### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
+
+Seven checks, all green, and two of them told me more than they were written to.
+
+- **PRM-1** — completion inside the `/select` handler's `qf` offers every declared field with its type
+  as tail text, and `*_t` appears as the dynamic pattern. Ten entries for nine fields and one pattern.
+- **PRM-2** — `<str name="rows">` reports **No suggestions**. Positive evidence rather than an absent
+  popup, which matters: an empty crop of the screen looks the same as a correct refusal.
+- **PRM-3** — a caret immediately after the `^` in `name^3` reports **No suggestions**. Completing
+  there would have produced `name^name`.
+- **PRM-4** — both halves. Fields are offered at the start of a `sort` clause, and **No suggestions**
+  inside the direction. **The offered list withheld `text`, which the `qf` list had included** — `text`
+  is `multiValued`, so it is searchable and unsortable, and completion said so without being asked to.
+  That is INSP-12's argument arriving from the completion side.
+- **PRM-5** — Quick Documentation on `description` inside the `qf` shows *the field's* popup: its type,
+  *Matches: tokenised, case-insensitive*, and the full property table. Reached through reference
+  resolution rather than a documentation branch written for it, and the **Meaning** column is populated
+  — the hand-written attribute meanings rendering where no fixture had shown them. `uninvertible`
+  reads *Solr default at schema version 1.6*, which is the version derivation doing its job in the
+  same table.
+- **INSP-10** — `<str name="sort">text asc</str>` underlines `text` with, verbatim: *Solr: 'sort' will
+  fail on 'text' — it needs doc values or an un-invertible index, and for sorting a single value per
+  document*. **This is the message that was reworded because the original was false for a multiValued
+  field**, and this is the field it was false about.
+- **INSP-11, clean half** — a `facet.field` on `category` fires nothing at the demo's `version="1.6"`,
+  because `uninvertible` defaults true below 1.7.
+
+**Not reached: INSP-11's version-flip half, and INSP-12.** Both need the schema at `version="1.7"`, and
+the method failed rather than the plugin: the schema was open in the sandbox editor, so an edit written
+to disk was overwritten by the IDE's own buffer, and the file was still at 1.6 when I read the result.
+Neither check is known to be broken; neither was looked at. **Whoever presses these next should change
+the version through the editor rather than on disk** — which is what DOC-6 already does, and the reason
+it does.
+
+**On driving the sandbox at all.** Two hazards are worth writing down. The sandbox runs as a process
+named `java`, while a developer's own IDE is `idea` — sending keystrokes to the wrong one edits real
+files, and the window title (`solr-plugin-demo – …`) is what tells them apart. And typing XML through
+System Events fights auto-close: a partially typed element left the file malformed and produced two
+XML *errors* that could not be told apart from the plugin's warnings. Editing the file on disk and
+letting the IDE reload was reliable for `solrconfig.xml`; it is exactly what failed for the schema.
 
 ## Pass log
 
@@ -456,6 +498,7 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+| 2026-08-10 | 029fb18 | Claude | PRM-1, PRM-2, PRM-3, PRM-4, PRM-5, INSP-10, INSP-11 (clean half) | **not completed** | seven checks pressed and green, including both halves of PRM-4; INSP-11's version-flip half and INSP-12 were not reached. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
