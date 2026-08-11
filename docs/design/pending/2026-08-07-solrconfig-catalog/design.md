@@ -194,6 +194,46 @@ of parameter names; and that a curated *interface* list is the same kind of arte
 a structural signal that separates the two populations inside `CommonParams`, it replaces the list
 and this paragraph.
 
+### A fourth technique, for the elements the class routes cannot reach
+
+The two routes above find *classes*. `solrconfig.xml` also has a vocabulary of configuration elements
+that name no class at all — `<autoCommit><maxTime>`, `<filterCache size=…>`, `<requestDispatcher>` — and
+a sandbox pass found the plugin exactly as silent on those as it was on everything else here.
+
+**`EditableSolrConfigAttributes.json` is a generated source for most of them**, shipped inside
+`solr-core` on both supported lines. It is a nested tree of `updateHandler`, `query` and
+`requestDispatcher` carrying **40 leaf attributes**, and its type codes distinguish more than the value
+type — they say whether Solr reads each one as an attribute or as a child element:
+
+| Code | Means |
+|---|---|
+| `0` / `1` | string, as an attribute / as a node |
+| `10` / `11` | boolean, as an attribute / as a node |
+| `20` / `21` | int, as an attribute / as a node |
+| `30` / `31` | float, as an attribute / as a node |
+
+So one JSON read yields nesting, attribute names, value types **and** the attribute-versus-element
+distinction, for the three subtrees where hand-editing actually concentrates. No bytecode walk, no
+superclass root, no `-sources` jar.
+
+**It is the *editable* subset, and that bound must be recorded rather than discovered.** The Config API
+can only overlay what is runtime-editable, so `<config>`, `luceneMatchVersion` and `dataDir` are absent —
+they are plain fields on `SolrConfig` read through `get("…")`. Those three are the elements a reader
+hovers first, so they need a third source or a hand-written entry, and either way this catalog must not
+imply it covers them.
+
+### `defType`'s values fall out of the plugin roots, which retires a non-goal
+
+`queryParser → QParserPlugin` is one of the pairs `SolrConfig.plugins` declares, so the pass that
+enumerates plugin classes enumerates every registered query parser — which is exactly the closed set
+`defType` accepts, per line, each with a class to document it from.
+
+**That matters because it was declined twice.** [The intelligence
+record](../2026-08-07-solrconfig-intelligence/design.md) put parameter *values* out of scope on the
+strength of `bf` holding a function query, and narrowed that once already to admit field names. `defType`
+is the same shape a third time: the list exists, it is derivable from a root this catalog already scans,
+and refusing it costs a reader the answer. The grammars stay refused; the enumerations do not.
+
 ### Documentation: field-level Javadoc, which the extractor does not read today
 
 The documentation extractor takes a class's *class-level* Javadoc and reduces it to its first

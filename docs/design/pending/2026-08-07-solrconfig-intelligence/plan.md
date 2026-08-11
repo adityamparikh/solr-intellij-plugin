@@ -283,31 +283,37 @@ is exactly where a new one would appear.
 
 ## Open questions, and who closes them
 
-**Q1 — Where does the element vocabulary come from? — CLOSED: Solr declares them, so the generator
-reads them.**
+**Q1 — Where does the element vocabulary come from? — HALF CLOSED, and the half matters.**
 
 `SolrConfig` carries `public static final List<SolrPluginInfo> plugins`, and each entry pairs a `tag`
 string with the `Class<?>` that tag's `class` attribute must implement. Both are plain constants in the
-static initializer, so one pass yields **23 element names and the superclass each one requires**. Read
-off the resolved artifacts for both supported lines; the two lists are **identical**, which is the check
-that would have caught a vocabulary that moved between lines.
+static initializer, so one pass yields **23 element names and the superclass each one requires** —
+identical on 9.10.1 and 10.0.0, read off the resolved artifacts. Three of the 23 carry a parent path
+rather than a bare name (`indexConfig/deletionPolicy`, `updateHandler/updateLog`, `//listener`), so the
+declaration supplies nesting that two example files could only have implied.
 
-The tarball and the vendored files are both retired. The two shipped configsets stay exactly what the
-specification wants them for — the zero-findings fixture — which was never what the tarball question was
-about.
+**That covers the plugin elements and nothing else, which a sandbox pass made obvious.** Hovering
+`<config>`, `luceneMatchVersion` and `dataDir` produces nothing, and none of the three is in the 23:
+they are plain fields on `SolrConfig`, read through `get("…")` in its constructor rather than declared in
+a list. An earlier revision of this record called element structure settled on the strength of the
+plugin half. It is not.
 
-**The generated answer is better than the transcribed one, not merely cheaper.** Three of the 23 are not
-bare element names: `indexConfig/deletionPolicy`, `updateHandler/updateLog` and `//listener`. That is
-nesting, and `//` means the element may appear at any depth — structure two example files could only
-imply, and only for the elements those two files happen to use.
+**The rest of the vocabulary has its own generated source, previously overlooked.**
+`EditableSolrConfigAttributes.json` ships inside `solr-core` — on both supported lines — and carries a
+nested tree of `updateHandler`, `query` and `requestDispatcher` with **40 leaf attributes**, each with a
+type code that also says whether Solr reads it as an attribute or as a child element (`0` string
+attribute, `1` string node, `10` boolean attribute, `11` boolean node, `20` int, `30` float). So it gives
+nesting, attribute names and value types for the three subtrees where most hand-editing happens, and it
+is a JSON resource rather than bytecode.
 
-**The `clazz` beside each tag is [the catalog record's](../2026-08-07-solrconfig-catalog/design.md) root
-list, generated.** That record hand-wrote seven roots and flagged them as the kind of thing that moves
-between lines; all seven are confirmed, and sixteen more are declared that it never listed —
-`QParserPlugin`, `ValueSourceParser`, `TransformerFactory`, `QueryConverter`, `SolrEventListener`,
-`Expressible` and `InitParams` among them. Its standing failure mode was *a generator producing a
-plausible short list rather than an error*; a list read from the declaration Solr itself parses with
-turns a renamed root into a build-time absence instead of a silently empty kind.
+**It is the *editable* subset, so it is not the whole remainder.** `luceneMatchVersion`, `dataDir` and
+`<config>` itself are not runtime-editable and do not appear in it. Whatever covers those is the third
+source, and until one is found they are the small hand-written set this record has so far avoided
+needing — which is a much smaller commitment than the two vendored configsets it replaced.
+
+*Closed by:* nothing further for the plugin half. **The remaining question is narrower than the original
+one**: read the JSON for the three editable subtrees, and decide whether `<config>`, `luceneMatchVersion`
+and `dataDir` are worth hand-writing or worth another look in the jar.
 
 **Q2 — Optional Java dependency, or defer class navigation to Phase 3?** `plugin.xml` carries
 `com.intellij.modules.java` commented out and marked Phase 3. The optional-dependency route costs one
