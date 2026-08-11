@@ -194,6 +194,39 @@ of parameter names; and that a curated *interface* list is the same kind of arte
 a structural signal that separates the two populations inside `CommonParams`, it replaces the list
 and this paragraph.
 
+### What building the class half turned up
+
+**The roots are read, not written, and that immediately caught a short list.** With the roots taken from
+`SolrConfig.plugins`, the first regeneration produced thirteen new kinds and `requestHandler` was not
+among them — nor `queryResponseWriter`, `cache` or `listener`. All four are rooted at an **interface**,
+and the hierarchy pass followed `superName` only, so it reported no implementations for any of them and
+failed in exactly the way this record warns about: a plausible list, no error. The scan now records each
+class's declared interfaces and `descendsFrom` walks both edges breadth-first with a visited set, since a
+diamond is routine once interfaces are followed.
+
+That is the argument for generated roots making its own case. A hand-written table of seven would have
+listed the same four interfaces and produced the same silence, with nothing to notice it by.
+
+**Twenty-two kinds, and the catalog roughly triples.** 724 rows on Solr 10 and 735 on Solr 9, against
+about 200 before. `expressible` alone contributes 320 — the streaming-expression registry, which is a
+declared `solrconfig.xml` element and so is kept, rather than excluded on a judgement this record would
+be inventing.
+
+**The size lands on a risk this record already names.** `SolrClassCatalog.find` is a linear scan, and
+completion resolves against it per keystroke; tripling the rows triples that scan. The field-completion
+work has already memoised trait lookups by type name for exactly this reason, which removes the
+per-field multiplier, but a `find` on every keystroke over 700 rows is worth measuring before the
+parameter half adds its own lookups.
+
+**`defType`'s closed set arrives as a by-product**, as predicted: 45 `queryParser` rows on both lines.
+
+**Attributes come out empty for the plugin classes, and that is honest rather than missing.** The
+attribute pass reads string literals passed to argument readers in a constructor, which is how an
+analysis factory takes its configuration. A request handler reads its parameters per request from a
+`SolrParams`, and a directory factory takes an `init(NamedList)` — neither puts its vocabulary where this
+technique can see it. The rows carry the class, its kind and its documentation; the attributes stay blank
+until something can prove them.
+
 ### A fourth technique, for the elements the class routes cannot reach
 
 The two routes above find *classes*. `solrconfig.xml` also has a vocabulary of configuration elements
