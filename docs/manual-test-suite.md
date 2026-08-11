@@ -491,12 +491,16 @@ values or an un-invertible index, and for sorting a single value per document*. 
 the `qf` two lines above is unmarked. One field, searchable and unfacetable, and the two inspections
 disagreeing about it exactly as they should.
 
-**One wart, seen only by reading the rendered message.** That warning mentions *sorting* while
-reporting a *facet*. The text was deliberately made cause-neutral — it lists what the operation needs
-rather than asserting which part is missing — and the cost of that choice is a clause about sorting in a
-faceting warning. It is honest and slightly noisy. Splitting the bundle key per operation would fix it,
-at the price of the shared visitor needing to choose between them; worth doing when something else
-touches that message, not on its own.
+**One wart, seen only by reading the rendered message — since fixed.** That warning mentioned *sorting*
+while reporting a *facet*. The text had been made cause-neutral on purpose, listing what the operation
+needs rather than asserting which part is missing, and the cost was a clause about single values in a
+faceting warning — a requirement faceting does not have, on the kind of field one usually facets. The
+two operations now carry separate messages, and a test asserts they name only their own requirements.
+
+**Why nothing caught it, which is the transferable part.** Every fixture interpolated the same template
+it verified, so the message agreed with itself for both operations everywhere it was asserted. A test can
+check that a warning *says what this code produces*; only a reader can check that it *says something
+true about the thing being reported*. That is the class of defect this suite exists for.
 
 **The mechanical lesson, which cost two attempts.** An edit written to disk is reverted by the IDE
 whenever it holds that file in an open editor — the first attempt read 1.6 back within milliseconds and

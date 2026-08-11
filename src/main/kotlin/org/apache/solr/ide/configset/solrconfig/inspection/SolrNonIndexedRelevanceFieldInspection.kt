@@ -76,8 +76,7 @@ class SolrNonIndexedRelevanceFieldInspection : LocalInspectionTool() {
         return fieldOperationVisitor(
             holder,
             model,
-            setOf(SolrFieldOperation.SEARCH),
-            "inspection.nonIndexedRelevanceField.notSearchable",
+            mapOf(SolrFieldOperation.SEARCH to "inspection.nonIndexedRelevanceField.notSearchable"),
         )
     }
 }

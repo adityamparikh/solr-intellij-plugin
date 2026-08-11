@@ -66,8 +66,10 @@ class SolrUnsupportedFieldOperationInspection : LocalInspectionTool() {
         return fieldOperationVisitor(
             holder,
             model,
-            setOf(SolrFieldOperation.FACET, SolrFieldOperation.SORT),
-            "inspection.unsupportedFieldOperation.unusable",
+            mapOf(
+                SolrFieldOperation.FACET to "inspection.unsupportedFieldOperation.notFacetable",
+                SolrFieldOperation.SORT to "inspection.unsupportedFieldOperation.notSortable",
+            ),
         )
     }
 }

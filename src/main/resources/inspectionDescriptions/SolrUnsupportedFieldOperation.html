@@ -19,8 +19,14 @@ serve it.
 <p>
   Sorting needs one more thing: a single value per document. Several values have no defined order, so
   Solr rejects a plain sort on a <code>multiValued</code> field and requires a selector such as
-  <code>field(prices,min)</code>. That is why the warning names what the operation needs rather than
+  <code>field(prices,min)</code>. That is why each warning names what its operation needs rather than
   asserting which part is missing — a multiValued field may have doc values and still not sort.
+</p>
+<p>
+  The two operations carry <em>different</em> warnings for that reason. Faceting names doc values or an
+  un-invertible index; sorting names those and a single value per document. One shared sentence covering
+  both told a reader that faceting needs a single value, which it does not — multiValued fields are
+  exactly what one usually facets on.
 </p>
 <p>
   Five parameters are examined: <code>facet.field</code>, <code>facet.pivot</code>, <code>sort</code>,
