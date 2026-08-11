@@ -319,14 +319,21 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       defined order and Solr rejects a plain sort on it. **The message names what sorting needs
       rather than asserting which part is missing** — this field is indexed and, at the demo's
       `version="1.6"`, un-invertible, so a message blaming doc values would be false here.
-- [ ] **INSP-11** — With the schema still at `version="1.6"`, add
-      `<arr name="facet.field"><str>category</str></arr>`. **Nothing fires** — `uninvertible`
-      defaults *true* below 1.7, so an indexed field with no doc values can still be faceted by
-      un-inverting it. Now change the schema root to `version="1.7"` as DOC-6 does: the same
-      `category` is underlined, because that default flips. Undo the version edit.
-- [ ] **INSP-12** — In the same handler, `<str name="qf">category</str>` stays clean while
-      INSP-11's facet is underlined. **The same field, searchable and unfacetable at once** — the
-      check that the two inspections ask different questions rather than one question twice.
+- [ ] **INSP-11** — In `solrconfig.xml`, add `<arr name="facet.field"><str>category</str></arr>` to
+      the `/select` handler's `defaults`. **Nothing fires**, and it keeps not firing when the schema
+      root is changed to `version="1.7"`. That second half is the correction a sandbox pass made to
+      this check: 1.7 is *also* the version at which `solr.StrField` gains doc values by default —
+      the catalog records it as `primitive,docValuesByDefault` — so flipping the version makes
+      `category` **more** facetable, not less. The version flip cannot demonstrate an unfacetable
+      field on a `string`, and a check that expected it to was testing the wrong lever.
+      To see the warning, declare the absence rather than defaulting it: add `docValues="false"` to
+      `category` in the schema. `category` in the `facet.field` is then underlined, and at 1.6 it is
+      not, because `uninvertible` defaults true below 1.7. Undo both edits.
+- [ ] **INSP-12** — With INSP-11's `docValues="false"` still on `category`, `<str name="qf">category</str>`
+      stays clean while the `facet.field` is underlined. **The same field, searchable and unfacetable at
+      once** — the check that the two inspections ask different questions rather than one question twice.
+      The completion side shows the same split with no edit at all: PRM-4's `sort` list withholds `text`
+      where the `qf` list offers it.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -422,8 +429,9 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - The dimmed rendering of an attribute that merely restates its default, with a
   remove intention
-- `solrconfig.xml`'s own *structure*: element and attribute completion, and navigation from a
-  `class` attribute to the plugin it names. What the legal elements are is settled — Solr declares
+- `solrconfig.xml`'s own *structure*: element and attribute completion. Navigation from a `class`
+  attribute now exists and has no gesture here yet — it needs one, including the case that matters,
+  a `solr.`-prefixed handler class that resolves to nothing until the catalog carries it. What the legal elements are is settled — Solr declares
   them in `SolrConfig.plugins` — but nothing reads them yet
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
@@ -439,6 +447,70 @@ finding one of these gestures alive means the suite is behind, not that somethin
   INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
   that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
   anything
+
+### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
+
+Seven checks, all green, and two of them told me more than they were written to.
+
+- **PRM-1** — completion inside the `/select` handler's `qf` offers every declared field with its type
+  as tail text, and `*_t` appears as the dynamic pattern. Ten entries for nine fields and one pattern.
+- **PRM-2** — `<str name="rows">` reports **No suggestions**. Positive evidence rather than an absent
+  popup, which matters: an empty crop of the screen looks the same as a correct refusal.
+- **PRM-3** — a caret immediately after the `^` in `name^3` reports **No suggestions**. Completing
+  there would have produced `name^name`.
+- **PRM-4** — both halves. Fields are offered at the start of a `sort` clause, and **No suggestions**
+  inside the direction. **The offered list withheld `text`, which the `qf` list had included** — `text`
+  is `multiValued`, so it is searchable and unsortable, and completion said so without being asked to.
+  That is INSP-12's argument arriving from the completion side.
+- **PRM-5** — Quick Documentation on `description` inside the `qf` shows *the field's* popup: its type,
+  *Matches: tokenised, case-insensitive*, and the full property table. Reached through reference
+  resolution rather than a documentation branch written for it, and the **Meaning** column is populated
+  — the hand-written attribute meanings rendering where no fixture had shown them. `uninvertible`
+  reads *Solr default at schema version 1.6*, which is the version derivation doing its job in the
+  same table.
+- **INSP-10** — `<str name="sort">text asc</str>` underlines `text` with, verbatim: *Solr: 'sort' will
+  fail on 'text' — it needs doc values or an un-invertible index, and for sorting a single value per
+  document*. **This is the message that was reworded because the original was false for a multiValued
+  field**, and this is the field it was false about.
+- **INSP-11, clean half** — a `facet.field` on `category` fires nothing at the demo's `version="1.6"`,
+  because `uninvertible` defaults true below 1.7.
+
+**INSP-11's version flip was pressed on the second attempt, and it found that the check was wrong.**
+With the schema at `version="1.7"` and the `facet.field` in place, the file was **completely clean** —
+no warning at all. That is correct behaviour: 1.7 is *also* the version at which `solr.StrField` gains
+doc values by default, which the generated catalog records for it as `primitive,docValuesByDefault`,
+so flipping the version makes `category` **more** facetable rather than less. A version flip cannot
+demonstrate an unfacetable `string` field, and the check as written was testing the wrong lever. Both
+INSP-11 and INSP-12 are rewritten around a declared `docValues="false"`, which is an absence the schema
+states rather than one a default supplies.
+
+**INSP-12 was then pressed against the rewritten setup, and passes.** With `category` carrying
+`docValues="false"` and the schema at `version="1.7"`, exactly one warning appears in the file, on
+`category` inside the `facet.field`, reading *Solr: 'facet.field' will fail on 'category' — it needs doc
+values or an un-invertible index, and for sorting a single value per document*. The same `category` in
+the `qf` two lines above is unmarked. One field, searchable and unfacetable, and the two inspections
+disagreeing about it exactly as they should.
+
+**One wart, seen only by reading the rendered message.** That warning mentions *sorting* while
+reporting a *facet*. The text was deliberately made cause-neutral — it lists what the operation needs
+rather than asserting which part is missing — and the cost of that choice is a clause about sorting in a
+faceting warning. It is honest and slightly noisy. Splitting the bundle key per operation would fix it,
+at the price of the shared visitor needing to choose between them; worth doing when something else
+touches that message, not on its own.
+
+**The mechanical lesson, which cost two attempts.** An edit written to disk is reverted by the IDE
+whenever it holds that file in an open editor — the first attempt read 1.6 back within milliseconds and
+looked like a failed write. Closing all tabs first makes disk edits stick, and the same write then
+persisted indefinitely. Also: **Go to File is ⇧⌘N in this keymap, not ⇧⌘O**; the wrong shortcut typed a
+file name into `solrconfig.xml` and left it malformed. The IDE's own empty-editor screen lists the
+correct shortcuts, which is the cheapest place to check.
+
+**On driving the sandbox at all.** Two hazards are worth writing down. The sandbox runs as a process
+named `java`, while a developer's own IDE is `idea` — sending keystrokes to the wrong one edits real
+files, and the window title (`solr-plugin-demo – …`) is what tells them apart. And typing XML through
+System Events fights auto-close: a partially typed element left the file malformed and produced two
+XML *errors* that could not be told apart from the plugin's warnings. Editing the file on disk and
+letting the IDE reload was reliable for `solrconfig.xml`; it is exactly what failed for the schema.
 
 ## Pass log
 
@@ -456,6 +528,7 @@ a pass was started and abandoned is worth more than a gap.
 | | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
 | 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
+| 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
