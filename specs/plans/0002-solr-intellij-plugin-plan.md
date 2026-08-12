@@ -24,6 +24,15 @@ field's effective properties resolve against the
 `version` attribute on the schema's own root element, which is what decides several of Solr's defaults and is a third
 version number beside the Solr line and `luceneMatchVersion`.
 
+**`solrconfig.xml` stopped being a file the plugin merely read for field names.** Six merged pull requests under
+[step 25](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) gave it parameter-name completion and
+documentation over 340 generated parameter names, the closed set `defType` accepts, completion and quick
+documentation and Ctrl-click on the classes it names, schema field names offered inside the sixteen parameters
+known to hold them, and two inspections that fire where a *broken* configuration would previously have passed
+silently — a `facet.field` or `sort` naming a field that cannot serve it. Nine inspection classes are now
+registered. What the file still lacks is its own *structure*: typing `<` inside `<config>` offers nothing the
+plugin knows, because the element descriptor is still gated on the schema.
+
 **Two facts were recorded before anything showed them, and now two surfaces do.** The catalog's attribute defaults and
 required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
 [the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-in-progress)
@@ -84,13 +93,17 @@ whole, and the gutter action goes with the Server track.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
-- [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface)
-  — the largest step here, and entirely behind the catalog. Split it when it starts.
-- [Step 28 — Declarations as targets](#step-28-declarations-as-targets)
+- [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress)
+  — **in progress**; the largest step here. It was split when it started, and five of the eight pull
+  requests in that split have merged. What remains is the file's *structure* — element and attribute
+  completion — and the one inspection.
+- [Step 28 — Declarations as targets](#step-28-declarations-as-targets) — **done**
   — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
   claimed and does not have, and it builds the target rename would otherwise have to build first.
-- [Step 8 — Rename](#step-8-rename)
+- [Step 8 — Rename](#step-8-rename) — **done**
+- [Step 29 — What an attribute means](#step-29-what-an-attribute-means) — not started; added late and
+  listed here because it was reachable from the step bodies and from nowhere a reader scans for status.
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-in-progress) — **in progress**; the generator
   is built and every fact it emits is asserted, and what is left is the server arm of version selection, which belongs
   to the Server track
@@ -736,7 +749,7 @@ and one who can discover what Solr allows.
 **Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the element descriptions. Nothing from the catalog.
 
-### Step 25: solrconfig.xml as a first-class surface
+### Step 25: solrconfig.xml as a first-class surface (in progress)
 
 Numbered last because it was added last; it belongs in the Editor track after
 [the factory catalog](#step-9-factory-catalog-generator-in-progress), which it depends on entirely.
@@ -809,8 +822,14 @@ placement decision this plan owns.
 **Success criteria:**
 
 - [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.
-- [ ] A custom plugin class and its parameters produce no findings either.
-- [ ] Completion and documentation answer inside a request handler.
+      Blocked on the fixtures themselves, which are [CI gates](#step-20-ci-gates)' to vendor.
+- [ ] A custom plugin class and its parameters produce no findings either. Nothing fires on them today because the
+      inspection that could does not exist; the criterion closes with action 3, which is what would make it a claim
+      rather than a vacancy.
+- [x] Completion and documentation answer inside a request handler. Parameter names inside `defaults`, `appends` and
+      `invariants`, the closed value set `defType` accepts, the `class` attribute's own classes, and the schema field
+      names inside the sixteen field-holding parameters — each with quick documentation. **What still does not answer
+      is the element and attribute structure around them**, which is action 1.
 - [ ] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
       names one edit apart, so an edit-distance rule that fires on a name the catalog *knows* would report `pf3` as a
       misspelling of `pf2`. The rule fires only on a name the catalog does not know.
@@ -822,11 +841,32 @@ placement decision this plan owns.
 The last two are the criteria a split loses, because both catch silent wrongness rather than visible failure: the guard
 never fires in a passing suite, and the fixture only matters before a change that would overwrite what it records.
 
-**In flight.** Three pull requests are open and stacked, covering action 5 and the groundwork the others need:
-`#111` reads every parameter value tag and gives every editor feature one way to declare which configset file it serves;
-`#112` moves *which operations a field supports* into the model, correcting the relevance warning and adding the faceting
-and sorting check that never existed; `#113` completes schema field names inside a handler's parameters. Actions 1 through 4
-remain, and both open questions below remain open — nothing in this step is checked off until they merge.
+**What shipped so far — actions 2, 4 and 5, and the groundwork under them.** Six pull requests, merged in
+dependency order rather than in the order the actions are numbered:
+
+- `#111` reads every parameter value tag — `<int>`, `<bool>`, `<long>`, `<float>`, `<double>` and not only
+  `<str>` — and gives every editor feature one predicate for declaring which configset file it serves.
+  No user-visible change, deliberately: it is the change that would otherwise have been made *underneath* a
+  feature whose own tests would mask the regression.
+- `#112` moves *which operations a field supports* into `model`, correcting the relevance warning on a
+  doc-values-only field and adding the faceting and sorting checks that never existed. Every rule in that
+  table is a disjunction, and it is the first one the plugin expresses.
+- `#113` completes schema field names inside a handler's parameters — **action 5**.
+- `#131` reads the plugin roots Solr declares in `SolrConfig.plugins` and catalogs their classes, which is
+  the catalog extension the rest sits on.
+- `#132` completes, explains and navigates the classes `solrconfig.xml` names — **action 4**, and with it the
+  `class`-attribute half of action 1. The three surfaces were already general, so they gained the file by
+  learning eighteen kind tokens rather than by growing a new provider.
+- `#133` completes and explains the request parameters the file carries — **action 2** — from 340 parameter
+  names and 44 query parser names per line, each with the first sentence of Solr's own Javadoc on the
+  declaring constant.
+
+**What remains is actions 1 and 3, and they are what the file's *structure* means.** Element and attribute
+completion still has no `solrconfig.xml` arm: `SolrSchemaElementDescriptorProvider` gates on `kind.isSchema`,
+so inside `<config>` the platform's schema-less sibling echo is still what a reader gets. The near-miss
+inspection is unwritten, and it depends on the parameter catalog action 2 landed. Neither success criterion
+below is checked off, because both of the ones that catch *silent* wrongness — the `pf2`/`pf3` guard and the
+present-day-behaviour fixture — belong to the descriptor change that has not happened.
 
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
@@ -853,9 +893,10 @@ as such.
 The distribution tarball and the vendored-files fallback are both retired regardless, and the shipped
 configsets stay what this step's criteria want them for: the zero-findings fixture.
 
-**One open question remains, and it is a product decision this plan owns.** Whether the commented-out
-`com.intellij.modules.java` dependency arrives now as an optional dependency, making class navigation present in IDEA and
-absent elsewhere, or action 4 defers to Phase 3.
+**That question is the only one left, and the second one closed by being answered in the affirmative.**
+`com.intellij.modules.java` now arrives as an optional dependency with its own `solr-withJava.xml`, so class
+navigation is present in IDEA and absent elsewhere and the plugin loads either way. It was pulled forward
+rather than deferred to Phase 3, which is the product decision this plan owned; `#132` is where it landed.
 
 ### Step 26: Showing that an attribute restates the default
 
@@ -1339,6 +1380,59 @@ and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-7
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
 [the factory catalog generator](#step-9-factory-catalog-generator-in-progress)
+
+### Found by use on 2026-08-12, not yet placed
+
+Three gaps found by opening the sandbox on the demo configset rather than by reading the code. They
+are recorded here rather than folded into a step because each needs a placement decision this entry
+deliberately does not make. **The first is a defect in shipped behaviour; the other two are absences.**
+
+**The Reference Guide line was wrong for every Solr 9 configset, and the page name was wrong for every
+line but one — fixed.** `SolrVersionSelection.fromLuceneMatchVersion` kept only the major, so a configset
+declaring any Lucene 9 version links into `guide/solr/9_0` — the Solr **9.0** guide, while the line
+this plugin supports and generates its catalog from is 9.10.1. The pages resolve, which is why nothing
+noticed: `9_0` returns 200 for all nineteen URLs the plugin builds. So the links are live and describe
+a Solr nobody here runs, which is the failure mode
+[`SolrReferenceGuide`](../../src/main/kotlin/org/apache/solr/ide/model/SolrReferenceGuide.kt)'s own
+"a dead link is worse than no link" rule was written to avoid, arriving from the direction it did not
+anticipate — not dead, merely about something else.
+
+The two halves are one change, and fixing either alone makes things worse. `charfilterfactories.html`
+was renamed to `charfilters.html` somewhere between 9.0 and 9.7: measured, `charfilters.html` returns
+200 on 9_7, 9_8, 9_10, 9_11 and `latest`, and 404 on 9_0; `charfilterfactories.html` is the exact
+inverse except that `latest` serves both. So the current page name is correct **only because** the
+version segment is wrong — correcting the segment to `9_10` without correcting the page name turns the
+char-filter link into the first real 404 the plugin has shipped.
+
+**The line the link names is now the line the catalog answered from**, which is the invariant the fix is
+built around: every other fact in that popup — the attributes, the defaults, the Javadoc sentence —
+comes from `solr-9.tsv`, generated from 9.10.1. The catalog already recorded it, in a
+`# Solr line 9, read from 9.10.1.` header the entry parser skips, so `SolrClassCatalog.guideSegmentFor`
+reads the same fact for a second purpose rather than declaring a supported release twice —
+`supportedSolrLines` in the build stays the only place one is named. A major with no shipped catalog
+now falls back to `latest` instead of a constructed segment, so a configset from Solr 11 gets the
+undated guide rather than a confident URL to nothing. All nineteen pages were re-measured on `9_10`
+and `10_0` after the change: no non-200 responses.
+
+Solr 10 was the same bug with no symptom — `10_0` 302-redirects to `latest`, so it worked and would
+have stopped working the day 10.1 shipped.
+
+**Nothing explains boost syntax.** A caret on the `^3` of `qf`'s `name^3` answers nothing, and
+[the parameter completion work](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) made that
+more conspicuous rather than less: PRM-3 asserts completion is *silent* after a `^`, which is right —
+completing there would write `name^name` — but silence in completion was taken to settle the position,
+and documentation was never asked. A reader who has just been told what `qf` is meets `^3` in the same
+value and gets nothing. This is a new capability rather than a fix, and it is the first thing the
+plugin would say about a parameter's *value* grammar rather than its name.
+
+**A `<directoryFactory>` and a `<codecFactory>` were reported as explaining nothing**, which
+[`#132`](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) claimed to have fixed and
+`SolrConfigClassValueTest` asserts by name for both. The catalog carries both classes with their
+Javadoc summaries on both lines, verified in the shipped TSVs. So this is a discrepancy between a
+green suite and a sandbox, and **it is not yet known which is right** — a stale sandbox build and a
+gate the tests do not model look identical from here.
+`SolrDemoConfigsetProbeTest` was left uncommitted in the working tree by an earlier session to
+separate those two, and answering that is the first step rather than changing anything.
 
 ---
 

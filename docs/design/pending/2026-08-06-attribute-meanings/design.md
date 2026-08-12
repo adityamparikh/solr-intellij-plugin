@@ -44,7 +44,7 @@ learns nothing from it that the file did not already show them.
 
 - **`solrconfig.xml`'s vocabulary.** Its plugins and their parameters are not in the catalog — the
   generated file carries `fieldType`, `tokenizer`, `tokenFilter` and `charFilter` and nothing else —
-  so there is no source to document them from. That is [Step 25](../../../../specs/plans/0002-solr-intellij-plugin-plan.md#step-25-solrconfigxml-as-a-first-class-surface)
+  so there is no source to document them from. That is [Step 25](../../../../specs/plans/0002-solr-intellij-plugin-plan.md#step-25-solrconfigxml-as-a-first-class-surface-in-progress)
   and its generator dependency, not this.
 - **Prose for every factory attribute.** The table is deliberately partial; see below.
 - **Replacing the Reference Guide.** The link stays the supplement it already is.

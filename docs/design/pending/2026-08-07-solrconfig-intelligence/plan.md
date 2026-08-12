@@ -33,20 +33,28 @@ time.
 ## Order
 
 ```
-OPEN, stacked, in review order:
+MERGED, in the order they landed:
 
-  #111 read every parameter value tag, and share one configset file-kind test  → main
-  #112 say which operations a field supports                                   → #111
-  #113 complete schema field names inside a handler's parameters               → #112
+  #111 read every parameter value tag, and share one configset file-kind test  (PR A)
+  #112 say which operations a field supports                                   (PR C)
+  #113 complete schema field names inside a handler's parameters               (PR B)
+  #131 read the plugin roots Solr declares, and catalog their classes          (PR 0)
+  #132 complete, explain and navigate the classes solrconfig.xml names         (PR 4, + the
+                                                                                class half of PR 1)
+  #133 complete and explain the request parameters solrconfig.xml carries      (PR 2)
 
 STILL TO DO:
 
-  PR 0  catalog extension ──┬─→ PR 1  element structure  (also needs Q1)
-     (separate record)      ├─→ PR 2  parameter-name completion
-                            └─→ PR 3  near-miss inspection  (needs PR 2)
-
-  PR 4  class navigation ── independent of all of the above, needs Q2
+  PR 1  element and attribute structure   ── the descriptor gate is still `kind.isSchema`;
+                                             needs the rest of Q1
+  PR 3  near-miss inspection              ── unblocked now that PR 2 has landed
 ```
+
+**Two of the five remaining blockers cleared themselves.** Q2 closed in the affirmative — the optional
+`com.intellij.modules.java` dependency shipped with `#132`, so PR 4 is done rather than deferred — and
+PR 2 landing means PR 3 waits on nothing but someone writing it. What is left is the half of Q1 that a
+sandbox pass exposed: `<config>`, `luceneMatchVersion` and `dataDir` are in neither generated source, so
+PR 1 still needs a decision about where those three come from.
 
 **The lettered PRs this record planned as A, B and C shipped as #111, #112 and #113**, in that
 dependency order rather than the order they were written: the capability model had to precede the
@@ -168,7 +176,7 @@ a field with neither `indexed` nor `docValues` are flagged; `popularity` in a `f
 stays clean, as its existing fixtures already assert; and the non-indexed *text* field in a `qf` is still
 flagged.
 
-### PR 0 — Catalog extension
+### PR 0 — Catalog extension — *shipped as #131*
 
 Not this record's. [The catalog design](../2026-08-07-solrconfig-catalog/design.md) owns it, and it
 ships first because every symptom of a catalog that generated an empty kind is indistinguishable
@@ -194,7 +202,7 @@ regression would be invisible in solrconfig tests.
 **Gate:** attribute completion inside `<requestHandler>` offers no schema field property; the schema
 suite is unchanged; both shipped configsets produce zero findings.
 
-### PR 2 — Parameter completion and documentation
+### PR 2 — Parameter completion and documentation — *shipped as #133*
 
 The highest-value slice and the one the demo file shows. Parameter names inside
 `<lst name="defaults">`, `appends` and `invariants`, with quick documentation and a Reference Guide
@@ -237,9 +245,9 @@ as half-finished, and so Step 25's criteria can be corrected rather than quietly
 **Gate:** both shipped configsets and the custom-plugin fixture produce zero findings; `qff` → `qf`
 fires and its quick fix repairs the file.
 
-### PR 4 — Class navigation
+### PR 4 — Class navigation — *shipped as #132*
 
-Independent of PRs 0–3 and of the catalog. Blocked only on **Q2**.
+Independent of PRs 0–3 and of the catalog. Was blocked only on **Q2**, which closed in its favour.
 
 A soft reference on a `class` attribute value, resolving through Java PSI, degrading to nothing when
 the class is not on the classpath. Not dumb-aware — Java resolution is index-backed, unlike
@@ -315,12 +323,12 @@ needing — which is a much smaller commitment than the two vendored configsets 
 one**: read the JSON for the three editable subtrees, and decide whether `<config>`, `luceneMatchVersion`
 and `dataDir` are worth hand-writing or worth another look in the jar.
 
-**Q2 — Optional Java dependency, or defer class navigation to Phase 3?** `plugin.xml` carries
-`com.intellij.modules.java` commented out and marked Phase 3. The optional-dependency route costs one
-config file and makes the feature present in IDEA and absent elsewhere.
+**Q2 — Optional Java dependency, or defer class navigation to Phase 3? — CLOSED: the dependency, now.**
+`plugin.xml` no longer carries `com.intellij.modules.java` commented out; it carries
+`<depends optional="true" config-file="solr-withJava.xml">`, so class navigation is present in IDEA,
+absent elsewhere, and the plugin loads either way. It cost one config file, as this record estimated.
 
-*Closed by:* the plan owner, not this record. It pulls a Phase 3 dependency forward, which is a
-product decision.
+*Closed by:* the plan owner, in `#132`, by pulling the Phase 3 dependency forward.
 
 **Q3 — Does `fq` get field references at all?** It is the parameter a reader would most expect to be
 covered and the one the sixteen-name list cannot hold: `fq` takes query syntax, where a field name is a
