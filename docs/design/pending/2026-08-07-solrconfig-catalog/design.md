@@ -304,9 +304,16 @@ class to document it from.
 
 **What that pass does not produce is what `defType` is written as.** Its rows carry class names, and
 `defType` takes a registered *name*: `edismax`, not `solr.ExtendedDismaxQParserPlugin`. The two are
-paired in `QParserPlugin`'s own static initializer, in the same bytecode shape `SolrConfigPlugins.pair`
-already reads for `SolrConfig.plugins` — so the addition is one more root and no new technique, but it
-is an addition, and an earlier revision of this record wrongly called it a by-product.
+paired in `QParserPlugin`'s own static initializer, and an earlier revision of this record wrongly
+called the registered names a by-product of the class pass.
+
+**The pairing is not the shape `SolrConfigPlugins.pair` reads, and that is worth recording because it
+looks like it should be.** `SolrConfig.plugins` loads each root as a *class constant* — an `LDC` of a
+`Class` — so a visitor that overrides `visitLdcInsn` sees the whole declaration. `QParserPlugin` instead
+*instantiates* each plugin: the name arrives by `LDC` and the class by **`NEW`**, which is a type
+instruction and not a constant load at all. Reading it needs `visitTypeInsn` as well, and the operands
+arrive name-first rather than class-first. Still cheap, still no new dependency — but a second collector
+rather than a reuse, and the pairing has to be told which order it is getting.
 
 **That matters because it was declined twice.** [The intelligence
 record](../2026-08-07-solrconfig-intelligence/design.md) put parameter *values* out of scope on the
