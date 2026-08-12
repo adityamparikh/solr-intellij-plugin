@@ -21,20 +21,89 @@ enum class SolrClassKind(internal val token: String) {
     TOKEN_FILTER("tokenFilter"),
 
     /** A `<charFilter>`, applied to the raw text before tokenization. */
-    CHAR_FILTER("charFilter");
+    CHAR_FILTER("charFilter"),
 
-    /** Lookup from the schema's element vocabulary. */
+    // --- solrconfig.xml -----------------------------------------------------------------------
+    //
+    // Every constant below names a tag Solr itself declares in `SolrConfig.plugins`, which is where
+    // the generator reads the roots from. The token is the tag name, so a token spelled differently
+    // from what a reader writes in the file would be a generator bug rather than a choice made here.
+
+    /** A `<requestHandler>`, the endpoint a query is sent to. */
+    REQUEST_HANDLER("requestHandler"),
+
+    /** A `<queryParser>`, which is what a `defType` names. */
+    QUERY_PARSER("queryParser"),
+
+    /** A `<searchComponent>`, one stage of a request handler's chain. */
+    SEARCH_COMPONENT("searchComponent"),
+
+    /** A `<queryResponseWriter>`, which decides the shape a response is written in. */
+    QUERY_RESPONSE_WRITER("queryResponseWriter"),
+
+    /** An `<updateProcessor>`, which may rewrite a document on its way in. */
+    UPDATE_PROCESSOR("updateProcessor"),
+
+    /** A `<transformer>`, which adds a field to a returned document — what `fl=[docid]` names. */
+    TRANSFORMER("transformer"),
+
+    /** A `<valueSourceParser>`, which supplies a function usable in a function query. */
+    VALUE_SOURCE_PARSER("valueSourceParser"),
+
+    /** An `<expressible>`, a streaming-expression function. */
+    EXPRESSIBLE("expressible"),
+
+    /** A `<directoryFactory>`, which decides how the index is stored and cached. */
+    DIRECTORY_FACTORY("directoryFactory"),
+
+    /** A `<codecFactory>`, which decides the on-disk encoding Lucene writes. */
+    CODEC_FACTORY("codecFactory"),
+
+    /** An `<indexReaderFactory>`. */
+    INDEX_READER_FACTORY("indexReaderFactory"),
+
+    /** A `<schemaFactory>`, which decides whether the schema is managed or hand-edited. */
+    SCHEMA_FACTORY("schemaFactory"),
+
+    /** A `<deletionPolicy>` under `<indexConfig>`, which decides which commit points survive. */
+    DELETION_POLICY("deletionPolicy"),
+
+    /** A `<cache>` under `<query>` — a user-defined cache, not one of the named ones. */
+    CACHE("cache"),
+
+    /** A `<listener>`, which runs on a commit or on a new searcher. */
+    LISTENER("listener"),
+
+    /** A `<circuitBreaker>`, which rejects a request when the node is under load. */
+    CIRCUIT_BREAKER("circuitBreaker"),
+
+    /** A `<statsCache>`, which decides how distributed term statistics are shared. */
+    STATS_CACHE("statsCache"),
+
+    /** A `<queryConverter>`, used by spellchecking to read a query back into terms. */
+    QUERY_CONVERTER("queryConverter");
+
+    /** Lookup from a configset's element vocabulary. */
     companion object {
+
+        /** The four kinds a schema names, whose tags [forTag] maps explicitly. */
+        private val schemaKinds = setOf(FIELD_TYPE, TOKENIZER, TOKEN_FILTER, CHAR_FILTER)
 
         /**
          * The kind of class [tagName]'s `class` attribute names, or null when the element does
          * not carry one.
          *
          * Both spellings of `fieldType` are accepted, as Solr accepts both. This is the single
-         * mapping from schema vocabulary to catalog population; completion and documentation both
-         * read it, so a kind added to one cannot silently be missed by the other.
+         * mapping from configset vocabulary to catalog population; completion, documentation and
+         * navigation all read it, so a kind added to one cannot silently be missed by the others.
          *
-         * @param tagName an element name as written in a schema
+         * **The two files' tags are listed separately because only the schema's are irregular.** A
+         * `<filter>` means a token filter and a `<charFilter>` means something else entirely, so the
+         * schema's four cannot be derived from anything. Every `solrconfig.xml` tag, by contrast, is
+         * spelled exactly as Solr declares it, which is why they fall through to a token match: a
+         * tag this build has never heard of resolves as soon as the generator emits rows for it.
+         *
+         * @param tagName an element name as written in a configset
          * @return the kind, or null
          */
         fun forTag(tagName: String): SolrClassKind? = when (tagName) {
@@ -42,8 +111,19 @@ enum class SolrClassKind(internal val token: String) {
             "tokenizer" -> TOKENIZER
             "filter" -> TOKEN_FILTER
             "charFilter" -> CHAR_FILTER
-            else -> null
+            else -> byToken[tagName]
         }
+
+        /**
+         * The `solrconfig.xml` kinds by token.
+         *
+         * The schema's four are excluded on purpose. `fieldType` would match either way, but
+         * `tokenizer` and `charFilter` matching their own tokens is a coincidence this must not rely
+         * on, and `filter` matching nothing is the point — the `when` above owns all four so that the
+         * irregular mapping is stated in one place rather than half-derived.
+         */
+        private val byToken: Map<String, SolrClassKind> =
+            entries.filterNot { it in schemaKinds }.associateBy { it.token }
     }
 }
 
@@ -138,11 +218,19 @@ data class SolrClassEntry(
 /**
  * The Solr and Lucene classes a configset can name, per supported Solr line.
  *
- * **Generated at build time, not written down.** There are roughly 185 entries per line and they
+ * **Generated at build time, not written down.** There are several hundred entries per line and they
  * differ between lines — Solr 10 dropped `CurrencyField`, `EnumField`, `ExternalFileField` and
  * `PreAnalyzedField`, and added `BinaryQuantizedDenseVectorField`. The specification argues the
  * general case under "The factory catalog"; the operative fact here is that this file only reads
  * what `:generateSolrCatalog` produced, and knows nothing about Solr itself.
+ *
+ * **A row whose kind [SolrClassKind] does not name is dropped, and that is a hazard as much as a
+ * safeguard.** It is what lets a catalog written by a newer build cost one row rather than the whole
+ * file — but it also means a generator that starts emitting a new kind changes nothing at all until
+ * the constant is added, silently and with every test still green. That is not hypothetical: it is
+ * what happened between the two halves of this feature, when eighteen kinds and five hundred rows
+ * arrived and the editor behaved identically. The catalog-side guard against a repeat lives in
+ * `SolrClassCatalogTest`, which asserts every shipped token is one this enum knows.
  *
  * The tab-separated form is deliberate. Reading it needs no parser and no dependency, and a
  * regenerated catalog produces a diff a human can review — which matters, because the way a

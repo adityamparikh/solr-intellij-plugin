@@ -99,10 +99,9 @@ internal class SolrClassReference(
      * is what makes a custom `com.example.MyComponent` navigable without the catalog knowing it
      * exists.
      *
-     * **A `solr.`-prefixed name the catalog does not carry resolves to nothing**, and today that
-     * includes every `solrconfig.xml` plugin class, because the catalog covers the schema's four kinds
-     * only. Extending it to `solrconfig.xml`'s classes is what makes those navigable; until then this
-     * degrades exactly as it does for a class that is genuinely absent.
+     * **A `solr.`-prefixed name the catalog does not carry resolves to nothing**, which is a custom
+     * plugin using Solr's own abbreviation — rare, and indistinguishable here from a class that is
+     * genuinely absent. Both degrade to nothing, which is what the soft reference is for.
      *
      * @return the class, or null
      */

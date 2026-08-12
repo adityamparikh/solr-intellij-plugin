@@ -52,6 +52,38 @@ class SolrClassCatalogTest {
         assertTrue("expected solr.StandardTokenizerFactory in $tokenizers", "solr.StandardTokenizerFactory" in tokenizers)
     }
 
+    /**
+     * No shipped row is dropped for naming a kind this enum has never heard of.
+     *
+     * **The reverse of [every kind is populated], and the direction that actually failed.** The
+     * parser resolves a row's first column through the enum and discards the row when it does not
+     * match, which is deliberate — a catalog written by a newer build must cost one row rather than
+     * the file. But it also means a generator that starts emitting a new kind changes nothing at all
+     * until someone adds the constant, with no test failing and no error to notice. That is exactly
+     * what happened when the generator learned Solr's `solrconfig.xml` plugin roots: eighteen kinds
+     * and five hundred rows arrived, the editor behaved identically, and the only symptom was silence.
+     */
+    @Test
+    fun `every kind the shipped catalogs name is known to the enum`() {
+        val known = SolrClassKind.entries.map { it.token }.toSet()
+        for (line in SolrClassCatalog.SUPPORTED_LINES) {
+            val tokens = tokensIn(line)
+            assertTrue("line $line ships no rows", tokens.isNotEmpty())
+            assertTrue("line $line names kinds this enum drops: ${tokens - known}", (tokens - known).isEmpty())
+        }
+    }
+
+    /** The kind tokens in a shipped catalog, read from the resource rather than through the parser. */
+    private fun tokensIn(line: Int): Set<String> {
+        val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
+        assertNotNull("line $line ships no catalog resource", stream)
+        return stream!!.bufferedReader().useLines { rows ->
+            rows.filterNot { it.startsWith("#") || it.isBlank() }
+                .map { it.substringBefore('\t') }
+                .toSet()
+        }
+    }
+
     /** The classes a schema names most, one from each population. */
     @Test
     fun `the everyday classes are present`() {
@@ -526,10 +558,70 @@ class SolrClassCatalogTest {
         assertEquals(SolrClassKind.CHAR_FILTER, SolrClassKind.forTag("charFilter"))
     }
 
+    /** The `solrconfig.xml` elements a reader meets first, each with populated rows behind it. */
+    @Test
+    fun `the solrconfig elements carrying a class map to their kinds`() {
+        val expected = mapOf(
+            "requestHandler" to SolrClassKind.REQUEST_HANDLER,
+            "queryParser" to SolrClassKind.QUERY_PARSER,
+            "searchComponent" to SolrClassKind.SEARCH_COMPONENT,
+            "directoryFactory" to SolrClassKind.DIRECTORY_FACTORY,
+            "codecFactory" to SolrClassKind.CODEC_FACTORY,
+            "schemaFactory" to SolrClassKind.SCHEMA_FACTORY,
+            "queryResponseWriter" to SolrClassKind.QUERY_RESPONSE_WRITER,
+            "updateProcessor" to SolrClassKind.UPDATE_PROCESSOR,
+        )
+        for ((tag, kind) in expected) {
+            assertEquals(tag, kind, SolrClassKind.forTag(tag))
+            assertTrue("$tag has no classes behind it", SolrClassCatalog.of(kind, latest).isNotEmpty())
+        }
+    }
+
+    /**
+     * The classes the reader who reported this gap had in front of them, and the one `defType` names.
+     *
+     * These four were inert before the catalog carried `solrconfig.xml`'s kinds — `solr.SearchHandler`
+     * is the most written class in the file and resolved to nothing. Naming them is what keeps a
+     * future narrowing of the generator from quietly taking them away again.
+     */
+    @Test
+    fun `the solrconfig classes a reader meets first are present`() {
+        val expected = mapOf(
+            "solr.SearchHandler" to SolrClassKind.REQUEST_HANDLER,
+            "solr.UpdateRequestHandler" to SolrClassKind.REQUEST_HANDLER,
+            "solr.NRTCachingDirectoryFactory" to SolrClassKind.DIRECTORY_FACTORY,
+            "solr.SchemaCodecFactory" to SolrClassKind.CODEC_FACTORY,
+        )
+        for ((name, kind) in expected) {
+            val entry = SolrClassCatalog.find(name, latest)
+            assertNotNull("expected $name", entry)
+            assertEquals(name, kind, entry!!.kind)
+        }
+    }
+
+    /**
+     * A `filter` outside a schema still means a token filter, and that is the ambiguity the tag
+     * mapping has to own explicitly rather than derive.
+     *
+     * `filter` is the one tag whose name matches no kind's token, so a mapping that fell through to
+     * the token table would lose it. The assertion is here rather than beside the schema's because
+     * what it guards is the boundary between the two halves of [SolrClassKind.forTag].
+     */
+    @Test
+    fun `filter still maps to the token filter it names`() {
+        assertEquals(SolrClassKind.TOKEN_FILTER, SolrClassKind.forTag("filter"))
+        assertNull("no kind is spelled 'filter'", SolrClassKind.entries.find { it.token == "filter" })
+    }
+
     @Test
     fun `an element that carries no class maps to nothing`() {
         assertNull(SolrClassKind.forTag("copyField"))
         assertNull(SolrClassKind.forTag("analyzer"))
         assertNull(SolrClassKind.forTag("field"))
+        // `solrconfig.xml` structure that is not a plugin point. A `<lst name="defaults">` carries no
+        // class, and neither does the root -- offering one there would be inventing a position.
+        assertNull(SolrClassKind.forTag("config"))
+        assertNull(SolrClassKind.forTag("lst"))
+        assertNull(SolrClassKind.forTag("query"))
     }
 }

@@ -158,17 +158,52 @@ class SolrClassReferenceTest : SolrConfigsetTestCase() {
 
     /**
      * `solr.` is Solr's abbreviation for its own packages rather than a package, so it only resolves
-     * through a catalog entry that supplies the qualified name. The catalog covers the schema's four
-     * kinds, so a `solrconfig.xml` plugin class does not resolve yet — and degrades to nothing, which
-     * is the same behaviour as a class that is genuinely absent.
+     * through a catalog entry that supplies the qualified name — and a name no entry carries resolves
+     * to nothing, exactly as a class that is genuinely absent does.
+     *
+     * The spelling matters here. An earlier revision of this test used `solr.SearchHandler`, back when
+     * the catalog covered the schema's four kinds only; it still passed once the catalog learned
+     * `solrconfig.xml`'s kinds, because the fixture never put that class on the classpath either — so
+     * it went on asserting a lifted limitation, for a reason that had nothing to do with the catalog.
+     * A name Solr does not ship is what actually tests the abbreviation.
      */
     fun testASolrPrefixedNameTheCatalogDoesNotKnowResolvesToNothing() {
         myFixture.addFileToProject("managed-schema.xml", schema(""))
         myFixture.configureByText(
             "solrconfig.xml",
-            """<config><requestHandler name="/select" class="solr.Search<caret>Handler"/></config>""",
+            """<config><requestHandler name="/select" class="solr.NoSuch<caret>Handler"/></config>""",
         )
         assertNull(resolveAtCaret())
+    }
+
+    /**
+     * A `solrconfig.xml` plugin class navigates, which the catalog's `solrconfig.xml` kinds are what
+     * made possible.
+     *
+     * `solr.SearchHandler` is the most written class in the file, and until the catalog carried its
+     * kind the abbreviation could not be expanded, so the commonest `class` value in a configset was
+     * the one that went nowhere. The fixture declares the class at Solr's own coordinates, since what
+     * is being tested is whether the short name expands — not whether an SDK happens to ship Solr.
+     */
+    fun testASolrconfigPluginClassResolvesThroughItsShortName() {
+        myFixture.addFileToProject(
+            "src/org/apache/solr/handler/component/SearchHandler.java",
+            """
+            package org.apache.solr.handler.component;
+            public class SearchHandler {}
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject("managed-schema.xml", schema(""))
+        myFixture.configureByText(
+            "solrconfig.xml",
+            """<config><requestHandler name="/select" class="solr.Search<caret>Handler"/></config>""",
+        )
+        val target = resolveAtCaret()
+        assertTrue("expected a Java class, got $target", target is PsiClass)
+        assertEquals(
+            "org.apache.solr.handler.component.SearchHandler",
+            (target as PsiClass).qualifiedName,
+        )
     }
 
     /** A `class` attribute in an unrelated XML file is nobody's business but that file's. */
