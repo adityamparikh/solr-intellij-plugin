@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.objectweb.asm.Type
 
 /**
  * The descriptor-parsing rules of the catalog generator, pinned as plain functions.
@@ -259,5 +260,63 @@ class GenerateSolrCatalogTaskTest {
     @Test
     fun `a blank comment summarizes to nothing`() {
         assertEquals(null, GenerateSolrCatalogTask.summarizeJavadocComment(" *\n * \n"))
+    }
+
+    // --- the plugin roots Solr declares -----------------------------------------------------------
+
+    @Test
+    fun `each class constant pairs with the tag that follows it`() {
+        val roots = SolrConfigPlugins.pair(
+            listOf(
+                Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler",
+                Type.getObjectType("org/apache/solr/search/QParserPlugin"), "queryParser",
+            ),
+        )
+        assertEquals("org/apache/solr/request/SolrRequestHandler", roots["requestHandler"])
+        assertEquals("org/apache/solr/search/QParserPlugin", roots["queryParser"])
+    }
+
+    /**
+     * Three tags are paths rather than bare names, and one of those means "at any depth". The catalog is
+     * keyed by the element as a reader writes it, so only the last segment belongs here — the nesting is
+     * a fact about element structure and not about a table of classes.
+     */
+    @Test
+    fun `a tag declared as a path keeps only the element name`() {
+        val roots = SolrConfigPlugins.pair(
+            listOf(
+                Type.getObjectType("org/apache/solr/core/SolrEventListener"), "//listener",
+                Type.getObjectType("org/apache/solr/update/UpdateLog"), "updateHandler/updateLog",
+                Type.getObjectType("org/apache/solr/core/IndexDeletionPolicy"), "indexConfig/deletionPolicy",
+            ),
+        )
+        assertEquals(setOf("listener", "updateLog", "deletionPolicy"), roots.keys)
+    }
+
+    /**
+     * A tag with no class before it is dropped rather than attached to whichever class came last.
+     *
+     * Solr writes the constructor class-first, so this cannot happen today. The point is what happens
+     * when it changes: pairing a tag with a distant class would mis-attribute a root silently, and a
+     * missing tag is the failure that shows up as an absent kind and a failing assertion.
+     */
+    @Test
+    fun `a tag with no class before it is dropped rather than guessed`() {
+        val roots = SolrConfigPlugins.pair(
+            listOf(
+                "strandedTag",
+                Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler",
+            ),
+        )
+        assertEquals(mapOf("requestHandler" to "org/apache/solr/request/SolrRequestHandler"), roots)
+    }
+
+    /** One class is used once: a second tag does not silently reuse the previous root. */
+    @Test
+    fun `a class is consumed by the tag it pairs with`() {
+        val roots = SolrConfigPlugins.pair(
+            listOf(Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler", "orphan"),
+        )
+        assertEquals(setOf("requestHandler"), roots.keys)
     }
 }
