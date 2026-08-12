@@ -600,6 +600,26 @@ class SolrClassCatalogTest {
     }
 
     /**
+     * The `solrconfig.xml` elements whose tag is *not* their kind's token.
+     *
+     * These are the positions a token-equals-tag mapping would be silent on, and they are among the
+     * most edited elements in the file: every configset with a processor chain writes `<processor>`,
+     * and every one that tunes its caches writes `<filterCache>`. Solr reads the named caches by name
+     * rather than through its plugin list, which is why the generated token is `cache` and none of
+     * them appears as one.
+     */
+    @Test
+    fun `an element spelled differently from its kind still maps to it`() {
+        assertEquals("a chain member", SolrClassKind.UPDATE_PROCESSOR, SolrClassKind.forTag("processor"))
+        for (tag in listOf("filterCache", "queryResultCache", "documentCache", "fieldValueCache", "featureVectorCache")) {
+            assertEquals(tag, SolrClassKind.CACHE, SolrClassKind.forTag(tag))
+        }
+        // The token spellings still resolve: both are real elements, not alternatives to the above.
+        assertEquals(SolrClassKind.UPDATE_PROCESSOR, SolrClassKind.forTag("updateProcessor"))
+        assertEquals(SolrClassKind.CACHE, SolrClassKind.forTag("cache"))
+    }
+
+    /**
      * A `filter` outside a schema still means a token filter, and that is the ambiguity the tag
      * mapping has to own explicitly rather than derive.
      *

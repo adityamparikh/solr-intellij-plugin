@@ -493,6 +493,19 @@ object SolrFieldPresentation {
         kind.token.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").lowercase()
 
     /**
+     * A kind as a capitalised plural, for a link label: `Directory factories`.
+     *
+     * The `y` rule is the whole reason this is a function. Five of the twenty-two kinds end in one —
+     * `directoryFactory`, `codecFactory`, `schemaFactory`, `deletionPolicy`, `indexReaderFactory` —
+     * and appending a bare `s` produced *Directory factorys* in a label a reader is invited to click.
+     * No kind ends in a sibilant, so the two rules here cover all of them.
+     */
+    private fun pluralKind(kind: SolrClassKind): String {
+        val words = spacedTagName(kind).replaceFirstChar { it.uppercase() }
+        return if (words.endsWith("y")) "${words.dropLast(1)}ies" else "${words}s"
+    }
+
+    /**
      * The value type in words, or empty for a free-form attribute.
      *
      * Empty rather than "any value": the catalog's FREE means the generator could not narrow the
@@ -522,7 +535,7 @@ object SolrFieldPresentation {
             // The remaining kinds name their own page well enough: a reader arriving from a
             // `<requestHandler>` is offered "Request handlers in the Reference Guide". The four above
             // stay written out because their page titles do not follow from their tag names.
-            else -> "${spacedTagName(entry.kind).replaceFirstChar { it.uppercase() }}s in the Reference Guide"
+            else -> "${pluralKind(entry.kind)} in the Reference Guide"
         }
         return "<div class='bottom'><p><a href='$url'>$label</a></p>" +
             "<p><small>Reference Guide for ${escape(version.describeSource())}.</small></p></div>"

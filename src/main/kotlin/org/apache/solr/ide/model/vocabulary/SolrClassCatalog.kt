@@ -97,22 +97,49 @@ enum class SolrClassKind(internal val token: String) {
          * mapping from configset vocabulary to catalog population; completion, documentation and
          * navigation all read it, so a kind added to one cannot silently be missed by the others.
          *
-         * **The two files' tags are listed separately because only the schema's are irregular.** A
-         * `<filter>` means a token filter and a `<charFilter>` means something else entirely, so the
-         * schema's four cannot be derived from anything. Every `solrconfig.xml` tag, by contrast, is
-         * spelled exactly as Solr declares it, which is why they fall through to a token match: a
-         * tag this build has never heard of resolves as soon as the generator emits rows for it.
+         * **A kind's token is not always the element a configset writes, and the exceptions are
+         * exactly the elements that matter.** The token comes from Solr's own plugin declaration, and
+         * for most kinds that is also the tag — a `<requestHandler>` is declared `requestHandler`.
+         * But an update processor is written `<processor>` inside a chain, and the caches Solr reads
+         * by name are written `<filterCache>`, `<documentCache>` and three more, none of which is
+         * spelled `cache`. Those are among the most edited elements in the file, so a mapping that
+         * assumed token equals tag would be silent on the very positions a reader visits most.
+         *
+         * The remaining kinds fall through to a token match, which is what lets a kind the generator
+         * starts emitting resolve without a line being added here.
          *
          * @param tagName an element name as written in a configset
          * @return the kind, or null
          */
         fun forTag(tagName: String): SolrClassKind? = when (tagName) {
+            // The schema's four, irregular and therefore stated. A `<filter>` means a token filter,
+            // and no kind is spelled `filter` at all.
             "fieldType", "fieldtype" -> FIELD_TYPE
             "tokenizer" -> TOKENIZER
             "filter" -> TOKEN_FILTER
             "charFilter" -> CHAR_FILTER
+            // A chain's members. The standalone `<updateProcessor name= class=>` spelling is a real
+            // element too, and reaches the same kind through the token table below.
+            "processor" -> UPDATE_PROCESSOR
+            // Solr's named caches. Each is a `SolrCache` position written under its own element name;
+            // `cache` itself is the user-defined one, and reaches this kind through its token.
+            in NAMED_CACHE_TAGS -> CACHE
             else -> byToken[tagName]
         }
+
+        /**
+         * The elements under `<query>` that name a cache class without being spelled `cache`.
+         *
+         * Read from `SolrConfig`, which fetches each by name rather than through the plugin list —
+         * which is why the generated token is `cache` and none of these appears as one.
+         */
+        private val NAMED_CACHE_TAGS = setOf(
+            "filterCache",
+            "queryResultCache",
+            "documentCache",
+            "fieldValueCache",
+            "featureVectorCache",
+        )
 
         /**
          * The `solrconfig.xml` kinds by token.

@@ -98,6 +98,40 @@ class SolrConfigClassValueTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A cache class is offered on `<filterCache>`, which is not spelled like its kind.
+     *
+     * Solr reads its named caches by element name rather than through the plugin list, so the
+     * generated kind token is `cache` and `filterCache` matches none. A mapping that assumed the token
+     * was the tag would be silent here — on an element every configset that tunes its caches writes.
+     */
+    fun testCacheClassesAreOfferedOnANamedCache() {
+        val offered = completionsFor("""<query><filterCache class="<caret>" size="512"/></query>""")
+        assertTrue("expected a cache class among $offered", offered.any { it.startsWith("solr.") })
+        assertTrue("a request handler is not a cache: $offered", "solr.SearchHandler" !in offered)
+    }
+
+    /** The same, for a chain member — written `<processor>`, never `<updateProcessor>`. */
+    fun testUpdateProcessorClassesAreOfferedOnAChainMember() {
+        val offered = completionsFor(
+            """<updateRequestProcessorChain name="x"><processor class="<caret>"/></updateRequestProcessorChain>""",
+        )
+        assertTrue("expected solr.LogUpdateProcessorFactory among $offered", "solr.LogUpdateProcessorFactory" in offered)
+    }
+
+    /**
+     * The link label reads as English for every kind, which the generic plural is what decides.
+     *
+     * `directoryFactory` is one of five kinds ending in `y`, and a bare `s` produced *Directory
+     * factorys* — in a label the popup invites the reader to click.
+     */
+    fun testTheGuideLinkLabelIsSpelledAsEnglish() {
+        val doc = documentationFor("""<directoryFactory name="DirectoryFactory" class="solr.NRTCaching<caret>DirectoryFactory"/>""")
+        assertNotNull("expected documentation", doc)
+        assertTrue("expected a correctly pluralised label: $doc", doc!!.contains("Directory factories"))
+        assertFalse("the naive plural must not ship: $doc", doc.contains("factorys"))
+    }
+
+    /**
      * An element that carries no `class` is offered nothing, rather than every class in the file.
      *
      * `<lst name="defaults">` has a `name` and no `class`, and the position test is what keeps the

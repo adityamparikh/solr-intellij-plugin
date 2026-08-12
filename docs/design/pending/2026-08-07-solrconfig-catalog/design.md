@@ -296,11 +296,17 @@ they are plain fields on `SolrConfig` read through `get("…")`. Those three are
 hovers first, so they need a third source or a hand-written entry, and either way this catalog must not
 imply it covers them.
 
-### `defType`'s values fall out of the plugin roots, which retires a non-goal
+### `defType`'s values are one root away, which retires a non-goal
 
 `queryParser → QParserPlugin` is one of the pairs `SolrConfig.plugins` declares, so the pass that
-enumerates plugin classes enumerates every registered query parser — which is exactly the closed set
-`defType` accepts, per line, each with a class to document it from.
+enumerates plugin classes enumerates every registered query parser — 45 of them per line, each with a
+class to document it from.
+
+**What that pass does not produce is what `defType` is written as.** Its rows carry class names, and
+`defType` takes a registered *name*: `edismax`, not `solr.ExtendedDismaxQParserPlugin`. The two are
+paired in `QParserPlugin`'s own static initializer, in the same bytecode shape `SolrConfigPlugins.pair`
+already reads for `SolrConfig.plugins` — so the addition is one more root and no new technique, but it
+is an addition, and an earlier revision of this record wrongly called it a by-product.
 
 **That matters because it was declined twice.** [The intelligence
 record](../2026-08-07-solrconfig-intelligence/design.md) put parameter *values* out of scope on the
