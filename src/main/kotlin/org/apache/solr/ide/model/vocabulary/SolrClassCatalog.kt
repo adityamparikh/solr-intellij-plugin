@@ -281,6 +281,33 @@ object SolrClassCatalog {
 
     private val byLine = HashMap<Int, List<SolrClassEntry>>()
 
+    private val guideSegmentByLine = HashMap<Int, String?>()
+
+    /**
+     * The Reference Guide path segment for [line], read from the catalog that answers for it.
+     *
+     * **The link must name the Solr the facts beside it came from.** Everything else in a class
+     * popup — the attributes, the defaults, the required markers, the Javadoc sentence — is read out
+     * of `solr-<line>.tsv`, which one supported release generated. A link derived independently of
+     * that file can name a different release while looking authoritative, and it did: deriving the
+     * segment from the declared major alone sent every Solr 9 configset to the Solr **9.0** guide,
+     * four minor lines behind the 9.10.1 the catalog is generated from. Every page resolved, so
+     * nothing failed — the links were live and about something else, which is the one failure mode
+     * [SolrReferenceGuide][org.apache.solr.ide.model.SolrReferenceGuide]'s "a dead link is worse than
+     * no link" rule did not anticipate.
+     *
+     * Reading it here rather than restating it keeps `supportedSolrLines` in the build the only place
+     * a Solr release is named. The generator writes the line into the catalog's header, and
+     * [parse] skips that header for entries, so this is the same fact read for a second purpose
+     * rather than a second declaration of it.
+     *
+     * @param line the Solr major line, as [SUPPORTED_LINES] names them
+     * @return the segment, such as `9_10`, or null when this build ships no catalog for that line
+     */
+    fun guideSegmentFor(line: Int): String? = synchronized(guideSegmentByLine) {
+        guideSegmentByLine.getOrPut(line) { readGuideSegment(line) }
+    }
+
     /**
      * Every class the [version] line can name.
      *
@@ -333,6 +360,50 @@ object SolrClassCatalog {
             ?: return emptyList()
         return stream.bufferedReader().useLines { parse(it) }
     }
+
+    private fun readGuideSegment(line: Int): String? {
+        val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
+            ?: return null
+        return stream.bufferedReader().useLines { guideSegment(it) }
+    }
+
+    /**
+     * The guide segment named by the catalog header in [rows], or null when none is.
+     *
+     * **Null rather than a guess is the whole point.** A header this does not recognize means the
+     * generator's wording moved, and the honest answer is then the undated `latest` guide rather
+     * than a segment assembled from whatever else is to hand. `SolrClassCatalogTest` asserts every
+     * shipped catalog still answers, so a reword fails the build instead of silently downgrading
+     * every link in the plugin to `latest`.
+     *
+     * Only the major and minor are kept: the guide is published per minor line, so 9.10.1 and
+     * 9.10.0 share `9_10`, and carrying the patch would build a segment that has never existed.
+     *
+     * @param rows the catalog's lines
+     * @return the segment, such as `9_10`, or null when the header does not state a version
+     */
+    internal fun guideSegment(rows: Sequence<String>): String? {
+        val header = rows.take(HEADER_SEARCH_LIMIT).firstNotNullOfOrNull { GUIDE_LINE.find(it) }
+            ?: return null
+        return "${header.groupValues[1]}_${header.groupValues[2]}"
+    }
+
+    /**
+     * The header the generator writes, as `# Solr line 9, read from 9.10.1.`
+     *
+     * Anchored on the release rather than on the line number, because the line number is already
+     * known by whoever is asking and the release is the part being recovered.
+     */
+    private val GUIDE_LINE = Regex("""^#\s*Solr line \d+, read from (\d+)\.(\d+)""")
+
+    /**
+     * How far into the file to look for the header before giving up.
+     *
+     * The header is the second line today. A bounded search rather than a scan of the whole file,
+     * so a catalog whose header was dropped costs a handful of comparisons rather than a walk
+     * through five hundred rows on every call that misses.
+     */
+    private const val HEADER_SEARCH_LIMIT = 8
 
     /**
      * The entries in [rows], skipping anything that is not one.
