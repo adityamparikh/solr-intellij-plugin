@@ -1,6 +1,8 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -89,6 +91,59 @@ class SolrReferenceGuideTest {
         assertTrue(
             SolrVersionSelection("10_0", SolrVersionSource.SERVER).describeSource().contains("server"),
         )
+    }
+
+    /**
+     * Every kind reaches a page or explicitly reaches none, and the exhaustive `when` behind that is
+     * the only thing making a new kind decide.
+     *
+     * **This is a table rather than a spot check because the failure it guards is per kind.** The
+     * pages were verified by hand against the live guide on both supported lines — each one exists,
+     * and each one was checked to actually describe the element it is reached from — but nothing in
+     * the build can re-verify that, so what a test can still hold is the shape and the completeness:
+     * no kind silently falls through, and no kind returns a URL that is not a guide page.
+     */
+    @Test
+    fun `every class kind reaches a guide page or none`() {
+        val version = SolrVersionSelection.DEFAULT
+        // The two the record declines: `indexReaderFactory` is absent from the index-location page
+        // that documents its neighbour, and no page could be found for `statsCache`. Both must stay
+        // null rather than pointing at something adjacent and wrong.
+        val withoutAPage = setOf(SolrClassKind.INDEX_READER_FACTORY, SolrClassKind.STATS_CACHE)
+
+        for (kind in SolrClassKind.entries) {
+            // A class name that places itself, since the analysis kinds choose their page from it.
+            val className = when (kind) {
+                SolrClassKind.TOKENIZER -> "solr.StandardTokenizerFactory"
+                SolrClassKind.TOKEN_FILTER -> "solr.LowerCaseFilterFactory"
+                SolrClassKind.CHAR_FILTER -> "solr.MappingCharFilterFactory"
+                else -> "solr.Whatever"
+            }
+            val url = SolrReferenceGuide.classPage(kind, className, version)
+            if (kind in withoutAPage) {
+                assertNull("$kind must not link anywhere", url)
+                continue
+            }
+            assertNotNull("$kind reaches no page", url)
+            assertTrue("$kind is not a guide URL: $url", url!!.startsWith("https://solr.apache.org/guide/solr/"))
+            assertTrue("$kind is not a page: $url", url.endsWith(".html"))
+        }
+    }
+
+    /**
+     * A kind's page follows the configset's declared line, not the latest.
+     *
+     * The version is threaded through every branch of the mapping, and a branch that hard-coded a
+     * base would send a reader of a Solr 9 configset to Solr 10's documentation — which is the way
+     * this feature would be wrong while still looking right.
+     */
+    @Test
+    fun `a class page follows the declared line`() {
+        val nine = SolrVersionSelection.fromLuceneMatchVersion("9.12.0")
+        for (kind in SolrClassKind.entries) {
+            val url = SolrReferenceGuide.classPage(kind, "solr.Whatever", nine) ?: continue
+            assertTrue("$kind ignored the declared line: $url", url.contains("/9_"))
+        }
     }
 
     /** Every link the plugin can produce must be an absolute https URL into the guide. */
