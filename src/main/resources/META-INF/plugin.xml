@@ -56,6 +56,14 @@
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.schema.documentation.SolrSchemaDocumentationProvider"/>
 
+        <!-- `solrconfig.xml`'s two answerable positions, which the schema provider declines: what a
+             request parameter is for, and what a `defType` value selects. Registered second, so a
+             position both could claim goes to the older one; in practice neither claims the other's,
+             because each declines unless its own resource carries the name under the caret. -->
+        <lang.documentationProvider
+                language="XML"
+                implementationClass="org.apache.solr.ide.configset.solrconfig.documentation.SolrConfigDocumentationProvider"/>
+
         <!-- References. A configset is held together by string references — a field names its
              type, a copyField names two fields — and none of them is a reference as far as the
              editor is concerned until this makes it one. -->

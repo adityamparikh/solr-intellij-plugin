@@ -268,6 +268,52 @@ response writer*, which is what the popup wants. The schema's four are still wri
 do not follow: a `<filter>` is a *token filter factory*, and a reader who has not learned that is who the
 line is for.
 
+### What building the parameter half turned up
+
+**A third technique, and the simplest of the three.** A parameter name is a `public static final String`,
+so javac stores it in a `ConstantValue` attribute on the field and ASM hands it to `visitField` directly
+— no initializer to walk, no hierarchy, and no expression to evaluate, because javac has already folded
+the composed constants: `MM_AUTORELAX` arrives as `mm.autoRelax` rather than as `MM + ".autoRelax"`.
+
+**`solr-solrj` did not become a resolved artifact, which retires a recorded risk.** It is already a
+transitive dependency of `solr-core`, so the params interfaces were in the scanned set before this change
+and `build.gradle.kts` needed no edit at all.
+
+**`defType` is declared outside the params package, and scoping the pass to that package produced a
+resource with 340 parameters and no `defType` in it.** It lives in `org.apache.solr.search.QueryParsing`
+in `solr-core`, along with `q.op` and `sow`. That is this generator's standing failure mode for the third
+time in this record — a plausible list, no error — and the fix was to key the allowlist by internal name
+rather than by package, which is what lets one non-params class join it.
+
+**What is hard here is not reading the constants but deciding which are parameters.** A params interface
+is a bag of related strings, and `CommonParams` mixes genuine parameters with request paths, response
+keys, and the values other parameters accept. Three mechanical rules do most of the separating —
+reject a value containing `/`, one ending in `.`, and one with no lowercase letter — and each was added
+after seeing what the previous resource shipped: `/admin/ping` and `apispec/`, then six prefixes such as
+`tv.` and `spellcheck.` that a reader could select and would have to finish by hand.
+
+**The uppercase rule loses `NOW` and `TZ`, which genuinely are query parameters.** Recorded rather than
+special-cased, and pinned by a test so that a later revision fixing it has to say so. The bound that
+makes it acceptable is the one the specification already sets: this resource is a completion and
+documentation source and never a membership test, so a name missing from it costs a suggestion while a
+response key present in it is noise in the list a reader is using to learn the vocabulary.
+
+Nine constants in `CommonParams` still need naming — the four values `debug` accepts, and the ping
+handler's five. That list is curation and will go stale, which the risks section already says.
+
+**Documentation came in thinner than the classes and thicker than feared.** 210 of 340 parameters carry
+a summary, and they are the ones that matter: `qf` reads *query and init param for query fields* and `df`
+reads *default query field*. 35 of 44 query parser names carry one, from the plugin class's own comment
+rather than a constant's. A parameter Solr never commented shows no sentence, exactly as `StrField` shows
+none.
+
+**The resource is its own file rather than more rows in the class catalog.** That catalog builds a
+`SolrClassEntry` per row and resolves each row's kind through `SolrClassKind`, so folding parameters in
+would mean teaching an enum of *class kinds* two constants that are not kinds of class — and then
+answering, in every exhaustive `when` over it, which Reference Guide page documents "the parameter kind".
+Two resources and two small readers cost less than one type meaning two things. This supersedes the
+"Catalog format" section's plan to grow a row kind.
+
 ### A fourth technique, for the elements the class routes cannot reach
 
 The two routes above find *classes*. `solrconfig.xml` also has a vocabulary of configuration elements

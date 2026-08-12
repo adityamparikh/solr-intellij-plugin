@@ -424,6 +424,20 @@ corrected.
       field. A boost is not a field name, and completing there would produce `name^name`.
 - [ ] **PRM-4** — In a `<str name="sort">`, completion offers fields at the start of a clause and
       nothing after `text ` — the second token of a sort clause is a direction, not a field.
+- [ ] **PRM-6** — the `name` of a `<str>` inside a `<lst name="defaults">` offers Solr's request
+      parameters, each with what it is for beside it: `qf` reads *query and init param for query
+      fields*. **This is the position the vocabulary is learnable from** — field completion inside a
+      `qf` presumes the reader already knew to write `qf`.
+- [ ] **PRM-7** — a parameter already set on the same list is *not* offered again, and `defType` **is**
+      offered even though Solr declares it outside the package every other parameter comes from.
+- [ ] **PRM-8** — `<str name="defType">` offers `edismax`, `dismax`, `lucene`, `func` and no class
+      name; a `<queryParser class=…>` offers the classes and no registry key. **The two populations
+      describe the same plugins and must not cross**: a class name in a `defType` is a configset Solr
+      cannot load.
+- [ ] **PRM-9** — F1 on `qf` says what `qf` is and names `DisMaxParams`; F1 on `edismax` names
+      `ExtendedDismaxQParserPlugin`. F1 on a parameter Solr does not declare — `my.own.param` — shows
+      **nothing at all**, which is the contract rather than a gap: a custom component reads parameters
+      no generator will ever see.
 - [ ] **PRM-5** — F1 on a field name inside the `qf` shows *the field's* documentation — its type
       and analyzer chain — not the `<str>` element's. **This works through reference resolution
       rather than a documentation branch written for it**, so it is the gesture most likely to
