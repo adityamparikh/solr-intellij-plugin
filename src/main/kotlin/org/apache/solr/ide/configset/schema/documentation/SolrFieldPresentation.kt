@@ -460,15 +460,49 @@ object SolrFieldPresentation {
         SolrClassKind.TOKENIZER -> "tokenizer"
         SolrClassKind.TOKEN_FILTER -> "filter"
         SolrClassKind.CHAR_FILTER -> "char filter"
-        SolrClassKind.FIELD_TYPE, null -> "tag"
+        // Every other kind, `fieldType` and an unrecognised element included. This surface is only
+        // reached from an analysis component, so the generic word is what the remaining kinds want:
+        // "on this requestHandler" would be prose that never runs.
+        else -> "tag"
     }
 
-    /** The kind in words, for the definition line. */
+    /**
+     * The kind in words, for the definition line.
+     *
+     * The four analysis kinds are spelled out because their words are not their tag names — a
+     * `<filter>` is a *token filter factory*, and a reader who has not learned that is exactly who
+     * this line is for. Every `solrconfig.xml` kind falls through to its tag name split into words,
+     * because there the tag *is* the plain-language name: `requestHandler` reads as "request
+     * handler" and nothing is gained by writing that out twenty times.
+     */
     private fun kindText(kind: SolrClassKind): String = when (kind) {
         SolrClassKind.FIELD_TYPE -> "field type class"
         SolrClassKind.TOKENIZER -> "tokenizer factory"
         SolrClassKind.TOKEN_FILTER -> "token filter factory"
         SolrClassKind.CHAR_FILTER -> "character filter factory"
+        else -> spacedTagName(kind)
+    }
+
+    /**
+     * A camel-cased tag name as words: `queryResponseWriter` becomes `query response writer`.
+     *
+     * Only ever applied to a token Solr itself declared, so the input is always camel case with no
+     * acronyms to mishandle.
+     */
+    private fun spacedTagName(kind: SolrClassKind): String =
+        kind.token.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").lowercase()
+
+    /**
+     * A kind as a capitalised plural, for a link label: `Directory factories`.
+     *
+     * The `y` rule is the whole reason this is a function. Five of the twenty-two kinds end in one —
+     * `directoryFactory`, `codecFactory`, `schemaFactory`, `deletionPolicy`, `indexReaderFactory` —
+     * and appending a bare `s` produced *Directory factorys* in a label a reader is invited to click.
+     * No kind ends in a sibilant, so the two rules here cover all of them.
+     */
+    private fun pluralKind(kind: SolrClassKind): String {
+        val words = spacedTagName(kind).replaceFirstChar { it.uppercase() }
+        return if (words.endsWith("y")) "${words.dropLast(1)}ies" else "${words}s"
     }
 
     /**
@@ -498,6 +532,10 @@ object SolrFieldPresentation {
             SolrClassKind.TOKENIZER -> "Tokenizers in the Reference Guide"
             SolrClassKind.TOKEN_FILTER -> "Filters in the Reference Guide"
             SolrClassKind.CHAR_FILTER -> "Char filter factories in the Reference Guide"
+            // The remaining kinds name their own page well enough: a reader arriving from a
+            // `<requestHandler>` is offered "Request handlers in the Reference Guide". The four above
+            // stay written out because their page titles do not follow from their tag names.
+            else -> "${pluralKind(entry.kind)} in the Reference Guide"
         }
         return "<div class='bottom'><p><a href='$url'>$label</a></p>" +
             "<p><small>Reference Guide for ${escape(version.describeSource())}.</small></p></div>"

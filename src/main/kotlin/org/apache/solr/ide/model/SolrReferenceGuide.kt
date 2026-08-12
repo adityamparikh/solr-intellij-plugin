@@ -75,6 +75,43 @@ object SolrReferenceGuide {
             SolrClassKind.TOKEN_FILTER,
             SolrClassKind.CHAR_FILTER,
             -> analyzerComponentPage(className, version)
+
+            // `solrconfig.xml`. Every page named here was checked to exist on both supported lines
+            // and to describe the element it is reached from; the two kinds whose page could not be
+            // established are null below rather than pointed at a plausible neighbour, because a
+            // link that lands somewhere unrelated costs more than an absent one.
+            SolrClassKind.REQUEST_HANDLER,
+            SolrClassKind.SEARCH_COMPONENT,
+            -> "${base(version)}/configuration-guide/requesthandlers-searchcomponents.html"
+
+            SolrClassKind.QUERY_PARSER -> "${base(version)}/query-guide/query-syntax-and-parsers.html"
+            SolrClassKind.QUERY_RESPONSE_WRITER -> "${base(version)}/query-guide/response-writers.html"
+            SolrClassKind.UPDATE_PROCESSOR -> "${base(version)}/configuration-guide/update-request-processors.html"
+            SolrClassKind.TRANSFORMER -> "${base(version)}/query-guide/document-transformers.html"
+            SolrClassKind.EXPRESSIBLE -> "${base(version)}/query-guide/streaming-expressions.html"
+            SolrClassKind.CODEC_FACTORY -> "${base(version)}/configuration-guide/codec-factory.html"
+            SolrClassKind.SCHEMA_FACTORY -> "${base(version)}/configuration-guide/schema-factory.html"
+            SolrClassKind.DIRECTORY_FACTORY -> "${base(version)}/configuration-guide/index-location-format.html"
+            SolrClassKind.DELETION_POLICY -> "${base(version)}/configuration-guide/index-segments-merging.html"
+            SolrClassKind.CIRCUIT_BREAKER -> "${base(version)}/deployment-guide/circuit-breakers.html"
+            SolrClassKind.QUERY_CONVERTER -> "${base(version)}/query-guide/spell-checking.html"
+
+            // A cache and a searcher listener are the same subject: warming is what a listener is
+            // for, and the page treats them together.
+            SolrClassKind.CACHE,
+            SolrClassKind.LISTENER,
+            -> "${base(version)}/configuration-guide/caches-warming.html"
+
+            // The page does not use the word `valueSourceParser`, but it is what the element is for:
+            // a value source parser registers a function, and this is the page about functions.
+            SolrClassKind.VALUE_SOURCE_PARSER -> "${base(version)}/query-guide/function-queries.html"
+
+            // No page describes either. `indexReaderFactory` is absent from the index-location page
+            // that covers its neighbour `directoryFactory`, and `statsCache` appears on no page that
+            // could be found -- so both link nowhere rather than somewhere adjacent and wrong.
+            SolrClassKind.INDEX_READER_FACTORY,
+            SolrClassKind.STATS_CACHE,
+            -> null
         }
 
     /**

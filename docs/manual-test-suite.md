@@ -389,6 +389,19 @@ popup, against the demo configset's declared Solr line.*
       which the filter already declares and completion therefore omits. Same bytecode
       route, no fixture edit.
       [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--06-completion-factory-attributespng).
+- [ ] **CAT-3** — `class=` on a `<requestHandler>` in `solrconfig.xml` offers
+      `solr.SearchHandler` and `solr.UpdateRequestHandler`, and **does not** offer
+      `solr.SchemaCodecFactory` or any field type. Repeat on the demo's
+      `<directoryFactory>` and `<codecFactory>`, which each offer their own handful.
+- [ ] **CAT-4** — F1 on `solr.SearchHandler` says *request handler* and offers a Reference
+      Guide link that lands on a page describing request handlers. **The link is the half
+      worth checking by hand**: nothing in the build establishes that a constructed URL
+      resolves, so a page the guide renames fails here and nowhere else.
+
+*Why CAT-3 and CAT-4 are manual at all, given fixtures cover both.* The three surfaces they
+exercise — completion, documentation, navigation — were never written for `solrconfig.xml`;
+they were already general, and gained the whole file when the catalog learned Solr's plugin
+kinds. Nothing in that diff looks like a feature, which is exactly why a gesture belongs here.
 
 ---
 

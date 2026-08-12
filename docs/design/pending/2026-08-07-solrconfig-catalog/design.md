@@ -218,7 +218,15 @@ work has already memoised trait lookups by type name for exactly this reason, wh
 per-field multiplier, but a `find` on every keystroke over 700 rows is worth measuring before the
 parameter half adds its own lookups.
 
-**`defType`'s closed set arrives as a by-product**, as predicted: 45 `queryParser` rows on both lines.
+**`defType`'s closed set does *not* arrive as a by-product, and an earlier revision of this section said
+it did.** There are 45 `queryParser` rows on both lines, and they carry *class names* —
+`solr.ExtendedDismaxQParserPlugin`. What `defType` takes is a *registered name*: `edismax`. The two are
+related by a map in `QParserPlugin`'s static initializer, which the class routes never read.
+
+The correction is cheap rather than awkward, which is why it is worth stating precisely. That map pairs a
+string to a class in the same bytecode shape as `SolrConfig.plugins` — an `ldc` of each, in sequence —
+so `SolrConfigPlugins.pair` reads it as it stands. `defType` is a small, separate addition, not a
+by-product; what the class half genuinely delivers is the `class` attribute, everywhere it appears.
 
 **Attributes come out empty for the plugin classes, and that is honest rather than missing.** The
 attribute pass reads string literals passed to argument readers in a constructor, which is how an
@@ -226,6 +234,39 @@ analysis factory takes its configuration. A request handler reads its parameters
 `SolrParams`, and a directory factory takes an `init(NamedList)` — neither puts its vocabulary where this
 technique can see it. The rows carry the class, its kind and its documentation; the attributes stay blank
 until something can prove them.
+
+### What wiring the consumer turned up
+
+**The surfaces were already general; only the vocabulary was short.** Completion, quick documentation and
+class navigation each route a `class` attribute through `SolrClassKind.forTag`, and each gates on
+*configset membership* rather than on which of the two files the caret is in. So teaching the enum
+eighteen tokens delivered all three for `solrconfig.xml` with no new surface written — the entire
+production diff is an enum, four exhaustive `when`s and a guide-page table.
+
+That is a pleasant result and a dangerous shape. **Nothing in the diff looks like a feature**, so a later
+change narrowing any of those three to the schema would take the whole of it away and break no test that
+predates it. Hence `SolrConfigClassValueTest`, whose value is entirely in existing: five of its eight
+assertions were confirmed to fail when the token fall-through was removed, and the three that do not are
+the ones asserting absence.
+
+**The exhaustive `when` is what made this safe, and it is the mechanism the parser lacks.** Adding kinds
+broke compilation in four places — a reference-guide page per kind, the kind in words, the popup's link
+label — each of which had to decide about the new kinds before the build would pass. The catalog parser
+offers no such pressure: it resolves a row's kind through the enum and *drops* the row when it does not
+match, which is why eighteen kinds and five hundred rows could arrive with every test green. The added
+guard is the reverse assertion — every kind token in every shipped catalog is one the enum knows — and it
+is the test that would have failed on the previous change.
+
+**Two kinds link nowhere on purpose.** Every Reference Guide page named in `classPage` was checked to
+exist on both supported lines *and* to describe the element it is reached from. `indexReaderFactory` is
+absent from the index-location page that documents its neighbour `directoryFactory`, and no page could be
+found for `statsCache` — so both return null rather than a plausible neighbour, since the API already
+documents that case and a link landing somewhere unrelated teaches a reader to stop clicking.
+
+**The kind in words falls out of the tag name for all eighteen.** `queryResponseWriter` reads as *query
+response writer*, which is what the popup wants. The schema's four are still written out, because theirs
+do not follow: a `<filter>` is a *token filter factory*, and a reader who has not learned that is who the
+line is for.
 
 ### A fourth technique, for the elements the class routes cannot reach
 
@@ -255,11 +296,24 @@ they are plain fields on `SolrConfig` read through `get("…")`. Those three are
 hovers first, so they need a third source or a hand-written entry, and either way this catalog must not
 imply it covers them.
 
-### `defType`'s values fall out of the plugin roots, which retires a non-goal
+### `defType`'s values are one root away, which retires a non-goal
 
 `queryParser → QParserPlugin` is one of the pairs `SolrConfig.plugins` declares, so the pass that
-enumerates plugin classes enumerates every registered query parser — which is exactly the closed set
-`defType` accepts, per line, each with a class to document it from.
+enumerates plugin classes enumerates every registered query parser — 45 of them per line, each with a
+class to document it from.
+
+**What that pass does not produce is what `defType` is written as.** Its rows carry class names, and
+`defType` takes a registered *name*: `edismax`, not `solr.ExtendedDismaxQParserPlugin`. The two are
+paired in `QParserPlugin`'s own static initializer, and an earlier revision of this record wrongly
+called the registered names a by-product of the class pass.
+
+**The pairing is not the shape `SolrConfigPlugins.pair` reads, and that is worth recording because it
+looks like it should be.** `SolrConfig.plugins` loads each root as a *class constant* — an `LDC` of a
+`Class` — so a visitor that overrides `visitLdcInsn` sees the whole declaration. `QParserPlugin` instead
+*instantiates* each plugin: the name arrives by `LDC` and the class by **`NEW`**, which is a type
+instruction and not a constant load at all. Reading it needs `visitTypeInsn` as well, and the operands
+arrive name-first rather than class-first. Still cheap, still no new dependency — but a second collector
+rather than a reuse, and the pairing has to be told which order it is getting.
 
 **That matters because it was declined twice.** [The intelligence
 record](../2026-08-07-solrconfig-intelligence/design.md) put parameter *values* out of scope on the
