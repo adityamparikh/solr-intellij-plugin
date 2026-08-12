@@ -2,6 +2,7 @@ package org.apache.solr.ide.build
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.objectweb.asm.Type
@@ -318,5 +319,165 @@ class GenerateSolrCatalogTaskTest {
             listOf(Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler", "orphan"),
         )
         assertEquals(setOf("requestHandler"), roots.keys)
+    }
+    // --- request parameters --------------------------------------------------------------------
+
+    /**
+     * The three mechanical rules, each against the constant that motivated it.
+     *
+     * These are preferred to naming constants one by one because curation goes stale, so what they
+     * reject matters as much as what they keep: a request path, a response key and a prefix are all
+     * `public static final String` in the same interfaces as the parameters, and all three shipped in
+     * the first generated resource before these rules existed.
+     */
+    @Test
+    fun `only values spelled like a parameter name are parameters`() {
+        // Kept: lowercase, camel case, dotted, and the underscore-fenced document fields.
+        for (value in listOf("qf", "df", "rows", "mm.autoRelax", "facet.range.other", "_version_")) {
+            assertTrue(value, SolrParameters.isParameterValue(value))
+        }
+        // A request path, which `CommonParams` declares nine of.
+        assertFalse("/admin/ping", SolrParameters.isParameterValue("/admin/ping"))
+        assertFalse("apispec/", SolrParameters.isParameterValue("apispec/"))
+        // A value or a response key rather than a name. `AND` is one of `SimpleParams`' operators.
+        for (value in listOf("OK", "FAILURE", "RESPONSE_TIME", "AND")) {
+            assertFalse(value, SolrParameters.isParameterValue(value))
+        }
+        // A prefix its own interface builds parameters from, which a reader would have to finish.
+        for (value in listOf("tv.", "spellcheck.", "group.topgroups.")) {
+            assertFalse(value, SolrParameters.isParameterValue(value))
+        }
+        assertFalse("blank", SolrParameters.isParameterValue("  "))
+    }
+
+    /**
+     * `NOW` and `TZ` are genuinely query parameters and this loses them, which is recorded rather than
+     * special-cased.
+     *
+     * The bound that makes it acceptable is that the resource is a completion and documentation source
+     * and never a membership test: a name absent from it costs a suggestion, while a response key
+     * present in it is noise in a list a reader is using to learn the vocabulary. Pinning the loss here
+     * means a later revision that fixes it fails this test and has to say so.
+     */
+    @Test
+    fun `the uppercase rule loses two real parameters`() {
+        assertFalse(SolrParameters.isParameterValue("NOW"))
+        assertFalse(SolrParameters.isParameterValue("TZ"))
+    }
+
+    /** The curated exclusions apply to `CommonParams` and to nothing else. */
+    @Test
+    fun `a debug value is excluded from CommonParams but not from elsewhere`() {
+        val constants = listOf("QUERY" to "query", "QF" to "qf")
+        assertEquals(listOf("qf"), SolrParameters.parametersOf("CommonParams", constants).map { it.second })
+        // The same field name in another interface is not touched: `AnalysisParams.QUERY` is
+        // `analysis.query`, a real parameter, and a name-based exclusion must not reach it.
+        assertEquals(
+            listOf("query", "qf"),
+            SolrParameters.parametersOf("DisMaxParams", constants).map { it.second },
+        )
+    }
+
+    /**
+     * The field name survives the selection, because a parameter's documentation is the comment on the
+     * constant and is found by field name rather than by the value it holds.
+     */
+    @Test
+    fun `the declaring field name is carried alongside the parameter`() {
+        val selected = SolrParameters.parametersOf("DisMaxParams", listOf("QF" to "qf"))
+        assertEquals(listOf("QF" to "qf"), selected)
+    }
+
+    /** Two constants holding one value contribute one parameter, not two rows of it. */
+    @Test
+    fun `a value declared twice yields one parameter`() {
+        val selected = SolrParameters.parametersOf("FacetParams", listOf("FACET" to "facet", "FACET_ALIAS" to "facet"))
+        assertEquals(listOf("FACET" to "facet"), selected)
+    }
+
+    // --- query parser names -------------------------------------------------------------------
+
+    /**
+     * The registry pairs a name to a class the initializer *instantiates*, so the operands arrive
+     * name-first and the class arrives as a `NEW` rather than as a constant.
+     *
+     * This is the pairing `SolrConfigPlugins.pair` cannot do: it expects class-first, and a collector
+     * that read only `LDC` would hand this function 44 strings and no types at all.
+     */
+    @Test
+    fun `a registered name pairs with the class instantiated after it`() {
+        val parsers = SolrQueryParsers.pair(
+            listOf(
+                "lucene", Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin"),
+                "edismax", Type.getObjectType("org/apache/solr/search/ExtendedDismaxQParserPlugin"),
+            ),
+        )
+        assertEquals("org.apache.solr.search.LuceneQParserPlugin", parsers["lucene"])
+        assertEquals("org.apache.solr.search.ExtendedDismaxQParserPlugin", parsers["edismax"])
+    }
+
+    /**
+     * A name with no class after it is dropped rather than attached to a later one.
+     *
+     * The same rule the plugin-root pairing follows, and for the same reason: the alternative silently
+     * documents `defType=first` with whatever plugin happened to be constructed next.
+     */
+    @Test
+    fun `a name with no class after it is dropped rather than guessed`() {
+        val parsers = SolrQueryParsers.pair(
+            listOf("stranded", "lucene", Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin")),
+        )
+        assertEquals(setOf("lucene"), parsers.keys)
+    }
+
+    // --- constant documentation ----------------------------------------------------------------
+
+    /**
+     * The comment on the constant, under either spelling of the declaration.
+     *
+     * `DisMaxParams` writes `public static String QF` and `CommonParams` writes a bare `String Q`, so a
+     * pattern requiring `static final` would have documented one interface and silently not the other.
+     */
+    @Test
+    fun `a constant's own comment is found under either declaration style`() {
+        val source = """
+            public interface Params {
+              /** query and init param for query fields */
+              public static String QF = "qf";
+
+              /** default query field */
+              String DF = "df";
+            }
+        """.trimIndent()
+        assertEquals(
+            "query and init param for query fields",
+            ConstantJavadocSummaries.constantJavadocComment(source, "QF")
+                ?.let { GenerateSolrCatalogTask.summarizeJavadocComment(it) },
+        )
+        assertEquals(
+            "default query field",
+            ConstantJavadocSummaries.constantJavadocComment(source, "DF")
+                ?.let { GenerateSolrCatalogTask.summarizeJavadocComment(it) },
+        )
+    }
+
+    /**
+     * An undocumented constant takes no comment, least of all the previous constant's.
+     *
+     * This is the failure the comment-terminator guard exists for: a pattern that let the body cross a
+     * terminator would hand `QF`'s comment to `PF` and produce documentation that reads correctly and
+     * describes the wrong parameter.
+     */
+    @Test
+    fun `an undocumented constant borrows no comment from its neighbour`() {
+        val source = """
+            public interface Params {
+              /** query and init param for query fields */
+              String QF = "qf";
+
+              String PF = "pf";
+            }
+        """.trimIndent()
+        assertNull(ConstantJavadocSummaries.constantJavadocComment(source, "PF"))
     }
 }
