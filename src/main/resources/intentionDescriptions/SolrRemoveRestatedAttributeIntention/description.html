@@ -1,0 +1,23 @@
+<html>
+<body>
+Removes a field attribute whose value the field would have had anyway, leaving a schema that means
+exactly the same.
+<p>
+  A schema shows <code>indexed="true"</code> the same way whether deleting it would change the index
+  or nothing at all. The difference is not in the file: it depends on what the field's
+  <code>&lt;fieldType&gt;</code> declares, on the class that type names, and on the version the
+  schema's own root element states. Attributes that carry no weight are dimmed, and this removes the
+  one under the caret.
+</p>
+<p>
+  It is offered rather than applied because restating a default is correct Solr, and often
+  deliberate — writing <code>indexed="true"</code> can be a way of recording that the question was
+  considered. Nothing here treats the attribute as a mistake; the plugin reports only that removing
+  it changes nothing.
+</p>
+<p><small>Never offered where the value cannot be determined. A default that depends on the field
+  type is resolved only when the catalog carries the class that type names — for a custom class it
+  does not, and an attribute that might be load-bearing is left alone rather than dimmed on a
+  guess.</small></p>
+</body>
+</html>

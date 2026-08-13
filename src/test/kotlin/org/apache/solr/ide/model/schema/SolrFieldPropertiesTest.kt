@@ -1,6 +1,7 @@
 package org.apache.solr.ide.model.schema
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,6 +33,69 @@ class SolrFieldPropertiesTest {
         type: SolrFieldType? = stringType,
         version: SolrSchemaVersion = SolrSchemaVersion.of("1.7"),
     ) = SolrFieldProperties.resolve(SolrFieldProperties.byName(name)!!, field, type, version)
+
+    // --- restated defaults -------------------------------------------------------------------
+    //
+    // Whether deleting an attribute would change anything, which is the question the editor dims on.
+    // Every case here is a *correct* file, so the failure that matters is claiming a value is
+    // removable when removing it would change the field.
+
+    private fun restates(
+        name: String,
+        written: String,
+        type: SolrFieldType? = stringType,
+        version: SolrSchemaVersion = SolrSchemaVersion.of("1.7"),
+        traits: Set<SolrTypeTrait>? = null,
+    ) = SolrFieldProperties.restatesDefault(
+        SolrFieldProperties.byName(name)!!,
+        written,
+        type,
+        version,
+        traits,
+    )
+
+    @Test
+    fun `an attribute repeating Solr's own default restates it`() {
+        assertTrue(restates("indexed", "true", type = null))
+    }
+
+    @Test
+    fun `an attribute that changes the value restates nothing`() {
+        assertFalse(restates("indexed", "false", type = null))
+    }
+
+    @Test
+    fun `an attribute repeating what its field type already supplies restates it`() {
+        // The type declares docValues="true"; a field writing the same is inherited, not decisive.
+        assertTrue(restates("docValues", "true"))
+    }
+
+    @Test
+    fun `an attribute repeating a version default restates it`() {
+        assertTrue(restates("uninvertible", "false", type = null))
+        assertFalse(restates("uninvertible", "true", type = null))
+    }
+
+    @Test
+    fun `a default the catalog cannot determine restates nothing`() {
+        // omitNorms depends on the type's class, and null traits mean the catalog does not carry it.
+        // Dimming here would tell the reader a value is removable on the strength of a guess.
+        assertFalse(restates("omitNorms", "true", traits = null))
+        assertFalse(restates("omitNorms", "false", traits = null))
+    }
+
+    @Test
+    fun `a type default the catalog proves restates it`() {
+        assertTrue(restates("omitNorms", "true", traits = setOf(SolrTypeTrait.PRIMITIVE)))
+        assertFalse(restates("omitNorms", "false", traits = setOf(SolrTypeTrait.PRIMITIVE)))
+    }
+
+    @Test
+    fun `a spelling Solr accepts but the table does not match restates nothing`() {
+        // Only an exact match dims. Solr would read TRUE as true, so this is a value that could have
+        // been removed and is not offered as such — the safe direction to be wrong in.
+        assertFalse(restates("indexed", "TRUE", type = null))
+    }
 
     @Test
     fun `a property declared on the field comes from the field`() {

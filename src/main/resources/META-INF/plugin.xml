@@ -41,6 +41,14 @@
                 isEnabledByDefault="true"
                 implementationClass="org.apache.solr.ide.configset.schema.hint.SolrMatchInlayHintsProvider"/>
 
+        <!-- Dimming for an attribute the field would have had anyway. An annotator rather than an
+             inspection because a restated default is correct: it is rendered like redundant code and
+             reaches neither the Problems view nor any problem count. The removal intention below is
+             what acts on it, and only when the reader asks. -->
+        <annotator
+                language="XML"
+                implementationClass="org.apache.solr.ide.configset.schema.annotator.SolrRestatedDefaultAnnotator"/>
+
         <!-- Element descriptors for schema files. A schema has no XSD, so without these the
              platform guesses: attribute completion echoes whatever same-named sibling tags carry.
              The descriptors are deliberately permissive — validation stays with the inspections. -->
@@ -241,6 +249,14 @@
             <language>XML</language>
             <category>Solr</category>
             <className>org.apache.solr.ide.configset.schema.intention.SolrAddExactCompanionIntention</className>
+        </intentionAction>
+        <!-- The companion to the dim above. Offered rather than applied, because restating a default
+             is correct and sometimes deliberate — the plugin reports that removing it changes
+             nothing and leaves the choice to the reader. -->
+        <intentionAction>
+            <language>XML</language>
+            <category>Solr</category>
+            <className>org.apache.solr.ide.configset.schema.intention.SolrRemoveRestatedAttributeIntention</className>
         </intentionAction>
     </extensions>
 </idea-plugin>

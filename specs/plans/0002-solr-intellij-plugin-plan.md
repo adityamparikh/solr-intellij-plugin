@@ -37,9 +37,11 @@ plugin knows, because the element descriptor is still gated on the schema.
 required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
 [the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-in-progress)
 now render the rest, the first for the attribute under the caret and the second for every attribute a factory tag
-accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default) is still unbuilt, and it
-reads the same column to make a different claim: not what Solr will supply, but that a written value need not have been
-written at all.
+accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default-in-progress) now reads the
+same facts to make a different claim: not what Solr will supply, but that a written value need not have been written at
+all. A field attribute that decides nothing is dimmed where it stands, with an intention that removes it — the first
+time the plugin says something about a line without being asked, and it says it only where the model can prove the
+field would be unchanged.
 
 **The Server and Code tracks have not started**, which is two of the spec's three pillars.
 `server/` holds `SolrConnectionSettings` and nothing else — no HTTP client, no tool window, no query console — and no
@@ -87,9 +89,10 @@ whole, and the gutter action goes with the Server track.
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing the catalog provides.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the catalog, which it never needed.
-- [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
-  — likewise added late; belongs beside the two above. Its field half needs only the property table; its factory half
-  waits on the catalog carrying defaults.
+- [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
+  — **in progress**; likewise added late, belongs beside the two above. The schema half ships — the dim and the
+  intention that removes it, on every element that declares field properties: `<field>`, `<dynamicField>` and
+  `<fieldType>`. Its factory half still waits on the catalog carrying defaults.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
@@ -898,7 +901,7 @@ configsets stay what this step's criteria want them for: the zero-findings fixtu
 navigation is present in IDEA and absent elsewhere and the plugin loads either way. It was pulled forward
 rather than deferred to Phase 3, which is the product decision this plan owned; `#132` is where it landed.
 
-### Step 26: Showing that an attribute restates the default
+### Step 26: Showing that an attribute restates the default (in progress)
 
 Numbered last because it was added last; it belongs in the Editor track beside
 [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done).
@@ -919,17 +922,44 @@ intention rather than a quick-fix, because an intention carries no claim that an
 1. Dim an attribute whose written value equals its effective default, as an annotator at information severity — no
    underline, no entry in the Problems view.
 2. An intention on the dimmed attribute that removes it, leaving a file whose parsed model is identical.
-3. Stay silent wherever the default is not knowable with confidence: properties whose default depends on the field type,
-   and factory attributes until
-   [the catalog](#step-9-factory-catalog-generator-in-progress) carries defaults — at which point factory attributes
-   join with no new machinery here.
+3. Stay silent wherever the default is not knowable with confidence — **which is a narrower set than this action
+   originally named, and the correction is the design decision this step made.** It said properties whose default
+   depends on the field type, written when such a default could not be resolved at all; the catalog now carries the
+   traits that resolve them, so `omitNorms` on a `solr.StrField` is knowable and dims. What stays silent is what the
+   model reports as `UNDETERMINED` — a type naming a class outside the catalog, which is the ordinary case for a custom
+   plugin. Factory attributes still wait on
+   [the catalog](#step-9-factory-catalog-generator-in-progress) carrying defaults, and join with no new machinery here.
 
 **Success criteria:**
 
-- [ ] `indexed="true"` on a field dims and `indexed="false"` does not, and removing the dimmed attribute leaves the
-  parsed model identical.
-- [ ] A property whose default depends on the field type never dims.
-- [ ] Nothing this step adds appears in the Problems view on a correct file.
+- [x] `indexed="true"` on a field dims and `indexed="false"` does not, and removing the dimmed attribute leaves the
+  parsed model identical. The intention test compares every effective property before and after rather than the text,
+  because a deletion that changed one would still produce plausible XML.
+- [x] A property whose default cannot be *determined* never dims — the amended criterion. It previously read "whose
+  default depends on the field type", which the catalog's traits made both too strict and no longer the real question;
+  [the design record](../../docs/design/pending/2026-08-13-restated-defaults/design.md) carries the argument.
+- [x] Nothing this step adds appears in the Problems view on a correct file.
+
+**What shipped:** actions 1 and 2, on every element that declares field properties — `<field>`, `<dynamicField>` and
+`<fieldType>`, which is the same set
+[attribute-name completion](#step-24-completing-the-schemas-own-vocabulary-done) already answers for.
+`SolrFieldProperties.restatesDefault` in `model` answers whether deleting an attribute would leave the same element —
+the existing resolution with the element's own declaration set aside, which turns out to need no field at all, so
+`resolve` and the new function share one tail and the dim cannot drift from the popup reporting the same defaults.
+`SolrRestatedDefaultAnnotator` renders it and `SolrRemoveRestatedAttributeIntention` acts on it, both through one
+predicate so the offer cannot disagree with the dim.
+
+A field type needed no new rule — it *is* the layer a field resolves through, so it answers to Solr's defaults and its
+own class's traits directly, which the same function expresses by being passed no type at all. **What the second half
+did find is a defect in the first:** every property is legal on a `<fieldType>` and only some on a `<field>`, and the
+field half compared any property it knew — so `enableGraphQueries`, which is type-only and defaults to true, dimmed on
+a `<field>`. The conclusion was accidentally right and the reason wrong; Solr ignores that attribute there outright,
+which is a different thing to tell the reader. Scope is now checked.
+
+**`<dynamicField>` is included**, on the argument that the pattern is the only thing that makes one different: it names
+a type exactly as a concrete field does, and none of these properties is about the pattern. The model had already
+settled it — `FOR_FIELD` is the properties legal on a field *or* a dynamic field — so excluding it would have been the
+editor disagreeing with the table it reads.
 
 **Acceptance:** No demo step of its own. It is the editor-side answer to the question the property table answers in the
 popup — which of these lines could go.
@@ -1254,7 +1284,7 @@ target Alt-F7 does rather than reaching past it to the tag. So this step needs t
   [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress)
   validate against; the default and required marker are what the factory half of
   [quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) and
-  [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
+  [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
   will read.
 - `solr-analysis-extras` resolved alongside `solr-core`. Without it the catalog had Japanese and Korean analysis and no
   Chinese at all, which is the kind of gap a count never shows.
@@ -1266,7 +1296,7 @@ target Alt-F7 does rather than reaching past it to the tag. So this step needs t
 value type and, where the bytecode proves them, its literal default and required marker — the two facts the factory half
 of
 [quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress) and
-[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default)
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
 consume. Selection reads the configset's declared version and then falls back to the newest line; the `SERVER` arm of
 `SolrVersionSource` is unreachable until the server reader exists, so that criterion closes with the Server track rather
 than here.
@@ -1360,7 +1390,7 @@ no change so far has claimed.
 6. ~~The factory sibling of the field property table: quick documentation on a factory tag shows every attribute the
    class accepts at its effective value, written or defaulted, distinguishably — the complete-configuration picture the
    field half already gives, and the second consumer of the defaults column beside
-   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default).~~
+   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress).~~
    **Done.**
 
 **Success criteria:**
