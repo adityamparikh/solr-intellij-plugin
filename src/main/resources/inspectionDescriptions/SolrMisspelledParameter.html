@@ -1,0 +1,21 @@
+<html>
+<body>
+Reports a request parameter in <code>solrconfig.xml</code> whose name is almost one Solr reads.
+<p>
+  A parameter Solr does not recognise is silently ignored. A handler configured with
+  <code>rwos</code> instead of <code>rows</code> starts cleanly, serves queries, and returns the
+  default ten results forever — there is no error anywhere, and the only symptom is a number nobody
+  chose.
+</p>
+<p>
+  Only a near miss is reported, never an unrecognised name on its own.
+  <code>solrconfig.xml</code> accepts components from outside Solr that read parameters of their
+  author's choosing, so a name the catalog does not carry is the ordinary case and flagging it would
+  warn on every project with a custom component.
+</p>
+<p><small>Never fires on a name Solr ships, however close it sits to another. <code>pf2</code> and
+  <code>pf3</code> are genuinely different parameters one edit apart, and a rule comparing every name
+  against every other would report each as a misspelling of the other in a file that is entirely
+  correct.</small></p>
+</body>
+</html>
