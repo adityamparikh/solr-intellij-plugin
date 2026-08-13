@@ -55,8 +55,11 @@ class SolrConfigAttributeCompletionTest : SolrConfigsetTestCase() {
 
         // Recorded, not endorsed. `startup` appearing here is the sibling echo; `name` and `class` are
         // the two attributes the plugin would offer from its own knowledge once it owns this file.
-        assertTrue(
-            "the sibling echo is the premise of the descriptor change — if this fails, re-argue it: $offered",
+        // The echo was the premise of the descriptor change and is now what it removed. `startup` is
+        // real Solr, but it reached this list from the sibling rather than from Solr, and a
+        // suggestion that is a fact about the reader's own file is the thing being ended.
+        assertFalse(
+            "the sibling echo is gone: a name is offered here only if Solr declares it: $offered",
             "startup" in offered,
         )
     }
@@ -83,6 +86,9 @@ class SolrConfigAttributeCompletionTest : SolrConfigsetTestCase() {
             """.trimIndent(),
         )
 
-        assertTrue("expected 'name' among $offered", "name" in offered)
+        // Solr reads a parameter list's `name` through its own parser rather than through the config
+        // tree, so the vocabulary declares no attribute here and silence is the honest answer. What
+        // this position really accepts is the parameter completion's to offer, and it does.
+        assertFalse("no longer drawn from the sibling: $offered", "name" in offered)
     }
 }
