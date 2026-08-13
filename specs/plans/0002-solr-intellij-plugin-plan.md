@@ -94,7 +94,7 @@ whole, and the gutter action goes with the Server track.
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress)
-  — **in progress**; the largest step here. It was split when it started, and five of the eight pull
+  — **in progress**; the largest step here. It was split when it started, and six of the eight pull
   requests in that split have merged. What remains is the file's *structure* — element and attribute
   completion — and the one inspection.
 - [Step 28 — Declarations as targets](#step-28-declarations-as-targets) — **done**

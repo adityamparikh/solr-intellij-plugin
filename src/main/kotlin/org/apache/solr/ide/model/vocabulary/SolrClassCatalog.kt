@@ -301,11 +301,25 @@ object SolrClassCatalog {
      * [parse] skips that header for entries, so this is the same fact read for a second purpose
      * rather than a second declaration of it.
      *
+     * **Null is an answer worth caching, and `getOrPut` cannot cache it.** That function decides what
+     * to do by comparing the stored value to null, so a line whose segment is null re-reads the
+     * classpath on every call — and null is the answer for exactly the lines that ask most cheaply to
+     * be wrong about: a major this build ships no catalog for, which the popup then sends to the
+     * undated guide. `containsKey` distinguishes "not looked up" from "looked up, found nothing".
+     *
+     * The membership check ahead of it is the same rule [lineFor] already applies to every catalog
+     * read, and it keeps the map's keys bounded by the lines this build knows rather than by whatever
+     * majors the configsets in a project happen to declare.
+     *
      * @param line the Solr major line, as [SUPPORTED_LINES] names them
      * @return the segment, such as `9_10`, or null when this build ships no catalog for that line
      */
     fun guideSegmentFor(line: Int): String? = synchronized(guideSegmentByLine) {
-        guideSegmentByLine.getOrPut(line) { readGuideSegment(line) }
+        if (line !in SUPPORTED_LINES) return@synchronized null
+        if (!guideSegmentByLine.containsKey(line)) {
+            guideSegmentByLine[line] = readGuideSegment(line)
+        }
+        guideSegmentByLine[line]
     }
 
     /**
