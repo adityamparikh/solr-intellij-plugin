@@ -27,15 +27,6 @@ import org.apache.solr.ide.model.schema.SolrFieldProperty
 internal object SolrRestatedAttribute {
 
     /**
-     * The concrete field, and deliberately not `<dynamicField>`.
-     *
-     * The resolution would be identical — a dynamic field names a type exactly as a field does — so
-     * this is a scope decision rather than a limitation, and it is recorded as undecided in the
-     * design record rather than settled by whichever constant was convenient.
-     */
-    private const val FIELD_TAG = "field"
-
-    /**
      * Whether deleting [attribute] would leave the same field or field type.
      *
      * @param attribute an attribute written in a configset file
@@ -53,7 +44,7 @@ internal object SolrRestatedAttribute {
         val model = SolrConfigsetReader.getInstance(file.project).modelFor(file) ?: return false
 
         return when {
-            tag.name == FIELD_TAG -> fieldRestates(property, written, tag, model)
+            tag.name in SolrSchemaTags.FIELD -> fieldRestates(property, written, tag, model)
             tag.name in SolrSchemaTags.FIELD_TYPE -> typeRestates(property, written, tag, model)
             else -> false
         }
@@ -61,6 +52,11 @@ internal object SolrRestatedAttribute {
 
     /**
      * A field's attribute, which resolves through the type it names.
+     *
+     * **`<dynamicField>` included, because the pattern is the only thing that makes one different.**
+     * A dynamic field names a type exactly as a concrete field does, and none of these properties is
+     * about the pattern — `indexed` means the same for the fields it will match as for a field
+     * written out. `SolrFieldProperties.FOR_FIELD` is scoped to both for the same reason.
      *
      * **Properties legal only on a type are declined rather than compared.** `enableGraphQueries`
      * defaults to true, so comparing it against that default here would report it as removable — for

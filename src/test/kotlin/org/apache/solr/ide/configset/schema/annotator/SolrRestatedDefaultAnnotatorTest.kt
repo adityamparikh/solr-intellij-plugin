@@ -70,6 +70,30 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
         assertEquals(emptyList<String>(), dimmed("""<field name="sku" type="string"/>"""))
     }
 
+    /**
+     * A dynamic field resolves exactly as a concrete one does, because it names a type the same way.
+     *
+     * The pattern it declares is what makes a dynamic field different, and none of the properties
+     * here are about the pattern — `indexed` means the same thing for the fields it will match as it
+     * does for a field written out.
+     */
+    fun testADynamicFieldAttributeRepeatingSolrsDefaultIsDimmed() {
+        val dimmed = dimmed("""<dynamicField name="*_s" type="string" indexed="true"/>""")
+        assertEquals(listOf("""indexed="true""""), dimmed)
+    }
+
+    fun testADynamicFieldAttributeThatDecidesSomethingIsNotDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed("""<dynamicField name="*_s" type="string" indexed="false"/>"""),
+        )
+    }
+
+    /** The pattern is the declaration, and nothing may offer to remove it. */
+    fun testADynamicFieldsPatternIsNeverDimmed() {
+        assertEquals(emptyList<String>(), dimmed("""<dynamicField name="*_s" type="string"/>"""))
+    }
+
     // --- field types -----------------------------------------------------------------------------
     //
     // A `<fieldType>` resolves with nothing above it, so its attributes answer to Solr's own

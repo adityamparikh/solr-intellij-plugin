@@ -108,6 +108,9 @@ reporting it as removable. The conclusion was accidentally true and the reason w
 ignores that attribute on a field outright, which is a different thing to tell the reader and not
 this feature's to tell. The predicate now declines a property outside the element's scope.
 
-`<dynamicField>` is untouched and **undecided**. The resolution would be identical, since a dynamic
-field names a type exactly as a field does, so this is a scope decision rather than a limitation —
-recorded here rather than settled by whichever tag-name constant was convenient to reach for.
+**`<dynamicField>` is included, and the pattern is the only thing that makes one different.** It
+names a type exactly as a concrete field does, and none of these properties is about the pattern —
+`indexed` means the same for the fields it will match as for a field written out. The model had
+already reached that conclusion: `FOR_FIELD` is documented as the properties legal on a field *or* a
+dynamic field, so excluding it here would have been the editor disagreeing with the table it reads.
+Its `name` is a declaration rather than a property and is never dimmed, exactly as a field's is.
