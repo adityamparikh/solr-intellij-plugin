@@ -1385,7 +1385,8 @@ and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-7
 
 Three gaps found by opening the sandbox on the demo configset rather than by reading the code. They
 are recorded here rather than folded into a step because each needs a placement decision this entry
-deliberately does not make. **The first is a defect in shipped behaviour; the other two are absences.**
+deliberately does not make. **The first and third were defects in shipped behaviour and are fixed; the
+second is an absence and is still open.**
 
 **The Reference Guide line was wrong for every Solr 9 configset, and the page name was wrong for every
 line but one — fixed.** `SolrVersionSelection.fromLuceneMatchVersion` kept only the major, so a configset
@@ -1425,14 +1426,31 @@ and documentation was never asked. A reader who has just been told what `qf` is 
 value and gets nothing. This is a new capability rather than a fix, and it is the first thing the
 plugin would say about a parameter's *value* grammar rather than its name.
 
-**A `<directoryFactory>` and a `<codecFactory>` were reported as explaining nothing**, which
-[`#132`](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) claimed to have fixed and
-`SolrConfigClassValueTest` asserts by name for both. The catalog carries both classes with their
-Javadoc summaries on both lines, verified in the shipped TSVs. So this is a discrepancy between a
-green suite and a sandbox, and **it is not yet known which is right** — a stale sandbox build and a
-gate the tests do not model look identical from here.
-`SolrDemoConfigsetProbeTest` was left uncommitted in the working tree by an earlier session to
-separate those two, and answering that is the first step rather than changing anything.
+**A `<directoryFactory>` and a `<codecFactory>` were reported as explaining nothing** while
+`SolrConfigClassValueTest` asserted both were explained and was green. **Both were true, and the
+sandbox was right** — `#135` fixes it. The suite was not stale and the catalog was not short: the
+answer had been assembled and nobody was asked for it.
+
+`SolrClassReference.resolve` read the stub index through `JavaPsiFacade.findClass` with no dumb-mode
+guard, so during indexing it raised `IndexNotReadyException`. **The throw did not stay local**, which
+is the part worth keeping. Quick documentation does not begin at a documentation provider — the
+platform first collects target symbols at the caret, which walks the references there — so the
+exception escaped through `TargetElementUtil` and killed the whole popup, taking with it everything
+this plugin could have answered from a configset it had already parsed and which needs no index at
+all. Navigation is genuinely unavailable while indexing; the explanation beside it never was. The
+schema's `class` values were affected identically, since it is one contributor for both files.
+
+**The suite could not have found it, and that is a fact about the tests rather than about this bug.**
+Every fixture test runs in smart mode, and every assertion in `SolrConfigClassValueTest` reached the
+provider through a helper of its own — so it was testing whether the code produces the right answer
+while the failure was whether anyone asks the code. The regression test therefore enters through
+`IdeDocumentationTargetProvider`, where a reader enters; asking the provider would pass with the
+defect present. **The general lesson: where a platform decides who answers, at least one test has to
+start where the user starts.** That is unenforced elsewhere — the dumb-awareness rule in `CLAUDE.md`
+now has a test behind it for exactly one contribution, and the others are still declarations.
+
+`SolrDemoConfigsetProbeTest` was the throwaway probe that separated the two explanations; it did its
+job and is gone, its cases promoted into the reference and class-value suites.
 
 ---
 
