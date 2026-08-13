@@ -775,6 +775,11 @@ on — pinning what attribute completion does in this file today, collapsing the
 file-kind predicate, and widening the parameter reader beyond `<str>` — and they ship first and alone, while the schema
 suite is the only thing that can fail.
 
+**That paragraph is now history rather than status.** Every dependency it names has since been answered: the catalog
+grew, Java PSI arrived optionally, and the element vocabulary was measured out of the shipped jars — see
+[the open questions below](#step-25-solrconfigxml-as-a-first-class-surface-in-progress), which now record answers.
+Actions 1 and 3 are the two that remain, and both are startable.
+
 **Actions:**
 
 1. Element and attribute completion for `solrconfig.xml`'s structure, from the catalog, replacing the platform's
@@ -871,6 +876,23 @@ inspection is unwritten, and it depends on the parameter catalog action 2 landed
 below is checked off, because both of the ones that catch *silent* wrongness — the `pf2`/`pf3` guard and the
 present-day-behaviour fixture — belong to the descriptor change that has not happened.
 
+**Both are now unblocked, and action 1's shape is settled.** It needs a generator pass over `SolrConfig`'s own
+config-reading calls, producing the element names with their arity, joined to the 23 plugin elements and the
+40 typed leaves the other two sources already give — and a rule that marks the five names Solr no longer
+accepts. Action 3 needed nothing new once the parameter catalog landed. Neither waits on a question any more;
+what they wait on is being built.
+
+**What "joined" means is the one part of that shape a reader cannot guess, so it is stated here rather than
+left to the code.** The canonical key is the pair *(parent path, element name)*, not the name alone: the same
+name legitimately appears under more than one parent, and a map keyed by name would silently keep whichever
+source ran last. Where sources disagree about arity the most specific answer wins — `required` over
+`repeated` over `single` — because `single` is also what a source says when it has nothing to add, so
+treating it as an observation would let a source that knows nothing overrule one that watched Solr call
+`getAll`. A name read without a parent is absorbed into the parented reading of the same name rather than
+kept as a second row, since `SolrConfig` reads a nested element off its parent node and a pass reading
+literals sees only the child. Every source that named an element is listed on the merged row, so a consumer
+never has to know which declaration answered.
+
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
 **Dependencies:** [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which grows to cover
@@ -890,13 +912,47 @@ than that table had.
 or child element. But `<config>`, `luceneMatchVersion` and `dataDir` appear in neither list — they are
 plain fields read through `get("…")`, and not runtime-editable so the JSON omits them. Hovering exactly
 those three is the first thing a reader tries, and it is what showed the earlier claim that this was
-settled to be too strong. Either a third source turns up or they are a small hand-written set, recorded
-as such.
+settled to be too strong.
+
+**A third source turned up, and it is the one the generator already reads.** Measured against both
+shipped jars rather than reasoned about: `solr-core` carries no further descriptive resource — the only
+non-class files are `EditableSolrConfigAttributes.json`, `ImplicitPlugins.json` and `security.json`, and
+no configset ships inside the jar. What it does carry is the reading code, and `SolrConfig` reads its own
+tree through a handful of named methods with the element name as a **literal argument**:
+`get("dataDir")`, `childRequired("luceneMatchVersion", …)`, `getAll("deletionPolicy")`. That is the same
+shape [the catalog generator](#step-9-factory-catalog-generator-in-progress) already extracts for factory
+attributes, where `getInt(args, "generateWordParts", 1)` yields a name, a type and a default. Pointing it
+at `SolrConfig`'s config-reading calls yields **33 element names on 9.10.1 and 34 on 10.0.0**, with the
+call itself carrying whether the element is single, repeated or required — `luceneMatchVersion` arrives
+marked required because Solr reads it with `childRequired`. So no hand-written set is needed for the two
+that mattered, and the general rule this step was written on holds: the vocabulary is generated.
+
+`<config>` is the third and needs no source at all. It is the document root rather than something read
+out of the tree, which is why it appears in no list of children — the same status `<schema>` has in the
+other file.
+
+**Two things the measurement found that the question did not ask.** The extraction is *noisy* and needs a
+rule, not just a filter — and 33 and 34 are the raw counts, before that rule runs. `SolrConfig` also
+reads five elements it no longer accepts: `mainIndex`, `indexDefaults`, `nrtMode`, `unlockOnStartup` and
+`jmx`. Each sits beside a literal saying so, which is what makes "read to use" and "read to warn"
+separable, but a generator that skipped the distinction would complete five elements Solr rejects.
+
+**Four of those five are fatal rather than advisory, which is worth stating precisely because the
+generated `discontinued` column is the only thing a reader will see.** `<indexDefaults>` and
+`<mainIndex>` raise `SolrException(FORBIDDEN)` — the core does not start. `<nrtMode>` and
+`<unlockOnStartup>` reach `XmlConfigFile.assertWarnOrFail` with its `fail` argument set, so they fail
+too. Only `<jmx>` is what the word warning suggests: a `log.warn` pointing at `solr.xml`, with startup
+continuing. So the plugin is not being helpful by flagging them — it is reporting a file that will not
+load. And the per-line sets differ by exactly one entry,
+`featureVectorCache`, added in 10 — which means the element data
+[the seventh inspection](#step-6-inspections-in-progress) is blocked on becomes derivable from this same
+pass, while also showing that **nothing was removed between the two supported lines**, so that inspection
+would have nothing to report until a future line drops something.
 
 The distribution tarball and the vendored-files fallback are both retired regardless, and the shipped
 configsets stay what this step's criteria want them for: the zero-findings fixture.
 
-**That question is the only one left, and the second one closed by being answered in the affirmative.**
+**Both questions are now closed, the first by measurement above and the second in the affirmative.**
 `com.intellij.modules.java` now arrives as an optional dependency with its own `solr-withJava.xml`, so class
 navigation is present in IDEA and absent elsewhere and the plugin loads either way. It was pulled forward
 rather than deferred to Phase 3, which is the product decision this plan owned; `#132` is where it landed.
