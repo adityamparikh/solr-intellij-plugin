@@ -62,6 +62,74 @@ class SolrConfigElementDescriptorProvider : XmlElementDescriptorProvider {
 }
 
 /**
+ * The half of [XmlElementDescriptor] that is the same whether the element exists yet or not.
+ *
+ * **Most of this interface is bookkeeping, and only four members carry a decision.** What an element
+ * is named, what it may contain, what it may carry, and what declares it are the questions the two
+ * descriptors below answer differently; namespaces, groups, content type and default value are
+ * answers this file gives once because Solr's configuration has no notion of any of them. Written
+ * twice they were a block of identical overrides in two classes, which is a correction that has to be
+ * made in both places or in neither.
+ *
+ * [elementName] is a property rather than a constructor argument on purpose: a descriptor for an
+ * element that exists reads the name off the tag every time, so it stays correct while the name is
+ * being typed.
+ */
+internal abstract class SolrConfigDescriptorBase(
+    protected val version: SolrVersionSelection,
+) : XmlElementDescriptor {
+
+    /** The element's name, read fresh so an edit in progress does not go stale. */
+    protected abstract val elementName: String
+
+    /** The tag this descriptor hangs off — the element itself, or the parent it would go in. */
+    protected abstract val anchorTag: XmlTag
+
+    final override fun getQualifiedName(): String = elementName
+
+    final override fun getDefaultName(): String = elementName
+
+    final override fun getName(): String = elementName
+
+    final override fun getName(context: PsiElement?): String = elementName
+
+    /**
+     * Never null, which is the permissiveness rule.
+     *
+     * A known child gets a descriptor like this one; anything else gets one too, so no element is
+     * flagged for being somewhere this class did not anticipate. A custom component's element is the
+     * ordinary case in this file.
+     */
+    override fun getElementDescriptor(childTag: XmlTag, contextTag: XmlTag?): XmlElementDescriptor =
+        SolrConfigTagDescriptor(childTag, version)
+
+    /**
+     * A descriptor for any attribute at all, declared or not.
+     *
+     * The declared set feeds completion; this feeds validation and resolution, and answering null is
+     * how a platform paints an attribute as wrong. The plugin's inspections own that judgement, so
+     * every name resolves.
+     */
+    override fun getAttributeDescriptor(attributeName: String, context: XmlTag?): XmlAttributeDescriptor =
+        SolrConfigAttributeDescriptor(attributeName, context ?: anchorTag)
+
+    final override fun getAttributeDescriptor(attribute: XmlAttribute): XmlAttributeDescriptor =
+        getAttributeDescriptor(attribute.name, attribute.parent)
+
+    final override fun getNSDescriptor(): XmlNSDescriptor? = null
+
+    final override fun getTopGroup(): XmlElementsGroup? = null
+
+    final override fun getContentType(): Int = XmlElementDescriptor.CONTENT_TYPE_ANY
+
+    final override fun getDefaultValue(): String? = null
+
+    override fun getDeclaration(): PsiElement = anchorTag
+
+    final override fun init(element: PsiElement) = Unit
+}
+
+/**
  * What one `solrconfig.xml` element accepts, read from the generated vocabulary.
  *
  * @property tag the element this describes
@@ -69,8 +137,12 @@ class SolrConfigElementDescriptorProvider : XmlElementDescriptorProvider {
  */
 internal class SolrConfigTagDescriptor(
     private val tag: XmlTag,
-    private val version: SolrVersionSelection,
-) : XmlElementDescriptor {
+    version: SolrVersionSelection,
+) : SolrConfigDescriptorBase(version) {
+
+    override val elementName: String get() = tag.name
+
+    override val anchorTag: XmlTag get() = tag
 
     /**
      * The path this element sits at, which is also the key its own children are stored under.
@@ -86,14 +158,6 @@ internal class SolrConfigTagDescriptor(
             .reversed()
             .joinToString("/") { it.name }
 
-    override fun getQualifiedName(): String = tag.name
-
-    override fun getDefaultName(): String = tag.name
-
-    override fun getName(): String = tag.name
-
-    override fun getName(context: PsiElement?): String = tag.name
-
     /**
      * The elements Solr accepts here, which is what feeds element-name completion.
      *
@@ -103,8 +167,10 @@ internal class SolrConfigTagDescriptor(
      * contributor, so leaving it empty would replace the platform's guess with silence — offering
      * less than before owning the descriptor, which is the one outcome worse than the guess.
      *
-     * Discontinued elements are withheld. Solr still reads them, and reads them only in order to warn,
-     * so offering one would be recommending a configuration Solr complains about on startup.
+     * Discontinued elements are withheld. Solr still reads them, but only to reject the file or to say
+     * it is ignoring them — `<indexDefaults>` and `<mainIndex>` raise `SolrException`, `<nrtMode>` and
+     * `<unlockOnStartup>` fail the same way one level down, and `<jmx>` is the one that merely warns.
+     * Offering any of them would be completing a configuration that stops the core starting.
      */
     override fun getElementsDescriptors(context: XmlTag?): Array<XmlElementDescriptor> {
         val here = context ?: tag
@@ -113,16 +179,6 @@ internal class SolrConfigTagDescriptor(
             .map { SolrConfigChildDescriptor(it.name, here, version) }
             .toTypedArray()
     }
-
-    /**
-     * Never null, which is the permissiveness rule.
-     *
-     * A known child gets a descriptor like this one; anything else gets the platform's
-     * accept-everything descriptor, so no element is flagged for being somewhere this class did not
-     * anticipate. A custom component's element is the ordinary case in this file.
-     */
-    override fun getElementDescriptor(childTag: XmlTag, contextTag: XmlTag?): XmlElementDescriptor =
-        SolrConfigTagDescriptor(childTag, version)
 
     /**
      * The attributes Solr reads on this element.
@@ -139,30 +195,6 @@ internal class SolrConfigTagDescriptor(
             .toTypedArray()
     }
 
-    /**
-     * A descriptor for any attribute at all, declared or not.
-     *
-     * The declared set feeds completion; this feeds validation and resolution, and answering null is
-     * how a platform paints an attribute as wrong. The plugin's inspections own that judgement, so
-     * every name resolves.
-     */
-    override fun getAttributeDescriptor(attributeName: String, context: XmlTag?): XmlAttributeDescriptor =
-        SolrConfigAttributeDescriptor(attributeName, context ?: tag)
-
-    override fun getAttributeDescriptor(attribute: XmlAttribute): XmlAttributeDescriptor =
-        getAttributeDescriptor(attribute.name, attribute.parent)
-
-    override fun getNSDescriptor(): XmlNSDescriptor? = null
-
-    override fun getTopGroup(): XmlElementsGroup? = null
-
-    override fun getContentType(): Int = XmlElementDescriptor.CONTENT_TYPE_ANY
-
-    override fun getDefaultValue(): String? = null
-
-    override fun getDeclaration(): PsiElement = tag
-
-    override fun init(element: PsiElement) = Unit
 }
 
 /**
@@ -172,45 +204,32 @@ internal class SolrConfigTagDescriptor(
  * reader has not written yet, so there is no tag to anchor to — only the parent it would go in.
  */
 private class SolrConfigChildDescriptor(
-    private val elementName: String,
+    override val elementName: String,
     private val anchor: XmlTag,
-    private val version: SolrVersionSelection,
-) : XmlElementDescriptor {
+    version: SolrVersionSelection,
+) : SolrConfigDescriptorBase(version) {
 
-    override fun getQualifiedName(): String = elementName
+    override val anchorTag: XmlTag get() = anchor
 
-    override fun getDefaultName(): String = elementName
-
-    override fun getName(): String = elementName
-
-    override fun getName(context: PsiElement?): String = elementName
-
+    /**
+     * Nothing, because an element that does not exist yet has no contents to describe.
+     *
+     * Once the reader writes it, the descriptor for the real tag answers from the vocabulary.
+     */
     override fun getElementsDescriptors(context: XmlTag?): Array<XmlElementDescriptor> =
         XmlElementDescriptor.EMPTY_ARRAY
-
-    override fun getElementDescriptor(childTag: XmlTag, contextTag: XmlTag?): XmlElementDescriptor =
-        SolrConfigTagDescriptor(childTag, version)
 
     override fun getAttributesDescriptors(context: XmlTag?): Array<XmlAttributeDescriptor> =
         XmlAttributeDescriptor.EMPTY
 
+    /**
+     * Anchored on the parent rather than on [context], which is the one place these two differ.
+     *
+     * There is no tag for this element yet, so a context the platform passes belongs to something
+     * else; the parent it would go in is the only position that means anything.
+     */
     override fun getAttributeDescriptor(attributeName: String, context: XmlTag?): XmlAttributeDescriptor =
         SolrConfigAttributeDescriptor(attributeName, anchor)
-
-    override fun getAttributeDescriptor(attribute: XmlAttribute): XmlAttributeDescriptor =
-        getAttributeDescriptor(attribute.name, attribute.parent)
-
-    override fun getNSDescriptor(): XmlNSDescriptor? = null
-
-    override fun getTopGroup(): XmlElementsGroup? = null
-
-    override fun getContentType(): Int = XmlElementDescriptor.CONTENT_TYPE_ANY
-
-    override fun getDefaultValue(): String? = null
-
-    override fun getDeclaration(): PsiElement = anchor
-
-    override fun init(element: PsiElement) = Unit
 }
 
 /**
