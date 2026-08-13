@@ -82,6 +82,24 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
         assertEquals(listOf("""indexed="true""""), dimmed)
     }
 
+    /**
+     * The same resolution, but through the type rather than from Solr's own default.
+     *
+     * Every other dynamic-field case here repeats a value Solr defaults to, which a resolution that
+     * never consulted `type` at all would still answer correctly. This one can only come out right
+     * by reading the `<fieldType>`: `omitNorms="false"` is not Solr's default for a string field, so
+     * the attribute is removable solely because the type already said so.
+     */
+    fun testADynamicFieldAttributeRepeatingItsTypesValueIsDimmed() {
+        val dimmed = dimmed(
+            """
+            <fieldType name="tuned" class="solr.StrField" omitNorms="false"/>
+            <dynamicField name="*_t" type="tuned" omitNorms="false"/>
+            """.trimIndent(),
+        )
+        assertEquals(listOf("""omitNorms="false""""), dimmed)
+    }
+
     fun testADynamicFieldAttributeThatDecidesSomethingIsNotDimmed() {
         assertEquals(
             emptyList<String>(),
