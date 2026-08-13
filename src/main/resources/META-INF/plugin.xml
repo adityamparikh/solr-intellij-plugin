@@ -55,6 +55,14 @@
         <xml.elementDescriptorProvider
                 implementation="org.apache.solr.ide.configset.schema.descriptor.SolrSchemaElementDescriptorProvider"/>
 
+        <!-- The same job for the other file, and a second provider rather than a widened first one:
+             a gate serving both would make one aspect the owner of a position the other also has.
+             Without it the platform guesses here too, and this file is the worst case for the guess
+             because it is made of same-named tags — a second <requestHandler> was offered whatever
+             the first one happened to carry. -->
+        <xml.elementDescriptorProvider
+                implementation="org.apache.solr.ide.configset.solrconfig.descriptor.SolrConfigElementDescriptorProvider"/>
+
         <!-- Quick documentation, answering a different question at each position. On a field, its
              type, or a factory tag, it resolves the values in effect and where each came from; on a
              factory attribute it states only what the catalog can prove — owner, value type,
