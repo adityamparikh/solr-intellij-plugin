@@ -1,0 +1,1 @@
+<field name="sku" type="string" <spot>indexed="true"</spot> stored="false"/>

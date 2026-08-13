@@ -443,6 +443,27 @@ object SolrFieldProperties {
         FOR_FIELD.map { property -> resolve(property, field, fieldType, schemaVersion, typeTraits) }
 
     /**
+     * Whether [writtenValue], written on a field, is what the field would have had anyway.
+     *
+     * @param property the property the attribute names
+     * @param writtenValue the value exactly as the file spells it
+     * @param fieldType the field's type, or null when undeclared
+     * @param schemaVersion the version the schema's root declares
+     * @param typeTraits the traits the catalog carries for the type's class, or null
+     * @return true when deleting the attribute would leave the same effective value
+     */
+    fun restatesDefault(
+        property: SolrFieldProperty,
+        writtenValue: String,
+        fieldType: SolrFieldType?,
+        schemaVersion: SolrSchemaVersion,
+        typeTraits: Set<SolrTypeTrait>? = null,
+    ): Boolean {
+        val without = resolveInherited(property, fieldType, schemaVersion, typeTraits)
+        return without.origin != SolrPropertyOrigin.UNDETERMINED && without.value == writtenValue
+    }
+
+    /**
      * One property's effective value for [field].
      *
      * @param property the property to resolve
@@ -460,6 +481,24 @@ object SolrFieldProperties {
         field.attributes[property.name]?.let {
             return SolrEffectiveProperty(property, it, SolrPropertyOrigin.FIELD)
         }
+        return resolveInherited(property, fieldType, schemaVersion, typeTraits)
+    }
+
+    /**
+     * What [property] resolves to for a field that does not declare it.
+     *
+     * **Split out because it is also the answer to a different question.** Read forwards it is the
+     * tail of [resolve]; read on its own it is what a field *would* have if an attribute were
+     * deleted, which is what [restatesDefault] compares against. Nothing here consults the field,
+     * and that is the point rather than an omission — once the field's own declaration is set aside,
+     * the answer depends only on the type, the schema version and the class's traits.
+     */
+    private fun resolveInherited(
+        property: SolrFieldProperty,
+        fieldType: SolrFieldType?,
+        schemaVersion: SolrSchemaVersion,
+        typeTraits: Set<SolrTypeTrait>?,
+    ): SolrEffectiveProperty {
         fieldType?.attributes?.get(property.name)?.let {
             return SolrEffectiveProperty(property, it, SolrPropertyOrigin.FIELD_TYPE)
         }
