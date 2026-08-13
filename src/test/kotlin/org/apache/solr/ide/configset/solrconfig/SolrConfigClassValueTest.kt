@@ -174,7 +174,8 @@ class SolrConfigClassValueTest : SolrConfigsetTestCase() {
     fun testHoveringACodecFactoryClassExplainsIt() {
         val doc = documentationFor("""<codecFactory class="solr.Schema<caret>CodecFactory"/>""")
         assertNotNull("expected documentation", doc)
-        assertTrue("expected the kind in words: $doc", doc!!.contains("codec factory"))
+        assertTrue("expected the class name: $doc", doc!!.contains("SchemaCodecFactory"))
+        assertTrue("expected the kind in words: $doc", doc.contains("codec factory"))
     }
 
     /** The same gesture on the element a reader meets first. */

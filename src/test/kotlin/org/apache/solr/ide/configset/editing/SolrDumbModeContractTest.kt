@@ -14,11 +14,13 @@ import org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInsp
 /**
  * Every contribution that declares itself dumb-aware answers while the project is indexing.
  *
- * **The declaration is a promise, and until this existed nothing checked it was kept.** The standing
- * rule is that this plugin reads no index — a configset is text, parsed from files the detector has
- * already found — and the declarations across the extension points assert exactly that. A declaration
- * is cheap to write and stays green forever whether or not the code beneath it grew an index read,
- * because every other fixture in this suite runs in smart mode.
+ * **The declaration is a promise, and until this existed nothing checked it was kept.** Almost nothing
+ * here reads an index — a configset is text, parsed from files the detector has already found — and
+ * these declarations assert that of the surfaces they sit on. What the rule cannot be is *nothing
+ * reads an index*: class navigation does, deliberately, and the requirement on it is that it both
+ * declines the declaration and guards with `DumbService`. A declaration is cheap to write and stays
+ * green forever whether or not the code beneath it grew an unguarded index read, because every other
+ * fixture in this suite runs in smart mode.
  *
  * It has been wrong once. A `class` value explained nothing during indexing while the class-value
  * suite was green, because the reference at that caret read the stub index unguarded and the throw
