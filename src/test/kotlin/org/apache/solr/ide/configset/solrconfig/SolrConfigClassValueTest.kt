@@ -162,6 +162,21 @@ class SolrConfigClassValueTest : SolrConfigsetTestCase() {
         assertTrue("expected the kind in words: $doc", doc.contains("directory factory"))
     }
 
+    /**
+     * The other element the reader reported, whose kind is a different token and different words.
+     *
+     * Completion covers this class already and documentation did not, which is a gap the shared
+     * machinery hides: the popup renders the kind's own words, so a `<directoryFactory>` passing says
+     * nothing about whether `codec` maps to anything. It is the per-kind half that needs the second
+     * case, not the dumb-mode half — indexing broke one resolution path shared by all twenty-two
+     * kinds, and that is pinned once above.
+     */
+    fun testHoveringACodecFactoryClassExplainsIt() {
+        val doc = documentationFor("""<codecFactory class="solr.Schema<caret>CodecFactory"/>""")
+        assertNotNull("expected documentation", doc)
+        assertTrue("expected the kind in words: $doc", doc!!.contains("codec factory"))
+    }
+
     /** The same gesture on the element a reader meets first. */
     fun testHoveringARequestHandlerClassExplainsIt() {
         val doc = documentationFor("""<requestHandler name="/select" class="solr.Search<caret>Handler"/>""")
