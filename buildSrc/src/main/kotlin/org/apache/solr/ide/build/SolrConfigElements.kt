@@ -102,16 +102,16 @@ internal object SolrConfigElements {
     /**
      * Solr's own words retiring [name], or null where Solr still accepts it.
      *
-     * **Matched on the name in Solr's bracket syntax, not on the name appearing anywhere.** The
-     * message that retires `<indexDefaults>` names `<indexConfig>` too — as the replacement — so a
-     * looser match would retire the element the message exists to recommend.
+     * **Matched on the name as Solr spells it, not on the name appearing anywhere.** The message that
+     * retires `<indexDefaults>` names `<indexConfig>` too — as the replacement — so a looser match
+     * would retire the element the message exists to recommend.
      *
      * @param name the element name
      * @param messages every string constant in the declaring class
      * @return the message, or null
      */
     fun discontinuedBy(name: String, messages: List<String>): String? {
-        val mentions = listOf("<$name>", "'$name'", "\"$name\"")
+        val mentions = mentionsOf(name)
         return messages.firstOrNull { message ->
             RETIRING.any { message.contains(it, ignoreCase = true) } &&
                 mentions.any { message.contains(it) } &&
@@ -120,15 +120,31 @@ internal object SolrConfigElements {
     }
 
     /**
+     * The spellings a message may name an element by.
+     *
+     * **One list, because a mention and a replacement have to be recognised by the same spellings.**
+     * Reading the bracket form here and all three at the match would let a message that recommends
+     * `'lockType'` retire the very element it recommends — and Solr writes option names in single
+     * quotes, so that is the ordinary spelling rather than an exotic one.
+     */
+    private fun mentionsOf(name: String) = listOf("<$name>", "'$name'", "\"$name\"")
+
+    /**
      * Whether [message] names [name] only as the thing to use instead.
      *
      * Solr writes the replacement after "Use", which is enough to tell the two apart in the one
-     * message that does both.
+     * message that does both. A name appearing *before* that word is the retired one however it is
+     * spelled, so the earliest mention in any spelling is what decides.
      */
     private fun isReplacementIn(message: String, name: String): Boolean {
         val use = message.indexOf("Use ", ignoreCase = true)
         if (use < 0) return false
-        return message.indexOf("<$name>", use) >= 0 && message.indexOf("<$name>") >= use
+        val earliest = mentionsOf(name)
+            .map { message.indexOf(it) }
+            .filter { it >= 0 }
+            .minOrNull()
+            ?: return false
+        return earliest >= use
     }
 
     /**

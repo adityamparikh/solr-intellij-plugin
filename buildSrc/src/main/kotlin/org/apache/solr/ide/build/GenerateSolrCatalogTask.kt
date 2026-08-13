@@ -16,6 +16,7 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -1237,21 +1238,7 @@ internal object SolrConfigPlugins {
      * @param constants the initializer's constants, in bytecode order
      * @return tag to root internal name, tags cleaned of the path syntax Solr writes some of them with
      */
-    fun pair(constants: List<Any>): Map<String, String> {
-        val roots = linkedMapOf<String, String>()
-        var pendingRoot: String? = null
-        for (constant in constants) {
-            when (constant) {
-                is Type -> pendingRoot = constant.internalName
-                is String -> {
-                    val root = pendingRoot ?: continue
-                    roots[cleanTag(constant)] = root
-                    pendingRoot = null
-                }
-            }
-        }
-        return roots
-    }
+    fun pair(constants: List<Any>): Map<String, String> = paths(constants).mapKeys { cleanTag(it.key) }
 
     /**
      * The element name a reader writes, from the path Solr declares it under.
@@ -1325,7 +1312,13 @@ private class ConfigElementMethodVisitor(
     private var pending: String? = null
 
     override fun visitLdcInsn(value: Any?) {
-        if (value !is String) return
+        // Cleared before the kind is tested, not after. A non-string `LDC` is as much an operation
+        // between a name and its reader as any of the instructions below, and returning early left
+        // the previous string pending across it.
+        if (value !is String) {
+            pending = null
+            return
+        }
         // Every string is a candidate message; only the last one before a call is a candidate name.
         messages += value
         pending = value
@@ -1377,6 +1370,27 @@ private class ConfigElementMethodVisitor(
 
     override fun visitJumpInsn(opcode: Int, label: Label?) {
         pending = null
+    }
+
+    /**
+     * The one instruction that is transparent, and only in the shape that earned it.
+     *
+     * `childRequired` takes a lambda as its second argument, which reaches the call as an
+     * `invokedynamic` between the name and its reader — so clearing unconditionally here would lose
+     * every required child. String concatenation arrives the same way and means the opposite: a
+     * `makeConcatWithConstants` has *consumed* the literal to build a message, and letting it through
+     * is how a message becomes an element name. The return type tells the two apart.
+     */
+    override fun visitInvokeDynamicInsn(
+        name: String?,
+        descriptor: String?,
+        bootstrapMethodHandle: Handle?,
+        vararg bootstrapMethodArguments: Any?,
+    ) {
+        val returns = descriptor?.substringAfterLast(')').orEmpty()
+        if (returns == "Ljava/lang/String;" || returns == "Ljava/lang/CharSequence;") {
+            pending = null
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package org.apache.solr.ide.build
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -70,6 +71,24 @@ class SolrConfigElementsTest {
             "<indexDefaults> and <mainIndex> configuration sections are discontinued. Use <indexConfig> instead.",
         )
         assertNull(SolrConfigElements.discontinuedBy("indexConfig", messages))
+    }
+
+    /**
+     * The same exemption, for a replacement Solr names in quotes rather than in brackets.
+     *
+     * A mention is recognised in three spellings, because Solr writes option names in single quotes —
+     * `'unlockOnStartup'` in the message above is Solr's own. A replacement check reading only the
+     * bracket form would therefore see `lockType` mentioned, fail to see it recommended, and retire
+     * the element the sentence exists to point at.
+     */
+    @Test
+    fun `an element named only as the replacement in quotes is not discontinued`() {
+        val messages = listOf(
+            "Solr no longer supports forceful unlocking via the 'unlockOnStartup' option. " +
+                "Use 'lockType' instead.",
+        )
+        assertNull(SolrConfigElements.discontinuedBy("lockType", messages))
+        assertNotNull(SolrConfigElements.discontinuedBy("unlockOnStartup", messages))
     }
 
     @Test
