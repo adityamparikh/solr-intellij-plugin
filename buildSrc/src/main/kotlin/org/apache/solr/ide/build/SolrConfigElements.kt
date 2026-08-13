@@ -9,7 +9,6 @@ package org.apache.solr.ide.build
  * @property arity how many Solr accepts, or [SolrConfigElements.ATTRIBUTE] where this is not an
  *   element at all
  * @property source which of the three declarations it came from
- * @property valueType what it holds, where a source says so; empty where none does
  * @property discontinued Solr's own words retiring it, empty for an element Solr still accepts
  */
 internal data class SolrConfigElement(
@@ -17,7 +16,6 @@ internal data class SolrConfigElement(
     val parent: String,
     val arity: String,
     val source: String,
-    val valueType: String = "",
     val discontinued: String = "",
 )
 
@@ -87,9 +85,6 @@ internal object SolrConfigElements {
      * element the plugin refuses to complete.
      */
     private val RETIRING = listOf("discontinued", "no longer supports", "no longer supported")
-
-    /** The legend's tens digit, which says what a leaf holds. */
-    private val VALUE_TYPES = listOf("string", "boolean", "int", "float")
 
     /**
      * How many of an element the method reading it accepts, or null when this is not an element read.
@@ -198,7 +193,6 @@ internal object SolrConfigElements {
                     parent = key.first,
                     arity = strongestArity(contributing.map { it.arity }),
                     source = contributing.map { it.source }.distinct().sorted().joinToString(","),
-                    valueType = contributing.firstNotNullOfOrNull { it.valueType.ifEmpty { null } }.orEmpty(),
                     discontinued = contributing.firstNotNullOfOrNull { it.discontinued.ifEmpty { null } }.orEmpty(),
                 )
             }
@@ -259,12 +253,14 @@ internal object SolrConfigElements {
             } else {
                 val digits = cursor.text.drop(colon + 1).trimStart().takeWhile { it.isDigit() }
                 val code = digits.toIntOrNull() ?: 0
+                // Only the units digit is read. The legend's tens digit says what the leaf holds —
+                // string, boolean, int or float — and nothing consumes that, so recording it would
+                // put a column in the resource that no reader ever asks for.
                 found += SolrConfigElement(
                     name = name,
                     parent = parent,
                     arity = if (code % 10 == 0) ATTRIBUTE else SINGLE,
                     source = FROM_EDITABLE,
-                    valueType = VALUE_TYPES.getOrElse(code / 10) { "" },
                 )
                 cursor.at = colon + 1 + digits.length + (cursor.text.drop(colon + 1).length - cursor.text.drop(colon + 1).trimStart().length)
             }

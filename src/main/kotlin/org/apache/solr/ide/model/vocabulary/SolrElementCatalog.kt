@@ -31,14 +31,12 @@ enum class SolrElementArity {
  * @property parent the path it sits under; empty for a top-level element, and also for one Solr
  *   accepts at any depth, since a consumer does the same thing with both
  * @property arity how many Solr accepts, or [SolrElementArity.ATTRIBUTE] where this is not an element
- * @property valueType what it holds where a source says so, empty where none does
  * @property discontinued Solr's own words retiring it, empty for an element Solr still accepts
  */
 data class SolrElementEntry(
     val name: String,
     val parent: String,
     val arity: SolrElementArity,
-    val valueType: String = "",
     val discontinued: String = "",
 ) {
 
@@ -153,8 +151,7 @@ object SolrElementCatalog {
                 name = columns[0].takeIf { it.isNotBlank() } ?: continue,
                 parent = columns[1],
                 arity = arityOf(columns[2]),
-                valueType = columns.getOrElse(4) { "" },
-                discontinued = columns.getOrElse(5) { "" },
+                discontinued = columns.getOrElse(4) { "" },
             )
         }
         return entries

@@ -113,7 +113,7 @@ class SolrElementCatalogTest {
         val parsed = SolrElementCatalog.parse(
             sequenceOf(
                 "truncated\trow",
-                "dataDir\t\tsingle\tconfig\t\t",
+                "dataDir\t\tsingle\tconfig\t",
             ),
         )
         assertEquals(listOf("dataDir"), parsed.map { it.name })
@@ -127,13 +127,13 @@ class SolrElementCatalogTest {
      */
     @Test
     fun `an unknown arity falls back rather than dropping the element`() {
-        val parsed = SolrElementCatalog.parse(sequenceOf("newThing\t\tsomethingNew\tconfig\t\t"))
+        val parsed = SolrElementCatalog.parse(sequenceOf("newThing\t\tsomethingNew\tconfig\t"))
         assertEquals(1, parsed.size)
         assertEquals(SolrElementArity.SINGLE, parsed.single().arity)
     }
 
     @Test
     fun `a row with no name is not an element`() {
-        assertTrue(SolrElementCatalog.parse(sequenceOf("\t\tsingle\tconfig\t\t")).isEmpty())
+        assertTrue(SolrElementCatalog.parse(sequenceOf("\t\tsingle\tconfig\t")).isEmpty())
     }
 }
