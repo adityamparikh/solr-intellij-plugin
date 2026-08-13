@@ -1,5 +1,6 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -33,12 +34,62 @@ class SolrReferenceGuideTest {
     fun `a declared version selects that line's guide`() {
         val selection = SolrVersionSelection.fromLuceneMatchVersion("10.0.0")
         assertEquals(SolrVersionSource.CONFIGSET, selection.source)
-        assertTrue(SolrReferenceGuide.fieldPropertiesPage(selection).contains("/guide/solr/10_0/"))
+        assertTrue(SolrReferenceGuide.fieldPropertiesPage(selection).contains("/guide/solr/10_"))
 
         assertTrue(
             SolrReferenceGuide.fieldTypesPage(SolrVersionSelection.fromLuceneMatchVersion("9.12.0"))
-                .contains("/guide/solr/9_0/"),
+                .contains("/guide/solr/9_"),
         )
+    }
+
+    /**
+     * The link names the release the catalog was generated from, not the major with a zero after it.
+     *
+     * **This is the assertion the previous shape could not make.** The segment used to be built as
+     * `${'$'}{major}_0`, so a Solr 9 configset linked into the Solr **9.0** guide while every fact
+     * rendered beside the link came from 9.10.1. Nothing failed: `9_0` is published and returns 200
+     * for every page this plugin builds, so the links were live and about a Solr nobody runs — which
+     * no test could see, because a test that constructs the expected URL the same way the code does
+     * agrees with itself.
+     *
+     * **Not pinned to `9_10`, deliberately.** The supported line moves, and a literal here would fail
+     * on the release that changes it rather than on the defect it guards — the same reason
+     * [SolrClassCatalog]'s criteria name classes instead of counting them. What is asserted is the
+     * invariant that outlives any line: the segment the link carries and the segment the catalog
+     * declares are the same string, and it names a minor rather than a bare major.
+     */
+    @Test
+    fun `the guide line is the line the catalog answered from`() {
+        for (line in SolrClassCatalog.SUPPORTED_LINES) {
+            val declared = SolrClassCatalog.guideSegmentFor(line)
+            assertNotNull("line $line ships a catalog but declares no release", declared)
+            assertTrue(
+                "line $line declares $declared, which is not a major_minor segment",
+                Regex("""^\d+_\d+$""").matches(declared!!),
+            )
+            assertEquals("line $line's segment lost its major", "$line", declared.substringBefore('_'))
+
+            val selection = SolrVersionSelection.fromLuceneMatchVersion("$line.0.0")
+            assertEquals(
+                "the link and the catalog disagree about which Solr line answered",
+                declared,
+                selection.guidePathSegment,
+            )
+        }
+    }
+
+    /**
+     * A major with no shipped catalog reaches `latest` rather than a constructed segment.
+     *
+     * Solr 11 has no guide at `11_0` until it is released, and the plugin can carry a configset from
+     * a line it was not built for. Assembling a segment for it would be the same defect as `9_0` in
+     * the other direction — a plausible URL, this time to nothing at all.
+     */
+    @Test
+    fun `a major this build ships no catalog for falls back to latest`() {
+        val future = SolrVersionSelection.fromLuceneMatchVersion("99.0.0")
+        assertEquals(SolrVersionSource.DEFAULT, future.source)
+        assertEquals("latest", future.guidePathSegment)
     }
 
     /**
@@ -65,12 +116,17 @@ class SolrReferenceGuideTest {
         assertTrue(
             SolrReferenceGuide.analyzerComponentPage("solr.LowerCaseFilterFactory", version)!!.endsWith("filters.html"),
         )
-        // `charfilterfactories`, unhyphenated, is the odd one out among the three and is what the
-        // guide actually serves — `char-filter-factories.html` is a 404. The name is inherited from
-        // the pre-Antora wiki page, so it does not follow its neighbours and cannot be derived.
+        // `charfilters`, and the name it replaced is the reason this comment is long. The guide
+        // served `charfilterfactories.html` on 9.0 and renamed the page by 9.7; measured against the
+        // published guide, `charfilters.html` answers on 9_7, 9_8, 9_10, 9_11 and `latest`, while
+        // `charfilterfactories.html` now answers only on 9_0 and `latest`. The old name therefore
+        // stayed correct for exactly as long as every Solr 9 configset was being sent to the 9.0
+        // guide — one defect holding another one up. Neither `char-filter-factories.html` nor
+        // `character-filter-factories.html` exists on any line; the name cannot be derived from its
+        // neighbours and is checked rather than guessed.
         assertTrue(
             SolrReferenceGuide.analyzerComponentPage("solr.HTMLStripCharFilterFactory", version)!!
-                .endsWith("charfilterfactories.html"),
+                .endsWith("charfilters.html"),
         )
     }
 

@@ -1,5 +1,6 @@
 package org.apache.solr.ide.model
 
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
 
 /**
@@ -48,7 +49,13 @@ object SolrReferenceGuide {
     fun analyzerComponentPage(className: String, version: SolrVersionSelection): String? {
         val simpleName = className.substringAfterLast('.')
         val page = when {
-            simpleName.endsWith("CharFilterFactory") -> "charfilterfactories"
+            // `charfilters`, not `charfilterfactories`. The page was renamed between 9.0 and 9.7:
+            // measured against the published guide, `charfilters.html` answers on 9_7, 9_8, 9_10,
+            // 9_11 and `latest`, and `charfilterfactories.html` answers only on 9_0 and `latest`.
+            // The old name looked correct for as long as every Solr 9 configset was sent to the 9.0
+            // guide, which is the defect [SolrVersionSelection.fromLuceneMatchVersion] fixes -- so
+            // these two corrections are one change, and either alone is worse than neither.
+            simpleName.endsWith("CharFilterFactory") -> "charfilters"
             simpleName.endsWith("TokenizerFactory") -> "tokenizers"
             simpleName.endsWith("FilterFactory") -> "filters"
             else -> return null
@@ -175,17 +182,32 @@ data class SolrVersionSelection(
          * The line a `<luceneMatchVersion>` implies.
          *
          * `luceneMatchVersion` names a *Lucene* version, not a Solr one — Solr 10.0 pairs with
-         * Lucene 10.3, Solr 9.10 with Lucene 9.12 — so only the major component is used to pick a
-         * line. Deriving a full Solr version from a Lucene one is not possible without a table that
-         * would need updating on every release, and the major is what decides which guide applies.
+         * Lucene 10.3, Solr 9.10 with Lucene 9.12 — so only the major component is read from it.
+         * Deriving a full Solr version from a Lucene one is not possible without a table that would
+         * need updating on every release.
+         *
+         * **The minor comes from the catalog rather than from a guess, and that is the correction.**
+         * This previously assembled the segment as `${major}_0`, which is a real guide for a release
+         * nobody here runs: every Solr 9 configset was sent to the Solr **9.0** documentation while
+         * every fact rendered beside the link came from the 9.10.1 catalog. Nothing failed, because
+         * `9_0` is published and answers — the links were live and about the wrong Solr, which is
+         * harder to notice than a 404 and worse than one.
+         * [SolrClassCatalog.guideSegmentFor][org.apache.solr.ide.model.vocabulary.SolrClassCatalog.guideSegmentFor]
+         * reads the release out of the catalog header, so the link and the facts cannot disagree
+         * and no supported release is named outside the build.
+         *
+         * A major this build ships no catalog for falls back to [DEFAULT] rather than to a
+         * constructed segment. Solr 11 has no guide at `11_0` until it is released, and `latest` is
+         * the honest answer for a configset from the future.
          *
          * @param luceneMatchVersion the declared value, such as `9.12.0`
-         * @return the selection, or [DEFAULT] when the value is not a recognized version
+         * @return the selection, or [DEFAULT] when the value names no line this build ships
          */
         fun fromLuceneMatchVersion(luceneMatchVersion: String): SolrVersionSelection {
             val major = luceneMatchVersion.trim().substringBefore('.').toIntOrNull() ?: return DEFAULT
             if (major < MINIMUM_GUIDE_MAJOR) return DEFAULT
-            return SolrVersionSelection("${major}_0", SolrVersionSource.CONFIGSET)
+            val segment = SolrClassCatalog.guideSegmentFor(major) ?: return DEFAULT
+            return SolrVersionSelection(segment, SolrVersionSource.CONFIGSET)
         }
 
         /**

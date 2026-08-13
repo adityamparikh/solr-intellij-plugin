@@ -327,7 +327,7 @@ below stays correct.
 | File | Scope |
 |---|---|
 | `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, factory classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes |
-| `solrconfig.xml` | **The parameters that name schema fields, in both directions.** Handler parameters (`qf`, `df`, `fl`, `sort`, facet, highlight and grouping fields) resolve to schema fields and offer them in completion; hovering one shows the field it names. Inspections flag a parameter naming a field the schema does not declare, a query field that cannot be searched, and a facet or sort naming a field that cannot serve it. The elements, attributes and plugin classes are not yet modelled |
+| `solrconfig.xml` | **The parameters that name schema fields, in both directions.** Handler parameters (`qf`, `df`, `fl`, `sort`, facet, highlight and grouping fields) resolve to schema fields and offer them in completion; hovering one shows the field it names. Inspections flag a parameter naming a field the schema does not declare, a query field that cannot be searched, and a facet or sort naming a field that cannot serve it. **The plugin classes and the request parameters are modelled too**: a `class` attribute completes, explains itself and navigates to the class, and a parameter name inside `defaults`, `appends` or `invariants` completes and explains itself. The file's own *elements and attributes* are not yet modelled |
 
 The asymmetry is deliberate. In `solrconfig.xml` the plugin targets the
 *cross-file boundary* — the string parameters that name schema fields — because
@@ -336,11 +336,13 @@ are now covered**: the same list that lets an inspection say `descriptoin` is no
 field is the list that offers `description` before it is mistyped, and a field's
 capabilities decide both what a parameter may name and what completion offers there.
 
-Full language support for the *structure* of `solrconfig.xml` — its elements, their
-attributes, and navigation from a `class` attribute — remains a later concern. What
-the file's legal elements are is settled: Solr declares them, in
-`SolrConfig.plugins`. What is not yet built is the completion and validation that
-would read them.
+Full language support for the *structure* of `solrconfig.xml` — its elements and their
+attributes — remains a later concern. Navigation from a `class` attribute is no longer
+part of that remainder; it ships. What the file's legal elements are is settled for the
+plugin elements: Solr declares 23 of them in `SolrConfig.plugins`, and the generator
+already reads that list for the class catalog. What is not yet built is the completion
+that would offer them, and `<config>`, `luceneMatchVersion` and `dataDir` are in no
+generated source at all.
 
 **Phase 1 is deployment-mode agnostic.** Configset files are identical in
 SolrCloud and user-managed mode, and Phase 1 never contacts a server, so the

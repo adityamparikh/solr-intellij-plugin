@@ -633,6 +633,34 @@ class SolrClassCatalogTest {
         assertNull("no kind is spelled 'filter'", SolrClassKind.entries.find { it.token == "filter" })
     }
 
+    /**
+     * The release a catalog was generated from, recovered from its header.
+     *
+     * This is what makes a Reference Guide link name the same Solr as the facts beside it, so the
+     * two cannot drift; the consequence is asserted in `SolrReferenceGuideTest`. What is asserted
+     * here is the reading itself, against input the generator would not produce.
+     *
+     * **Null on anything unrecognized, and that is the contract rather than a shortfall.** If the
+     * generator's wording moves, the honest answer is the undated `latest` guide — assembling a
+     * segment out of whatever else is on the line would put the plugin back to linking confidently
+     * at the wrong release, which is the defect this whole mechanism exists to remove.
+     */
+    @Test
+    fun `the guide segment is read from the catalog header`() {
+        assertEquals(
+            "9_10",
+            SolrClassCatalog.guideSegment(sequenceOf("# Generated - do not edit.", "# Solr line 9, read from 9.10.1.")),
+        )
+        // The patch is dropped: the guide is published per minor line, so a `9_10_1` segment would
+        // be a URL that has never existed.
+        assertEquals("10_0", SolrClassCatalog.guideSegment(sequenceOf("# Solr line 10, read from 10.0.0.")))
+
+        assertNull("a catalog with no header states no release", SolrClassCatalog.guideSegment(sequenceOf("a\tb\tc")))
+        assertNull("a reworded header must not be half-read", SolrClassCatalog.guideSegment(sequenceOf("# Solr 9.10.1")))
+        assertNull("a major alone is not a segment", SolrClassCatalog.guideSegment(sequenceOf("# Solr line 9, read from 9.")))
+        assertNull(SolrClassCatalog.guideSegment(emptySequence()))
+    }
+
     @Test
     fun `an element that carries no class maps to nothing`() {
         assertNull(SolrClassKind.forTag("copyField"))
