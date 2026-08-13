@@ -59,10 +59,15 @@ reference-style links (`[text][ref]`) do not work there; use inline `[text](url)
 
 ## Rules no build gate enforces
 
-**Every contribution declares itself dumb-aware, and that is a promise about data sources.** Nothing
-in this plugin reads an index. A future feature that does must drop the declaration or guard with
-`DumbService`. Note the mechanism differs by extension point: inspections and completion override
-`isDumbAware()`, documentation and inlay providers implement the `DumbAware` marker interface.
+**Every contribution declares itself dumb-aware, and that is a promise about data sources.** Almost
+nothing here reads an index — a configset is text. The one thing that does, class navigation through
+`JavaPsiFacade`, must **both** decline the declaration **and** guard with `DumbService`. An earlier
+revision of this rule said *or*, and that is how a defect shipped: declining keeps a contribution out
+of the paths that consult the flag, while its `resolve` is still called directly by anything walking
+references at a caret — unguarded, it throws during indexing and takes the whole quick-documentation
+popup with it, including what needed no index. Note the mechanism differs by extension point:
+inspections and completion override `isDumbAware()`, documentation and inlay providers implement the
+`DumbAware` marker interface. `SolrDumbModeContractTest` is what holds this to more than a promise.
 
 **Nothing in the `org.apache.solr.ide.model` tree imports an IntelliJ type.** That is what lets a
 third of the suite be plain JUnit 4 with no fixture. Inside it, `model.schema` is what a field *is*

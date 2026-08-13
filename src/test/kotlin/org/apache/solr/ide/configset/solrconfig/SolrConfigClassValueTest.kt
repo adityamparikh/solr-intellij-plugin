@@ -3,6 +3,9 @@ package org.apache.solr.ide.configset.solrconfig
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.documentation.DocumentationManager
 import com.intellij.lang.documentation.DocumentationProvider
+import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
+import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
+import com.intellij.testFramework.DumbModeTestUtils
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -159,11 +162,48 @@ class SolrConfigClassValueTest : SolrConfigsetTestCase() {
         assertTrue("expected the kind in words: $doc", doc.contains("directory factory"))
     }
 
+    /**
+     * The other element the reader reported, whose kind is a different token and different words.
+     *
+     * Completion covers this class already and documentation did not, which is a gap the shared
+     * machinery hides: the popup renders the kind's own words, so a `<directoryFactory>` passing says
+     * nothing about whether `codec` maps to anything. It is the per-kind half that needs the second
+     * case, not the dumb-mode half — indexing broke one resolution path shared by all twenty-two
+     * kinds, and that is pinned once above.
+     */
+    fun testHoveringACodecFactoryClassExplainsIt() {
+        val doc = documentationFor("""<codecFactory class="solr.Schema<caret>CodecFactory"/>""")
+        assertNotNull("expected documentation", doc)
+        assertTrue("expected the class name: $doc", doc!!.contains("SchemaCodecFactory"))
+        assertTrue("expected the kind in words: $doc", doc.contains("codec factory"))
+    }
+
     /** The same gesture on the element a reader meets first. */
     fun testHoveringARequestHandlerClassExplainsIt() {
         val doc = documentationFor("""<requestHandler name="/select" class="solr.Search<caret>Handler"/>""")
         assertNotNull("expected documentation", doc)
         assertTrue("expected the kind in words: $doc", doc!!.contains("request handler"))
+    }
+
+    /**
+     * The popup a reader gets while the project is still indexing, asked the way the IDE asks it.
+     *
+     * **Every other assertion in this class reaches the provider directly, and that is what let this
+     * ship broken.** Quick documentation does not start at a provider: the platform first collects
+     * target symbols at the caret, which resolves the `class` reference, which reads the stub index —
+     * so during indexing the popup died before this plugin was consulted, on a file it had already
+     * parsed and could have explained. Going through [IdeDocumentationTargetProvider] is the whole
+     * point of the test; asking the provider here would pass with the defect present.
+     */
+    fun testHoveringADirectoryFactoryClassExplainsItWhileIndexing() {
+        configure("""<directoryFactory name="DirectoryFactory" class="solr.NRTCaching<caret>DirectoryFactory"/>""")
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            val doc = IdeDocumentationTargetProvider.getInstance(project)
+                .documentationTargets(myFixture.editor, myFixture.file, myFixture.caretOffset)
+                .firstNotNullOfOrNull { computeDocumentationBlocking(it.createPointer())?.html }
+            assertNotNull("indexing must not silence what the configset alone can answer", doc)
+            assertTrue("expected the kind in words: $doc", doc!!.contains("directory factory"))
+        }
     }
 
     /**

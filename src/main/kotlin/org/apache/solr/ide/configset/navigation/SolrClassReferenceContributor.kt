@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.navigation
 
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.patterns.XmlPatterns
 import com.intellij.psi.JavaPsiFacade
@@ -52,9 +53,14 @@ class SolrClassReferenceContributor : PsiReferenceContributor() {
  *
  * **Not dumb-aware, and it is the only thing here that is not.** Java class resolution reads the
  * platform's indexes, so unlike every other feature in this plugin it cannot answer while indexing is
- * still running. That is the platform's default for a reference provider, so it is achieved by not
- * claiming otherwise rather than by adding a guard — but it is worth stating, because the standing
- * rule in this codebase is that a contribution declares itself dumb-aware, and this one must not.
+ * still running. The standing rule in this codebase is that a contribution declares itself dumb-aware,
+ * and this one must not.
+ *
+ * **Declining the declaration is not the same as being safe during indexing, which an earlier revision
+ * of this comment had exactly backwards.** It read that the guard was unnecessary because not claiming
+ * dumb-awareness achieved the same thing. It does not: it keeps this out of the paths that consult the
+ * flag, while [SolrClassReference.resolve] is still called directly by anything walking references at a
+ * caret. The guard is in `resolve`, and it is load-bearing.
  */
 private class SolrClassReferenceProvider : PsiReferenceProvider() {
 
@@ -103,10 +109,19 @@ internal class SolrClassReference(
      * plugin using Solr's own abbreviation — rare, and indistinguishable here from a class that is
      * genuinely absent. Both degrade to nothing, which is what the soft reference is for.
      *
+     * **Indexing is a third way to answer nothing, and it must answer nothing rather than throw.**
+     * [JavaPsiFacade.findClass] reads the stub index and raises `IndexNotReadyException` in dumb mode,
+     * and the throw does not stay here: the platform collects target symbols at the caret before it
+     * asks any documentation provider anything, so an exception raised in this method took down the
+     * whole quick-documentation popup — including what this plugin could answer from a configset it had
+     * already parsed, which needs no index at all. Navigation is genuinely unavailable while indexing;
+     * the explanation beside it never was.
+     *
      * @return the class, or null
      */
     override fun resolve(): PsiElement? {
         val project = element.project
+        if (DumbService.isDumb(project)) return null
         val qualified = qualifiedName(project) ?: return null
         return JavaPsiFacade.getInstance(project)
             .findClass(qualified, GlobalSearchScope.allScope(project))
