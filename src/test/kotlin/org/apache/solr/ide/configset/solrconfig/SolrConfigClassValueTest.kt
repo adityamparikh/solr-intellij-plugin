@@ -3,6 +3,9 @@ package org.apache.solr.ide.configset.solrconfig
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.documentation.DocumentationManager
 import com.intellij.lang.documentation.DocumentationProvider
+import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
+import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
+import com.intellij.testFramework.DumbModeTestUtils
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -164,6 +167,27 @@ class SolrConfigClassValueTest : SolrConfigsetTestCase() {
         val doc = documentationFor("""<requestHandler name="/select" class="solr.Search<caret>Handler"/>""")
         assertNotNull("expected documentation", doc)
         assertTrue("expected the kind in words: $doc", doc!!.contains("request handler"))
+    }
+
+    /**
+     * The popup a reader gets while the project is still indexing, asked the way the IDE asks it.
+     *
+     * **Every other assertion in this class reaches the provider directly, and that is what let this
+     * ship broken.** Quick documentation does not start at a provider: the platform first collects
+     * target symbols at the caret, which resolves the `class` reference, which reads the stub index —
+     * so during indexing the popup died before this plugin was consulted, on a file it had already
+     * parsed and could have explained. Going through [IdeDocumentationTargetProvider] is the whole
+     * point of the test; asking the provider here would pass with the defect present.
+     */
+    fun testHoveringADirectoryFactoryClassExplainsItWhileIndexing() {
+        configure("""<directoryFactory name="DirectoryFactory" class="solr.NRTCaching<caret>DirectoryFactory"/>""")
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            val doc = IdeDocumentationTargetProvider.getInstance(project)
+                .documentationTargets(myFixture.editor, myFixture.file, myFixture.caretOffset)
+                .firstNotNullOfOrNull { computeDocumentationBlocking(it.createPointer())?.html }
+            assertNotNull("indexing must not silence what the configset alone can answer", doc)
+            assertTrue("expected the kind in words: $doc", doc!!.contains("directory factory"))
+        }
     }
 
     /**

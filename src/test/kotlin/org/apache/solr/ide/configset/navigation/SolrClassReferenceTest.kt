@@ -3,6 +3,7 @@ package org.apache.solr.ide.configset.navigation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.util.parentOfType
+import com.intellij.testFramework.DumbModeTestUtils
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -154,6 +155,32 @@ class SolrClassReferenceTest : SolrConfigsetTestCase() {
         // checked, including infos and weak warnings: a soft reference that produced a weak warning
         // would satisfy an errors-and-warnings-only check while breaking the promise this asserts.
         myFixture.checkHighlighting(true, true, true)
+    }
+
+    /**
+     * Resolving while the project is indexing answers nothing instead of throwing.
+     *
+     * **The one state no other test here is in.** Every fixture runs in smart mode, so a resolve that
+     * reads the stub index unguarded passes the whole suite and fails the moment a reader opens a
+     * project — which is exactly how this was found: a `<directoryFactory>` that explained nothing in
+     * the sandbox while the class-value tests were green.
+     *
+     * The throw does not stay local. The platform asks for target symbols at the caret before it asks
+     * any documentation provider anything, and that resolves this reference — so an
+     * `IndexNotReadyException` here takes down the whole popup, including the parts of it this plugin
+     * could have answered from a file it had already parsed. Navigation being unavailable during
+     * indexing is correct and expected; taking the explanation with it is not.
+     */
+    fun testResolvingWhileIndexingAnswersNothingRatherThanThrowing() {
+        givenACustomFactory()
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema("""<fieldType name="custom" class="com.example.MyToken<caret>izerFactory"/>"""),
+        )
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertNull("indexing makes the class unavailable, which is not an error", resolveAtCaret())
+        }
+        assertTrue("and the same reference resolves once indexing finishes", resolveAtCaret() is PsiClass)
     }
 
     /**
