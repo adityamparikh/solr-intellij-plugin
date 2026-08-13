@@ -875,9 +875,20 @@ present-day-behaviour fixture — belong to the descriptor change that has not h
 
 **Both are now unblocked, and action 1's shape is settled.** It needs a generator pass over `SolrConfig`'s own
 config-reading calls, producing the element names with their arity, joined to the 23 plugin elements and the
-40 typed leaves the other two sources already give — and a rule that drops the four discontinued names Solr
-reads only in order to warn about them. Action 3 needed nothing new once the parameter catalog landed. Neither
-waits on a question any more; what they wait on is being built.
+40 typed leaves the other two sources already give — and a rule that marks the five names Solr no longer
+accepts. Action 3 needed nothing new once the parameter catalog landed. Neither waits on a question any more;
+what they wait on is being built.
+
+**What "joined" means is the one part of that shape a reader cannot guess, so it is stated here rather than
+left to the code.** The canonical key is the pair *(parent path, element name)*, not the name alone: the same
+name legitimately appears under more than one parent, and a map keyed by name would silently keep whichever
+source ran last. Where sources disagree about arity the most specific answer wins — `required` over
+`repeated` over `single` — because `single` is also what a source says when it has nothing to add, so
+treating it as an observation would let a source that knows nothing overrule one that watched Solr call
+`getAll`. A name read without a parent is absorbed into the parented reading of the same name rather than
+kept as a second row, since `SolrConfig` reads a nested element off its parent node and a pass reading
+literals sees only the child. Every source that named an element is listed on the merged row, so a consumer
+never has to know which declaration answered.
 
 **Acceptance:** No demo step of its own yet; the runbook predates this scope.
 
@@ -918,10 +929,18 @@ out of the tree, which is why it appears in no list of children — the same sta
 other file.
 
 **Two things the measurement found that the question did not ask.** The extraction is *noisy* and needs a
-rule, not just a filter: `SolrConfig` also reads `mainIndex`, `indexDefaults`, `nrtMode` and
-`unlockOnStartup`, which are discontinued and read only in order to warn about them — each sits beside a
-literal saying so, so "read to use" and "read to warn" are separable, but a generator that skipped the
-distinction would complete four elements Solr rejects. And the per-line sets differ by exactly one entry,
+rule, not just a filter — and 33 and 34 are the raw counts, before that rule runs. `SolrConfig` also
+reads five elements it no longer accepts: `mainIndex`, `indexDefaults`, `nrtMode`, `unlockOnStartup` and
+`jmx`. Each sits beside a literal saying so, which is what makes "read to use" and "read to warn"
+separable, but a generator that skipped the distinction would complete five elements Solr rejects.
+
+**Four of those five are fatal rather than advisory, which is worth stating precisely because the
+generated `discontinued` column is the only thing a reader will see.** `<indexDefaults>` and
+`<mainIndex>` raise `SolrException(FORBIDDEN)` — the core does not start. `<nrtMode>` and
+`<unlockOnStartup>` reach `XmlConfigFile.assertWarnOrFail` with its `fail` argument set, so they fail
+too. Only `<jmx>` is what the word warning suggests: a `log.warn` pointing at `solr.xml`, with startup
+continuing. So the plugin is not being helpful by flagging them — it is reporting a file that will not
+load. And the per-line sets differ by exactly one entry,
 `featureVectorCache`, added in 10 — which means the element data
 [the seventh inspection](#step-6-inspections-in-progress) is blocked on becomes derivable from this same
 pass, while also showing that **nothing was removed between the two supported lines**, so that inspection
