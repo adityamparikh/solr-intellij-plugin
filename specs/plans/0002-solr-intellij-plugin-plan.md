@@ -90,9 +90,9 @@ whole, and the gutter action goes with the Server track.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the catalog, which it never needed.
 - [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
-  — **in progress**; likewise added late, belongs beside the two above. The `<field>` half ships — the dim and the
-  intention that removes it — and what remains is the `<fieldType>` half. Its factory half still waits on the catalog
-  carrying defaults.
+  — **in progress**; likewise added late, belongs beside the two above. The schema half ships — the dim and the
+  intention that removes it, on both `<field>` and `<fieldType>`. Its factory half still waits on the catalog carrying
+  defaults, and `<dynamicField>` is an open scope decision rather than pending work.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
@@ -940,14 +940,22 @@ intention rather than a quick-fix, because an intention carries no claim that an
   [the design record](../../docs/design/pending/2026-08-13-restated-defaults/design.md) carries the argument.
 - [x] Nothing this step adds appears in the Problems view on a correct file.
 
-**What shipped:** the `<field>` half of actions 1 and 2, and the rule under both.
-`SolrFieldProperties.restatesDefault` in `model` answers whether deleting an attribute would leave the same field —
-the existing resolution with the field's own declaration set aside, which turns out to need no field at all, so
+**What shipped:** actions 1 and 2, on both `<field>` and `<fieldType>`.
+`SolrFieldProperties.restatesDefault` in `model` answers whether deleting an attribute would leave the same element —
+the existing resolution with the element's own declaration set aside, which turns out to need no field at all, so
 `resolve` and the new function share one tail and the dim cannot drift from the popup reporting the same defaults.
 `SolrRestatedDefaultAnnotator` renders it and `SolrRemoveRestatedAttributeIntention` acts on it, both through one
-predicate so the offer cannot disagree with the dim. **What remains is the `<fieldType>` half**, whose own attributes
-restate defaults too and resolve differently, having no inheritance layer above them; `<dynamicField>` is untouched and
-undecided.
+predicate so the offer cannot disagree with the dim.
+
+A field type needed no new rule — it *is* the layer a field resolves through, so it answers to Solr's defaults and its
+own class's traits directly, which the same function expresses by being passed no type at all. **What the second half
+did find is a defect in the first:** every property is legal on a `<fieldType>` and only some on a `<field>`, and the
+field half compared any property it knew — so `enableGraphQueries`, which is type-only and defaults to true, dimmed on
+a `<field>`. The conclusion was accidentally right and the reason wrong; Solr ignores that attribute there outright,
+which is a different thing to tell the reader. Scope is now checked.
+
+**`<dynamicField>` is untouched and undecided**, and that is a scope decision rather than a limitation: it names a type
+exactly as a field does, so the resolution would be identical.
 
 **Acceptance:** No demo step of its own. It is the editor-side answer to the question the property table answers in the
 popup — which of these lines could go.

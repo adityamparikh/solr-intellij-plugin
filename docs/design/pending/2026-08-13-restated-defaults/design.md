@@ -94,8 +94,20 @@ intention the platform's own XML support already offers, so the negative cases �
 offered — failed while the positive ones passed against a stock IntelliJ feature. A suite written
 after the code would have been green with this intention absent entirely.
 
-## Scope
+## Both elements, and what differs between them
 
-`<field>` attributes. A `<fieldType>`'s own attributes restate defaults too and are the second half
-of this step; they resolve differently, having no inheritance layer above them. `<dynamicField>` is
-untouched and undecided.
+A `<field>` resolves through the type it names before reaching Solr's defaults. A `<fieldType>` *is*
+that layer, so it answers to the defaults and its own class's traits directly — and the absence of
+anything above it is expressed by passing no type at all to the same model function. The second half
+needed no new rule, only the PSI half knowing which element it is looking at.
+
+**Scope is what separates them, and it produced a defect in the first half.** Every property is legal
+on a `<fieldType>`; only some are legal on a `<field>`. `enableGraphQueries` is type-only and
+defaults to true, so the field half — which compared any known property — dimmed it on a `<field>`,
+reporting it as removable. The conclusion was accidentally true and the reason was wrong: Solr
+ignores that attribute on a field outright, which is a different thing to tell the reader and not
+this feature's to tell. The predicate now declines a property outside the element's scope.
+
+`<dynamicField>` is untouched and **undecided**. The resolution would be identical, since a dynamic
+field names a type exactly as a field does, so this is a scope decision rather than a limitation —
+recorded here rather than settled by whichever tag-name constant was convenient to reach for.

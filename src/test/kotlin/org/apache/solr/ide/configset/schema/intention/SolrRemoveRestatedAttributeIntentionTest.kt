@@ -58,6 +58,32 @@ class SolrRemoveRestatedAttributeIntentionTest : SolrConfigsetTestCase() {
         assertEquals(before, effectiveProperties("sku"))
     }
 
+    /**
+     * The offer reaches a `<fieldType>` because both surfaces read one predicate.
+     *
+     * **This passed the moment the annotator's field-type half landed, and asserting it anyway is
+     * the point.** Nothing was written to make the intention understand field types; it understands
+     * them because it does not decide for itself what counts as restated. A later change that gave
+     * either surface its own copy of that judgement would break this and nothing else.
+     */
+    fun testTheOfferReachesAFieldTypesOwnAttribute() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="t" version="1.7">
+              <fieldType name="tuned" class="solr.StrField" ind<caret>exed="true"/>
+              <field name="sku" type="tuned"/>
+            </schema>
+            """.trimIndent(),
+        )
+        // What the type exists to decide, captured through a field that uses it: removing an
+        // attribute from a type is safe exactly when the fields reading it still resolve the same.
+        val before = effectiveProperties("sku")
+        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+        assertFalse("""the attribute should be gone: ${myFixture.file.text}""", "indexed" in myFixture.file.text)
+        assertEquals(before, effectiveProperties("sku"))
+    }
+
     fun testNothingIsOfferedOnAnAttributeThatDecidesSomething() {
         myFixture.configureByText(
             "managed-schema.xml",

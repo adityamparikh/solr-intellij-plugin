@@ -4,8 +4,11 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
+import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
+import org.apache.solr.ide.model.SolrFieldModel
 import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.schema.SolrFieldProperty
 
 /**
  * Whether a written attribute is one the field would have had anyway.
@@ -24,22 +27,22 @@ import org.apache.solr.ide.model.schema.SolrFieldProperties
 internal object SolrRestatedAttribute {
 
     /**
-     * The one element this reads today.
+     * The concrete field, and deliberately not `<dynamicField>`.
      *
-     * A `<fieldType>`'s own attributes restate defaults too and are the second half of this feature;
-     * they resolve differently, having no inheritance layer above them.
+     * The resolution would be identical — a dynamic field names a type exactly as a field does — so
+     * this is a scope decision rather than a limitation, and it is recorded as undecided in the
+     * design record rather than settled by whichever constant was convenient.
      */
     private const val FIELD_TAG = "field"
 
     /**
-     * Whether deleting [attribute] would leave the same field.
+     * Whether deleting [attribute] would leave the same field or field type.
      *
      * @param attribute an attribute written in a configset file
-     * @return true when the value is what the field resolves to without it
+     * @return true when the value is what the element resolves to without it
      */
     fun isRestated(attribute: XmlAttribute): Boolean {
         val tag = attribute.parent as? XmlTag ?: return false
-        if (tag.name != FIELD_TAG) return false
 
         val file = attribute.containingFile?.originalFile ?: return false
         if (SolrConfigsetFileKind.forFileName(file.name)?.isSchema != true) return false
@@ -47,18 +50,63 @@ internal object SolrRestatedAttribute {
 
         val property = SolrFieldProperties.byName(attribute.name) ?: return false
         val written = attribute.value ?: return false
-
         val model = SolrConfigsetReader.getInstance(file.project).modelFor(file) ?: return false
+
+        return when {
+            tag.name == FIELD_TAG -> fieldRestates(property, written, tag, model)
+            tag.name in SolrSchemaTags.FIELD_TYPE -> typeRestates(property, written, tag, model)
+            else -> false
+        }
+    }
+
+    /**
+     * A field's attribute, which resolves through the type it names.
+     *
+     * **Properties legal only on a type are declined rather than compared.** `enableGraphQueries`
+     * defaults to true, so comparing it against that default here would report it as removable — for
+     * the wrong reason. Solr ignores it on a field outright, which is a different thing to tell the
+     * reader and not this feature's to tell.
+     */
+    private fun fieldRestates(
+        property: SolrFieldProperty,
+        written: String,
+        tag: XmlTag,
+        model: SolrFieldModel,
+    ): Boolean {
+        if (property !in SolrFieldProperties.FOR_FIELD) return false
         // Read off the tag rather than looked up through the field, so an edit in progress — a field
         // the model has not caught up with — resolves from what the file says right now.
         val fieldType = tag.getAttributeValue("type")?.let { model.fieldTypes[it]?.effective }
-
         return SolrFieldProperties.restatesDefault(
             property = property,
             writtenValue = written,
             fieldType = fieldType,
             schemaVersion = model.schemaVersion,
             typeTraits = model.traitsOf(fieldType),
+        )
+    }
+
+    /**
+     * A field type's own attribute, which has nothing above it.
+     *
+     * **That absence is the whole difference, and it is expressed by passing no type.** A field
+     * resolves through its `<fieldType>` before reaching Solr's defaults; a field type *is* that
+     * layer, so it answers to the defaults and to its own class's traits directly. Every property is
+     * legal here — `FOR_FIELD_TYPE` is all of them — so there is no scope test to make.
+     */
+    private fun typeRestates(
+        property: SolrFieldProperty,
+        written: String,
+        tag: XmlTag,
+        model: SolrFieldModel,
+    ): Boolean {
+        val declared = tag.getAttributeValue(SolrSchemaTags.NAME)?.let { model.fieldTypes[it]?.effective }
+        return SolrFieldProperties.restatesDefault(
+            property = property,
+            writtenValue = written,
+            fieldType = null,
+            schemaVersion = model.schemaVersion,
+            typeTraits = model.traitsOf(declared),
         )
     }
 }
