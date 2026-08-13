@@ -831,16 +831,16 @@ placement decision this plan owns.
 
 - [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.
       Blocked on the fixtures themselves, which are [CI gates](#step-20-ci-gates)' to vendor.
-- [ ] A custom plugin class and its parameters produce no findings either. Nothing fires on them today because the
-      inspection that could does not exist; the criterion closes with action 3, which is what would make it a claim
-      rather than a vacancy.
+- [x] A custom plugin class and its parameters produce no findings either. This is now a claim rather than a vacancy:
+      the near-miss inspection exists, and a fixture puts a class and three parameter names Solr has never heard of in
+      front of it.
 - [x] Completion and documentation answer inside a request handler. Parameter names inside `defaults`, `appends` and
       `invariants`, the closed value set `defType` accepts, the `class` attribute's own classes, and the schema field
       names inside the sixteen field-holding parameters — each with quick documentation. **What still does not answer
       is the element and attribute structure around them**, which is action 1.
-- [ ] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
+- [x] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
       names one edit apart, so an edit-distance rule that fires on a name the catalog *knows* would report `pf3` as a
-      misspelling of `pf2`. The rule fires only on a name the catalog does not know.
+      misspelling of `pf2`. The rule fires only on a name the catalog does not know, and knownness is checked first.
 - [ ] What attribute completion offers in `solrconfig.xml` today is pinned by a fixture before the descriptor gate moves.
       The claim that the platform's schema-less mode echoes sibling attributes here is inferred from this plugin's own
       account of the platform, not measured, and this file is made of same-named tags — so it is the worst case for that

@@ -49,6 +49,42 @@ internal object SolrInspections {
             .toList()
             .toTypedArray()
 
+    /**
+     * The [known] names within a typo's distance of [wrong], closest first.
+     *
+     * **The rule a near-miss check fires on, and it is deliberately not the same as "unknown".** A
+     * name the catalog does not carry is the ordinary case — `solrconfig.xml` accepts components from
+     * outside Solr that read parameters of their author's choosing — so absence proves nothing and
+     * flagging it would put a warning on every project with a custom component. What is reportable is
+     * a name that is *almost* one Solr ships, since nothing else explains writing it.
+     *
+     * Two edits rather than one, because the commonest typo of all is a transposition and Levenshtein
+     * scores that as two: `descriptoin` is two from `description`, and `rwos` is two from `rows`.
+     *
+     * The length floor sits at four, which is where Solr's own shortest parameters are — `rows`,
+     * `sort`, `defType` — so a floor above it would exclude the names most often mistyped. Below four
+     * two edits reach most of the alphabet and the check stops meaning anything.
+     *
+     * @param wrong the name as written
+     * @param known every name the catalog carries
+     * @return the near misses, closest first, empty when nothing is near enough
+     */
+    fun nearMissesOf(wrong: String, known: Collection<String>): List<String> {
+        if (wrong.length < MINIMUM_CHECKABLE_LENGTH) return emptyList()
+        return known.asSequence()
+            .map { it to editDistance(wrong, it) }
+            .filter { it.second in 1..MAXIMUM_TYPO_DISTANCE }
+            .sortedWith(compareBy({ it.second }, { it.first }))
+            .map { it.first }
+            .toList()
+    }
+
+    /** Solr's own shortest parameters are four long, and below that the check stops meaning anything. */
+    private const val MINIMUM_CHECKABLE_LENGTH = 4
+
+    /** A transposition costs two, and it is the typo worth catching. */
+    private const val MAXIMUM_TYPO_DISTANCE = 2
+
     /** Levenshtein distance, used only to rank suggestions. */
     private fun editDistance(a: String, b: String): Int {
         var previous = IntArray(b.length + 1) { it }
