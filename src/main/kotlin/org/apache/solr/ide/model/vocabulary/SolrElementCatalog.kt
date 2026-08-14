@@ -3,42 +3,18 @@ package org.apache.solr.ide.model.vocabulary
 import org.apache.solr.ide.model.SolrVersionSelection
 
 /**
- * How many of an element Solr accepts where it sits.
- *
- * Recoverable only from the code that reads the element — `getAll` against `childRequired` — which is
- * why it is a generated fact rather than a hand-written one. No shipped configset could supply it,
- * since an example shows what one file happens to write rather than what Solr accepts.
- */
-enum class SolrElementArity {
-
-    /** Solr accepts one, and the file need not carry it. */
-    SINGLE,
-
-    /** Solr accepts several. */
-    REPEATED,
-
-    /** Solr accepts one and fails without it. */
-    REQUIRED,
-
-    /** Not an element at all — an attribute of the element it sits under. */
-    ATTRIBUTE,
-}
-
-/**
  * One element or attribute a `solrconfig.xml` may contain.
  *
  * @property name the element or attribute as a reader writes it
  * @property parent the path it sits under; empty for a top-level element, and also for one Solr
  *   accepts at any depth, since a consumer does the same thing with both
- * @property arity how many Solr accepts, or [SolrElementArity.ATTRIBUTE] where this is not an element
- * @property valueType what it holds where a source says so, empty where none does
+ * @property isAttribute whether this is an attribute of the element above it rather than an element
  * @property discontinued Solr's own words retiring it, empty for an element Solr still accepts
  */
 data class SolrElementEntry(
     val name: String,
     val parent: String,
-    val arity: SolrElementArity,
-    val valueType: String = "",
+    val isAttribute: Boolean,
     val discontinued: String = "",
 ) {
 
@@ -136,9 +112,11 @@ object SolrElementCatalog {
      * half-written resource reaches the editor, and the guarantee worth having is that a bad row costs
      * a row rather than the file.
      *
-     * **An arity this build does not recognise falls back rather than dropping the element.** A row
-     * from a newer generator still says an element exists and where it sits, which is most of what a
-     * consumer needs; refusing it over one unrecognised column would lose the element entirely.
+     * **A kind this build does not recognise reads as an element rather than dropping the row.** A row
+     * from a newer generator still says something exists and where it sits, which is most of what a
+     * consumer needs; refusing it over one unrecognised column would lose it entirely. Element is the
+     * permissive fallback of the two — it reaches element completion, where an unexpected name costs a
+     * suggestion, rather than attribute completion inside a tag it may not belong to.
      *
      * @param rows the resource's lines
      * @return the entries, in the order they appear
@@ -152,18 +130,13 @@ object SolrElementCatalog {
             entries += SolrElementEntry(
                 name = columns[0].takeIf { it.isNotBlank() } ?: continue,
                 parent = columns[1],
-                arity = arityOf(columns[2]),
-                valueType = columns.getOrElse(4) { "" },
-                discontinued = columns.getOrElse(5) { "" },
+                isAttribute = columns[2] == ATTRIBUTE,
+                discontinued = columns.getOrElse(4) { "" },
             )
         }
         return entries
     }
 
-    private fun arityOf(written: String): SolrElementArity = when (written) {
-        "required" -> SolrElementArity.REQUIRED
-        "repeated" -> SolrElementArity.REPEATED
-        "attribute" -> SolrElementArity.ATTRIBUTE
-        else -> SolrElementArity.SINGLE
-    }
+    /** The one kind the resource names explicitly; everything else is an element. */
+    private const val ATTRIBUTE = "attribute"
 }

@@ -218,20 +218,19 @@ class SolrConfigElementsTest {
     }
 
     /**
-     * The legend's codes are the whole type system: even is an attribute, odd is a child element, and
-     * the tens digit is what it holds.
+     * The legend's units digit is the whole of what is read: even is an attribute, odd is a child
+     * element.
+     *
+     * The tens digit says what the leaf holds — `int`, `boolean`, `string` — and is deliberately not
+     * recorded. Nothing ever asked the catalog what an element holds, so carrying it meant a column in
+     * both shipped resources that no reader consumed.
      */
     @Test
     fun `an even code is an attribute and an odd code is a child element`() {
         val read = SolrConfigElements.readEditable(editable)
         assertEquals(SolrConfigElements.ATTRIBUTE, read.single { it.name == "maxDocs" }.arity)
-        assertEquals("int", read.single { it.name == "maxDocs" }.valueType)
-
-        val openSearcher = read.single { it.name == "openSearcher" }
-        assertEquals(SolrConfigElements.SINGLE, openSearcher.arity)
-        assertEquals("boolean", openSearcher.valueType)
-
-        assertEquals("string", read.single { it.name == "class" }.valueType)
+        assertEquals(SolrConfigElements.SINGLE, read.single { it.name == "openSearcher" }.arity)
+        assertEquals(SolrConfigElements.ATTRIBUTE, read.single { it.name == "class" }.arity)
         assertEquals(SolrConfigElements.SINGLE, read.single { it.name == "maxBooleanClauses" }.arity)
     }
 
