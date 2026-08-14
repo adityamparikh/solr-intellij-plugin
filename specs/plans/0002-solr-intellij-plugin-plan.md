@@ -92,7 +92,9 @@ whole, and the gutter action goes with the Server track.
 - [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
   — **in progress**; likewise added late, belongs beside the two above. The schema half ships — the dim and the
   intention that removes it, on every element that declares field properties: `<field>`, `<dynamicField>` and
-  `<fieldType>`. Its factory half still waits on the catalog carrying defaults.
+  `<fieldType>`. Its factory half is unblocked but unwritten: the catalog has recorded each factory
+  attribute's literal default and required marker since that column landed, so what remains is the
+  reading of it rather than a dependency.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
@@ -1036,8 +1038,10 @@ popup — which of these lines could go.
 
 **Dependencies:**
 [completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done)
-for the property table it reads; the factory half additionally needs the defaults column in
-[the factory catalog generator](#step-9-factory-catalog-generator-in-progress).
+for the property table it reads. The factory half additionally needed the defaults column in
+[the factory catalog generator](#step-9-factory-catalog-generator-in-progress), **and that landed** —
+each factory attribute now carries its literal default and required marker where the bytecode proves
+them. Nothing blocks the factory half; it is unwritten rather than waiting.
 
 ### Step 27: Saying what a property's value means (done)
 

@@ -149,6 +149,15 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
       [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
+- [ ] **NAV-9** — Cmd+Click a `class` attribute value in `solrconfig.xml` — the `/select` handler's
+      `solr.SearchHandler` — and land on the class. **The `solr.` prefix is the part worth pressing**:
+      it is Solr's own shorthand, not a package, so a resolution that took it literally would find
+      nothing. A class the project's Solr does not carry resolves nowhere and draws no warning.
+- [ ] **NAV-10** — Repeat NAV-9 **while the project is still indexing** — start the gesture right
+      after opening the sandbox, or invoke *File → Invalidate Caches → Just Restart* first. Quick
+      documentation on the same value answers rather than dying. This is the one navigation in the
+      plugin that genuinely reads an index, and the popup it once took down with it was the rest of
+      the documentation that needed no index at all.
 - [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — caret on
       `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
       NAV-5 itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
@@ -276,7 +285,8 @@ boundary again.
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
 `SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
-`SolrUnusedFieldTypeInspectionTest`,
+`SolrUnusedFieldTypeInspectionTest`, `SolrNonIndexedRelevanceFieldInspectionTest`,
+`SolrMisspelledParameterInspectionTest`, `SolrDiscontinuedElementInspectionTest`,
 `SolrReferenceQuickFixTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
 
@@ -334,6 +344,20 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       once** — the check that the two inspections ask different questions rather than one question twice.
       The completion side shows the same split with no edit at all: PRM-4's `sort` list withholds `text`
       where the `qf` list offers it.
+- [ ] **INSP-13** — In `solrconfig.xml`, add `<nrtMode>true</nrtMode>` directly inside `<config>`:
+      the element name is underlined and the message is **Solr's own sentence**, naming the config
+      as discontinued. Add `<indexDefaults>` instead and the message names `<indexConfig>` as the
+      replacement. **The wording is the feature** — a paraphrase would drop the only part saying
+      what to do next. Now move the same `<nrtMode>` inside a made-up `<acmeThing>` wrapper: the
+      warning goes, because a retirement belongs to a position rather than to a word. Undo.
+- [ ] **INSP-14** — Inside the `/select` handler's `<lst name="defaults">`, rename `<str name="rows">`
+      to `<str name="rwos">`: underlined, and Alt-Enter offers `rows`. Then write `<str name="pf2">`
+      and `<str name="pf3">` side by side — **neither is flagged**, though they are one edit apart.
+      That pair is the whole reason the rule checks knownness before distance. Undo.
+- [ ] **INSP-15** — Set `indexed="false"` on the `name` field, then look at the `/select` handler's
+      `qf`: `name` is underlined as a relevance parameter naming a field the schema never indexes.
+      **This is the one INSP check whose finding is invisible in Solr** — the core starts, the query
+      runs, and the field simply never matches. Undo.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -443,6 +467,67 @@ corrected.
       rather than a documentation branch written for it**, so it is the gesture most likely to
       disappear silently when either provider changes.
 
+## 10. Completion — `solrconfig.xml`'s own structure (STR)
+
+*Automated: `SolrConfigElementDescriptorTest`, `SolrConfigDescriptorContractTest`,
+`SolrElementCatalogTest`, `SolrConfigAttributeCompletionTest`. Manual adds: the platform's own
+sibling echo is what these replace, and only a real editor shows which one answered.*
+
+**What makes this section worth pressing is the failure it replaces.** Before the plugin owned these
+descriptors, the platform ran schema-less and offered whatever a sibling tag happened to be named —
+a guess that looks exactly like knowledge, in a file made almost entirely of same-named tags.
+
+- [ ] **STR-1** — Type `<` on a blank line directly inside `<config>`: the offer is Solr's
+      top-level vocabulary — `requestHandler`, `updateHandler`, `luceneMatchVersion`, `dataDir` —
+      and **not** a copy of whatever sibling tags already exist above the caret.
+- [ ] **STR-2** — Do the same inside `<query>`: `filterCache` and its siblings are offered, and
+      `dataDir` is **not**. Nesting is the point — what belongs under `<query>` is not what belongs
+      under `<config>`.
+- [ ] **STR-3** — `nrtMode` is **not** offered anywhere, though the catalog carries it. An element
+      Solr rejects must never be completed; INSP-13 is the same fact from the other side, reporting
+      one already written.
+- [ ] **STR-4** — Inside a made-up `<acmeThing>`, completion offers nothing rather than echoing its
+      siblings, and typing any element inside it draws no warning. **Silence and permissiveness
+      together** — the plugin has nothing to say about a custom component and must not pretend either
+      way.
+- [ ] **STR-5** — In a `<requestHandler>`, invoke attribute completion: `name` and `class` are
+      offered. Add an attribute of your own invention and it is **not** underlined — completion
+      offers what Solr reads, while judgement about an unknown attribute belongs to the inspections
+      and they decline it here.
+
+## 11. An attribute that restates its default (DIM)
+
+*Automated: `SolrRestatedDefaultAnnotatorTest`, `SolrRemoveRestatedAttributeIntentionTest`.
+Manual adds: dimming is a rendering claim, and only a real editor shows whether it reads as
+"redundant" rather than as "broken".*
+
+**The one surface here that must never reach the Problems view.** A restated default is correct
+Solr; the file is right and merely says something twice.
+
+- [ ] **DIM-1** — Add `indexed="true"` to the `name` field: the whole attribute renders greyed,
+      not underlined, and **nothing appears in the Problems view**.
+- [ ] **DIM-2** — Alt-Enter on it offers to remove it, and removing leaves a schema that still
+      parses and a field whose documentation reports the same effective values as before.
+- [ ] **DIM-3** — Change it to `indexed="false"`: the dim goes. The attribute now decides
+      something, and the difference between deciding and restating is the whole feature. Undo.
+- [ ] **DIM-4** — Add `omitNorms="false"` to a `<dynamicField>` whose type declares the same value:
+      dimmed, because it resolves through the type exactly as a concrete field does. Add
+      `enableGraphQueries="true"` to a `<field>`: **not** dimmed, since Solr ignores it there and
+      saying it is removable would be right for the wrong reason. Undo both.
+
+## 12. Intentions — companion fields (INT)
+
+*Automated: `SolrAddPrefixCompanionIntentionTest`, `SolrAddExactCompanionIntentionTest`.
+Manual adds: these are the only gestures that write a new declaration, so the result has to be read
+as a schema rather than as a diff.*
+
+- [ ] **INT-1** — Alt-Enter on a tokenised text field offers to add an exact-match companion; the
+      generated `<field>` and its `<fieldType>` land in the schema and the file still parses.
+- [ ] **INT-2** — The same field no longer offers the intention once its companion exists, and a
+      field that is already whole-value — a `string` — never offers it at all. **An intention that
+      keeps offering itself after it has been applied is the failure mode here**, since nothing
+      underlines to tell a reader the work is done.
+
 ## Not yet in the suite
 
 Checks join a section above when their feature ships; **which features those are is the
@@ -450,30 +535,22 @@ Checks join a section above when their feature ships; **which features those are
 list below is what the suite does not yet cover, and says nothing about what is built —
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
-- Alt-Enter intentions generating an `_exact`/`_prefix` companion field
 - The settings page and *Mark Directory as Solr Configset Root*
 - Everything server-side: connections, tool window, query console, drift view
 - Everything in Java/Kotlin code: field-name checks, query language injection
-- The dimmed rendering of an attribute that merely restates its default, with a
-  remove intention
-- `solrconfig.xml`'s own *structure*: element and attribute completion. Navigation from a `class`
-  attribute now exists and has no gesture here yet — it needs one, including the case that matters,
-  a `solr.`-prefixed handler class that resolves to nothing until the catalog carries it. What the legal elements are is settled — Solr declares
-  them in `SolrConfig.plugins` — but nothing reads them yet
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — DOC-5's version resolution settles a different pair of properties
-- The one inspection [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) lists
-  and has not built: a configuration element removed in the targeted Solr line
-- The relevance-parameter check on a non-indexed field, which is built and registered but
-  has no sandbox gesture here yet. `SolrNonIndexedRelevanceFieldInspectionTest` covers it
-  automatically; what manual would add is the live reaction the INSP checks exist for
-- **Do not read INSP's length as an inspection count** — nine inspection classes exist, and the
+- A configuration element **removed between two supported Solr lines**, which is a different check
+  from INSP-13 and has nothing to press: the two lines differ by one element, `featureVectorCache`,
+  *added* in 10. Nothing was removed, so there is no gesture until a future line drops something
+- **Do not read INSP's length as an inspection count** — eleven inspection classes exist, and the
   INSP checks above are scenarios over them rather than one apiece: INSP-1 and INSP-3 are both the
   dangling-`copyField` inspection, once on a written edit and once on a live deletion; INSP-10 to
   INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
   that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
-  anything
+  anything. Four of the eleven classes are exercised from sections other than INSP — the two
+  attribute checks appear at INSP-5 and INSP-6, and the `solrconfig.xml` pair at INSP-13 and INSP-14
 
 ### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
 
@@ -551,6 +628,12 @@ One row per pass, finished or not. Scope names what was skipped and why, if anyt
 partial result — it is a pass whose outcome nobody knows, which is the same evidence as no
 pass at all. The two below are recorded as unfinished rather than deleted, because knowing
 a pass was started and abandoned is worth more than a gap.
+
+**Nothing added at `2d393fc` has been pressed.** Sections 10 (STR), 11 (DIM) and 12 (INT),
+checks INSP-13 to INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and
+its automated coverage, not from a sandbox. They are gestures with an expected outcome and no
+evidence — which is what every check here is until a pass row says otherwise, and the reason
+this list is worth as little as its last row.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
