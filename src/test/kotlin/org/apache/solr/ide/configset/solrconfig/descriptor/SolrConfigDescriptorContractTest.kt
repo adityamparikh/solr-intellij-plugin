@@ -96,6 +96,57 @@ class SolrConfigDescriptorContractTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * The provider declines a schema outright, which is what keeps this vocabulary out of that file.
+     *
+     * Both files sit in the same configset and both are XML, so the name is the only thing separating
+     * them. Answering here would offer `<requestHandler>` inside `<schema>`.
+     */
+    fun testTheProviderDeclinesAFileThatIsNotSolrconfig() {
+        myFixture.addFileToProject("solrconfig.xml", "<config/>")
+        val schema = myFixture.configureByText(
+            "managed-schema.xml",
+            """<schema name="t" version="1.7"><field name="id" type="string"/></schema>""",
+        ) as XmlFile
+        val field = tagNamed(schema, "field")
+        assertNull(SolrConfigElementDescriptorProvider().getDescriptor(field))
+    }
+
+    /**
+     * Asked with no context, a descriptor answers about its own tag.
+     *
+     * The platform passes null on some paths and the tag on others, and the two must agree — an
+     * attribute list that emptied out when context was omitted would drop completion inside exactly
+     * the element the descriptor was built for.
+     */
+    fun testAnOmittedContextMeansTheDescriptorsOwnTag() {
+        val file = configWith("<config>\n  <query>\n    <filterCache/>\n  </query>\n</config>")
+        val tag = tagNamed(file, "filterCache")
+        val descriptor = requireNonNull(tag.descriptor as? SolrConfigTagDescriptor)
+
+        val withoutContext = descriptor.getAttributesDescriptors(null).map { it.name }.toSet()
+        val withTag = descriptor.getAttributesDescriptors(tag).map { it.name }.toSet()
+        assertEquals(withTag, withoutContext)
+        assertTrue("expected filterCache to declare attributes, got $withoutContext", withoutContext.isNotEmpty())
+    }
+
+    /**
+     * An attribute descriptor claims none of the XML identity roles.
+     *
+     * `solrconfig.xml` has no `ID`/`IDREF` notion, and claiming one would have the platform resolve
+     * and rename attribute *values* as though they pointed at each other.
+     */
+    fun testAnAttributeIsNeverAnIdOrAReferenceToOne() {
+        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+        val attribute = descriptor.getAttributeDescriptor("size", null)
+        assertFalse(attribute.hasIdType())
+        assertFalse(attribute.hasIdRefType())
+        assertFalse(attribute.isRequired)
+        assertFalse(attribute.isFixed)
+        assertFalse(attribute.isEnumerated)
+        assertNull(attribute.enumeratedValues)
+    }
+
+    /**
      * A child of an unknown element still gets a descriptor, one level down.
      *
      * The permissiveness rule has to survive nesting, or a custom component's own children would be
