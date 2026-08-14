@@ -81,8 +81,8 @@ whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
-- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; six of seven inspections shipped, one
-  remains and it waits on the catalog
+- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; all seven inspections shipped. What holds
+  the heading is the sandbox gesture two of them still lack, not a rule that is missing
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-done) — **done**
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) —
   **done**
@@ -97,9 +97,10 @@ whole, and the gutter action goes with the Server track.
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
 - [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress)
-  — **in progress**; the largest step here. It was split when it started, and six of the eight pull
-  requests in that split have merged. What remains is the file's *structure* — element and attribute
-  completion — and the one inspection.
+  — **in progress**; the largest step here. It was split when it started, and every pull request in that
+  split has merged: structure completion and the near-miss inspection were the last two. What holds the
+  heading is a criterion rather than an action — the shipped configsets producing zero findings, which
+  waits on [CI gates](#step-20-ci-gates) vendoring the fixtures to assert it against.
 - [Step 28 — Declarations as targets](#step-28-declarations-as-targets) — **done**
   — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
@@ -508,9 +509,17 @@ Where the zero-false-positive requirement gets teeth.
 
 1. Implement: dangling `copyField` source or target; a field naming an undeclared field type; handler naming a
    nonexistent field; relevance parameters on non-indexed fields; unused field types; known-bad analyzer chain
-   orderings; configuration elements removed in the targeted Solr line. **Seven, not the six an earlier revision
+   orderings; configuration elements the targeted Solr no longer accepts. **Seven, not the six an earlier revision
    listed** — the undeclared-field-type check shipped and was recorded in the success criteria without ever joining this
    list, so the two counts disagreed and the criteria were right.
+
+   **The seventh was written as "removed in the targeted line" and shipped as something else, because the measurement
+   that unblocked it also showed the original had nothing to report.** The two supported lines differ by exactly one
+   element, `featureVectorCache`, *added* in 10 — nothing was removed between them, so a rule comparing the lines would
+   never fire until a future line drops something. What the same pass did find is five elements Solr still reads and no
+   longer accepts, four of which stop the core starting. That is the rule that shipped: an element carrying a retirement
+   notice, reported in Solr's own words. The line-comparison version is worth writing the day a line removes something,
+   and costs nothing to add then, since the per-line vocabularies are already generated.
 2. A description file per inspection, written as user-facing prose — it is also the published catalog entry.
 3. Test each on both flagged and clean fixtures.
 
@@ -539,14 +548,18 @@ same package and belong to
 rather than here: `SolrUnknownAttributeInspection` and `SolrInvalidAttributeValueInspection`
 are catalog-backed and validate an attribute rather than a reference.
 
-**Four numbers describe this step, and reading one of them for another is the mistake this paragraph exists to
-prevent.** Seven inspections are planned here and six are built. Eight inspection classes are registered in
-`plugin.xml` — not the same number as the plan's seven, because two of the registered classes belong to another step
-and one of the planned inspections does not exist yet. Eight of
-[the manual suite's](../../docs/manual-test-suite.md) INSP checks exercise seven of those eight, since the dangling-
-`copyField` inspection gets a second check for reacting to a live edit, a ninth restores the baseline, and the
-non-indexed relevance check has no sandbox gesture yet. Read a count against what it counts; "eight inspections exist"
-is true and says nothing about this step's progress.
+**Three numbers describe this step, and reading one of them for another is the mistake this paragraph exists to
+prevent.** Seven inspections are planned here and all seven are built. Eleven inspection classes are registered in
+`plugin.xml`, which is not this step's seven: `SolrUnknownAttributeInspection` and
+`SolrInvalidAttributeValueInspection` belong to
+[completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress),
+`SolrMisspelledParameterInspection` to
+[solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress), and
+`SolrUnsupportedFieldOperationInspection` to the field-capability work that motivated it. There are twelve
+[manual suite](../../docs/manual-test-suite.md) INSP checks, which is a third count again: the dangling-`copyField`
+inspection gets a second check for reacting to a live edit and another restores the baseline, while the non-indexed
+relevance check and the newest inspection have no sandbox gesture yet. Read a count against what it counts; "eleven
+inspections exist" is true and says nothing about this step's progress.
 
 **Success criteria:**
 
@@ -557,10 +570,11 @@ is true and says nothing about this step's progress.
     - [x] A relevance parameter naming a non-indexed field.
     - [x] An unused field type.
     - [x] A known-bad analyzer chain ordering.
-    - [ ] A configuration element removed in the targeted Solr line.
+    - [x] A configuration element the targeted Solr no longer accepts, in Solr's own words.
 
-Of the one left, it has a dependency: it needs the catalog to know which line removed what, which is a fact
-[the catalog generator](#step-9-factory-catalog-generator-in-progress) does not record today.
+All seven are built. The last one's dependency closed when the generator learned to read the `solrconfig.xml` element
+vocabulary, which carries each retirement notice as the literal Solr ships beside the code that rejects it — so the
+inspection asserts nothing of its own and quotes Solr instead.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
@@ -841,10 +855,10 @@ placement decision this plan owns.
 - [x] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
       names one edit apart, so an edit-distance rule that fires on a name the catalog *knows* would report `pf3` as a
       misspelling of `pf2`. The rule fires only on a name the catalog does not know, and knownness is checked first.
-- [ ] What attribute completion offers in `solrconfig.xml` today is pinned by a fixture before the descriptor gate moves.
-      The claim that the platform's schema-less mode echoes sibling attributes here is inferred from this plugin's own
-      account of the platform, not measured, and this file is made of same-named tags — so it is the worst case for that
-      echo and the most important one to have measured rather than assumed.
+- [x] What attribute completion offers in `solrconfig.xml` today is pinned by a fixture before the descriptor gate moves.
+      The claim that the platform's schema-less mode echoes sibling attributes here was inferred from this plugin's own
+      account of the platform rather than measured, and this file is made of same-named tags — so it was the worst case
+      for that echo and the most important one to have measured. Pinned first, then the gate moved.
 
 The last two are the criteria a split loses, because both catch silent wrongness rather than visible failure: the guard
 never fires in a passing suite, and the fixture only matters before a change that would overwrite what it records.
