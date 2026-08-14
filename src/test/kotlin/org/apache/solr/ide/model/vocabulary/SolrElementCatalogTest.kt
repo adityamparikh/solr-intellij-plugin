@@ -39,14 +39,19 @@ class SolrElementCatalogTest {
     }
 
     /**
-     * Arity is the fact no other source could supply, so it is the one most worth asserting against
-     * the shipped file rather than a fixture.
+     * Element against attribute is the whole of what the resource says about kind, and the only part
+     * a consumer reads — so it is asserted against the shipped file rather than a fixture.
+     *
+     * `maxDocs` is the one that matters. It sits under `updateHandler/autoCommit` exactly as
+     * `luceneMatchVersion` sits under the root, and nothing about the name says which is written as a
+     * tag and which inside one.
      */
     @Test
-    fun `arity comes through from the generator`() {
-        assertEquals(SolrElementArity.REQUIRED, SolrElementCatalog.element("luceneMatchVersion", "", ten)!!.arity)
-        assertEquals(SolrElementArity.REPEATED, SolrElementCatalog.element("lib", "", ten)!!.arity)
-        assertEquals(SolrElementArity.SINGLE, SolrElementCatalog.element("dataDir", "", ten)!!.arity)
+    fun `element against attribute comes through from the generator`() {
+        assertFalse(SolrElementCatalog.element("luceneMatchVersion", "", ten)!!.isAttribute)
+        assertFalse(SolrElementCatalog.element("lib", "", ten)!!.isAttribute)
+        assertFalse(SolrElementCatalog.element("dataDir", "", ten)!!.isAttribute)
+        assertTrue(SolrElementCatalog.element("maxDocs", "updateHandler/autoCommit", ten)!!.isAttribute)
     }
 
     /** Nesting is the fact the class catalog had nowhere to put, and the descriptor's whole input. */
@@ -120,16 +125,18 @@ class SolrElementCatalogTest {
     }
 
     /**
-     * An arity a newer generator invented reads as the ordinary one rather than dropping the element.
+     * A kind a newer generator invented reads as an element rather than dropping the row.
      *
-     * The row still says an element exists and where it sits, which is most of what a consumer needs;
-     * refusing it over one unrecognised column would lose the element entirely.
+     * The row still says something exists and where it sits, which is most of what a consumer needs.
+     * Element is the permissive fallback of the two: it reaches element completion, where an
+     * unexpected name costs a suggestion, rather than being offered as an attribute inside a tag it
+     * may not belong to.
      */
     @Test
-    fun `an unknown arity falls back rather than dropping the element`() {
+    fun `an unknown kind reads as an element rather than dropping the row`() {
         val parsed = SolrElementCatalog.parse(sequenceOf("newThing\t\tsomethingNew\tconfig\t"))
         assertEquals(1, parsed.size)
-        assertEquals(SolrElementArity.SINGLE, parsed.single().arity)
+        assertFalse(parsed.single().isAttribute)
     }
 
     @Test

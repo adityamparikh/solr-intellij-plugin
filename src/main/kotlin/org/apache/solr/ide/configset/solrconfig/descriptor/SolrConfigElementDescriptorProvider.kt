@@ -15,7 +15,6 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.SolrVersionSelection
-import org.apache.solr.ide.model.vocabulary.SolrElementArity
 import org.apache.solr.ide.model.vocabulary.SolrElementCatalog
 
 /**
@@ -175,7 +174,7 @@ internal class SolrConfigTagDescriptor(
     override fun getElementsDescriptors(context: XmlTag?): Array<XmlElementDescriptor> {
         val here = context ?: tag
         return SolrElementCatalog.offerableChildrenOf(pathOf(here), version)
-            .filter { it.arity != SolrElementArity.ATTRIBUTE }
+            .filter { !it.isAttribute }
             .map { SolrConfigChildDescriptor(it.name, here, version) }
             .toTypedArray()
     }
@@ -190,7 +189,7 @@ internal class SolrConfigTagDescriptor(
     override fun getAttributesDescriptors(context: XmlTag?): Array<XmlAttributeDescriptor> {
         val here = context ?: tag
         return SolrElementCatalog.childrenOf(pathOf(here), version)
-            .filter { it.arity == SolrElementArity.ATTRIBUTE }
+            .filter { it.isAttribute }
             .map { SolrConfigAttributeDescriptor(it.name, here) }
             .toTypedArray()
     }

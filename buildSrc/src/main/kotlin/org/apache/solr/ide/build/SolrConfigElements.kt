@@ -53,6 +53,24 @@ internal object SolrConfigElements {
     /** Not an element at all — an attribute of the element it sits under. */
     const val ATTRIBUTE = "attribute"
 
+    /** An element rather than an attribute, which is the whole of what the resource records. */
+    const val ELEMENT = "element"
+
+    /**
+     * What a merged entry is written as: an element, or an attribute of the one above it.
+     *
+     * **The arities decide this and are then discarded, which is the point.** `single`, `repeated` and
+     * `required` are real distinctions Solr's reading code makes, and they are what
+     * [merge] needs in order to resolve a name two sources disagree about — a `getAll` reading beats
+     * an attribute, an attribute beats a `get`. What no consumer has ever asked is *how many* of
+     * something Solr accepts, so shipping that would be a claim the catalog is never held to. Worth
+     * recording again the day a feature wants it.
+     *
+     * @param arity the merged arity
+     * @return the word the resource carries
+     */
+    fun kindOf(arity: String): String = if (arity == ATTRIBUTE) ATTRIBUTE else ELEMENT
+
     /** Read from `SolrConfig.plugins`, which also names the class the element must implement. */
     const val FROM_PLUGINS = "plugin"
 
