@@ -139,6 +139,38 @@ class SolrElementCatalogTest {
         assertFalse(parsed.single().isAttribute)
     }
 
+    /**
+     * The kind column read both ways, which no other parser fixture does.
+     *
+     * Every other row here is an element, so the word that makes one an attribute was only ever
+     * exercised through the shipped resource — where a parser that ignored the column entirely would
+     * still have looked right for the elements and wrong only for the 32 attributes.
+     */
+    @Test
+    fun `the kind column decides element against attribute`() {
+        val parsed = SolrElementCatalog.parse(
+            sequenceOf(
+                "maxDocs\tupdateHandler/autoCommit\tattribute\teditable\t",
+                "dataDir\t\telement\tconfig\t",
+            ),
+        )
+        assertEquals(listOf(true, false), parsed.map { it.isAttribute })
+    }
+
+    /**
+     * A row stopping before the discontinuation column is still an entry.
+     *
+     * The generator always writes five, so this is about a resource written by some other version —
+     * the case the parser exists to survive rather than the case it usually sees.
+     */
+    @Test
+    fun `a row without a discontinuation column is still current`() {
+        val parsed = SolrElementCatalog.parse(sequenceOf("dataDir\t\telement\tconfig"))
+        assertEquals(1, parsed.size)
+        assertEquals("", parsed.single().discontinued)
+        assertTrue(parsed.single().isCurrent)
+    }
+
     @Test
     fun `a row with no name is not an element`() {
         assertTrue(SolrElementCatalog.parse(sequenceOf("\t\tsingle\tconfig\t")).isEmpty())
