@@ -1,0 +1,26 @@
+<html>
+<body>
+Reports an element in <code>solrconfig.xml</code> that the targeted Solr no longer accepts.
+<p>
+  Four of the five are fatal rather than advisory. <code>&lt;indexDefaults&gt;</code> and
+  <code>&lt;mainIndex&gt;</code> make Solr raise <code>SolrException</code> and the core does not
+  start; <code>&lt;nrtMode&gt;</code> and <code>&lt;unlockOnStartup&gt;</code> fail the same way one
+  level down. So this does not report a file that could be tidier — it reports a file that will not
+  load.
+</p>
+<p>
+  <code>&lt;jmx&gt;</code> is the exception Solr merely logs about, pointing at
+  <code>solr.xml</code> instead. It is reported the same way, because the message is Solr's own
+  sentence either way.
+</p>
+<p>
+  The wording is Solr's rather than the plugin's, since the sentence names the replacement — the
+  notice retiring <code>&lt;indexDefaults&gt;</code> is what tells a reader to use
+  <code>&lt;indexConfig&gt;</code>, and a paraphrase would drop the only part that says what to do
+  next.
+</p>
+<p><small>Nothing is inferred. An element is reported only where the generated vocabulary carries a
+  retirement notice for it, which is a literal Solr ships beside the code that rejects it — and only
+  in the position Solr reads it, so the same name inside a custom component is left alone.</small></p>
+</body>
+</html>

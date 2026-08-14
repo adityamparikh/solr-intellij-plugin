@@ -245,6 +245,20 @@
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnusedFieldTypeInspection"/>
 
+        <!-- The one finding in this file that is not advice: four of the five elements Solr retired
+             stop the core starting. Reported in Solr's own words, because the sentence names the
+             replacement and a paraphrase would drop it. -->
+        <localInspection
+                language="XML"
+                shortName="SolrDiscontinuedElement"
+                bundle="messages.SolrBundle"
+                key="inspection.discontinuedElement.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.configset.solrconfig.inspection.SolrDiscontinuedElementInspection"/>
+
         <!-- The one rule the parameter catalog can prove wrong: a name that is almost one Solr
              reads. Never an unrecognised name on its own — this file accepts components from
              outside Solr, so absence proves nothing. -->
