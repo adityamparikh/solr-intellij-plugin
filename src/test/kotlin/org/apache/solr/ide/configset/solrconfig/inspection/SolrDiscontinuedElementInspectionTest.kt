@@ -97,6 +97,56 @@ class SolrDiscontinuedElementInspectionTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * The rule claims to run while the project is indexing, and this is what holds the claim.
+     *
+     * It reads a generated resource and the already-parsed model, so there is nothing here to wait for
+     * — but a declaration is cheap to write and stays green forever whether or not the code beneath it
+     * grew an index read, which is why the plugin asserts them rather than trusting them.
+     */
+    fun testTheRuleDeclaresItselfDumbAware() {
+        assertTrue(SolrDiscontinuedElementInspection().isDumbAware)
+    }
+
+    /**
+     * The other configset file draws nothing, whatever it happens to contain.
+     *
+     * Both files are XML and sit in the same directory, so the name is all that separates them. This
+     * schema carries a `<nrtMode>` on purpose: if the rule ran here it would report it, since the
+     * vocabulary it consults knows nothing about which file it was asked about.
+     */
+    fun testASchemaIsNotThisRulesFile() {
+        myFixture.enableInspections(SolrDiscontinuedElementInspection())
+        myFixture.addFileToProject("solrconfig.xml", "<config/>")
+        myFixture.configureByText(
+            "managed-schema.xml",
+            """
+            <schema name="t" version="1.7">
+              <fieldType name="string" class="solr.StrField"/>
+              <nrtMode>true</nrtMode>
+            </schema>
+            """.trimIndent(),
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    /**
+     * The detection master switch silences this too, and it has to do so deliberately.
+     *
+     * The vocabulary is a generated resource, so this rule could answer with no configset around it at
+     * all. Answering would make it the one surface a reader cannot turn off.
+     */
+    fun testNothingIsReportedWhileDetectionIsSwitchedOff() {
+        settings.setDetectionEnabled(false)
+        check(
+            """
+            <config>
+              <nrtMode>true</nrtMode>
+            </config>
+            """.trimIndent(),
+        )
+    }
+
+    /**
      * The same name somewhere Solr never read it draws nothing.
      *
      * A retirement notice belongs to a position, not to a word. `nrtMode` under a custom component is
