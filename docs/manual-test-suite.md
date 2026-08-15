@@ -149,15 +149,23 @@ gesture, caret placement, the Find Usages tool window.*
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
       `name` in `solrconfig.xml:28`, framing the navigation tooltip.
       [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
-- [ ] **NAV-9** — Cmd+Click a `class` attribute value in `solrconfig.xml` — the `/select` handler's
-      `solr.SearchHandler` — and land on the class. **The `solr.` prefix is the part worth pressing**:
-      it is Solr's own shorthand, not a package, so a resolution that took it literally would find
-      nothing. A class the project's Solr does not carry resolves nowhere and draws no warning.
-- [ ] **NAV-10** — Repeat NAV-9 **while the project is still indexing** — start the gesture right
-      after opening the sandbox, or invoke *File → Invalidate Caches → Just Restart* first. Quick
-      documentation on the same value answers rather than dying. This is the one navigation in the
-      plugin that genuinely reads an index, and the popup it once took down with it was the rest of
-      the documentation that needed no index at all.
+**The demo cannot exercise the landing half of this, and the reason is worth reading.** It depends on
+`solr-solrj` alone, while `solr.SearchHandler` is `org.apache.solr.handler.component.SearchHandler`
+in `solr-core` — not on the demo's classpath. Navigation needs the class *in the project*;
+documentation needs only the generated catalog, which the plugin build resolves separately and which
+does carry `SearchHandler`. So the two answers differ here on purpose.
+
+- [ ] **NAV-9** — Cmd+Click the `/select` handler's `class="solr.SearchHandler"`: it resolves
+      nowhere, and **draws no warning for failing to**. A configset naming a class this project does
+      not carry is ordinary, not wrong. To press the landing half, add `org.apache.solr:solr-core` to
+      the demo's dependencies first — then the same gesture opens the class, and **the `solr.` prefix
+      is the part that matters**, since it is Solr's shorthand rather than a package and a literal
+      resolution would find nothing.
+- [ ] **NAV-10** — Quick documentation on that same value **while the project is still indexing** —
+      start right after opening the sandbox, or *File → Invalidate Caches → Just Restart* first. It
+      answers from the catalog rather than dying, with no class on the classpath and no index ready.
+      This is the gesture whose collapse once took the whole popup down with it, including the parts
+      that needed no index at all.
 - [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — caret on
       `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
       NAV-5 itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
@@ -354,7 +362,7 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       to `<str name="rwos">`: underlined, and Alt-Enter offers `rows`. Then write `<str name="pf2">`
       and `<str name="pf3">` side by side — **neither is flagged**, though they are one edit apart.
       That pair is the whole reason the rule checks knownness before distance. Undo.
-- [ ] **INSP-15** — Set `indexed="false"` on the `name` field, then look at the `/select` handler's
+- [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false`, then look at the `/select` handler's
       `qf`: `name` is underlined as a relevance parameter naming a field the schema never indexes.
       **This is the one INSP check whose finding is invisible in Solr** — the core starts, the query
       runs, and the field simply never matches. Undo.
@@ -482,7 +490,8 @@ a guess that looks exactly like knowledge, in a file made almost entirely of sam
       and **not** a copy of whatever sibling tags already exist above the caret.
 - [ ] **STR-2** — Do the same inside `<query>`: `filterCache` and its siblings are offered, and
       `dataDir` is **not**. Nesting is the point — what belongs under `<query>` is not what belongs
-      under `<config>`.
+      under `<config>`. **The demo declares no `<query>`**, so type one first; the catalog keys
+      `filterCache` to that parent and `dataDir` to the root, which is what the check reads.
 - [ ] **STR-3** — `nrtMode` is **not** offered anywhere, though the catalog carries it. An element
       Solr rejects must never be completed; INSP-13 is the same fact from the other side, reporting
       one already written.
@@ -490,10 +499,18 @@ a guess that looks exactly like knowledge, in a file made almost entirely of sam
       siblings, and typing any element inside it draws no warning. **Silence and permissiveness
       together** — the plugin has nothing to say about a custom component and must not pretend either
       way.
-- [ ] **STR-5** — In a `<requestHandler>`, invoke attribute completion: `name` and `class` are
-      offered. Add an attribute of your own invention and it is **not** underlined — completion
-      offers what Solr reads, while judgement about an unknown attribute belongs to the inspections
-      and they decline it here.
+- [ ] **STR-5** — Inside a `<filterCache>` under `<query>`, invoke attribute completion: Solr's cache
+      attributes are offered — `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
+      `regenerator`, `size`. Add an attribute of your own invention and it is **not** underlined:
+      completion offers what a source describes, while judgement about an unknown attribute belongs
+      to the inspections and they decline it here.
+- [ ] **STR-6** — In a `<requestHandler>`, the same gesture offers **nothing**, and that is correct
+      rather than a gap. `EditableSolrConfigAttributes.json` is the only source describing
+      attributes, and it covers seven paths — the four caches, `requestParsers`, and the two commit
+      elements. `name` and `class` are declared by `SolrConfig.plugins`' `REQUIRE_NAME` and
+      `REQUIRE_CLASS` flags, which the generator does not read. **Silence here is the honest answer**;
+      an offer would mean the plugin had started guessing. The day those flags are read this check
+      inverts, and it should be rewritten rather than deleted.
 
 ## 11. An attribute that restates its default (DIM)
 
@@ -504,16 +521,28 @@ Manual adds: dimming is a rendering claim, and only a real editor shows whether 
 **The one surface here that must never reach the Problems view.** A restated default is correct
 Solr; the file is right and merely says something twice.
 
-- [ ] **DIM-1** — Add `indexed="true"` to the `name` field: the whole attribute renders greyed,
-      not underlined, and **nothing appears in the Problems view**.
-- [ ] **DIM-2** — Alt-Enter on it offers to remove it, and removing leaves a schema that still
-      parses and a field whose documentation reports the same effective values as before.
-- [ ] **DIM-3** — Change it to `indexed="false"`: the dim goes. The attribute now decides
-      something, and the difference between deciding and restating is the whole feature. Undo.
-- [ ] **DIM-4** — Add `omitNorms="false"` to a `<dynamicField>` whose type declares the same value:
-      dimmed, because it resolves through the type exactly as a concrete field does. Add
-      `enableGraphQueries="true"` to a `<field>`: **not** dimmed, since Solr ignores it there and
-      saying it is removable would be right for the wrong reason. Undo both.
+**The untouched demo is already full of restated defaults, so DIM-1 needs no edit.** Every field
+declares `indexed="true"` and most declare `stored="true"`, and Solr defaults both to true — so the
+dim is part of the baseline rather than something a gesture produces. That is worth knowing before
+BASE-1: a dozen greyed attributes in a clean schema is this feature working, not a defect.
+
+- [ ] **DIM-1** — Open `managed-schema.xml` untouched. The `indexed="true"` and `stored="true"` on
+      the field block render greyed, whole-attribute, and **nothing about them appears in the
+      Problems view**. `stored="false"` on `name_prefix` and `text` is **not** greyed.
+- [ ] **DIM-2** — Alt-Enter on one of the greyed attributes offers to remove it, and removing leaves
+      a schema that still parses and a field whose documentation reports the same effective values as
+      before. Undo.
+- [ ] **DIM-3** — Change `name`'s `indexed="true"` to `indexed="false"`: the dim goes. The attribute
+      now decides something, and the difference between deciding and restating is the whole feature.
+      Undo.
+- [ ] **DIM-4** — Add `enableGraphQueries="true"` to a `<field>`: **not** dimmed, since Solr ignores
+      it there and calling it removable would be right for the wrong reason. Add the same attribute
+      to a `<fieldType>`: dimmed, because there it is legal and does default to true. Undo both.
+
+*The inherited-default half of DIM-4 has no fixture.* It wants a `<dynamicField>` repeating a value
+its `<fieldType>` declares, and the demo's `*_t` is `text_general`, which declares no `omitNorms`.
+`SolrRestatedDefaultAnnotatorTest` covers that path headlessly; either the demo grows a type that
+declares one, or this stays automated-only.
 
 ## 12. Intentions — companion fields (INT)
 
@@ -629,11 +658,12 @@ partial result — it is a pass whose outcome nobody knows, which is the same ev
 pass at all. The two below are recorded as unfinished rather than deleted, because knowing
 a pass was started and abandoned is worth more than a gap.
 
-**Nothing added at `2d393fc` has been pressed.** Sections 10 (STR), 11 (DIM) and 12 (INT),
-checks INSP-13 to INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and
-its automated coverage, not from a sandbox. They are gestures with an expected outcome and no
-evidence — which is what every check here is until a pass row says otherwise, and the reason
-this list is worth as little as its last row.
+**Of the sixteen checks added at `2d393fc`, five have been pressed** — INSP-13, STR-1, STR-3, STR-5
+and DIM-1, of which STR-5 failed and was rewritten. Sections 11 (DIM) and 12 (INT), STR-2 and STR-4,
+checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and its
+automated coverage, not from a sandbox. They are gestures with an expected
+outcome and no evidence — which is what every check here is until a pass row says otherwise, and
+the reason this list is worth as little as its last row.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
@@ -644,6 +674,9 @@ this list is worth as little as its last row.
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
 | 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
+| 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **not completed** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application |
+| 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
+| 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
@@ -734,3 +767,150 @@ exact-match and prefix-capable companion intentions offer themselves on Alt-Ente
 prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
 They remain in *Not yet in the suite* below, which is that list working as intended — the
 suite is behind the plan, not wrong.
+
+### 2026-08-15 — INSP-13, and what nearly went wrong before it
+
+Two checks pressed, both green, and the method is the part worth reading.
+
+- **INSP-13** — `<nrtMode>true</nrtMode>` typed directly inside `<config>` took `solrconfig.xml`
+  from zero problems to one, reading, verbatim: *Solr: The `<nrtMode>` config has been discontinued
+  and NRT mode is always used by Solr. This config will be removed in future versions.* Replacing it
+  with `<indexDefaults>` gave *Solr: `<indexDefaults>` and `<mainIndex>` configuration sections are
+  discontinued. Use `<indexConfig>` instead.* — the replacement named, which is the whole argument
+  for carrying Solr's sentence rather than a paraphrase of it.
+- **BASE-2** — observed either side: zero problems before the edit, and *No problems in
+  solrconfig.xml* again after the undo, with `git status` clean.
+
+**The platform fires its own inspection alongside ours, and a future pass should not be surprised.**
+`<indexDefaults></indexDefaults>` is an empty tag, so IntelliJ's *XML tag has empty body* appears
+next to the Solr finding. Two problems on that line is correct; only the second one is this plugin's.
+
+**The first attempt at this pass typed into a different application entirely.** Coordinates were
+computed from a screenshot and passed to `click at`, which sent the click somewhere other than the
+editor; focus moved to another app and the keystrokes followed it. Nothing in the demo was touched,
+but nothing in the sandbox was tested either, and the damage was outside this project.
+
+Two rules came out of it, and a scripted pass should not start without both:
+
+1. **Never click at computed coordinates.** Drive the menu bar by item name —
+   *Navigate → Line:Column…* places a caret exactly, with no pixel arithmetic anywhere.
+2. **Check the focused element, not the focused application.** Frontmost-app is not enough: opening
+   the Problems tool window moved keyboard focus to its search box, and the next edit was typed
+   there. The accessibility layer answers this directly — `AXFocusedUIElement` reads
+   *Editor for solrconfig.xml* when, and only when, it is safe to type.
+
+Both attempts also confirm what the suite says about itself: a check is worth nothing until a row
+records it, and this row records two out of the fourteen added at `2d393fc`.
+
+### 2026-08-15 — the completion checks, and one that asserted a thing that was never true
+
+Three pressed. Two green, and the third found a defect in this document.
+
+- **STR-1** — typing `<` on a blank line inside `<config>` offered Solr's vocabulary:
+  `requestHandler`, `query`, `cache`, `circuitBreaker`, `codecFactory`, `dataDir`,
+  `directoryFactory`, `expressible`, `featureVectorCache`, `HashDocSet`, `indexConfig`,
+  `indexReaderFactory` and on. **Most of those appear nowhere in the demo file**, which is what
+  separates a catalog from the sibling echo it replaced — an echo could only ever have offered the
+  five elements already written above the caret.
+- **STR-3** — narrowing that list to `nrt` leaves a fuzzy match on `minPrefixQueryTermLength` and
+  **no `nrtMode`**. The catalog demonstrably knows the element, since INSP-13 reports it from the
+  same resource minutes earlier; completion withholds it anyway, which is the whole of the check.
+
+**STR-5 claimed `name` and `class` are offered on a `<requestHandler>`. They are not, and never
+were.** The gesture returns *No suggestions*, first on an unclosed tag — where the failure could
+fairly be blamed on incomplete PSI — and then again on the complete, valid handler at line 24 with
+the file otherwise clean. The catalog settles it: no row carries `requestHandler` as a parent at all.
+
+`EditableSolrConfigAttributes.json` is the only source that describes attributes, and it covers
+seven paths — the four caches, `requestParsers`, `autoCommit` and `autoSoftCommit`. `name` and
+`class` come from `SolrConfig.plugins`' `REQUIRE_NAME` and `REQUIRE_CLASS`, which the generator does
+not read, exactly as it does not read `MULTI_OK`. Attribute completion works: pressed inside a
+`<filterCache>` it offers `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
+`regenerator` and `size` — Solr's own seven.
+
+So the check has been rewritten to press where the data is, and a second one added for the silence,
+because that silence is a decision rather than an absence. **The check was written from a
+description of the feature rather than from the data behind it**, which is a failure mode a document
+of gestures is unusually prone to — a plausible sentence about what completion "should" offer
+survives review in a way a wrong assertion in code does not.
+
+*Restored from `git checkout -- demo/` rather than by undo.* The earlier note warning that scripted
+undo leaves the buffer mid-edit held again: unwinding this one left a stray `<requestHandler` on the
+line. Trust `git status`, not the undo count.
+
+### 2026-08-15 — auditing the unpressed checks against the data behind them
+
+STR-5 failed because it was written from a description of a feature rather than from the data the
+feature reads. That is a failure mode a document of gestures invites, so the twelve checks still
+unpressed were read against the generated catalogs and the demo fixture before any of them were
+pressed. **Five were wrong or unfixturable.** None of the five would have been caught by review;
+each needed the data.
+
+**Sound, and safe to press as written**
+
+- **STR-2** — the catalog keys `filterCache` to parent `query` and `dataDir` to the root, which is
+  exactly what the check reads. Its only gap is that the demo declares no `<query>`, so one has to be
+  typed; the check now says so.
+- **STR-4** — holds by construction: an unknown path has no children in the catalog, and the
+  descriptor is permissive by design.
+- **INSP-14** — `rows`, `pf2` and `pf3` are all in the parameter catalog, and `rwos` has **exactly
+  one** near miss in the whole of it, `rows`, at distance two. The check's *"Alt-Enter offers `rows`"*
+  is precisely right rather than approximately.
+- **INT-1 and INT-2** — the 2026-08-04 pass already recorded both intentions alive, including the
+  prefix one correctly withholding itself on `name`. Numbered checks now exist for what was observed
+  then.
+
+**Wrong, and rewritten before pressing**
+
+- **DIM-1** said *add* `indexed="true"` to the `name` field. It is already there — as it is on every
+  field in the demo, alongside `stored="true"` on most, and Solr defaults both to true. **The
+  untouched schema is already full of dimmed attributes**, so the gesture produced nothing that was
+  not there, and the baseline sections never said so. DIM-1 now observes what is there and DIM-3
+  changes it.
+- **DIM-4** wanted a `<dynamicField>` repeating a value its `<fieldType>` declares. The demo's `*_t`
+  is `text_general`, which declares no `omitNorms`. That half has no fixture and is recorded as
+  automated-only until the demo grows one.
+- **NAV-9** asserted Cmd+Click lands on the class. **The demo depends on `solr-solrj` alone**, and
+  `solr.SearchHandler` lives in `solr-core` — not on its classpath, so nothing can be landed on. The
+  check now presses what the demo can actually show, which is the more interesting half anyway: a
+  class the project does not carry resolves nowhere **and draws no warning for it**. The landing half
+  needs `solr-core` added to the demo first, and says so.
+- **NAV-10** inherited that, and separates cleanly once stated: navigation needs the class *in the
+  project*, documentation needs only the generated catalog, and the catalog does carry
+  `SearchHandler`. The check is now about documentation answering during indexing with no class on
+  the classpath at all — which is the regression it was written for.
+
+**The pattern in all three failures — STR-5, DIM-1, NAV-9 — is a check asserting a positive outcome
+the fixture cannot produce.** A gesture with a plausible expected outcome reads as correct forever
+until someone presses it, and the automated suites do not catch it because they build their own
+fixtures. Writing a check against the catalog row or the demo line it depends on is cheap; four of
+the five above were settled by one `awk` over a generated TSV.
+
+### 2026-08-15 — the audit's first prediction, confirmed
+
+Two checks, both green, and the interesting one is DIM-1 because the audit had already rewritten it.
+
+- **BASE-1** — seven problems in `managed-schema.xml`, of which **exactly two begin `Solr:`**: the
+  planted `discontinued` field type at :77 and the planted `manufacturer` copy rule at :92. The other
+  five are the platform's — `configsets` at :14 and four *American English uses…* on the demo's
+  British spelling. That is this section's own note, borne out to the number, and it is the argument
+  for counting `Solr:` rows in the tool window rather than underlines in the gutter.
+- **DIM-1** — `indexed="true"` and `stored="true"` render greyed across the field block, while
+  `stored="false"`, `multiValued="true"` and `required="true"` render at full strength. Nothing about
+  any of them reaches the Problems view.
+
+**DIM-1 passed without a single edit, which is the whole point of having audited it.** As written it
+asked for `indexed="true"` to be *added* to the `name` field, where it has always been — so the
+gesture would have changed nothing, the dim would have appeared anyway, and the check would have
+been recorded green while testing nothing at all. That is a worse outcome than a failure: a check
+that cannot fail reads exactly like one that passes.
+
+The negative half needs no separate gesture either. `stored="false"` sitting undimmed two lines
+below a dimmed `stored="true"` is DIM-3's claim already on screen, in the committed fixture, with the
+two states side by side.
+
+*The pass also cost one avoidable mistake.* `Cmd+Shift+O` was assumed to be Go to File; in this
+keymap it is not, and the file name was typed into the editor instead. The rule from the previous
+pass extends: drive **navigation** by menu item too, not just caret placement —
+*Navigate → File…* exists and does exactly what the shortcut was assumed to. Guessing a keystroke is
+the same class of error as guessing a coordinate.
