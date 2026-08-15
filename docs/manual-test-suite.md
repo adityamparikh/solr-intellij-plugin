@@ -490,10 +490,18 @@ a guess that looks exactly like knowledge, in a file made almost entirely of sam
       siblings, and typing any element inside it draws no warning. **Silence and permissiveness
       together** — the plugin has nothing to say about a custom component and must not pretend either
       way.
-- [ ] **STR-5** — In a `<requestHandler>`, invoke attribute completion: `name` and `class` are
-      offered. Add an attribute of your own invention and it is **not** underlined — completion
-      offers what Solr reads, while judgement about an unknown attribute belongs to the inspections
-      and they decline it here.
+- [ ] **STR-5** — Inside a `<filterCache>` under `<query>`, invoke attribute completion: Solr's cache
+      attributes are offered — `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
+      `regenerator`, `size`. Add an attribute of your own invention and it is **not** underlined:
+      completion offers what a source describes, while judgement about an unknown attribute belongs
+      to the inspections and they decline it here.
+- [ ] **STR-6** — In a `<requestHandler>`, the same gesture offers **nothing**, and that is correct
+      rather than a gap. `EditableSolrConfigAttributes.json` is the only source describing
+      attributes, and it covers seven paths — the four caches, `requestParsers`, and the two commit
+      elements. `name` and `class` are declared by `SolrConfig.plugins`' `REQUIRE_NAME` and
+      `REQUIRE_CLASS` flags, which the generator does not read. **Silence here is the honest answer**;
+      an offer would mean the plugin had started guessing. The day those flags are read this check
+      inverts, and it should be rewritten rather than deleted.
 
 ## 11. An attribute that restates its default (DIM)
 
@@ -629,9 +637,10 @@ partial result — it is a pass whose outcome nobody knows, which is the same ev
 pass at all. The two below are recorded as unfinished rather than deleted, because knowing
 a pass was started and abandoned is worth more than a gap.
 
-**Of what was added at `2d393fc`, only INSP-13 has been pressed.** Sections 10 (STR), 11 (DIM)
-and 12 (INT), checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped
-behaviour and its automated coverage, not from a sandbox. They are gestures with an expected
+**Of the sixteen checks added at `2d393fc`, four have been pressed** — INSP-13, STR-1, STR-3 and
+STR-5, the last of which failed and was rewritten. Sections 11 (DIM) and 12 (INT), STR-2 and STR-4,
+checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and its
+automated coverage, not from a sandbox. They are gestures with an expected
 outcome and no evidence — which is what every check here is until a pass row says otherwise, and
 the reason this list is worth as little as its last row.
 
@@ -645,6 +654,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 | 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **not completed** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application |
+| 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
@@ -769,3 +779,39 @@ Two rules came out of it, and a scripted pass should not start without both:
 
 Both attempts also confirm what the suite says about itself: a check is worth nothing until a row
 records it, and this row records two out of the fourteen added at `2d393fc`.
+
+### 2026-08-15 — the completion checks, and one that asserted a thing that was never true
+
+Three pressed. Two green, and the third found a defect in this document.
+
+- **STR-1** — typing `<` on a blank line inside `<config>` offered Solr's vocabulary:
+  `requestHandler`, `query`, `cache`, `circuitBreaker`, `codecFactory`, `dataDir`,
+  `directoryFactory`, `expressible`, `featureVectorCache`, `HashDocSet`, `indexConfig`,
+  `indexReaderFactory` and on. **Most of those appear nowhere in the demo file**, which is what
+  separates a catalog from the sibling echo it replaced — an echo could only ever have offered the
+  five elements already written above the caret.
+- **STR-3** — narrowing that list to `nrt` leaves a fuzzy match on `minPrefixQueryTermLength` and
+  **no `nrtMode`**. The catalog demonstrably knows the element, since INSP-13 reports it from the
+  same resource minutes earlier; completion withholds it anyway, which is the whole of the check.
+
+**STR-5 claimed `name` and `class` are offered on a `<requestHandler>`. They are not, and never
+were.** The gesture returns *No suggestions*, first on an unclosed tag — where the failure could
+fairly be blamed on incomplete PSI — and then again on the complete, valid handler at line 24 with
+the file otherwise clean. The catalog settles it: no row carries `requestHandler` as a parent at all.
+
+`EditableSolrConfigAttributes.json` is the only source that describes attributes, and it covers
+seven paths — the four caches, `requestParsers`, `autoCommit` and `autoSoftCommit`. `name` and
+`class` come from `SolrConfig.plugins`' `REQUIRE_NAME` and `REQUIRE_CLASS`, which the generator does
+not read, exactly as it does not read `MULTI_OK`. Attribute completion works: pressed inside a
+`<filterCache>` it offers `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
+`regenerator` and `size` — Solr's own seven.
+
+So the check has been rewritten to press where the data is, and a second one added for the silence,
+because that silence is a decision rather than an absence. **The check was written from a
+description of the feature rather than from the data behind it**, which is a failure mode a document
+of gestures is unusually prone to — a plausible sentence about what completion "should" offer
+survives review in a way a wrong assertion in code does not.
+
+*Restored from `git checkout -- demo/` rather than by undo.* The earlier note warning that scripted
+undo leaves the buffer mid-edit held again: unwinding this one left a stray `<requestHandler` on the
+line. Trust `git status`, not the undo count.
