@@ -629,11 +629,11 @@ partial result — it is a pass whose outcome nobody knows, which is the same ev
 pass at all. The two below are recorded as unfinished rather than deleted, because knowing
 a pass was started and abandoned is worth more than a gap.
 
-**Nothing added at `2d393fc` has been pressed.** Sections 10 (STR), 11 (DIM) and 12 (INT),
-checks INSP-13 to INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and
-its automated coverage, not from a sandbox. They are gestures with an expected outcome and no
-evidence — which is what every check here is until a pass row says otherwise, and the reason
-this list is worth as little as its last row.
+**Of what was added at `2d393fc`, only INSP-13 has been pressed.** Sections 10 (STR), 11 (DIM)
+and 12 (INT), checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped
+behaviour and its automated coverage, not from a sandbox. They are gestures with an expected
+outcome and no evidence — which is what every check here is until a pass row says otherwise, and
+the reason this list is worth as little as its last row.
 
 | Date | Commit | Ran by | Scope | Result | Notes |
 |---|---|---|---|---|---|
@@ -644,6 +644,7 @@ this list is worth as little as its last row.
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
 | 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
+| 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **not completed** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
@@ -734,3 +735,37 @@ exact-match and prefix-capable companion intentions offer themselves on Alt-Ente
 prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
 They remain in *Not yet in the suite* below, which is that list working as intended — the
 suite is behind the plan, not wrong.
+
+### 2026-08-15 — INSP-13, and what nearly went wrong before it
+
+Two checks pressed, both green, and the method is the part worth reading.
+
+- **INSP-13** — `<nrtMode>true</nrtMode>` typed directly inside `<config>` took `solrconfig.xml`
+  from zero problems to one, reading, verbatim: *Solr: The `<nrtMode>` config has been discontinued
+  and NRT mode is always used by Solr. This config will be removed in future versions.* Replacing it
+  with `<indexDefaults>` gave *Solr: `<indexDefaults>` and `<mainIndex>` configuration sections are
+  discontinued. Use `<indexConfig>` instead.* — the replacement named, which is the whole argument
+  for carrying Solr's sentence rather than a paraphrase of it.
+- **BASE-2** — observed either side: zero problems before the edit, and *No problems in
+  solrconfig.xml* again after the undo, with `git status` clean.
+
+**The platform fires its own inspection alongside ours, and a future pass should not be surprised.**
+`<indexDefaults></indexDefaults>` is an empty tag, so IntelliJ's *XML tag has empty body* appears
+next to the Solr finding. Two problems on that line is correct; only the second one is this plugin's.
+
+**The first attempt at this pass typed into a different application entirely.** Coordinates were
+computed from a screenshot and passed to `click at`, which sent the click somewhere other than the
+editor; focus moved to another app and the keystrokes followed it. Nothing in the demo was touched,
+but nothing in the sandbox was tested either, and the damage was outside this project.
+
+Two rules came out of it, and a scripted pass should not start without both:
+
+1. **Never click at computed coordinates.** Drive the menu bar by item name —
+   *Navigate → Line:Column…* places a caret exactly, with no pixel arithmetic anywhere.
+2. **Check the focused element, not the focused application.** Frontmost-app is not enough: opening
+   the Problems tool window moved keyboard focus to its search box, and the next edit was typed
+   there. The accessibility layer answers this directly — `AXFocusedUIElement` reads
+   *Editor for solrconfig.xml* when, and only when, it is safe to type.
+
+Both attempts also confirm what the suite says about itself: a check is worth nothing until a row
+records it, and this row records two out of the fourteen added at `2d393fc`.
