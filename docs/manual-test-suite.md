@@ -658,8 +658,8 @@ partial result — it is a pass whose outcome nobody knows, which is the same ev
 pass at all. The two below are recorded as unfinished rather than deleted, because knowing
 a pass was started and abandoned is worth more than a gap.
 
-**Of the sixteen checks added at `2d393fc`, four have been pressed** — INSP-13, STR-1, STR-3 and
-STR-5, the last of which failed and was rewritten. Sections 11 (DIM) and 12 (INT), STR-2 and STR-4,
+**Of the sixteen checks added at `2d393fc`, five have been pressed** — INSP-13, STR-1, STR-3, STR-5
+and DIM-1, of which STR-5 failed and was rewritten. Sections 11 (DIM) and 12 (INT), STR-2 and STR-4,
 checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and its
 automated coverage, not from a sandbox. They are gestures with an expected
 outcome and no evidence — which is what every check here is until a pass row says otherwise, and
@@ -676,6 +676,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
 | 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **not completed** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application |
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
+| 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
 checks were pressed, all thirteen green:
@@ -884,3 +885,32 @@ the fixture cannot produce.** A gesture with a plausible expected outcome reads 
 until someone presses it, and the automated suites do not catch it because they build their own
 fixtures. Writing a check against the catalog row or the demo line it depends on is cheap; four of
 the five above were settled by one `awk` over a generated TSV.
+
+### 2026-08-15 — the audit's first prediction, confirmed
+
+Two checks, both green, and the interesting one is DIM-1 because the audit had already rewritten it.
+
+- **BASE-1** — seven problems in `managed-schema.xml`, of which **exactly two begin `Solr:`**: the
+  planted `discontinued` field type at :77 and the planted `manufacturer` copy rule at :92. The other
+  five are the platform's — `configsets` at :14 and four *American English uses…* on the demo's
+  British spelling. That is this section's own note, borne out to the number, and it is the argument
+  for counting `Solr:` rows in the tool window rather than underlines in the gutter.
+- **DIM-1** — `indexed="true"` and `stored="true"` render greyed across the field block, while
+  `stored="false"`, `multiValued="true"` and `required="true"` render at full strength. Nothing about
+  any of them reaches the Problems view.
+
+**DIM-1 passed without a single edit, which is the whole point of having audited it.** As written it
+asked for `indexed="true"` to be *added* to the `name` field, where it has always been — so the
+gesture would have changed nothing, the dim would have appeared anyway, and the check would have
+been recorded green while testing nothing at all. That is a worse outcome than a failure: a check
+that cannot fail reads exactly like one that passes.
+
+The negative half needs no separate gesture either. `stored="false"` sitting undimmed two lines
+below a dimmed `stored="true"` is DIM-3's claim already on screen, in the committed fixture, with the
+two states side by side.
+
+*The pass also cost one avoidable mistake.* `Cmd+Shift+O` was assumed to be Go to File; in this
+keymap it is not, and the file name was typed into the editor instead. The rule from the previous
+pass extends: drive **navigation** by menu item too, not just caret placement —
+*Navigate → File…* exists and does exactly what the shortcut was assumed to. Guessing a keystroke is
+the same class of error as guessing a coordinate.
