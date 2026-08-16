@@ -81,8 +81,8 @@ whole, and the gutter action goes with the Server track.
 ### Editor track
 
 - [Step 5 — References, navigation and Find Usages](#step-5-references-navigation-and-find-usages-done) — **done**
-- [Step 6 — Inspections](#step-6-inspections-in-progress) — **in progress**; all seven inspections shipped. What holds
-  the heading is the sandbox gesture two of them still lack, not a rule that is missing
+- [Step 6 — Inspections](#step-6-inspections-done) — **done**; all seven inspections shipped, and the sandbox gesture
+  the last two lacked is written, so nothing is left to hold the heading open
 - [Step 7 — Match hints and quick-fixes](#step-7-match-hints-and-quick-fixes-done) — **done**
 - [Step 23 — Explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done) —
   **done**
@@ -155,7 +155,7 @@ whole, and the gutter action goes with the Server track.
 - [x] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr ships, vendored verbatim and
   recording the Solr release they came from. The gate asserts *clean against what Solr itself ships*, which means
   nothing without naming which Solr. They are the clean fixtures
-  for [inspections](#step-6-inspections-in-progress) and the subject of the golden-file gate
+  for [inspections](#step-6-inspections-done) and the subject of the golden-file gate
   in [CI gates](#step-20-ci-gates-in-progress).
 
   **Four rather than two, and under `src/test/resources/shipped-configsets/<line>/<name>/` rather than the
@@ -464,7 +464,7 @@ recovery for.
 1. Reference providers for: a field's `type` to its field type; `copyField` source and destination to fields;
    request-handler parameters in `solrconfig.xml` to schema fields; a filter's resource attribute to the `stopwords.txt`
    or `synonyms.txt` it names.
-2. Expose a reference-graph query surface that [inspections](#step-6-inspections-in-progress) and
+2. Expose a reference-graph query surface that [inspections](#step-6-inspections-done) and
    [rename](#step-8-rename) reuse.
 3. Reference tests asserting resolve targets on representative configsets.
 
@@ -509,7 +509,7 @@ refused.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
-### Step 6: Inspections (in progress)
+### Step 6: Inspections (done)
 
 Where the zero-false-positive requirement gets teeth.
 
@@ -563,15 +563,17 @@ prevent.** Seven inspections are planned here and all seven are built. Eleven in
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-done),
 `SolrMisspelledParameterInspection` to
 [solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-done), and
-`SolrUnsupportedFieldOperationInspection` to the field-capability work that motivated it. There are twelve
-[manual suite](../../docs/manual-test-suite.md) INSP checks, which is a third count again: the dangling-`copyField`
-inspection gets a second check for reacting to a live edit and another restores the baseline, while the non-indexed
-relevance check and the newest inspection have no sandbox gesture yet. Read a count against what it counts; "eleven
-inspections exist" is true and says nothing about this step's progress.
+`SolrUnsupportedFieldOperationInspection` to the field-capability work that motivated it. There are fifteen
+[manual suite](../../docs/manual-test-suite.md) INSP checks, which is a third count again and breaks down as neither
+of the other two: **eight** of them press this step's seven, the dangling-`copyField` inspection getting a second
+check for reacting to a live edit; **six** press the four classes belonging to the three steps named above, the
+field-capability rules taking three of those between them; and **one** restores the baseline rather than testing
+anything. Read a count against what it counts; "eleven inspections exist" is true and says nothing about this step's
+progress.
 
 **Success criteria:**
 
-- [ ] Every inspection fires on crafted-bad fixtures and on nothing clean.
+- [x] Every inspection fires on crafted-bad fixtures and on nothing clean.
     - [x] Dangling `copyField` source or destination.
     - [x] A field naming an undeclared field type.
     - [x] A handler parameter naming a field the schema does not declare.
@@ -583,6 +585,14 @@ inspections exist" is true and says nothing about this step's progress.
 All seven are built. The last one's dependency closed when the generator learned to read the `solrconfig.xml` element
 vocabulary, which carries each retirement notice as the literal Solr ships beside the code that rejects it — so the
 inspection asserts nothing of its own and quotes Solr instead.
+
+**What held the heading open after that was a gesture rather than a rule, and both now exist.** Every one of the
+seven is reachable by hand in the sandbox: the last two to get one are the non-indexed relevance check at INSP-15 and
+the discontinued element at INSP-13. INSP-13 has been pressed; INSP-15 has been audited against the demo lines it
+names and the catalog row its rule turns on, and not pressed. **That distinction is the manual suite's to record and
+not this step's to wait on** — a step ships a gesture with an outcome it can produce, and whether anyone has pressed
+it is what [the pass log](../../docs/manual-test-suite.md) exists to say. Reading a pass out of this heading is the
+same mistake as reading a status out of the code.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
@@ -712,7 +722,7 @@ order to decide, and then discard it. An underline with no Alt-Enter is more fru
 [demo step 25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
 survive the obvious follow-up question, which is "so what do I put there instead".
 
-**Dependencies:** [inspections](#step-6-inspections-in-progress) for the quick-fixes;
+**Dependencies:** [inspections](#step-6-inspections-done) for the quick-fixes;
 [match hints](#step-7-match-hints-and-quick-fixes-done) for the documentation provider they extend.
 
 ### Step 24: Completing the schema's own vocabulary (done)
@@ -901,7 +911,7 @@ dependency order rather than in the order the actions are numbered:
   present-day-behaviour fixture, pinned before the descriptor gate moved rather than after.
 - `#140` reports a parameter that is almost one Solr reads — **action 3** — and `#144` reports an element
   Solr no longer accepts, which is the seventh inspection
-  [that step](#step-6-inspections-in-progress) was blocked on and which this vocabulary unblocked.
+  [that step](#step-6-inspections-done) was blocked on and which this vocabulary unblocked.
 
 **What the last two actions turned out to need, recorded because the shape was the hard part.** Action 1
 needed a generator pass over `SolrConfig`'s own
@@ -978,7 +988,7 @@ too. Only `<jmx>` is what the word warning suggests: a `log.warn` pointing at `s
 continuing. So the plugin is not being helpful by flagging them — it is reporting a file that will not
 load. And the per-line sets differ by exactly one entry,
 `featureVectorCache`, added in 10 — which means the element data
-[the seventh inspection](#step-6-inspections-in-progress) is blocked on becomes derivable from this same
+[the seventh inspection](#step-6-inspections-done) is blocked on becomes derivable from this same
 pass, while also showing that **nothing was removed between the two supported lines**, so that inspection
 would have nothing to report until a future line drops something.
 
@@ -1973,7 +1983,7 @@ annotator, which is what the restated-default dim already is. Recorded, not deci
 **Acceptance:** No demo step — this step *is* the automated gate. It is what stops the demo passing while the suite
 quietly rots.
 
-**Dependencies:** [inspections](#step-6-inspections-in-progress) for the golden-file gate;
+**Dependencies:** [inspections](#step-6-inspections-done) for the golden-file gate;
 [the factory catalog generator](#step-9-factory-catalog-generator-done) for catalog tests
 
 ### Step 21: Documentation
@@ -1994,7 +2004,7 @@ quietly rots.
 **Acceptance:** No demo step. The compatibility matrix written here is what makes the version-drift check
 in [CI gates](#step-20-ci-gates-in-progress) meaningful rather than vacuous.
 
-**Dependencies:** [inspections](#step-6-inspections-in-progress) for the catalog content,
+**Dependencies:** [inspections](#step-6-inspections-done) for the catalog content,
 [CI gates](#step-20-ci-gates-in-progress) for the checks that police it
 
 ---
