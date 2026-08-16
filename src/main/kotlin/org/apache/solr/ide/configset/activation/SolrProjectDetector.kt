@@ -68,8 +68,14 @@ class SolrProjectDetector(private val project: Project) {
      * matter today — inspections, annotators, reference providers — already hold the lock, an action
      * or a background task does not. Taking it here rather than relying on the caller keeps the
      * guarantee local to the code that needs it; a nested read action is free.
+     *
+     * **`computeBlocking` rather than `computeCancellable`, and that is the whole of the choice.**
+     * The deprecated `compute` this replaced delegated straight to `computeBlocking`, so the two
+     * are the same code path and the swap changes nothing. `computeCancellable` is a different
+     * contract: it asserts a background thread and can abandon the read, and this gate is called
+     * from the EDT on every file the user opens.
      */
-    private fun hasSolrClientLibrary(): Boolean = ReadAction.compute<Boolean, RuntimeException> {
+    private fun hasSolrClientLibrary(): Boolean = ReadAction.computeBlocking<Boolean, RuntimeException> {
         var found = false
         OrderEnumerator.orderEntries(project).librariesOnly().forEachLibrary { library ->
             val name = library.name
