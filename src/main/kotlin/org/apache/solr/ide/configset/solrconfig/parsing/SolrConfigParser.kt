@@ -155,7 +155,7 @@ object SolrConfigParser {
         in SORT_PARAMETERS -> value.split(",").mapNotNull { clause ->
             clause.trim().split(WHITESPACE).firstOrNull()?.let { plainFieldName(it) }?.let { it to null }
         }
-        in PLAIN_PARAMETERS -> value.trim().split(",", " ").mapNotNull { plainFieldName(it) }.map { it to null }
+        in PLAIN_PARAMETERS -> value.trim().split(PLAIN_SEPARATORS).mapNotNull { plainFieldName(it) }.map { it to null }
         else -> emptyList()
     }
 
@@ -199,6 +199,21 @@ object SolrConfigParser {
         (first().isDigit() || first() in NUMBER_LEADS) && toDoubleOrNull() != null
 
     private val WHITESPACE = Regex("\\s+")
+
+    /**
+     * What separates one name from the next in `fl` and its kin: a comma, whitespace, or both.
+     *
+     * **A literal space is not the whole of whitespace, and reading it as such reported a field
+     * nobody wrote.** These parameters are routinely written one name per line, which Solr accepts —
+     * it splits on commas and whitespace alike. Splitting on `","` and `" "` left the newline inside
+     * the token, and since a newline is not an excluded character the trimmed result was a single
+     * "field" spelling two names with a line break in the middle. The unknown-field inspection then
+     * reported it, on a file Solr reads correctly.
+     *
+     * The boostable parameters one branch above always split on [WHITESPACE] and so never had this;
+     * the two branches disagreeing about what a separator is was the defect.
+     */
+    private val PLAIN_SEPARATORS = Regex("[,\\s]+")
 
     /** The characters [WHITESPACE] matches, for the caller that needs them one at a time. */
     private val WHITESPACE_CHARACTERS = charArrayOf(' ', '\t', '\n', '\r')

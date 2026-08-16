@@ -17,11 +17,15 @@ import org.apache.solr.ide.model.schema.SolrMatchCapability
  * @property typeName the field type the companion will use, whether reused or generated
  * @property generatesType true when [typeName] has to be written as well, false when the schema
  *   already declares it
+ * @property multiValued true when the source field holds several values, which the companion must
+ *   hold too: `copyField` carries every value across, and a single-valued destination fed by a
+ *   multi-valued source fails while Solr is indexing rather than anywhere the editor could show it
  */
 data class SolrCompanionPlan(
     val companionField: String,
     val typeName: String,
     val generatesType: Boolean,
+    val multiValued: Boolean = false,
 )
 
 /**
@@ -79,13 +83,40 @@ internal object SolrCompanions {
 
         // First in document order wins, and the intention names the winner so that a schema
         // declaring several does not have one chosen for it silently.
+        val multiValued = isMultiValued(field, fieldType)
+
         val declared = model.fieldTypes.values.map { it.effective }.firstOrNull(reusable)
-        if (declared != null) return SolrCompanionPlan(companionField, declared.name, generatesType = false)
+        if (declared != null) {
+            return SolrCompanionPlan(companionField, declared.name, generatesType = false, multiValued = multiValued)
+        }
 
         // Only the free-name case is checked, because the other half of the rule cannot be reached:
         // a type under this name that *were* reusable would have been found above, and reuse never
         // falls through to here.
         if (generatedTypeName in model.fieldTypes) return null
-        return SolrCompanionPlan(companionField, generatedTypeName, generatesType = true)
+        return SolrCompanionPlan(companionField, generatedTypeName, generatesType = true, multiValued = multiValued)
     }
+
+    /**
+     * Whether the source field holds several values, which the companion has to hold too.
+     *
+     * **This is the one property of the source that the companion cannot ignore.** `copyField` copies
+     * every value the source receives, so a multi-valued source feeding a single-valued destination
+     * fails at index time — Solr reports *multiple values encountered for non-multiValued copy field*
+     * — and it fails on the user's data, long after the intention was accepted and the schema looked
+     * fine. Writing a companion that cannot receive what it is fed is worse than not offering one.
+     *
+     * Read from the field, then the type, then Solr's default of false, which is the same order
+     * `multiValued` resolves in generally. There is no version or class dependence to consult:
+     * unlike `docValues` and `uninvertible`, this property has one flat default across every schema
+     * version and every field type.
+     *
+     * The type's attribute is compared ignoring case, because Solr reads it with
+     * `Boolean.parseBoolean`; a spelling that is neither word is Solr's `false`, and here that
+     * agrees with the default anyway.
+     */
+    private fun isMultiValued(field: SolrField, fieldType: SolrFieldType): Boolean =
+        field.multiValued
+            ?: fieldType.attributes["multiValued"]?.equals("true", ignoreCase = true)
+            ?: false
 }

@@ -54,6 +54,43 @@ class SolrFieldOperationsTest {
         assertEquals(true, supports(SolrFieldOperation.FILTER, attributes))
     }
 
+    /**
+     * Solr spells these with `Boolean.parseBoolean`, so the casing a reader chose is not a fact.
+     *
+     * `FieldProperties.parseProperties` reads every one of these attributes through
+     * `Boolean.parseBoolean(val.toString())`, which ignores case — `indexed="TRUE"` is a field that
+     * indexes. A case-sensitive comparison here resolved it to a definite *false* and the operation
+     * inspections underlined a schema that works, which is the one thing they must never do.
+     *
+     * The plugin already agreed with Solr on the other side of this: `SolrValueType.BOOLEAN` matches
+     * ignoring case, so the invalid-value inspection accepted the spelling this rule misread. The two
+     * disagreeing about one attribute is what makes this a defect rather than a strictness choice.
+     */
+    @Test
+    fun `boolean properties are read the way Solr reads them, ignoring case`() {
+        val shouting = mapOf("indexed" to "TRUE", "docValues" to "False")
+        assertEquals(true, supports(SolrFieldOperation.SEARCH, shouting))
+        assertEquals(true, supports(SolrFieldOperation.FILTER, shouting))
+
+        val mixed = mapOf("indexed" to "False", "docValues" to "True")
+        assertEquals(true, supports(SolrFieldOperation.SEARCH, mixed))
+    }
+
+    /**
+     * A spelling neither Solr word covers is undetermined, not false.
+     *
+     * Solr would read `yes` as false, and this rule could follow it there. It does not: null is what
+     * this class says when the schema has not clearly stated the property, and a value the table does
+     * not recognise has not clearly stated anything. Reporting on it would be guessing about a file
+     * whose real problem is that the value is invalid — which is the invalid-value inspection's to
+     * say, in its own words, rather than this rule's to infer.
+     */
+    @Test
+    fun `an unrecognised boolean spelling stays undetermined`() {
+        val attributes = mapOf("indexed" to "yes", "docValues" to "false")
+        assertNull(supports(SolrFieldOperation.SEARCH, attributes))
+    }
+
     @Test
     fun `a field with neither is searchable by nothing`() {
         val attributes = mapOf("indexed" to "false", "docValues" to "false")

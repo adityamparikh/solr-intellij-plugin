@@ -46,6 +46,36 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
         assertEquals(text, 1, text.split("""class="solr.StrField"""").size - 1)
     }
 
+    /**
+     * A multi-valued source gets a multi-valued companion, or the schema breaks at index time.
+     *
+     * `copyField` copies every value the source receives, so Solr rejects a multi-valued source
+     * feeding a single-valued destination with *multiple values encountered for non-multiValued copy
+     * field* — and it rejects it while indexing the user's documents, not while they are looking at
+     * the schema. The intention wrote a single-valued companion unconditionally, which made accepting
+     * it a way to break indexing later with an edit the plugin had offered.
+     */
+    fun testAMultiValuedSourceGetsAMultiValuedCompanion() {
+        applyIntention("""$stringType<field name="ta<caret>gs" type="text_general" multiValued="true"/>""")
+
+        val text = myFixture.file.text
+        assertTrue(
+            text,
+            text.contains(
+                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
+            ),
+        )
+        assertTrue(text, text.contains("""<copyField source="tags" dest="tags_exact"/>"""))
+    }
+
+    /** And a single-valued source keeps the shorter tag, so the attribute is not written by habit. */
+    fun testASingleValuedSourceGetsNoMultiValuedAttribute() {
+        applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
+
+        val text = myFixture.file.text
+        assertFalse(text, text.contains("""name="name_exact"""" + """ type="string" indexed="true" stored="false" multiValued"""))
+    }
+
     fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {
         applyIntention("""<field name="na<caret>me" type="text_general"/>""")
 
