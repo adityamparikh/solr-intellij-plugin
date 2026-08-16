@@ -1838,9 +1838,41 @@ flagged.
 - [ ] Missing description files and version drift both fail the build.
     - [x] A registered inspection with no description file fails the build. Keyed on `shortName`, which is what the
       platform resolves the file by; proven by deleting one.
-    - [ ] Version drift, which is action 4 and waits on [documentation](#step-21-documentation) writing the matrix.
-- [ ] `verifyPlugin` passes for every IDE build the compatibility matrix claims, and the set it checks is read from
-  where the matrix is written rather than restated.
+    - [x] **Solr version drift fails the build**, which turned out to have teeth today rather than waiting on the
+      matrix. See below — the drift that was reachable is not the one this line was written about.
+    - [ ] *IDE* version drift, which is what action 4 originally meant, and still waits on
+      [documentation](#step-21-documentation) writing the matrix.
+- [x] `verifyPlugin` passes for every IDE build the compatibility matrix claims, and the set it checks is read from
+  where the matrix is written rather than restated. **Half of that sentence is deferred and the deferral is the
+  point:** the set is now declared once, in `verifiedIdeBuilds` in `build.gradle.kts`, and Step 21 is to render the
+  matrix from it rather than restate it beside it. Left unconfigured, the task verified against whatever the build
+  happened to target — the same hole the pinned verifier version closed one shape larger.
+
+**Actions 4 and 5 met in the middle, and what they found is that `supportedSolrLines` is not the single place it says
+it is.** The build declares the lines; `SolrClassCatalog.SUPPORTED_LINES` and a private twin inside
+`SolrElementCatalog` are hand-written copies of that list in another language, each carrying a KDoc promising it is
+"kept in step with the `supportedSolrLines` the build declares" — a promise with nothing behind it. **Both directions
+of drift fail silently.** A line declared with no generated resource reads as *empty*, deliberately, so a missing
+catalog cannot take the editor down: completion and documentation would simply stop answering for that line with
+nothing in the log. A line generated but never declared is quieter still — the resource ships inside the plugin and
+every configset targeting it falls back to the newest line's answers.
+
+`SolrCatalogResourceTest` closes it in both directions, and adds the three questions a per-line catalog test should
+have been asking anyway: that all three resources for a line were read from one release, that the release is of that
+line, and that the two lines are not one catalog shipped twice. The last is proven on `featureVectorCache`, the single
+element that separates them — named in the test rather than left implicit, because one witness is a fragile thing to
+rest on and the day a line drops something is the day it gains a second.
+
+**What the Verifier reports, now that it runs against something named.** Compatible against `IU-262.8665.258`, with one
+deprecated API usage: `ReadAction.compute(ThrowableComputable)` in `SolrProjectDetector.hasSolrClientLibrary`. Not a
+failure and not scheduled for removal, but it is the class of finding no test here can produce, which is the argument
+this step made for adopting the task at all.
+
+**One IDE, and that is a gap rather than a decision.** `plugin.xml` takes `com.intellij.modules.java` as an *optional*
+dependency and states in writing that the plugin loads in an IDE without Java PSI, with class navigation simply
+absent. Nothing has ever checked that claim, and the Verifier is exactly what could: adding a non-Java IDE to
+`verifiedIdeBuilds` is the change that would. It is left out because widening the set is a decision about what this
+plugin supports, and that belongs with the matrix rather than with a gate.
 
 **What the first run found, which is the argument for having built it.** Nine of the eleven registered inspections were
 silent on all four configsets. Of the two that were not, one was a defect: `<str name="spellcheck">on</str>` — the

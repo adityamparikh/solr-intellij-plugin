@@ -5,6 +5,7 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedArtifactResult
 import org.gradle.jvm.JvmLibrary
 import org.gradle.language.base.artifact.SourcesArtifact
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -60,6 +61,38 @@ dependencies {
         // Declaring the tool but not its version leaves the same hole a shape smaller. Bumping this
         // is a commit, exactly as the action SHAs in `.github/workflows` are.
         pluginVerifier("1.409")
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// What the Plugin Verifier checks against. **This is the single place the verified IDE builds are
+// declared**, and the compatibility matrix Step 21 writes is due to be rendered from it rather than
+// restated beside it — a matrix promising a build the Verifier never checked is worse than no
+// matrix at all.
+//
+// One entry today, and that is the honest number rather than a placeholder. `since-build` is 262
+// with no upper bound, so the plugin claims every build from 2026.2 onward; 2026.2 is the newest
+// that exists, and nothing can verify a build that has not shipped. The list grows by one on each
+// platform release the plugin is bumped to, in the same commit.
+// ---------------------------------------------------------------------------------------------
+val verifiedIdeBuilds = listOf("2026.2")
+
+intellijPlatform {
+    pluginVerification {
+        ides {
+            // Declared rather than defaulted. Left unconfigured, the task verifies against whatever
+            // the build happens to target — which is the same class of hole the pinned verifier
+            // version above closed: a gate whose subject is decided somewhere else changes answer
+            // without a commit here.
+            //
+            // **IntelliJ IDEA only, and that is a gap rather than a decision.** `plugin.xml` takes
+            // `com.intellij.modules.java` as an *optional* dependency and states in writing that the
+            // plugin loads in an IDE without Java PSI, with class navigation simply absent. Nothing
+            // has ever checked that claim, and the Verifier is what could: adding a non-Java IDE
+            // here is the change that would. It is left out because widening the set is a decision
+            // about what this plugin supports, which belongs with the matrix and not with a gate.
+            verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
+        }
     }
 }
 
