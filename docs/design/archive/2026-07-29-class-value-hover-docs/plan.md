@@ -689,7 +689,7 @@ In `specs/plans/0002-solr-intellij-plugin-plan.md`, Step 10's opening paragraph 
 ```
 Quick documentation on `class` values shipped ahead of the catalog's prose column: the popup
 renders the catalog's kind, spellings and attributes plus the schema's own usage, and the
-Javadoc summary waits on [Step 9's](#step-9-factory-catalog-generator-in-progress) `-sources`
+Javadoc summary waits on [Step 9's](#step-9-factory-catalog-generator-done) `-sources`
 resolution.
 ```
 
