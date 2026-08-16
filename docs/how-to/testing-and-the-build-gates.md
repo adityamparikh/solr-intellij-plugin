@@ -228,10 +228,12 @@ The list grows by one on each platform bump, in the same commit.
 **It reports deprecation as well as incompatibility**, which is the class of finding no test here can
 produce — today, one `ReadAction.compute(ThrowableComputable)` usage.
 
-**IntelliJ IDEA only, and that is a gap rather than a decision.** `plugin.xml` takes
-`com.intellij.modules.java` as an *optional* dependency and states that the plugin loads in an IDE
-without Java PSI, class navigation simply absent. Nothing has ever checked that. Adding a non-Java
-IDE to this list is the change that would.
+**IntelliJ IDEA only, and the list is complete rather than a first entry.** The plugin targets IDEA
+and nothing else. Worth stating, because the alternative reads as an oversight: `plugin.xml` takes
+`com.intellij.modules.java` as an *optional* dependency, which looks like a claim that the plugin
+runs in an IDE without Java PSI. Nothing verifies that claim because nothing needs to — IDEA has
+been a single unified distribution since 2025.3 and bundles Java, so the optional dependency is
+always satisfied in every IDE this list names.
 
 ## The documentation gate
 

@@ -85,12 +85,14 @@ intellijPlatform {
             // version above closed: a gate whose subject is decided somewhere else changes answer
             // without a commit here.
             //
-            // **IntelliJ IDEA only, and that is a gap rather than a decision.** `plugin.xml` takes
-            // `com.intellij.modules.java` as an *optional* dependency and states in writing that the
-            // plugin loads in an IDE without Java PSI, with class navigation simply absent. Nothing
-            // has ever checked that claim, and the Verifier is what could: adding a non-Java IDE
-            // here is the change that would. It is left out because widening the set is a decision
-            // about what this plugin supports, which belongs with the matrix and not with a gate.
+            // **IntelliJ IDEA only, and that is the product decision rather than an omission.** The
+            // plugin targets IDEA and nothing else, so this list is complete rather than a first
+            // entry. It is stated here because the alternative reads as an oversight: `plugin.xml`
+            // takes `com.intellij.modules.java` as an *optional* dependency, which looks like a
+            // claim that the plugin runs in an IDE without Java PSI — and nothing verifies that,
+            // because nothing needs to. IDEA has been a single unified distribution since 2025.3
+            // and bundles Java, so the optional dependency is always satisfied in every IDE this
+            // list names.
             verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
         }
     }

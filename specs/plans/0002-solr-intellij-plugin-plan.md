@@ -1868,11 +1868,18 @@ deprecated API usage: `ReadAction.compute(ThrowableComputable)` in `SolrProjectD
 failure and not scheduled for removal, but it is the class of finding no test here can produce, which is the argument
 this step made for adopting the task at all.
 
-**One IDE, and that is a gap rather than a decision.** `plugin.xml` takes `com.intellij.modules.java` as an *optional*
-dependency and states in writing that the plugin loads in an IDE without Java PSI, with class navigation simply
-absent. Nothing has ever checked that claim, and the Verifier is exactly what could: adding a non-Java IDE to
-`verifiedIdeBuilds` is the change that would. It is left out because widening the set is a decision about what this
-plugin supports, and that belongs with the matrix rather than with a gate.
+**One IDE, and the list is complete rather than a first entry — the plugin targets IntelliJ IDEA and nothing else.**
+Recorded here because the alternative reads as an oversight rather than a decision, and because one piece of the
+plugin still implies otherwise: `plugin.xml` takes `com.intellij.modules.java` as an *optional* dependency, with
+`solr-withJava.xml` carrying the one registration that needs Java PSI. That split exists to let the plugin load in an
+IDE without Java, which is a case this scope removes — IDEA has been a single unified distribution since 2025.3 and
+bundles Java, so the optional dependency is satisfied in every IDE that will ever run this plugin.
+
+**Whether the split should therefore collapse is a real question and this step does not answer it.** Making the
+dependency hard would delete a descriptor, a conditional registration and a claim nothing verifies. Against that: the
+specification's Phase 3 needs Java PSI unconditionally anyway, so the split is due to go regardless, and doing it
+under a CI-gates step would be a scope decision wearing a gate's clothes. Left standing, with the reason it is no
+longer load-bearing written down, which is what stops it reading as support for a platform nobody targets.
 
 **What the first run found, which is the argument for having built it.** Nine of the eleven registered inspections were
 silent on all four configsets. Of the two that were not, one was a defect: `<str name="spellcheck">on</str>` — the
