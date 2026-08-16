@@ -1,9 +1,11 @@
 package org.apache.solr.ide.model.vocabulary
 
 import org.apache.solr.ide.model.SolrVersionSelection
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * The Solr lines the code declares, against the ones the build actually generated.
@@ -26,7 +28,7 @@ import org.junit.Test
 class SolrCatalogResourceTest {
 
     @Test
-    fun `every declared line ships all three catalogs`() {
+    fun `every declared line ships every generated resource`() {
         for (line in SolrClassCatalog.SUPPORTED_LINES) {
             for (resource in resourceNamesFor(line)) {
                 assertTrue(
@@ -35,6 +37,49 @@ class SolrCatalogResourceTest {
                 )
             }
         }
+    }
+
+    /**
+     * Every resource the plugin reads is the generator's own output, and `clean` removes it.
+     *
+     * **This is what "the catalog regenerates from a clean build" reduces to.** The wiring is one line
+     * of `build.gradle.kts` — the generator's output directory is a resource directory of the main
+     * source set, which is what makes `processResources` depend on it — and the two ways it stops
+     * being true are both silent. Copies checked into `src/main/resources` would keep every other test
+     * in this file green while the generator's output went stale beside them; an output directory
+     * moved out from under the build directory would survive `clean`, so a build after one would ship
+     * whatever the last generator to run happened to write, indefinitely.
+     *
+     * The two paths come from the build rather than from a literal here, so this asserts against the
+     * wiring itself: the directory named is the task's own `outputDirectory`, and the directory it
+     * must sit inside is the one `clean` deletes. Byte equality with the classpath copy is what says
+     * the resource the plugin actually loads is that file and not another one shadowing it.
+     */
+    @Test
+    fun `every shipped resource is the generator's output, from inside the directory clean removes`() {
+        val generated = File(requiredPath("solr.catalog.generated.dir"))
+        val buildDirectory = File(requiredPath("solr.build.dir"))
+        assertTrue(
+            "the generator writes to $generated, which clean does not remove",
+            generated.canonicalPath.startsWith(buildDirectory.canonicalPath + File.separator),
+        )
+        for (line in SolrClassCatalog.SUPPORTED_LINES) {
+            for (resource in resourceNamesFor(line)) {
+                val written = File(generated, resource.removePrefix("/"))
+                assertTrue("$resource was not written by the generator", written.isFile)
+                assertArrayEquals(
+                    "the $resource on the classpath is not the one the generator wrote",
+                    written.readBytes(),
+                    checkNotNull(SolrClassCatalog::class.java.getResourceAsStream(resource)) {
+                        "$resource is not on the test classpath"
+                    }.use { it.readBytes() },
+                )
+            }
+        }
+    }
+
+    private fun requiredPath(property: String): String = checkNotNull(System.getProperty(property)) {
+        "$property is set by the test task in build.gradle.kts and is what this asserts against"
     }
 
     /**
@@ -56,9 +101,9 @@ class SolrCatalogResourceTest {
     }
 
     /**
-     * All three resources for one line were read from the same Solr release.
+     * Every resource for one line was read from the same Solr release.
      *
-     * The generator writes the release into each header, and the three passes take their input from
+     * The generator writes the release into each header, and the passes take their input from
      * one resolved configuration — so a disagreement means a partially stale build directory, where
      * one catalog was regenerated for a new release and the others were served from the cache. The
      * result is a plugin that documents a class from one release and its parameters from another,
@@ -142,10 +187,18 @@ class SolrCatalogResourceTest {
         )
     }
 
+    /**
+     * Everything `:generateSolrCatalog` writes for one line.
+     *
+     * The field-property list is here with the other three even though only a test reads it: what
+     * these assertions are about is the generator's output being complete and current, and a resource
+     * left out of the list is one nothing would notice going stale.
+     */
     private fun resourceNamesFor(line: Int) = listOf(
         "/solr-catalog/solr-$line.tsv",
         "/solr-catalog/parameters-$line.tsv",
         "/solr-catalog/elements-$line.tsv",
+        "/solr-catalog/field-properties-$line.txt",
     )
 
     /**

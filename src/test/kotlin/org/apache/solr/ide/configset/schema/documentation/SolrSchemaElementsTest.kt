@@ -100,8 +100,25 @@ class SolrSchemaElementsTest {
 
     @Test
     fun `a fieldType says how many fields use it`() {
-        assertTrue(specifics("fieldType", "name" to "text_general")!!.contains("2 fields"))
-        assertTrue(specifics("fieldType", "name" to "string")!!.contains("1 field"))
+        val text = specifics("fieldType", "name" to "text_general")!!
+        assertTrue(text, text.contains("2 fields"))
+        // No pattern names this type, so the dynamic half is absent rather than a nought.
+        assertTrue(text, !text.contains("dynamic"))
+    }
+
+    /**
+     * A pattern is a user of its type, and counting only declared fields said it was not.
+     *
+     * `string` here is named by one field and one `<dynamicField>`. Reporting "1 field" put this
+     * popup at odds with `SolrUnusedFieldTypeInspection`, which reads the same model, counts the
+     * pattern, and correctly declines to call the type unused — one fact, one file, two answers.
+     * The counts stay separate because a pattern is not a field: summing them would replace an
+     * undercount with a claim that documents carry three fields of the type when the schema names one.
+     */
+    @Test
+    fun `a fieldType counts the patterns that name it as well as the fields`() {
+        val text = specifics("fieldType", "name" to "string")!!
+        assertTrue(text, text.contains("1 field and 1 dynamic field"))
     }
 
     @Test

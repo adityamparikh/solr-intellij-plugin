@@ -76,7 +76,7 @@ the same answer the property popups already compute, surfaced at the attribute t
 
 ### A hand-written table for factory attribute meanings, and why that is not a reversal of principle
 
-[Step 10](../../../../specs/plans/0002-solr-intellij-plugin-plan.md#step-10-completion-validation-and-quick-documentation-in-progress)
+[Step 10](../../../../specs/plans/0002-solr-intellij-plugin-plan.md#step-10-completion-validation-and-quick-documentation-done)
 declined per-attribute prose, and the reason it gave was sound: the catalog is generated from
 bytecode, Javadoc is written per class, so no generated source carries it. Every word of that
 remains true.

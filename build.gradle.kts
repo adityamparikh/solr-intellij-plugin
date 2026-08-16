@@ -294,3 +294,15 @@ val generateSolrCatalog = tasks.register<GenerateSolrCatalogTask>("generateSolrC
 // The catalog ships with the plugin, so it is a resource of the main source set. This is what makes
 // `processResources` depend on the generator, and therefore what makes a clean build regenerate it.
 sourceSets.named("main") { resources.srcDir(generateSolrCatalog) }
+
+// The two paths `SolrCatalogResourceTest` needs to hold the sentence above to more than intent: where
+// the generator writes, and what `clean` removes. Read off the task and the layout rather than
+// restated, so the test is checking this wiring rather than a second copy of it — an `outputDirectory`
+// moved out from under the build directory fails the test instead of quietly ending the regeneration.
+tasks.test {
+    systemProperty(
+        "solr.catalog.generated.dir",
+        generateSolrCatalog.get().outputDirectory.get().asFile.absolutePath,
+    )
+    systemProperty("solr.build.dir", layout.buildDirectory.get().asFile.absolutePath)
+}
