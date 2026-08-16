@@ -10,7 +10,7 @@ import com.intellij.psi.xml.XmlAttribute
 import org.apache.solr.ide.configset.schema.annotator.SolrRestatedAttribute
 
 /**
- * Removing an attribute whose value the field would have had anyway.
+ * Removing an attribute whose value the element would have had anyway.
  *
  * **The companion to [the dim][org.apache.solr.ide.configset.schema.annotator.SolrRestatedDefaultAnnotator],
  * and offered rather than applied.** Restating a default is correct Solr and sometimes deliberate —
@@ -18,7 +18,9 @@ import org.apache.solr.ide.configset.schema.annotator.SolrRestatedAttribute
  * the attribute is unwanted. It reports that removing it changes nothing and leaves the choice
  * alone, which is what an intention means and a quick-fix would not.
  *
- * Both surfaces read one predicate, so the offer cannot disagree with the dim.
+ * Both surfaces read one predicate, so the offer cannot disagree with the dim. That is also why this
+ * needed nothing at all when analysis-factory attributes joined: the predicate learned a third kind
+ * of element and the offer followed, which is the property the sharing exists to buy.
  *
  * Dumb-aware through the marker interface, as the companion intentions are. The whole answer comes
  * from the configset's own files.
@@ -48,12 +50,12 @@ class SolrRemoveRestatedAttributeIntention : IntentionAction, DumbAware {
     override fun getText(): String = attributeName?.let { "$familyName: $it" } ?: familyName
 
     /**
-     * Whether the caret sits on an attribute that restates what the field resolves to without it.
+     * Whether the caret sits on an attribute restating what its element resolves to without it.
      *
      * @param project the open project
      * @param editor the editor the caret is in
      * @param file the file being edited
-     * @return true when the attribute can be removed without changing the field
+     * @return true when the attribute can be removed without changing what the element declares
      */
     override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean {
         attributeName = null

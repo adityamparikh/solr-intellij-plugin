@@ -3,6 +3,7 @@ package org.apache.solr.ide.configset.schema.intention
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.schema.SolrFieldProperties
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 
 /**
  * Removing an attribute the field would have had anyway.
@@ -82,6 +83,70 @@ class SolrRemoveRestatedAttributeIntentionTest : SolrConfigsetTestCase() {
         myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
         assertFalse("""the attribute should be gone: ${myFixture.file.text}""", "indexed" in myFixture.file.text)
         assertEquals(before, effectiveProperties("sku"))
+    }
+
+    /**
+     * Every setting the factory will actually run with, resolved through the catalog's defaults.
+     *
+     * The analysis-chain counterpart to [effectiveProperties], and the same argument for it: what
+     * makes the offer safe is not that the text still parses but that the filter is configured
+     * identically, so the comparison has to fold each written value together with the default it
+     * would fall back to. Reading the written attributes alone would compare two maps that differ
+     * by construction after a deletion, and prove nothing at all.
+     */
+    private fun effectiveFactorySettings(typeName: String): Map<String, String?> {
+        val model = SolrConfigsetReader.getInstance(project).modelFor(myFixture.file)!!
+        val component = model.fieldTypes.getValue(typeName).effective.indexAnalyzer!!.components.single()
+        val entry = SolrClassCatalog.find(component.className, model.solrVersion)!!
+        return entry.attributes.associate { it.name to (component.attributes[it.name] ?: it.defaultValue) }
+    }
+
+    /**
+     * The offer reaches an analysis factory, and the filter runs the same afterwards.
+     *
+     * The criterion the factory half rests on, stated the way the field half states it: the file
+     * text is allowed to change and the resolved configuration is not.
+     */
+    fun testTheFilterMeansTheSameAfterwards() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema(
+                """
+                <fieldType name="chain" class="solr.TextField">
+                  <analyzer>
+                    <filter class="solr.StopFilterFactory" ignore<caret>Case="false"/>
+                  </analyzer>
+                </fieldType>
+                """.trimIndent(),
+            ),
+        )
+        val before = effectiveFactorySettings("chain")
+        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+        assertFalse("""the attribute should be gone: ${myFixture.file.text}""", "ignoreCase" in myFixture.file.text)
+        assertEquals(before, effectiveFactorySettings("chain"))
+    }
+
+    /**
+     * A factory attribute the catalog records no default for is never offered.
+     *
+     * `words` is read with no fallback, so deleting it would take the stop-word list away — the
+     * failure this half is written to avoid, and the one that looks identical in the file to the
+     * case above.
+     */
+    fun testNothingIsOfferedOnAFactoryAttributeWithNoRecordedDefault() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema(
+                """
+                <fieldType name="chain" class="solr.TextField">
+                  <analyzer>
+                    <filter class="solr.StopFilterFactory" wo<caret>rds="stopwords.txt"/>
+                  </analyzer>
+                </fieldType>
+                """.trimIndent(),
+            ),
+        )
+        assertEmpty(myFixture.filterAvailableIntentions(hint))
     }
 
     fun testNothingIsOfferedOnAnAttributeThatDecidesSomething() {

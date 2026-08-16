@@ -240,6 +240,31 @@ data class SolrClassEntry(
 
     /** The attribute [name], or null when this class does not read one by that name. */
     fun attribute(name: String): SolrClassAttribute? = attributes.firstOrNull { it.name == name }
+
+    /**
+     * Whether writing [attributeName] as [writtenValue] gives this class the value it would use anyway.
+     *
+     * **Every uncertainty answers false, and that asymmetry is the design.** A true here is rendered
+     * as an invitation to delete the attribute, so the cost of being wrong is not a missing hint but
+     * a configuration change the reader was told was safe. Three separate things therefore read as
+     * "no": an attribute this class does not read, one whose default the bytecode did not prove —
+     * [SolrClassAttribute.defaultValue] is null for a default computed at runtime — and one Solr
+     * requires, which by construction carries no default at all.
+     *
+     * **The comparison is on the literal text, deliberately.** `maxTokenLength="255"` restates the
+     * recorded `255`; `maxTokenLength="0255"` does not, because nothing here parses either side into
+     * the type the factory will coerce it to. Both are the same number to Solr, so this misses a real
+     * restatement — which is the direction to miss in, and cheaper than a coercion table that has to
+     * be right for every [SolrValueType] before it can be trusted for any.
+     *
+     * @param attributeName the attribute as the configset spells it
+     * @param writtenValue the value exactly as the file spells it
+     * @return true when deleting the attribute would leave the class configured identically
+     */
+    fun restatesDefault(attributeName: String, writtenValue: String): Boolean {
+        val default = attribute(attributeName)?.defaultValue ?: return false
+        return default == writtenValue
+    }
 }
 
 /**
