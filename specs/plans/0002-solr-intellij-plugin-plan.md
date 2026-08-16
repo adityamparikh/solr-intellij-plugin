@@ -978,9 +978,11 @@ The distribution tarball and the vendored-files fallback are both retired regard
 configsets stay what this step's criteria want them for: the zero-findings fixture.
 
 **Both questions are now closed, the first by measurement above and the second in the affirmative.**
-`com.intellij.modules.java` now arrives as an optional dependency with its own `solr-withJava.xml`, so class
-navigation is present in IDEA and absent elsewhere and the plugin loads either way. It was pulled forward
-rather than deferred to Phase 3, which is the product decision this plan owned; `#132` is where it landed.
+`com.intellij.modules.java` arrived early rather than being deferred to Phase 3, which is the product decision this
+plan owned; `#132` is where it landed. It came in *optional*, with its own `solr-withJava.xml`, so that class
+navigation would be present in IDEA and absent elsewhere with the plugin loading either way — **and it has since been
+made a hard dependency**, because the plugin targets IDEA and nothing else, so "elsewhere" was never a place. See
+[CI gates](#step-20-ci-gates-in-progress), where the one-IDE scope is recorded.
 
 ### Step 26: Showing that an attribute restates the default (in progress)
 
@@ -1869,17 +1871,14 @@ failure and not scheduled for removal, but it is the class of finding no test he
 this step made for adopting the task at all.
 
 **One IDE, and the list is complete rather than a first entry — the plugin targets IntelliJ IDEA and nothing else.**
-Recorded here because the alternative reads as an oversight rather than a decision, and because one piece of the
-plugin still implies otherwise: `plugin.xml` takes `com.intellij.modules.java` as an *optional* dependency, with
-`solr-withJava.xml` carrying the one registration that needs Java PSI. That split exists to let the plugin load in an
-IDE without Java, which is a case this scope removes — IDEA has been a single unified distribution since 2025.3 and
-bundles Java, so the optional dependency is satisfied in every IDE that will ever run this plugin.
+Recorded here because a one-item list otherwise reads as one somebody forgot to extend.
 
-**Whether the split should therefore collapse is a real question and this step does not answer it.** Making the
-dependency hard would delete a descriptor, a conditional registration and a claim nothing verifies. Against that: the
-specification's Phase 3 needs Java PSI unconditionally anyway, so the split is due to go regardless, and doing it
-under a CI-gates step would be a scope decision wearing a gate's clothes. Left standing, with the reason it is no
-longer load-bearing written down, which is what stops it reading as support for a platform nobody targets.
+**The descriptor implied something wider, and it no longer does.** `com.intellij.modules.java` was an *optional*
+dependency, with `solr-withJava.xml` holding the one registration that needs Java PSI, so that an IDE without Java
+would load the plugin and simply lack class navigation. That condition was true wherever it was ever evaluated — IDEA
+has been a single unified distribution since 2025.3 and bundles Java — so what the split bought was not portability
+but a claim, and one nothing verified. It is now a hard `<depends>`, the registration sits beside the others, and
+`solr-withJava.xml` is gone. Phase 3 needs Java PSI unconditionally in any case, so this was due regardless of scope.
 
 **What the first run found, which is the argument for having built it.** Nine of the eleven registered inspections were
 silent on all four configsets. Of the two that were not, one was a defect: `<str name="spellcheck">on</str>` — the

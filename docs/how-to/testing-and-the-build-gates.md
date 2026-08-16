@@ -229,11 +229,15 @@ The list grows by one on each platform bump, in the same commit.
 produce — today, one `ReadAction.compute(ThrowableComputable)` usage.
 
 **IntelliJ IDEA only, and the list is complete rather than a first entry.** The plugin targets IDEA
-and nothing else. Worth stating, because the alternative reads as an oversight: `plugin.xml` takes
-`com.intellij.modules.java` as an *optional* dependency, which looks like a claim that the plugin
-runs in an IDE without Java PSI. Nothing verifies that claim because nothing needs to — IDEA has
-been a single unified distribution since 2025.3 and bundles Java, so the optional dependency is
-always satisfied in every IDE this list names.
+and nothing else. Worth stating, because a one-item list otherwise reads as one somebody forgot to
+extend.
+
+The descriptor used to imply something wider: `com.intellij.modules.java` was an *optional*
+dependency with its one registration in a separate `solr-withJava.xml`, so that an IDE without Java
+PSI would load the plugin and simply lack class navigation. Nothing verified that and nothing
+needed to — IDEA has bundled Java in a single unified distribution since 2025.3, so the condition
+was true wherever it was evaluated. It is a hard dependency now, and the descriptor and this list
+say the same thing.
 
 ## The documentation gate
 

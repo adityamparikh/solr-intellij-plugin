@@ -22,10 +22,14 @@ import javax.xml.parsers.DocumentBuilderFactory
 internal object SolrDescriptors {
 
     /**
-     * The descriptors the plugin ships. `solr-withJava.xml` is loaded only where Java PSI exists, and
-     * its one registration is as capable of naming a class that has moved as any other.
+     * The descriptors the plugin ships.
+     *
+     * A list of one, and it stays a list: a plugin grows a second descriptor the moment something is
+     * registered conditionally, and a registration nobody walks is exactly what these tests exist to
+     * catch. `solr-withJava.xml` was the second entry until `com.intellij.modules.java` became a hard
+     * dependency and its one registration moved into `plugin.xml`.
      */
-    val ALL = listOf("plugin.xml", "solr-withJava.xml")
+    val ALL = listOf("plugin.xml")
 
     /**
      * One attribute of every element of a kind, in descriptor order.
