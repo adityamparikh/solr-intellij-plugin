@@ -37,7 +37,7 @@ plugin knows, because the element descriptor is still gated on the schema.
 required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
 [the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-done)
 now render the rest, the first for the attribute under the caret and the second for every attribute a factory tag
-accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default-in-progress) now reads the
+accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default-done) now reads the
 same facts to make a different claim: not what Solr will supply, but that a written value need not have been written at
 all. A field attribute that decides nothing is dimmed where it stands, with an intention that removes it — the first
 time the plugin says something about a line without being asked, and it says it only where the model can prove the
@@ -89,13 +89,11 @@ whole, and the gutter action goes with the Server track.
   — out of numerical order deliberately: added after the rest, belongs here. Needs nothing the catalog provides.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the catalog, which it never needed.
-- [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
-  — **in progress**; likewise added late, belongs beside the two above. Both halves now ship: the dim and the
+- [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
+  — **done**; likewise added late, belongs beside the two above. Both halves ship: the dim and the
   intention that removes it, on every element that declares field properties — `<field>`, `<dynamicField>` and
   `<fieldType>` — and on the three that name an analysis factory, `<filter>`, `<tokenizer>` and `<charFilter>`,
-  where the value is judged against the literal default the catalog read out of that factory's own code. The
-  heading still reads *in progress* only because renaming its anchor would edit six links spread through other
-  steps' sections; every action and every criterion below it is met.
+  where the value is judged against the literal default the catalog read out of that factory's own code.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
@@ -108,7 +106,7 @@ whole, and the gutter action goes with the Server track.
   — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
   claimed and does not have, and it builds the target rename would otherwise have to build first.
-- [Step 8 — Rename](#step-8-rename) — **done**
+- [Step 8 — Rename](#step-8-rename-done) — **done**
 - [Step 29 — What an attribute means](#step-29-what-an-attribute-means-done) — **done**; added late
   and listed here because it was reachable from the step bodies and from nowhere a reader scans for
   status, which is also how it stayed marked *not started* for as long as it has been built.
@@ -162,7 +160,7 @@ whole, and the gutter action goes with the Server track.
   **Four rather than two, and under `src/test/resources/shipped-configsets/<line>/<name>/` rather than the
   `testData` this line first named.** Each supported line ships its own pair and they are not the same files, so two
   would have left one line's catalog untested. `testData` was the wrong home twice over: that directory is gone —
-  [rename](#step-8-rename) removed the scaffold it held — and a fixture read through the classpath needs no test-data
+  [rename](#step-8-rename-done) removed the scaffold it held — and a fixture read through the classpath needs no test-data
   path and no assumption about the working directory. Only the two files the plugin parses are vendored; `conf/` holds
   stopword lists and mapping tables nothing here reads, and a feature that comes to read one brings its file with it.
 - [ ] A local Solr, for manual verification only.
@@ -224,7 +222,7 @@ detection so features activate only on recognized files.
 
 Two template artefacts survive and are not covered by that criterion:
 `src/test/testData/rename/` still holds the scaffold's `foo.xml` / `foo_after.xml`, which no test
-reads. [Rename](#step-8-rename) replaces them.
+reads. [Rename](#step-8-rename-done) replaces them.
 
 [The activation gate overhaul](#step-2-overhaul-the-activation-gate-done) reworks this for the model the spec describes;
 it is extended, not replaced.
@@ -458,6 +456,27 @@ recovery for.
 
 ## Editor track
 
+**Every step in this track is done.** Thirteen steps: the six it was planned with — 5 through 10 —
+plus seven added late, 23 through 29, as sandbox passes and design work found gaps. That is why the
+numbering here runs out of order, and why several of the late ones argue for their own placement in
+their opening lines. Count them from the headings rather than from this sentence; a first draft of it
+said fourteen.
+
+Two things are worth carrying forward rather than reading step by step. **Most of the last stretch was
+not building but discovering what had already been built**: four steps were closed by auditing them
+against the code and finding the work shipped while the plan still said otherwise, and only one of the
+final four pull requests contained a new feature. And **the defects that closed them were found by
+gestures rather than by tests** — a documentation provider that declined three of a tag's caret
+positions, a field type's usage sentence that counted declared fields and not the patterns naming it.
+A suite that asserts what a surface answers cannot see what it silently refuses; that is the standing
+lesson this track paid for twice.
+
+What the track does *not* close is the manual suite. Several checks are written and unpressed, and one
+inspection's presentation — the unused field type, which reports something true rather than something
+wrong — is recorded as an open question beside
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
+rather than settled here.
+
 ### Step 5: References, navigation and Find Usages (done)
 
 **Actions:**
@@ -466,7 +485,7 @@ recovery for.
    request-handler parameters in `solrconfig.xml` to schema fields; a filter's resource attribute to the `stopwords.txt`
    or `synonyms.txt` it names.
 2. Expose a reference-graph query surface that [inspections](#step-6-inspections-done) and
-   [rename](#step-8-rename) reuse.
+   [rename](#step-8-rename-done) reuse.
 3. Reference tests asserting resolve targets on representative configsets.
 
 **What shipped:**
@@ -483,7 +502,7 @@ recovery for.
   `SolrConfigParameters` in `parsing` maps the parser's idea of a field reference onto PSI positions for both the
   inspection and the references, and
   `SolrSchemaPsi` answers where a name is declared for references, documentation and — when it
-  arrives — [rename](#step-8-rename).
+  arrives — [rename](#step-8-rename-done).
 
 **Success criteria:**
 
@@ -1003,7 +1022,7 @@ navigation would be present in IDEA and absent elsewhere with the plugin loading
 made a hard dependency**, because the plugin targets IDEA and nothing else, so "elsewhere" was never a place. See
 [CI gates](#step-20-ci-gates-in-progress), where the one-IDE scope is recorded.
 
-### Step 26: Showing that an attribute restates the default (in progress)
+### Step 26: Showing that an attribute restates the default (done)
 
 Numbered last because it was added last; it belongs in the Editor track beside
 [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done).
@@ -1160,7 +1179,7 @@ for the documentation provider it extends.
 ### Step 28: Declarations as targets (done)
 
 Numbered last because it was added last; it belongs in the Editor track immediately before
-[rename](#step-8-rename), which cannot start until it lands. Read the section it sits in, not the
+[rename](#step-8-rename-done), which cannot start until it lands. Read the section it sits in, not the
 number.
 
 Navigation runs one way. Ctrl-click from `type="text_general"` lands on the declaration, and Alt-F7
@@ -1219,7 +1238,7 @@ this one is the search direction only.
 was named as the ready-made target class; it requires a `PsiNamedElement`, which an
 `XmlAttributeValue` is not — the very fact that made a declaration searcher necessary, met again one
 layer down. The target is a `DelegatePsiTarget` carrying a name instead, and rename keeps its own
-fixtures in [Step 8](#step-8-rename) rather than inheriting an untested capability here. The second:
+fixtures in [Step 8](#step-8-rename-done) rather than inheriting an untested capability here. The second:
 a caret on the attribute *name* was said to yield no target at all, and it yields the enclosing tag —
 the platform's own descriptor answer, present before this step and not this step's to remove. The
 criterion that matters, and the one asserted, is that it yields no Solr *declaration* target.
@@ -1318,7 +1337,7 @@ type and default this sits beside, and
 bounds on the hand-written table and the argument for why it is not the invention this plugin
 refuses.
 
-### Step 8: Rename
+### Step 8: Rename (done)
 
 **Actions:**
 
@@ -1424,7 +1443,7 @@ target Alt-F7 does rather than reaching past it to the tag. So this step needs t
   [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-done)
   validate against; the default and required marker are what the factory half of
   [quick documentation](#step-10-completion-validation-and-quick-documentation-done) and
-  [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
+  [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
   will read.
 - `solr-analysis-extras` resolved alongside `solr-core`. Without it the catalog had Japanese and Korean analysis and no
   Chinese at all, which is the kind of gap a count never shows.
@@ -1449,7 +1468,7 @@ rather than answers.
 The attribute pass records each attribute's value type and, where the bytecode proves them, its literal default and
 required marker — the two facts the factory half of
 [quick documentation](#step-10-completion-validation-and-quick-documentation-done) and
-[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
 consume.
 
 **Success criteria:**
@@ -1566,7 +1585,7 @@ wrong number would have replaced another. Its test had pinned the old behaviour,
 6. ~~The factory sibling of the field property table: quick documentation on a factory tag shows every attribute the
    class accepts at its effective value, written or defaulted, distinguishably — the complete-configuration picture the
    field half already gives, and the second consumer of the defaults column beside
-   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress).~~
+   [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done).~~
    **Done.**
 
 **Success criteria:**
@@ -1988,7 +2007,7 @@ true — Solr ships a palette of language and spatial types for fields the copie
 gate cannot hold the one rule here whose finding is a fact about the file rather than a defect in it. Both sides are
 pinned: everything else must still report nothing, and a separate test asserts the held-out rule does fire, so silencing
 it is not a way to pass. **What remains open is its presentation**, which belongs beside
-[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
 rather than here: 45 Problems-view entries on a configset Apache Solr ships and supports is the same complaint that step
 answered for a restated default. Lowering the severity to `INFORMATION` was measured and does not work — the platform
 drops `INFORMATION` inspections from the daemon and the grey-out goes with them — so the shape that would do it is an
@@ -2054,7 +2073,7 @@ Mitigations live in the steps; only the first entry states one, because it belon
   [the server reader](#step-11-http-client-connections-and-the-server-reader).
 - **Reference resolution edge cases cause dangling renames** —
   [references and navigation](#step-5-references-navigation-and-find-usages-done), which is unit-tested
-  before [rename](#step-8-rename) consumes it.
+  before [rename](#step-8-rename-done) consumes it.
 
 ## References
 
