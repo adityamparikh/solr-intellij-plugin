@@ -4,10 +4,10 @@ import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiFile
+import org.apache.solr.ide.SolrDescriptors
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.configset.schema.inspection.SolrUnusedFieldTypeInspection
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Every registered inspection over the configsets Apache Solr ships, asserting nothing is reported.
@@ -169,19 +169,8 @@ class SolrShippedConfigsetTest : SolrConfigsetTestCase() {
      * the newest one — the one whose behaviour on a real configset nobody has seen yet.
      */
     private fun everyRegisteredInspection(): List<LocalInspectionTool> {
-        val descriptor = checkNotNull(javaClass.getResourceAsStream("/META-INF/plugin.xml")) {
-            "plugin.xml is not on the test classpath"
-        }
-        val document = DocumentBuilderFactory.newInstance()
-            .also { it.isNamespaceAware = false }
-            .newDocumentBuilder()
-            .parse(descriptor)
-        val registrations = document.getElementsByTagName("localInspection")
-        val tools = (0 until registrations.length).map { index ->
-            val className = registrations.item(index).attributes
-                .getNamedItem("implementationClass").nodeValue
-            Class.forName(className).getDeclaredConstructor().newInstance() as LocalInspectionTool
-        }
+        val tools = SolrDescriptors.attributesOf("plugin.xml", "localInspection", "implementationClass")
+            .map { Class.forName(it).getDeclaredConstructor().newInstance() as LocalInspectionTool }
         assertTrue("expected plugin.xml to register inspections", tools.isNotEmpty())
         return tools
     }

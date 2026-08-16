@@ -2,8 +2,6 @@ package org.apache.solr.ide
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.w3c.dom.Document
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Every class `plugin.xml` names exists.
@@ -34,7 +32,7 @@ class SolrPluginDescriptorTest {
 
     @Test
     fun `every class named in plugin xml resolves`() {
-        for (descriptor in DESCRIPTORS) resolveEveryClassIn(descriptor)
+        for (descriptor in SolrDescriptors.ALL) resolveEveryClassIn(descriptor)
     }
 
     /**
@@ -50,11 +48,13 @@ class SolrPluginDescriptorTest {
      *
      * Keyed on `shortName`, which is what the platform resolves the file by — the file has to be
      * `inspectionDescriptions/<shortName>.html` and the name in the registration is the only place
-     * that pairing is written down.
+     * that pairing is written down. A registration that omits `shortName` altogether fails here
+     * rather than being passed over: the attribute is optional to the platform, so leaving it out
+     * would otherwise take the inspection out of this check without taking it out of the plugin.
      */
     @Test
     fun `every registered inspection has a description file`() {
-        val shortNames = attributesOf("localInspection", "shortName")
+        val shortNames = SolrDescriptors.attributesOf("plugin.xml", "localInspection", "shortName")
         assertTrue("expected plugin.xml to register inspections", shortNames.isNotEmpty())
 
         val missing = shortNames.filter { javaClass.getResource("/inspectionDescriptions/$it.html") == null }
@@ -65,22 +65,14 @@ class SolrPluginDescriptorTest {
         )
     }
 
-    /** One attribute of every element of a kind, in descriptor order. */
-    private fun attributesOf(tagName: String, attribute: String): List<String> {
-        val elements = parse("plugin.xml").getElementsByTagName(tagName)
-        return (0 until elements.length).mapNotNull {
-            elements.item(it).attributes.getNamedItem(attribute)?.nodeValue
-        }
-    }
-
     /**
      * **Every descriptor, not only `plugin.xml`.** An optional dependency puts its extensions in a
      * separate file, and a registration nobody checks is exactly what this test exists to catch — so
-     * the list of files to walk has to grow with them. A missing file fails rather than passing
+     * [SolrDescriptors.ALL] has to grow with them. A missing file fails rather than passing
      * vacuously, because a descriptor that stops being on the classpath is itself the defect.
      */
     private fun resolveEveryClassIn(name: String) {
-        val document = parse(name)
+        val document = SolrDescriptors.parse(name)
 
         val names = mutableListOf<Pair<String, String>>()
         val elements = document.getElementsByTagName("*")
@@ -118,24 +110,7 @@ class SolrPluginDescriptorTest {
         )
     }
 
-    /** A shipped descriptor, parsed. Namespace-unaware, so the tag names read as they are written. */
-    private fun parse(name: String): Document {
-        val descriptor = checkNotNull(javaClass.getResourceAsStream("/META-INF/$name")) {
-            "$name is not on the test classpath"
-        }
-        return DocumentBuilderFactory.newInstance()
-            .also { it.isNamespaceAware = false }
-            .newDocumentBuilder()
-            .parse(descriptor)
-    }
-
     private companion object {
         const val OUR_PACKAGE = "org.apache.solr.ide"
-
-        /**
-         * The descriptors the plugin ships. `solr-withJava.xml` is loaded only where Java PSI exists,
-         * and its one registration is as capable of naming a class that has moved as any other.
-         */
-        val DESCRIPTORS = listOf("plugin.xml", "solr-withJava.xml")
     }
 }

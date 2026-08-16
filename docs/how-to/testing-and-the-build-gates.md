@@ -147,21 +147,23 @@ Inspections where its explanation should be. Nothing else notices, because no fi
 renders that pane.
 
 There is a deeper version of the same blind spot, and it is about fixtures rather than registrations.
-**Every clean fixture in this suite was written by the author of the rule it reassures**, which makes
-it evidence about the cases that author thought of and silent about the rest.
+**A hand-written clean fixture is composed by the author of the rule it reassures**, which makes it
+evidence about the cases that author thought of and silent about the rest. Every clean fixture in this
+suite was hand-written but four.
 
 ## The configsets Solr ships
 
-`SolrShippedConfigsetTest` runs every inspection `plugin.xml` registers over four configsets nobody
-here wrote — `_default` and `sample_techproducts_configs`, from both supported lines — and asserts
-they report nothing. It is the only fixture in the repository with that property, and it earned its
-place on the first run by finding a false positive in a shipped rule.
+`SolrShippedConfigsetTest` runs every inspection `plugin.xml` registers — all of them but one, held
+out by name at the end of this section — over four configsets nobody here wrote: `_default` and
+`sample_techproducts_configs`, from both supported lines. It asserts they report nothing. That is the
+only fixture in the repository nobody here wrote, and it earned its place on the first run by finding
+a false positive in a shipped rule.
 
 The files are vendored verbatim under `src/test/resources/shipped-configsets/<line>/<name>/`, and
 only the two the plugin parses: `solrconfig.xml` and `managed-schema.xml`. A feature that comes to
 read a third — a stopword list, a mapping table — brings that file with it.
 
-**Nothing in this test names a Solr version, and that is deliberate.** Each `solrconfig.xml` declares
+**Nothing in this test names an exact Solr release, and that is deliberate.** Each `solrconfig.xml` declares
 its own `<luceneMatchVersion>` — `9.12` and `10.3`, which are *Lucene* versions — so each fixture
 selects its own catalog. Both generated catalogs are exercised without a line ever being written down
 twice.

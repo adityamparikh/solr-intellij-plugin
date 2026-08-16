@@ -849,7 +849,8 @@ placement decision this plan owns.
 
 **Success criteria:**
 
-- [x] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.
+- [x] Both configsets Solr ships produce zero findings from every inspection but one, which is the gate the spec
+      already sets for inspections.
       [CI gates](#step-20-ci-gates-in-progress) vendored the fixtures and holds the assertion — all four of them,
       since each line ships its own pair. **It found one defect on the first run, and it was this step's rule**: the
       near-miss inspection reported `<str name="spellcheck">on</str>`, which all four configsets write, as a
