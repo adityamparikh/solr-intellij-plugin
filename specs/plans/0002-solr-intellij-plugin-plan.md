@@ -109,8 +109,9 @@ whole, and the gutter action goes with the Server track.
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
   claimed and does not have, and it builds the target rename would otherwise have to build first.
 - [Step 8 — Rename](#step-8-rename) — **done**
-- [Step 29 — What an attribute means](#step-29-what-an-attribute-means) — not started; added late and
-  listed here because it was reachable from the step bodies and from nowhere a reader scans for status.
+- [Step 29 — What an attribute means](#step-29-what-an-attribute-means-done) — **done**; added late
+  and listed here because it was reachable from the step bodies and from nowhere a reader scans for
+  status, which is also how it stayed marked *not started* for as long as it has been built.
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-done) — **done**; the generator is built,
   every fact it emits is asserted, and selection now reads the line from whichever arm answered. The server arm owes
   this step nothing further: the catalogs already honour a selection a server produced, so what the
@@ -1241,7 +1242,7 @@ for the resolution the dynamic-field executor calls.
 route comparison — why the POM declaration searcher rather than the Symbol API — and the bounds on
 the configset walk.
 
-### Step 29: What an attribute means
+### Step 29: What an attribute means (done)
 
 Numbered last because it was added last; it belongs in the Editor track beside
 [explaining what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done),
@@ -1281,18 +1282,31 @@ that move every Solr line, and this is the two dozen a reader hovers, unchanged 
 
 **Success criteria:**
 
-- [ ] `name`, `class`, `type`, `source` and `dest` each explain themselves, and say something
+- [x] `name`, `class`, `type`, `source` and `dest` each explain themselves, and say something
   different where the element makes them different.
-- [ ] `<schema version="1.6">` states what the version decides and what it defaults `docValues` to
+- [x] `<schema version="1.6">` states what the version decides and what it defaults `docValues` to
   here; `<schema name=…>` says it carries no behaviour.
-- [ ] `minGramSize` and `maxGramSize` on an `EdgeNGramFilterFactory` say what they do, alongside the
+- [x] `minGramSize` and `maxGramSize` on an `EdgeNGramFilterFactory` say what they do, alongside the
   required marker and value type already shown.
-- [ ] **An attribute the table does not list keeps exactly the popup it has today.** The regression
+- [x] **An attribute the table does not list keeps exactly the popup it has today.** The regression
   that matters is a popup appearing where none should, or an existing one losing what it proved.
-- [ ] Nothing outside a configset, and no element the plugin does not model, answers at all.
+- [x] Nothing outside a configset, and no element the plugin does not model, answers at all.
 
 **Acceptance:** hovering `minGramSize` in the demo's `text_prefix` chain
 (`managed-schema.xml:48`) and `version` on the demo schema root.
+
+**Every criterion was met by the shipping change and none of them was ticked, which is worth more
+than the tick.** The behaviour landed in one change and the sandbox notes that followed it, and this
+section then said *not started* for as long as the feature has existed — so anyone reading the plan
+for what to build next would have rebuilt it. The fourth criterion is the one that needed more than
+a tick: two named positions asserted their own silence, and nothing asserted the *set* — which is
+the exact shape of coverage that let this provider ship the same class of defect to a sandbox twice,
+since a suite of individual positions cannot notice a new one appearing beside them.
+`SolrAttributeDocumentationTest` now walks *every* attribute of a schema carrying the
+unmodelled elements alongside the modelled ones and pins the whole set of positions that answer, and
+does the same over a `solrconfig.xml`, where the table must stay silent because its vocabulary has a
+different source. Keying the lookup by attribute name alone — the mistake the pairing exists to
+prevent — fails both, naming the positions that gained a popup.
 
 **Dependencies:** [match hints and quick documentation](#step-7-match-hints-and-quick-fixes-done) for
 the provider, [the factory catalog generator](#step-9-factory-catalog-generator-done) for the
@@ -1300,7 +1314,7 @@ type and default this sits beside, and
 [the repository reader and field model](#step-3-repository-reader-and-field-model-done) for
 `SolrSchemaVersion`.
 
-[The design record](../../docs/design/pending/2026-08-06-attribute-meanings/design.md) carries the
+[The design record](../../docs/design/archive/2026-08-06-attribute-meanings/design.md) carries the
 bounds on the hand-written table and the argument for why it is not the invention this plugin
 refuses.
 

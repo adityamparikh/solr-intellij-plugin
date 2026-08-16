@@ -233,10 +233,12 @@ below.*
       check.
 - [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
       on the attribute name). The popup names the owning class, the value type (*a whole
-      number*), and the required marker — and does **not** invent a prose description of what
-      the attribute means. Hover `preserveOriginal` on the same filter: the popup shows the
-      catalog default `false` instead of a required marker. An attribute name the catalog does
-      not list, or any attribute on a class the catalog does not know, stays silent.
+      number*), and the required marker, above them a **Does** row saying what the attribute
+      does — *the shortest gram to index* — which is written by hand for the two dozen
+      attributes a reader hovers rather than recovered from bytecode. Hover `preserveOriginal`
+      on the same filter: the popup shows the catalog default `false` instead of a required
+      marker. An attribute name the catalog does not list, or any attribute on a class the
+      catalog does not know, stays silent.
 - [ ] **DOC-8** — **The attribute's own name answers**, which is the caret position that used
       to say nothing while the element above it and the value beside it both did. Hover each
       of these attribute *names*: `name` and `type` on a `<field>`; `name` and `class` on the
@@ -247,16 +249,26 @@ below.*
       `uninvertible` on. The second paragraph is computed from the file, so DOC-6's edit to
       `1.7` should flip it; check that too while the file is already changed, and undo with
       the rest.
-- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Re-check DOC-7
-      from here: `minGramSize` shows its owner, value type and required marker, the guide links —
-      and **no prose row**. A hand-written *Does* row was drafted for this popup and withdrawn,
-      and the popup already carries a per-attribute guide link, so prose here would duplicate a
-      link that is always current.
+- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Hover an
+      attribute the hand-written table does *not* describe — `maxShingleSize` on a
+      `solr.ShingleFilterFactory`, or any catalog-backed name outside the two dozen — and the
+      popup is **exactly what it was before the table existed**: owner, value type, default or
+      required marker, guide link, and **no Does row**. The table is silent by default
+      everywhere, and a popup appearing where none should is the failure this check is for.
+
+      **This check previously described the opposite of what ships.** It read that the prose
+      row had been drafted and withdrawn, on the argument that the popup already carries a
+      per-attribute guide link and prose would duplicate something always current.
+      That argument is recorded and still open in the design record, but it was never acted on:
+      the table shipped with the step and the *Does* row is on screen, which is what DOC-7 now
+      asks for. A verification check stating the opposite of the shipped behaviour is worse than
+      a missing one, because pressing it invites deleting a feature to make the document true.
 
       *The other half of this check has no fixture.* A `copyField`'s `name` must never gain the
       `<field>` description — but the committed demo declares no `<copyField name=…>`, so there
       is nothing to hover, the same shape of gap NAV-5 records. `SolrAttributeDocumentationTest`
-      covers it headlessly; either the demo grows one or this stays a note.
+      covers it headlessly, along with the whole inventory of positions that answer; either the
+      demo grows one or this stays a note.
 
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
