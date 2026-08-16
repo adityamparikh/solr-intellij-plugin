@@ -116,10 +116,7 @@ internal object SolrSchemaElements {
                         "<code>${resolved.type}</code>."
                 }
             }
-            "fieldType", "fieldtype" -> attributes["name"]?.let { name ->
-                val users = model.fields.values.map { it.effective }.count { it.type == name }
-                "<code>$name</code> is used by ${count(users, "field")} in this schema."
-            }
+            "fieldType", "fieldtype" -> attributes["name"]?.let { name -> fieldTypeUsage(name, model) }
             "field", "dynamicField" -> attributes["name"]?.let { name ->
                 val copies = model.copyFieldsFrom(name)
                 if (copies.isEmpty()) null else "Copied into ${copies.joinToString(", ") { "<code>${it.destination}</code>" }}."
@@ -150,6 +147,32 @@ internal object SolrSchemaElements {
 
     /** `1 field`, `2 fields` — the plural rule this vocabulary needs, which is the regular one. */
     private fun count(n: Int, noun: String): String = if (n == 1) "$n $noun" else "$n ${noun}s"
+
+    /**
+     * How many declarations name the field type [name], counting patterns as well as fields.
+     *
+     * **A `<dynamicField>` is a user of its type, and this sentence used to say otherwise.** Counting
+     * declared fields alone reported a type that only a pattern names as used by *no* fields, in a
+     * schema where every document field of that type comes from the pattern — while
+     * `SolrUnusedFieldTypeInspection`, reading the same model, counts that same declaration as a user
+     * and correctly stays silent. Two surfaces disagreeing about one fact in one file is worse than
+     * either answer alone, and the inspection had the right one.
+     *
+     * The two are counted separately rather than summed, for the reason the `<schema>` sentence
+     * already separates them: a pattern is not a field, and "3 fields" for a schema declaring one
+     * field and two patterns would be a second wrong answer in place of the first. The dynamic half
+     * is left out entirely when there is none, so the ordinary schema reads as it always did.
+     */
+    private fun fieldTypeUsage(name: String, model: SolrFieldModel): String {
+        val fields = model.fields.values.map { it.effective }.count { it.type == name }
+        val patterns = model.dynamicFields.values.map { it.effective }.count { it.field.type == name }
+        val used = if (patterns == 0) {
+            count(fields, "field")
+        } else {
+            "${count(fields, "field")} and ${count(patterns, "dynamic field")}"
+        }
+        return "<code>$name</code> is used by $used in this schema."
+    }
 
     /**
      * What a particular copy rule joins, and whether both ends exist.
