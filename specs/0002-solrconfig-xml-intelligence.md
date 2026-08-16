@@ -434,18 +434,18 @@ contributor and the documentation provider are registered already and get wider 
 inspection is one more local inspection in the established shape with its description entry.
 
 The `class` reference provider is the exception, and it is where the plugin's declared dependencies
-become a live constraint: **Java PSI is not available today** — the Java module dependency is
-commented out and marked for a later phase. Two ways out, a product decision rather than a technical
-one:
+become a live constraint. **This section is settled and its recommendation is superseded; it is kept
+for the argument rather than the answer.** When it was written the Java module dependency was
+commented out and marked for a later phase, and it weighed two ways out — an optional dependency
+registering the provider only where Java PSI exists, or deferring the capability entirely. It
+recommended the optional dependency, on the grounds that it costs one config file and Ctrl-click is
+the gesture a reader reaches for first on an unfamiliar `class` value.
 
-- **Optional dependency**, registering the class reference provider only where Java PSI exists. The
-  feature appears in IntelliJ IDEA and is absent in a non-Java IDE — honest, and the platform's own
-  idiom for this.
-- **Defer**, shipping the other three capabilities without it.
-
-**The optional dependency is the recommendation**: it costs one config file, and Ctrl-click is the
-gesture a reader reaches for first on an unfamiliar `class` value. But it pulls a later-phase
-dependency forward, which is the plan's decision to make.
+That is what shipped, and it is **no longer what the plugin does**. The dependency is now a plain
+`<depends>` and the separate descriptor is gone. The optional form bought portability to IDEs this
+plugin does not target: it targets IntelliJ IDEA, which has bundled Java in a single unified
+distribution since 2025.3, so the condition was true wherever it was ever evaluated. Do not restore
+the optional form from this section.
 
 ## Testing Strategy
 

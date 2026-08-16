@@ -25,7 +25,7 @@ field's effective properties resolve against the
 version number beside the Solr line and `luceneMatchVersion`.
 
 **`solrconfig.xml` stopped being a file the plugin merely read for field names.** Six merged pull requests under
-[step 25](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) gave it parameter-name completion and
+[step 25](#step-25-solrconfigxml-as-a-first-class-surface-done) gave it parameter-name completion and
 documentation over 340 generated parameter names, the closed set `defType` accepts, completion and quick
 documentation and Ctrl-click on the classes it names, schema field names offered inside the sixteen parameters
 known to hold them, and two inspections that fire where a *broken* configuration would previously have passed
@@ -98,12 +98,12 @@ whole, and the gutter action goes with the Server track.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
-- [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress)
-  — **in progress**; the largest step here. It was split when it started, and every pull request in that
-  split has merged: structure completion and the near-miss inspection were the last two. What holds the
-  heading is a criterion rather than an action — the shipped configsets producing zero findings, which
-  [CI gates](#step-20-ci-gates-in-progress) has now vendored the fixtures for and asserted.
-- [Step 28 — Declarations as targets](#step-28-declarations-as-targets) — **done**
+- [Step 25 — solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-done)
+  — **done**; the largest step here. It was split when it started, and every pull request in that split has
+  merged: structure completion and the near-miss inspection were the last two. Its final criterion — the
+  shipped configsets producing zero findings — was closed by [CI gates](#step-20-ci-gates-in-progress),
+  which vendored the fixtures and asserted it, holding one rule out by name.
+- [Step 28 — Declarations as targets](#step-28-declarations-as-targets-done) — **done**
   — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
   claimed and does not have, and it builds the target rename would otherwise have to build first.
@@ -493,7 +493,7 @@ recovery for.
 ticked in error: the search half is real and asserted here, but nothing in this step made a
 *declaration* into a target the platform will accept, so the Alt-F7 the clause describes answered
 *Cannot search for usages from this location*. That half moved to
-[declarations as targets](#step-28-declarations-as-targets) and landed there, which is where the
+[declarations as targets](#step-28-declarations-as-targets-done) and landed there, which is where the
 Alt-F7 criterion and its fixtures now live. Everything this step built is done and none of it
 changed.
 
@@ -501,7 +501,7 @@ changed.
 [22 — *navigate to a field type*](../../docs/demo/README.md#step-22-navigate-to-a-field-type),
 [23 — *navigate along a copyField*](../../docs/demo/README.md#step-23-navigate-along-a-copyfield),
 and [24 — *cross the file boundary*](../../docs/demo/README.md#step-24-cross-the-file-boundary).
-Demo step 27 moved to [declarations as targets](#step-28-declarations-as-targets) with the criterion
+Demo step 27 moved to [declarations as targets](#step-28-declarations-as-targets-done) with the criterion
 it belongs to: it now performs the search from the declaration, which is the gesture this step
 refused.
 
@@ -560,7 +560,7 @@ prevent.** Seven inspections are planned here and all seven are built. Eleven in
 `SolrInvalidAttributeValueInspection` belong to
 [completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-in-progress),
 `SolrMisspelledParameterInspection` to
-[solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-in-progress), and
+[solrconfig.xml as a first-class surface](#step-25-solrconfigxml-as-a-first-class-surface-done), and
 `SolrUnsupportedFieldOperationInspection` to the field-capability work that motivated it. There are twelve
 [manual suite](../../docs/manual-test-suite.md) INSP checks, which is a third count again: the dangling-`copyField`
 inspection gets a second check for reacting to a live edit and another restores the baseline, while the non-indexed
@@ -772,7 +772,7 @@ and one who can discover what Solr allows.
 **Dependencies:** [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the element descriptions. Nothing from the catalog.
 
-### Step 25: solrconfig.xml as a first-class surface (in progress)
+### Step 25: solrconfig.xml as a first-class surface (done)
 
 Numbered last because it was added last; it belongs in the Editor track after
 [the factory catalog](#step-9-factory-catalog-generator-in-progress), which it depends on entirely.
@@ -797,7 +797,7 @@ suite is the only thing that can fail.
 
 **That paragraph is now history rather than status.** Every dependency it names has since been answered: the catalog
 grew, Java PSI arrived optionally, and the element vocabulary was measured out of the shipped jars — see
-[the open questions below](#step-25-solrconfigxml-as-a-first-class-surface-in-progress), which now record answers.
+[the open questions below](#step-25-solrconfigxml-as-a-first-class-surface-done), which now record answers.
 Actions 1 and 3 are the two that remain, and both are startable.
 
 **Actions:**
@@ -861,8 +861,8 @@ placement decision this plan owns.
       front of it.
 - [x] Completion and documentation answer inside a request handler. Parameter names inside `defaults`, `appends` and
       `invariants`, the closed value set `defType` accepts, the `class` attribute's own classes, and the schema field
-      names inside the sixteen field-holding parameters — each with quick documentation. **What still does not answer
-      is the element and attribute structure around them**, which is action 1.
+      names inside the sixteen field-holding parameters — each with quick documentation. The element and attribute
+      structure around them was the last piece and is action 1's, which `#141` closed.
 - [x] `pf2` and `pf3` in the same parameter list, neither flagged. Solr's parameter families genuinely contain distinct
       names one edit apart, so an edit-distance rule that fires on a name the catalog *knows* would report `pf3` as a
       misspelling of `pf2`. The rule fires only on a name the catalog does not know, and knownness is checked first.
@@ -874,7 +874,7 @@ placement decision this plan owns.
 The last two are the criteria a split loses, because both catch silent wrongness rather than visible failure: the guard
 never fires in a passing suite, and the fixture only matters before a change that would overwrite what it records.
 
-**What shipped so far — actions 2, 4 and 5, and the groundwork under them.** Six pull requests, merged in
+**What shipped — all five actions, and the groundwork under them.** Ten pull requests, merged in
 dependency order rather than in the order the actions are numbered:
 
 - `#111` reads every parameter value tag — `<int>`, `<bool>`, `<long>`, `<float>`, `<double>` and not only
@@ -893,24 +893,30 @@ dependency order rather than in the order the actions are numbered:
 - `#133` completes and explains the request parameters the file carries — **action 2** — from 340 parameter
   names and 44 query parser names per line, each with the first sentence of Solr's own Javadoc on the
   declaring constant.
+- `#137` and `#138` answer where the element vocabulary comes from and then generate it: a pass over
+  `SolrConfig`'s own config-reading calls, which is the groundwork the last two actions sat on.
+- `#141` completes the elements and attributes `solrconfig.xml` accepts — **action 1**, and with it the
+  present-day-behaviour fixture, pinned before the descriptor gate moved rather than after.
+- `#140` reports a parameter that is almost one Solr reads — **action 3** — and `#144` reports an element
+  Solr no longer accepts, which is the seventh inspection
+  [that step](#step-6-inspections-in-progress) was blocked on and which this vocabulary unblocked.
 
-**What remains is actions 1 and 3, and they are what the file's *structure* means.** Element and attribute
-completion still has no `solrconfig.xml` arm: `SolrSchemaElementDescriptorProvider` gates on `kind.isSchema`,
-so inside `<config>` the platform's schema-less sibling echo is still what a reader gets. The near-miss
-inspection is unwritten, and it depends on the parameter catalog action 2 landed. Neither success criterion
-below is checked off, because both of the ones that catch *silent* wrongness — the `pf2`/`pf3` guard and the
-present-day-behaviour fixture — belong to the descriptor change that has not happened.
-
-**Both are now unblocked, and action 1's shape is settled.** It needs a generator pass over `SolrConfig`'s own
+**What the last two actions turned out to need, recorded because the shape was the hard part.** Action 1
+needed a generator pass over `SolrConfig`'s own
 config-reading calls, producing the element names with their arity, joined to the 23 plugin elements and the
 40 typed leaves the other two sources already give — and a rule that marks the five names Solr no longer
-accepts. Action 3 needed nothing new once the parameter catalog landed. Neither waits on a question any more;
-what they wait on is being built.
+accepts. Action 3 needed nothing new once the parameter catalog landed.
+
+**The arity half of that shape was built, proved correct, and then deleted**, which is worth recording because
+the reasoning below still describes it. Every consumer of the column only ever asked whether an entry was an
+attribute, so `SolrElementArity` became a boolean — behaviour-preservation shown by diffing the attribute sets
+either way, 36 on Solr 9 and 32 on Solr 10, identical before and after. A `valueType` column went the same way
+in the same change, having never had a reader at all.
 
 **What "joined" means is the one part of that shape a reader cannot guess, so it is stated here rather than
 left to the code.** The canonical key is the pair *(parent path, element name)*, not the name alone: the same
 name legitimately appears under more than one parent, and a map keyed by name would silently keep whichever
-source ran last. Where sources disagree about arity the most specific answer wins — `required` over
+source ran last. Where sources disagreed about arity the most specific answer won — `required` over
 `repeated` over `single` — because `single` is also what a source says when it has nothing to add, so
 treating it as an observation would let a source that knows nothing overrule one that watched Solr call
 `getAll`. A name read without a parent is absorbed into the parented reading of the same name rather than
@@ -1115,7 +1121,7 @@ and [screenshot catalog entry 1](../../docs/screenshots.md), both rendered again
 extends; [explaining and correcting what is already on screen](#step-23-explaining-and-correcting-what-is-already-on-screen-done)
 for the documentation provider it extends.
 
-### Step 28: Declarations as targets
+### Step 28: Declarations as targets (done)
 
 Numbered last because it was added last; it belongs in the Editor track immediately before
 [rename](#step-8-rename), which cannot start until it lands. Read the section it sits in, not the
@@ -1280,7 +1286,7 @@ refuses.
   `foo.xml` or `foo_after.xml`, which is why they survived this long.
 
 **A dynamic field rewrites only the references that spell it, and that is a decision rather than a
-limitation.** [Declarations as targets](#step-28-declarations-as-targets) made a name the pattern
+limitation.** [Declarations as targets](#step-28-declarations-as-targets-done) made a name the pattern
 *supplies* — `body_t` under `<dynamicField name="*_t">` — a reported usage, which is correct and is
 the point of it. Rename conflates two relations that part company exactly there: *is a usage of* and
 *should become the new name*. Left alone, `PsiReferenceBase` substitutes the declaration's new name
@@ -1299,7 +1305,7 @@ would be the silent breakage this plugin's posture forbids.
 its copy rules *and* the `qf` line in `solrconfig.xml`.
 
 **Dependencies:** [references and navigation](#step-5-references-navigation-and-find-usages-done) for the graph;
-[declarations as targets](#step-28-declarations-as-targets) for the target itself, and it is a prerequisite rather than
+[declarations as targets](#step-28-declarations-as-targets-done) for the target itself, and it is a prerequisite rather than
 a neighbour. `renameElementAtCaret` on a declaration throws *element not found in file*: it resolves the same null
 target Alt-F7 does rather than reaching past it to the tag. So this step needs that one to *gain* a target, not to
 *suppress* a wrong one, and the `<field>`-tag corruption
@@ -1534,7 +1540,7 @@ Solr 10 was the same bug with no symptom — `10_0` 302-redirects to `latest`, s
 have stopped working the day 10.1 shipped.
 
 **Nothing explains boost syntax.** A caret on the `^3` of `qf`'s `name^3` answers nothing, and
-[the parameter completion work](#step-25-solrconfigxml-as-a-first-class-surface-in-progress) made that
+[the parameter completion work](#step-25-solrconfigxml-as-a-first-class-surface-done) made that
 more conspicuous rather than less: PRM-3 asserts completion is *silent* after a `^`, which is right —
 completing there would write `name^name` — but silence in completion was taken to settle the position,
 and documentation was never asked. A reader who has just been told what `qf` is meets `^3` in the same
