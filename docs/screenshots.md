@@ -234,7 +234,7 @@ one gesture — `name`, `description`, `text` and `*_t`, four results.
 *invoke from a reference, not from the declaration*, and recorded that the declaration answers
 *Cannot search for usages from this location*. That was true when the image was shot and was
 discovered by a capture pass rather than assumed, which is why it was written down.
-[Declarations as targets](../specs/plans/0002-solr-intellij-plugin-plan.md#step-28-declarations-as-targets)
+[Declarations as targets](../specs/plans/0002-solr-intellij-plugin-plan.md#step-28-declarations-as-targets-done)
 closed it: the declaration is a search target now, and demo step 27 performs the gesture from there.
 The reference position (`managed-schema.xml:68`) still works and lists the same four — the
 declaration is simply the one worth showing, being the one that used to refuse.

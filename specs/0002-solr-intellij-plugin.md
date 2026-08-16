@@ -769,8 +769,19 @@ when Solr's does.
 ## Testing
 
 - **Zero false positives on Solr's own configsets, enforced in CI.** Every inspection
-  runs against `_default` and `sample_techproducts_configs` and must produce nothing.
-  This is the gate that makes the quality bar real.
+  runs against `_default` and `sample_techproducts_configs`, and every inspection whose
+  finding asserts that something is *wrong* must produce nothing. This is the gate that
+  makes the quality bar real.
+
+  **The qualifier is not a loophole and was written after the gate first ran.** One rule
+  reports something true rather than something wrong — a field type nothing uses — and
+  Solr ships a palette of them for fields the copier has not written yet. Requiring
+  literally every inspection to be silent would have been satisfied just as well by
+  deleting that rule, which is the wrong repair. A rule of this kind is held out **by
+  name**, and the hold-out is pinned from both sides: everything else must still report
+  nothing, so a new rule firing here fails, and a separate assertion requires the
+  held-out rule to *fire*, so silencing it is not a way to pass. A rule may only be held
+  out on the ground that its finding is not a defect — never because it is inconvenient.
 - **Match analysis** tested exhaustively against canonical field types — string,
   tokenized text, EdgeNGram, and the filter orderings that change the answer.
 - **Reference resolution and rename** verified on representative configsets, asserting
