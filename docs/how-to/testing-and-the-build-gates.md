@@ -140,7 +140,56 @@ names resolve. It is worth running for what it does cover, and CI runs it as its
 
 `SolrPluginDescriptorTest` is what closes it: plain JUnit, reflection over every class name in
 `plugin.xml`, milliseconds, and it runs in `./gradlew build` beside everything else. **If you add an
-extension point, that test already covers it** — there is nothing to remember.
+extension point, that test already covers it** — there is nothing to remember. It carries a second
+descriptor check for the same reason: an inspection registered with no
+`inspectionDescriptions/<shortName>.html` still works, and shows a blank panel in Settings →
+Inspections where its explanation should be. Nothing else notices, because no fixture test ever
+renders that pane.
+
+There is a deeper version of the same blind spot, and it is about fixtures rather than registrations.
+**A hand-written clean fixture is composed by the author of the rule it reassures**, which makes it
+evidence about the cases that author thought of and silent about the rest. Every clean fixture in this
+suite was hand-written but four.
+
+## The configsets Solr ships
+
+`SolrShippedConfigsetTest` runs every inspection `plugin.xml` registers — all of them but one, held
+out by name at the end of this section — over four configsets nobody here wrote: `_default` and
+`sample_techproducts_configs`, from both supported lines. It asserts they report nothing. That is the
+only fixture in the repository nobody here wrote, and it earned its place on the first run by finding
+a false positive in a shipped rule.
+
+The files are vendored verbatim under `src/test/resources/shipped-configsets/<line>/<name>/`, and
+only the two the plugin parses: `solrconfig.xml` and `managed-schema.xml`. A feature that comes to
+read a third — a stopword list, a mapping table — brings that file with it.
+
+**Nothing in this test names an exact Solr release, and that is deliberate.** Each `solrconfig.xml` declares
+its own `<luceneMatchVersion>` — `9.12` and `10.3`, which are *Lucene* versions — so each fixture
+selects its own catalog. Both generated catalogs are exercised without a line ever being written down
+twice.
+
+**Refreshing them is part of a line bump.** When `supportedSolrLines` in `build.gradle.kts` changes,
+these files are the other place the old release survives:
+
+```bash
+line=10; version=10.0.0
+for cs in _default sample_techproducts_configs; do
+  for f in solrconfig.xml managed-schema.xml; do
+    curl -sSf -o "src/test/resources/shipped-configsets/$line/$cs/$f" \
+      "https://raw.githubusercontent.com/apache/solr/releases/solr/$version/solr/server/solr/configsets/$cs/conf/$f"
+  done
+done
+```
+
+They are excluded from SonarCloud analysis. They are not this project's code and must never be edited
+to satisfy an analyser — the whole point of them is that nobody here wrote them.
+
+**One rule is held out by name**, `SolrUnusedFieldTypeInspection`, which reports 45 true findings on
+`sample_techproducts_configs`: Solr ships a palette of language and spatial types for fields the
+copier has not written yet. It is the only rule here whose finding is a fact about the file rather
+than a defect in it. The hold-out is pinned from both sides — everything else must still report
+nothing, and a separate test asserts the held-out rule does fire, so silencing it is not a way to
+pass.
 
 ## The documentation gate
 

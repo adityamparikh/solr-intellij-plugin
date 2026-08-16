@@ -102,7 +102,7 @@ whole, and the gutter action goes with the Server track.
   — **in progress**; the largest step here. It was split when it started, and every pull request in that
   split has merged: structure completion and the near-miss inspection were the last two. What holds the
   heading is a criterion rather than an action — the shipped configsets producing zero findings, which
-  waits on [CI gates](#step-20-ci-gates) vendoring the fixtures to assert it against.
+  [CI gates](#step-20-ci-gates-in-progress) has now vendored the fixtures for and asserted.
 - [Step 28 — Declarations as targets](#step-28-declarations-as-targets) — **done**
   — likewise added late, and it belongs *before* rename rather than beside the popup work above. It
   closes a criterion [references and navigation](#step-5-references-navigation-and-find-usages-done)
@@ -136,7 +136,7 @@ whole, and the gutter action goes with the Server track.
 
 ### Cross-cutting — continuous, finished last
 
-- [Step 20 — CI gates](#step-20-ci-gates)
+- [Step 20 — CI gates](#step-20-ci-gates-in-progress)
 - [Step 21 — Documentation](#step-21-documentation)
 
 ## Prerequisites
@@ -150,14 +150,18 @@ whole, and the gutter action goes with the Server track.
   [the factory catalog generator](#step-9-factory-catalog-generator-in-progress), which cannot recover documentation
   from a compiled jar. **Verified resolvable for both lines**, and wired in: see Step 9 for what a resolved `-sources`
   jar can and cannot supply.
-- [ ] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr ships, vendored verbatim under
-  `src/test/testData/configsets/<name>/conf/` and recording the Solr release they came from. The gate asserts *clean
-  against what Solr itself ships*, which means nothing without naming which Solr. They are the clean fixtures
+- [x] Local copies of the `_default` and `sample_techproducts_configs` configsets Solr ships, vendored verbatim and
+  recording the Solr release they came from. The gate asserts *clean against what Solr itself ships*, which means
+  nothing without naming which Solr. They are the clean fixtures
   for [inspections](#step-6-inspections-in-progress) and the subject of the golden-file gate
-  in [CI gates](#step-20-ci-gates). This is also the first thing in the repository to need `testData` at all — every
-  test today builds its fixture inline with
-  `configureByText`, and `src/test/testData/` still holds nothing but the scaffold files
-  [rename](#step-8-rename) is due to replace.
+  in [CI gates](#step-20-ci-gates-in-progress).
+
+  **Four rather than two, and under `src/test/resources/shipped-configsets/<line>/<name>/` rather than the
+  `testData` this line first named.** Each supported line ships its own pair and they are not the same files, so two
+  would have left one line's catalog untested. `testData` was the wrong home twice over: that directory is gone —
+  [rename](#step-8-rename) removed the scaffold it held — and a fixture read through the classpath needs no test-data
+  path and no assumption about the working directory. Only the two files the plugin parses are vendored; `conf/` holds
+  stopword lists and mapping tables nothing here reads, and a feature that comes to read one brings its file with it.
 - [ ] A local Solr, for manual verification only.
 - [x] Package namespace settled — it stays `org.apache.solr.ide`, so there is no rename.
   [The activation gate overhaul](#step-2-overhaul-the-activation-gate-done) is the step that had to know and is where
@@ -845,8 +849,13 @@ placement decision this plan owns.
 
 **Success criteria:**
 
-- [ ] Both configsets Solr ships produce zero findings, which is the gate the spec already sets for inspections.
-      Blocked on the fixtures themselves, which are [CI gates](#step-20-ci-gates)' to vendor.
+- [x] Both configsets Solr ships produce zero findings from every inspection but one, which is the gate the spec
+      already sets for inspections.
+      [CI gates](#step-20-ci-gates-in-progress) vendored the fixtures and holds the assertion — all four of them,
+      since each line ships its own pair. **It found one defect on the first run, and it was this step's rule**: the
+      near-miss inspection reported `<str name="spellcheck">on</str>`, which all four configsets write, as a
+      misspelling of `spellcheck.q`. A name the catalog knows members *below* is a family root and is now declined.
+      One rule is held out of the gate by name — see that step for which and why.
 - [x] A custom plugin class and its parameters produce no findings either. This is now a claim rather than a vacancy:
       the near-miss inspection exists, and a fixture puts a class and three parameter names Solr has never heard of in
       front of it.
@@ -1801,7 +1810,7 @@ flagged.
 
 ## Cross-cutting
 
-### Step 20: CI gates
+### Step 20: CI gates (in progress)
 
 **Actions:**
 
@@ -1823,10 +1832,35 @@ flagged.
 
 **Success criteria:**
 
-- [ ] Zero false positives on both shipped configsets, enforced in CI.
+- [x] Zero false positives on both shipped configsets, enforced in CI. Four configsets rather than two — each line
+      ships its own — and each selects its catalog from its own `<luceneMatchVersion>`, so both generated catalogs are
+      exercised without this test naming a version. One rule is held out by name, below.
 - [ ] Missing description files and version drift both fail the build.
+    - [x] A registered inspection with no description file fails the build. Keyed on `shortName`, which is what the
+      platform resolves the file by; proven by deleting one.
+    - [ ] Version drift, which is action 4 and waits on [documentation](#step-21-documentation) writing the matrix.
 - [ ] `verifyPlugin` passes for every IDE build the compatibility matrix claims, and the set it checks is read from
   where the matrix is written rather than restated.
+
+**What the first run found, which is the argument for having built it.** Nine of the eleven registered inspections were
+silent on all four configsets. Of the two that were not, one was a defect: `<str name="spellcheck">on</str>` — the
+idiom every one of the four uses to switch the spell checker on — was reported as a misspelling of `spellcheck.q`.
+The rule now declines a name the catalog knows *members below*, since Solr's convention is that `X` enables a component
+and `X.*` configures it. That is a gap in the vocabulary rather than in the file: the generator drops a constant ending
+in a dot, correctly, and `spellcheck.` is the only form `SpellingParams` declares — every other component's toggle
+survives because its interface happens to name it twice.
+
+**The other is held out of the gate by name, and the reason is a question this step does not own.**
+`SolrUnusedFieldTypeInspection` reports 45 types in `sample_techproducts_configs` and two in `_default`, all of them
+true — Solr ships a palette of language and spatial types for fields the copier has not written yet. A *zero findings*
+gate cannot hold the one rule here whose finding is a fact about the file rather than a defect in it. Both sides are
+pinned: everything else must still report nothing, and a separate test asserts the held-out rule does fire, so silencing
+it is not a way to pass. **What remains open is its presentation**, which belongs beside
+[showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
+rather than here: 45 Problems-view entries on a configset Apache Solr ships and supports is the same complaint that step
+answered for a restated default. Lowering the severity to `INFORMATION` was measured and does not work — the platform
+drops `INFORMATION` inspections from the daemon and the grey-out goes with them — so the shape that would do it is an
+annotator, which is what the restated-default dim already is. Recorded, not decided.
 
 **Acceptance:** No demo step — this step *is* the automated gate. It is what stops the demo passing while the suite
 quietly rots.
@@ -1850,10 +1884,10 @@ quietly rots.
 - [ ] All release-blocking documentation exists and CI checks pass.
 
 **Acceptance:** No demo step. The compatibility matrix written here is what makes the version-drift check
-in [CI gates](#step-20-ci-gates) meaningful rather than vacuous.
+in [CI gates](#step-20-ci-gates-in-progress) meaningful rather than vacuous.
 
 **Dependencies:** [inspections](#step-6-inspections-in-progress) for the catalog content,
-[CI gates](#step-20-ci-gates) for the checks that police it
+[CI gates](#step-20-ci-gates-in-progress) for the checks that police it
 
 ---
 

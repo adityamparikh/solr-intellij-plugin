@@ -100,6 +100,12 @@ sonar {
             "sonar.coverage.jacoco.xmlReportPaths",
             layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path,
         )
+        // The configsets Apache Solr ships, vendored verbatim as the zero-findings fixture. They are
+        // not this project's code and must not be edited to satisfy an analyser — the whole point of
+        // them is that nobody here wrote them. Excluded rather than merely exempted from duplication
+        // detection, which they would otherwise dominate: `_default`'s schema is byte-identical on
+        // both supported lines, because Solr did not change it between them.
+        property("sonar.exclusions", "src/test/resources/shipped-configsets/**")
     }
 }
 

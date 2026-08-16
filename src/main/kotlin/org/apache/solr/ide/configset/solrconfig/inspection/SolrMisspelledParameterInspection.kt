@@ -69,6 +69,17 @@ class SolrMisspelledParameterInspection : LocalInspectionTool() {
                 // Knownness decides it. A name Solr ships is correct however close it sits to
                 // another, which is the whole of the `pf2`/`pf3` guarantee.
                 if (SolrParameterCatalog.parameter(written, version) != null) return
+                // A name the catalog knows members *below* is a family root, and Solr's convention is
+                // that `X` switches a component on while `X.*` configures it. Without this, the very
+                // idiom the convention exists for — `<str name="spellcheck">on</str>`, in all four
+                // configsets Solr ships — reads as a typo of `spellcheck.q`, two edits away.
+                //
+                // It guards a gap that will recur rather than one name. The generator reads parameters
+                // off the interfaces that declare them and drops a constant ending in a dot, correctly,
+                // since `spellcheck.` is a stem and not a name; the bare toggle is declared elsewhere,
+                // on the component itself. Every other component's toggle survives only because its
+                // interface happens to declare it a second time.
+                if (known.any { it.startsWith("$written.") }) return
 
                 val suggestions = SolrInspections.nearMissesOf(written, known)
                 if (suggestions.isEmpty()) return
