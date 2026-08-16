@@ -456,9 +456,11 @@ recovery for.
 
 ## Editor track
 
-**Every step in this track is done.** Fourteen steps: the five it was planned with, plus nine added
-late as sandbox passes and design work found gaps — which is why the numbering here runs out of order
-and why several of them argue for their own placement in their opening lines.
+**Every step in this track is done.** Thirteen steps: the six it was planned with — 5 through 10 —
+plus seven added late, 23 through 29, as sandbox passes and design work found gaps. That is why the
+numbering here runs out of order, and why several of the late ones argue for their own placement in
+their opening lines. Count them from the headings rather than from this sentence; a first draft of it
+said fourteen.
 
 Two things are worth carrying forward rather than reading step by step. **Most of the last stretch was
 not building but discovering what had already been built**: four steps were closed by auditing them
