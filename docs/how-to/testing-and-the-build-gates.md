@@ -191,6 +191,50 @@ than a defect in it. The hold-out is pinned from both sides — everything else 
 nothing, and a separate test asserts the held-out rule does fire, so silencing it is not a way to
 pass.
 
+## Which Solr lines are supported, and the two copies of the answer
+
+`supportedSolrLines` in `build.gradle.kts` is where a line is added or dropped. It is not, despite
+what its comment says, the only place the answer is written down: `SolrClassCatalog.SUPPORTED_LINES`
+and a private twin inside `SolrElementCatalog` are the same list in another language, and each has a
+KDoc promising it is kept in step.
+
+**Drift is silent in both directions**, which is why `SolrCatalogResourceTest` exists:
+
+- a line **declared with no generated resource** reads as *empty* — deliberately, so a missing
+  catalog cannot take the editor down — so completion and documentation stop answering for that line
+  with nothing in the log;
+- a line **generated but never declared** ships inside the plugin, and every configset targeting it
+  quietly falls back to the newest line's answers.
+
+If you add or drop a line, that test tells you which copies you missed. Adding one phantom line to
+`SUPPORTED_LINES` fails five of its six tests.
+
+## What `verifyPlugin` checks against
+
+```kotlin
+val verifiedIdeBuilds = listOf("2026.2")
+```
+
+**One list, in `build.gradle.kts`, and it is the subject of the gate rather than a preference.** Left
+unconfigured, the task verifies against whatever the build happens to target — a gate whose subject
+is decided elsewhere changes its answer without a commit here, which is the same hole the pinned
+`pluginVerifier("…")` version closed one shape smaller. The compatibility matrix is due to be
+rendered from this list rather than restated beside it.
+
+One entry is the honest number, not a placeholder: `since-build` is 262 with no upper bound, so the
+plugin claims every build from 2026.2 onward, and nothing can verify a build that has not shipped.
+The list grows by one on each platform bump, in the same commit.
+
+**It reports deprecation as well as incompatibility**, which is the class of finding no test here can
+produce — today, one `ReadAction.compute(ThrowableComputable)` usage.
+
+**IntelliJ IDEA only, and the list is complete rather than a first entry.** The plugin targets IDEA
+and nothing else. Worth stating, because the alternative reads as an oversight: `plugin.xml` takes
+`com.intellij.modules.java` as an *optional* dependency, which looks like a claim that the plugin
+runs in an IDE without Java PSI. Nothing verifies that claim because nothing needs to — IDEA has
+been a single unified distribution since 2025.3 and bundles Java, so the optional dependency is
+always satisfied in every IDE this list names.
+
 ## The documentation gate
 
 Dokka runs with `reportUndocumented` and `failOnWarning`, and `dokkaGenerate` is a dependency of
