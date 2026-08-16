@@ -116,6 +116,14 @@ catalog — mechanical, refreshed per line, no second body of prose to maintain.
 of build input, since the guide is not a Maven artifact. That is a step of its own, and the decision
 between it and *leave the link to do the work* has not been made.
 
+**What shipped is the table, and the paragraph above is an open question rather than a record of
+its removal.** `SolrAttributeMeanings.ofFactoryAttribute` and the *Does* row it renders went in with
+the step and are on screen today. The sandbox note was read the other way once already — the manual
+test suite spent months asking a verifier to confirm that no prose row appears, which is the
+opposite of the behaviour — so it is worth saying plainly here: the duplication argument and the
+generated-source idea are both live, and neither has been acted on. The plan owns whether they ever
+are.
+
 ## Testing strategy
 
 Plain JUnit 4 for the table itself — it is a pure function from a pair of strings to prose, and
