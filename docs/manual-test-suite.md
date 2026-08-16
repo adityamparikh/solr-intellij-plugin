@@ -362,10 +362,21 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       to `<str name="rwos">`: underlined, and Alt-Enter offers `rows`. Then write `<str name="pf2">`
       and `<str name="pf3">` side by side — **neither is flagged**, though they are one edit apart.
       That pair is the whole reason the rule checks knownness before distance. Undo.
-- [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false`, then look at the `/select` handler's
-      `qf`: `name` is underlined as a relevance parameter naming a field the schema never indexes.
-      **This is the one INSP check whose finding is invisible in Solr** — the core starts, the query
-      runs, and the field simply never matches. Undo.
+- [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false` at `managed-schema.xml:68`, then look
+      at the `/select` handler's `qf` at `solrconfig.xml:28`. `name` is underlined — **`name` alone, not the
+      `^3` beside it and not the two field names after it** — reading *Solr: 'name' is not indexed, so 'qf'
+      cannot search or boost it*, and `solrconfig.xml` goes from BASE-2's zero problems to exactly one.
+      The finding is invisible in Solr: the core starts, the query runs, and the field simply never
+      matches. **One of two such checks rather than the only one** — INSP-7's ordering finding is the
+      other, and a chain whose filter never runs is just as silent. Undo.
+
+      *What lets this fire is a catalog row rather than the edit.* Searchable is `indexed` **or**
+      `docValues`, and an undetermined `docValues` leaves the rule with no definite answer and this
+      check with nothing to see. `name` is `text_general`, whose `solr.TextField` the generated catalog
+      carries with an **empty** traits column — a class it knows, carrying no trait — so `docValues`
+      resolves to a definite false at the demo's `version="1.6"` rather than to silence. The same edit
+      on a field whose type names a class the catalog has never seen underlines nothing, which is the
+      inspection working rather than failing.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -578,8 +589,12 @@ finding one of these gestures alive means the suite is behind, not that somethin
   dangling-`copyField` inspection, once on a written edit and once on a live deletion; INSP-10 to
   INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
   that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
-  anything. Four of the eleven classes are exercised from sections other than INSP — the two
-  attribute checks appear at INSP-5 and INSP-6, and the `solrconfig.xml` pair at INSP-13 and INSP-14
+  anything. **Four of the eleven belong to plan steps other than the inspections one**, and their
+  checks sit here all the same: the two attribute checks at INSP-5 and INSP-6, the misspelled
+  parameter at INSP-14, and the unsupported field operation at INSP-10 to INSP-12. The seven the
+  inspections step plans have a gesture apiece at INSP-1 to INSP-4, INSP-7, INSP-8, INSP-13 and
+  INSP-15 — all seven, since the last two of those were written. **A gesture is not a pass**; which
+  of them anyone has pressed is the [pass log](#pass-log)'s to say and no other line's
 
 ### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
 
@@ -914,3 +929,36 @@ keymap it is not, and the file name was typed into the editor instead. The rule 
 pass extends: drive **navigation** by menu item too, not just caret placement —
 *Navigate → File…* exists and does exactly what the shortcut was assumed to. Guessing a keystroke is
 the same class of error as guessing a coordinate.
+
+### 2026-08-16 — the check the audit missed, and the one row it turns on
+
+The 2026-08-15 audit read twelve unpressed checks against the data behind them and **INSP-15 was not
+among them.** It is the last INSP check written from a description of a feature and never read
+against a fixture, which is exactly the shape that produced STR-5. Read now, against the demo, the
+generated catalog and the rule itself. **Not pressed** — nothing below is evidence, only a gesture
+that can now produce the outcome it claims.
+
+- **The two lines the gesture names exist and say what it needs.** `managed-schema.xml:68` declares
+  `name` as `type="text_general" indexed="true"`, and `solrconfig.xml:28` is the `/select` handler's
+  `<str name="qf">name^3 description category</str>`.
+- **`qf` is a searching parameter and `^3` is not part of the name.** The parser maps `qf`, `pf`,
+  `pf2` and `pf3` to the search operation and splits a boost off the token before resolving it, so
+  the underline falls on `name` and stops at the caret. `bf` and `boost` are deliberately not in that
+  map, which is why nothing else in the file joins in.
+- **The row the check actually turns on is `solr.TextField`'s.** Searchable is `indexed` *or*
+  `docValues`, and the disjunction returns "don't know" — and reports nothing — unless both sides are
+  definite. `docValues` has no flat default; it is decided by the field type's class, and the
+  generated catalog carries `solr.TextField` with an **empty** traits column. Empty is a different
+  answer from absent: the class is known and carries no trait, so `docValues` resolves to a definite
+  false and the rule to a definite no. Had `text_general` named a class the catalog does not carry,
+  the edit would have underlined nothing and the check would have read as correct forever.
+
+**One claim in it was wrong and is corrected**: it called itself the only INSP check whose finding is
+invisible in Solr. The analyzer-chain ordering at INSP-7 is the other — every class exists, every
+attribute is legal, the core starts, and the filter never runs. Two, not one.
+
+**INSP-13 needed no audit and got a confirmation instead.** It was pressed on 2026-08-15, and the two
+sentences it quotes are literals in the generated element vocabulary, both keyed to parent `config`:
+`nrtMode` carries *The `<nrtMode>` config has been discontinued and NRT mode is always used by Solr…*
+and `indexDefaults` carries *…discontinued. Use `<indexConfig>` instead.* The parent key is also why
+the check's third half works — move the element inside `<acmeThing>` and no row matches it.
