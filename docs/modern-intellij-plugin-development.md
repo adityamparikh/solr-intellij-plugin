@@ -2,7 +2,7 @@
 
 ### A hands-on introduction for Java and Kotlin engineers
 
-> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. It is being refined against that implementation as it lands.
+> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. [Part 11](#part-11--this-repo-as-the-worked-example), added after the tutorial itself, bridges the two: it maps every concept above onto this repository's real code, with the two decisions this repo made that the toy tutorial above did not need to — why parsing here does not lean on PSI the way Part 3 describes, and how dumb mode is actually enforced.
 
 You already know how to make a JVM project do something useful. This tutorial is about making your *IDE* do something useful — and it turns out the distance between those two skills is much shorter than most engineers assume.
 
@@ -859,6 +859,146 @@ Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Insta
 And one bonus, because it wastes an afternoon the first time: **the sandbox has its own configuration.** Settings you change there don't affect your real IDE — occasionally confusing when a feature "only works on my machine."
 
 ---
+
+## Part 11 — This repo as the worked example
+
+Everything above is a standalone toy over `dev.example.solrconfig`. This repository — the one this
+file lives in — is a real plugin built on exactly the four patterns Parts 4 through 6 taught, plus a
+handful of extension points the toy never needed. This part maps one onto the other, and states the
+two decisions the real repo made that the toy tutorial didn't have to.
+
+### The extension points this plugin actually registers
+
+Every one of these lines lives in `src/main/resources/META-INF/plugin.xml`. The vocabulary column is
+the same five-plus-actions list from [Part 2](#so-which-lists-are-there), so if a row's *Kind* is new
+to you, that's the signal to read the platform SDK page for it before touching the package.
+
+| `plugin.xml` element | Kind | What it's for here | Implementation |
+|---|---|---|---|
+| `fileType` | file-type association | Makes the extensionless `managed-schema` parse as XML — [the exact trap Part 4 warns about](#the-step-that-will-bite-you-extensionless-files) | `plugin.xml:33` |
+| `codeInsight.declarativeInlayProvider` | inlay hint | The match-capability hint beside every field | `SolrMatchInlayHintsProvider`, `plugin.xml:38-45` |
+| `annotator` | annotator (new — not in Parts 4-6) | Dims an attribute that only restates its default; an `Annotator` runs like an inspection but at information severity with no Problems-view entry | `SolrRestatedDefaultAnnotator`, `plugin.xml:51-53` |
+| `xml.elementDescriptorProvider` | descriptor (new) | Teaches the platform's own XML support this file's element vocabulary, replacing its schema-less sibling-echo guess. Two registrations, one per file, because a single provider serving both would make one file the owner of the other's positions | `SolrSchemaElementDescriptorProvider` / `SolrConfigElementDescriptorProvider`, `plugin.xml:58-67` |
+| `lang.documentationProvider` | documentation | F1 / hover, exactly [Part 2's table](#so-which-lists-are-there) | Two registrations, schema and `solrconfig.xml`, `plugin.xml:74-84` |
+| `psi.referenceContributor` | reference | Same interface [Part 6](#part-6--feature-3-references-three-features-for-the-price-of-one) builds, three registrations: schema, `solrconfig.xml`, and a third for the one reference kind that resolves into Java PSI (a `class=` value) | `plugin.xml:89-103` |
+| `pom.declarationSearcher` | declaration target (new) | The half [Part 6](#resolve-to-the-name-not-to-the-tag) doesn't cover: turning a *declaration* — the caret sitting on a `<field name="…">`, not a reference to it — into something Find Usages will accept as a search target. The toy tutorial's Find Usages only ever worked from a reference, because nothing made the declaration itself searchable | `SolrDeclarationSearcher`, `plugin.xml:110-111` |
+| `referencesSearch` | search executor (new) | A dynamic field's pattern supplies names it never spells literally (`*_t` supplying `body_t`); the platform's word-index search can't find those on its own, so this extension answers the search directly through the model | `SolrDynamicFieldSearcher`, `plugin.xml:117-118` |
+| `elementDescriptionProvider` / `usageTypeProvider` | presentation (new) | What the Find Usages header and the rename dialog say about a target and a result — *Field type* / *Field declaring this type*, not the platform's fallback class name. Found by using the feature, not by reading a spec: without these, both read `Solr Declaration Target`, which is this plugin's own internal class name leaking onto the screen | `plugin.xml:125-128` |
+| `completion.contributor` | completion | Same interface as [Part 4](#part-4--feature-1-completion), two registrations | `plugin.xml:135-143` |
+| `localInspection` | inspection | Same shape as [Part 5](#part-5--feature-2-an-inspection-with-a-quick-fix), eleven registrations | `plugin.xml:148-283` |
+| `intentionAction` | intention (new) | An Alt+Enter menu item on code that has nothing wrong with it — no underline, never in the Problems view. The distinguishing question, stated in this repo's own [code organization guide](code-organization.md#the-organising-principle): if your change would underline something, it's an inspection; if it wouldn't, it's an intention | Three registrations, `plugin.xml:288-305` |
+
+Two things worth noticing about the list as a whole. First, every inspection is `level="WARNING"`,
+never `ERROR` — the comment beside the block in `plugin.xml` explains why: this plugin's model of a
+half-typed file, mid-edit, isn't authoritative enough to claim a hard error. Second, nothing here is
+an *action* — no menu item, no toolbar button, no `AnAction`. Every capability in this plugin so far
+is something the platform calls on its own, group one from [Part 2](#so-which-lists-are-there); the
+Server track, when it lands, is where actions such as "upload this configset" will show up.
+
+### Why parsing here does not lean on PSI the way Part 3 says
+
+[Part 3](#part-3--psi-the-thing-everything-stands-on) tells you to always read a file through PSI, and
+that's the right default — it's live, shared, and never stale mid-edit. This repo follows it for
+everything that answers a question *at a caret*: completion, inspections, references, and the
+descriptors above all walk `XmlTag` / `XmlAttributeValue`, exactly as Parts 4 through 6 do.
+
+But underneath all of that sits a second, deliberately separate parse: `SolrSchemaParser` and
+`SolrConfigParser` turn a configset's text into a plain data model — field names, types, analyzer
+chains — using `org.w3c.dom.Element`, the JDK's own DOM, not PSI at all
+(`src/main/kotlin/org/apache/solr/ide/configset/schema/parsing/SolrSchemaParser.kt:17`). The class
+comment says why directly: *"A pure function from text to data, with no IntelliJ types in its
+signature, so that the component the rest of the plugin depends on for correctness can be tested as a
+plain unit test."* (same file, lines 19–30) That buys something PSI-based parsing structurally can't:
+a test that runs in milliseconds with no headless IDE to boot, which matters because this is the one
+component in the plugin that has to be exhaustively correct — every inspection, every hint, every
+piece of documentation ultimately reads its answer. Roughly a third of this plugin's test suite is
+plain JUnit for exactly this reason, and `SolrSchemaParserTest`
+(`src/test/kotlin/org/apache/solr/ide/configset/schema/parsing/SolrSchemaParserTest.kt`) is what that
+looks like: `import org.junit.Test`, no `BasePlatformTestCase`, and it runs against a Kotlin string,
+not a fixture file.
+
+So there are two parses of the same text living side by side, on purpose: PSI answers "what's under
+this caret right now," which every position-based feature needs, and the DOM-based parser answers
+"what does this configset mean," which is a pure function nothing about the editor should be able to
+make expensive or flaky to test. `SolrConfigsetReader` is the seam between them — it feeds PSI text
+(so unsaved edits are seen) into the DOM parser and caches the result through the platform's
+`CachedValuesManager`, so the rest of the plugin never parses twice. If you're building a plugin whose
+correctness matters as much as this one's — anything with a "must never produce a false positive"
+requirement — this split is worth copying; if your format is smaller or the stakes are lower, reading
+straight off PSI everywhere, the way Part 3 teaches, is simpler and completely fine.
+
+### Dumb mode: the thing Part 10 mentions and this repo enforces everywhere
+
+[Part 10, point 5](#part-10--the-eight-things-that-will-trip-you-up) flags dumb mode as a trap and
+moves on. This repo treats it as a standing rule with two different mechanisms, because the platform
+itself exposes two:
+
+- `LocalInspectionTool` and `CompletionContributor` — override `isDumbAware(): Boolean = true`. See
+  `SolrDanglingCopyFieldInspection.kt:30` or `SolrSchemaCompletionContributor.kt:58` for the shape.
+- `DocumentationProvider`, inlay providers, `Annotator` and `IntentionAction` — implement the
+  `DumbAware` marker interface instead. See `SolrMatchInlayHintsProvider.kt:39`,
+  `SolrSchemaDocumentationProvider.kt:51`, or `SolrRestatedDefaultAnnotator.kt:42`.
+
+Every extension in this plugin declares itself dumb-aware, and it's a defensible promise rather than a
+box ticked without thinking, because nothing on the editor path reads a project index — the whole
+model is parsed straight from a configset's own text, per the section above. The one place this repo
+touches an index at all is class navigation through `JavaPsiFacade` (the `class=` reference in the
+table above), and this project's own [CLAUDE.md](../CLAUDE.md) records a real defect from getting this
+half-right instead of fully right: an earlier revision only *declined the dumb-aware declaration*
+there, which keeps that one feature out of paths that check the flag but does nothing about a caller
+that reaches `resolve()` directly during indexing — which throws, and took the whole quick-documentation
+popup down with it, including everything else on the same popup that needed no index at all. The fix
+was both: decline the declaration **and** guard the resolve call with `DumbService`. If you add a
+feature to *any* plugin that reads an index, that's the shape to copy — declining a declaration is not
+a substitute for guarding the code path, it only controls who's allowed to call it through the
+declared route.
+
+### The three test tiers, and which one a change gets
+
+[Part 7](#part-7--testing) shows one test style — `BasePlatformTestCase`, which is what you reach for
+whenever a test needs PSI. This repo has that tier and one more, split by exactly the same PSI/DOM
+line drawn two sections up:
+
+1. **Plain JUnit 4** over `org.apache.solr.ide.model` and the `*.parsing` packages — `@Test`-annotated,
+   conventional method names, and no superclass at all. Runs in milliseconds; no IDE boots.
+   `SolrSchemaParserTest` is the example above.
+2. **`BasePlatformTestCase` fixture tests** for anything that touches PSI — completion, inspections,
+   references, documentation. JUnit 3-style despite the JUnit 4 dependency Part 1 explains: methods
+   are named `testSomething()` and discovered by that prefix, not by an annotation. This is where
+   `checkHighlighting()` from Part 7 does its real work, and this repo leans on one property of it
+   hard: it fails on highlights the fixture *didn't* mark as well as ones it did, which is what makes
+   "zero false positives on a correct file" enforceable per test rather than only hoped for in review.
+   Most tests in this tier extend `SolrConfigsetTestCase`, a project subclass of
+   `BasePlatformTestCase` that puts a Solr client on the fixture's classpath and resets the
+   plugin's own persistent settings between tests — see
+   [`SolrConfigsetTestCase` in the how-to guide](how-to/add-an-editor-feature.md) for why either
+   matters. **The tier a test belongs to is decided by the class it extends, not by what it
+   imports**, and this repo caught two of its own contributors misreading it the other way: a test
+   extending `SolrConfigsetTestCase` needs no `com.intellij` import of its own to boot a full
+   headless IDE, because everything platform-shaped is already inherited through the base class.
+   Grepping a file's imports to guess its tier will misclassify every one of them as tier 1.
+3. **No fourth tier.** This repo's plan states it as a deliberate absence: no `intellij-ide-starter`,
+   no Remote Robot, nothing drives a running IDE from a test. Every claim the plugin makes — a
+   highlight, a resolve target, a completion list, a model value — is assertable headlessly through
+   tiers 1 and 2, so a test that drives a real IDE window would be paying for coverage the other two
+   tiers already give for free. What tier 2 *can't* see — whether a hint actually renders somewhere a
+   presenter can point at, whether a popup is readable at real size — is what
+   [this repo's manual test suite](manual-test-suite.md) exists for: a checklist pressed by hand
+   against `./gradlew runIde`, with a pass log recording what was actually pressed and when, kept
+   deliberately separate from what's merely been written down as a plausible-looking gesture.
+
+### Running this plugin's own sandbox
+
+`./gradlew runIde` here does everything Part 1's checkpoint describes, plus one thing worth knowing in
+advance: it opens `demo/` — a real Solr application with a real configset — automatically, rather than
+whatever the sandbox had open last, specifically so a first-time reader sees the plugin doing something
+without building a fixture first. And the **first** build (or any build after `./gradlew clean`) is
+slow for a reason that has nothing to do with the IDE: a Gradle task resolves `solr-core` for every
+Solr line this plugin supports and reads the class files inside, because a configset names Solr
+classes as bare strings (`class="solr.StrField"`) and the plugin can't complete or explain one without
+first knowing what exists. [Contributing → "Your first build is slow"](contributing.md#your-first-build-is-slow-and-that-is-expected)
+has the full account; it is the one surprise in this repo's build that Part 1 gives you no reason to
+expect.
 
 ## Where to go next
 

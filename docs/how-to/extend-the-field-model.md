@@ -8,10 +8,18 @@ and the two rules that make the package worth having.
 
 **No IntelliJ types. Ever.**
 
-This is load-bearing rather than stylistic. Eleven of the thirty-two test files in this repository are
+This is load-bearing rather than stylistic. Roughly a third of the test files in this repository are
 plain JUnit 4 — no fixture, no headless IDE, no second of wall-clock per test — and they can be
 because the code they test imports nothing from the platform. One platform import costs that, for
 every test in the file and every test written against it afterwards.
+
+**Which tier a test is in is decided by the base class it extends, not by what the file imports**, and
+that is worth stating because the obvious measurement gets it wrong. A test extending
+`SolrConfigsetTestCase` boots a full headless IDE while importing nothing from `com.intellij` itself —
+the base class does that — so counting platform imports classifies every inspection test in this
+suite as though it were a plain one. The proportion above is deliberately left as a proportion for the
+same reason a count of anything here goes stale: measure it when you need it, and measure the base
+class.
 
 It also means the model is testable as a function over a string, which matters most for the code
 where being wrong is expensive. `SolrMatchAnalysis` is the claim the demo puts in front of a room and
@@ -47,7 +55,7 @@ something no `SolrConfigsetFacts` field carries throws the value away silently.
 
 ### 1. The type
 
-`model/SolrSchemaTypes.kt` holds the vocabulary — `SolrField`, `SolrFieldType`, `SolrDynamicField`,
+`model/schema/SolrSchemaTypes.kt` holds the vocabulary — `SolrField`, `SolrFieldType`, `SolrDynamicField`,
 `SolrCopyField`, `SolrAnalyzerChain`, `SolrAnalyzerComponent`, `SolrFieldReference`. Add a `data
 class` here, or a property to an existing one.
 
@@ -55,7 +63,8 @@ Every public property needs KDoc. Say what the value means in Solr's terms, not 
 
 ### 2. The parser
 
-`configset/parsing/SolrSchemaParser` and `SolrConfigParser` are `object`s with a single entry point:
+`configset/schema/parsing/SolrSchemaParser` and `configset/solrconfig/parsing/SolrConfigParser` are
+`object`s with a single entry point:
 
 ```kotlin
 fun parse(xml: CharSequence): SolrConfigsetFacts

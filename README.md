@@ -95,6 +95,34 @@ a resolved reference at rest looks like an ordinary editor. Both are captured in
 catalog](docs/screenshots.md) as entries 7 to 9, held there for anyone assembling a talk or a
 marketplace listing rather than repeated here.
 
+### `solrconfig.xml` completes its own structure, not the schema's echo
+
+![Element completion inside the config element in solrconfig.xml, offering Solr's own top-level
+vocabulary — directoryFactory, query, requestHandler, updateHandler, luceneMatchVersion — rather than an
+echo of the sibling tags already written above the caret](docs/images/10-completion-solrconfig-structure.png)
+
+Before this shipped, the platform ran schema-less and guessed from whatever same-named tag happened
+to sit nearby — a guess that looks exactly like knowledge in a file made almost entirely of
+same-named tags. Nesting is respected too: what completes inside `<query>` is not what completes
+inside `<config>`.
+
+### What can go, dimmed; what's missing, one keystroke away
+
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
+defaults, while stored=false on name_prefix stays at full strength](docs/images/11-dimmed-restated-default.png)
+
+A restated default is correct Solr, so it is never underlined — it is rendered the way an IDE
+renders any other redundant code, with an Alt-Enter intention that removes it and leaves the parsed
+schema unchanged. The same Alt-Enter menu goes the other way on a field that lacks a capability
+rather than restating one it already has:
+
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
+prefix-capable companion field' intentions](docs/images/12-intention-companion-fields.png)
+
+Both intentions generate the companion `<field>` and, where one does not already exist, its
+`<fieldType>` — the first time this plugin edits a configset rather than only explaining or flagging
+one.
+
 ## Planned scope
 
 Three surfaces, connected by one shared model of what fields exist and what they can do —
@@ -138,7 +166,9 @@ they are written down — a compatibility matrix ships with the first release.
 | Document | Purpose |
 |---|---|
 | [Specification](specs/0002-solr-intellij-plugin.md) | What the plugin is for, how it is structured, and what it does |
-| [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done |
+| [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done — the one file that owns status |
+| [Project orientation](docs/project-orientation.md) | A reader's map of where the project stands, pointing into the plan rather than restating it |
+| [User guide](docs/user-guide.md) | Every editor capability, organised by what you're trying to do, with the gesture and the outcome |
 | [Contributing](docs/contributing.md) | Setup, first run, where work comes from, and how a change gets merged |
 | [Code organization](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [How-to guides](docs/how-to/) | Adding an editor feature, extending the field model, testing against the gates |

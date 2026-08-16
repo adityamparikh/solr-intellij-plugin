@@ -29,9 +29,22 @@ version number beside the Solr line and `luceneMatchVersion`.
 documentation over 340 generated parameter names, the closed set `defType` accepts, completion and quick
 documentation and Ctrl-click on the classes it names, schema field names offered inside the sixteen parameters
 known to hold them, and two inspections that fire where a *broken* configuration would previously have passed
-silently — a `facet.field` or `sort` naming a field that cannot serve it. Nine inspection classes are now
-registered. What the file still lacks is its own *structure*: typing `<` inside `<config>` offers nothing the
-plugin knows, because the element descriptor is still gated on the schema.
+silently — a `facet.field` or `sort` naming a field that cannot serve it. Eleven inspection classes are now
+registered in total. **This paragraph used to end here by saying the file still lacked its own structure, and
+that sentence outlived what it described.** Action 1 of [step 25](#step-25-solrconfigxml-as-a-first-class-surface-done)
+shipped in `#141`: typing `<` inside `<config>` offers Solr's own top-level vocabulary —
+`requestHandler`, `query`, `directoryFactory`, `luceneMatchVersion` and the rest the generator read out
+of `SolrConfig`'s own config-reading calls — not an echo of whatever sibling tags already sit above the caret,
+and not a copy of the schema's vocabulary either. **Nesting is respected, and this is no longer merely the
+design intent — a defect closed after this paragraph was first corrected proves it.** `cache`,
+`featureVectorCache` and `HashDocSet` were being offered inside `<config>` as well as inside `<query>`,
+where all three actually belong; the generator now follows the bytecode call chain that reads a nested
+element off its parent node rather than stopping at calls made directly on `SolrConfig`, so an element
+that chain reaches is placed under its real parent instead of defaulting to the root when the chain went
+unfollowed. What completes inside `<query>` is not what completes inside `<config>`. [The manual suite's
+STR-1 through STR-6](../../docs/manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str) press this,
+STR-1 and STR-3 with a recorded pass, and [screenshot catalog entry 10](../../docs/screenshots.md#10-solrconfigxmls-own-structure--10-completion-solrconfig-structurepng)
+captures it against the sandbox.
 
 **Two facts were recorded before anything showed them, and now two surfaces do.** The catalog's attribute defaults and
 required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
@@ -542,9 +555,22 @@ Where the zero-false-positive requirement gets teeth.
    list, so the two counts disagreed and the criteria were right.
 
    **The seventh was written as "removed in the targeted line" and shipped as something else, because the measurement
-   that unblocked it also showed the original had nothing to report.** The two supported lines differ by exactly one
-   element, `featureVectorCache`, *added* in 10 — nothing was removed between them, so a rule comparing the lines would
-   never fire until a future line drops something. What the same pass did find is five elements Solr still reads and no
+   that unblocked it also showed the original had nothing to report — for *elements*.** The two supported lines'
+   *elements* differ by exactly one, `featureVectorCache`, *added* in 10, so an element-comparison rule would never
+   fire until a future line drops one. **That is narrower than "nothing was removed", which this paragraph originally
+   claimed and which is at least partly false: two `requestDispatcher` *attributes* are confirmed removed by name** —
+   `handleSelect` ([SOLR-17742](https://issues.apache.org/jira/browse/SOLR-17742)) and
+   `requestParsers/addHttpRequestToContext` ([SOLR-17741](https://issues.apache.org/jira/browse/SOLR-17741)).
+   **Two more, `requestParsers/enableRemoteStreaming` and `requestParsers/enableStreamBody`, are absent from Solr
+   10's `EditableSolrConfigAttributes.json` rather than confirmed removed** — that resource enumerates
+   *runtime-editable* attributes, so absence from it is evidence the Config API can no longer touch them, not evidence
+   Solr no longer reads the element at all, and the two are not asserted as removed on that evidence alone. Either way
+   the two lines' attribute counts read 36 and 32 a few paragraphs below rather than matching, so something genuinely
+   shrank.** The claim was wrong; the decision it was given to justify was not, because the rule this step needed
+   compares *elements*, and elements alone really did not shrink. A configset carrying `handleSelect` and targeting
+   Solr 10 is exactly the finding an *attribute*-comparison rule would report, and nothing here builds one — this
+   correction is to the stated reason, not to what shipped. What the same pass did find is five elements Solr still
+   reads and no
    longer accepts, four of which stop the core starting. That is the rule that shipped: an element carrying a retirement
    notice, reported in Solr's own words. The line-comparison version is worth writing the day a line removes something,
    and costs nothing to add then, since the per-line vocabularies are already generated.
@@ -815,9 +841,9 @@ was read only for the field names it mentions, which gave the most-edited file i
 **This is the largest step in the configuration surface and should be split when it starts.**
 It is written as one step because the pieces share a dependency and a shape, not because it is one pull request.
 
-[The design record](../../docs/design/pending/2026-08-07-solrconfig-intelligence/design.md) supplies the design this step
+[The design record](../../docs/design/archive/2026-08-07-solrconfig-intelligence/design.md) supplies the design this step
 was written without, [`specs/0002-solrconfig-xml-intelligence.md`](../0002-solrconfig-xml-intelligence.md) specifies the
-requirements, and [the plan beside the design](../../docs/design/pending/2026-08-07-solrconfig-intelligence/plan.md) is
+requirements, and [the plan beside the design](../../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md) is
 the split this step asked for: five pull requests, of which only the first is startable today.
 
 **Nothing here is startable until the groundwork lands, and that is a property of the dependencies rather than of the
@@ -1009,8 +1035,15 @@ continuing. So the plugin is not being helpful by flagging them — it is report
 load. And the per-line sets differ by exactly one entry,
 `featureVectorCache`, added in 10 — which means the element data
 [the seventh inspection](#step-6-inspections-done) is blocked on becomes derivable from this same
-pass, while also showing that **nothing was removed between the two supported lines**, so that inspection
-would have nothing to report until a future line drops something.
+pass, while also showing that **no element was removed between the two supported lines**, so an
+inspection comparing *elements* line to line would have nothing to report until a future line drops
+one. **Attributes are a different question, and the answer there is not nothing**: two
+`requestDispatcher` attributes are confirmed removed between 9 and 10 by name — `handleSelect`
+(SOLR-17742) and `addHttpRequestToContext` (SOLR-17741) — and two more are absent from Solr 10's
+runtime-editable resource without being confirmed removed outright; see
+[the correction under action 1 above](#step-6-inspections-done) for both, and for why the weaker claim
+is the one this document makes. Worth having on record even though it does not change what this
+section decided, since the rule this step needed was about elements.
 
 The distribution tarball and the vendored-files fallback are both retired regardless, and the shipped
 configsets stay what this step's criteria want them for: the zero-findings fixture.
@@ -1061,7 +1094,7 @@ intention rather than a quick-fix, because an intention carries no claim that an
   because a deletion that changed one would still produce plausible XML.
 - [x] A property whose default cannot be *determined* never dims — the amended criterion. It previously read "whose
   default depends on the field type", which the catalog's traits made both too strict and no longer the real question;
-  [the design record](../../docs/design/pending/2026-08-13-restated-defaults/design.md) carries the argument.
+  [the design record](../../docs/design/archive/2026-08-13-restated-defaults/design.md) carries the argument.
 - [x] Nothing this step adds appears in the Problems view on a correct file.
 - [x] An attribute on an analysis factory restating that factory's recorded default dims, and the same intention
   removes it. `ignoreCase="false"` on a `solr.StopFilterFactory` and `maxTokenLength="255"` on a
@@ -1257,7 +1290,7 @@ today.
 the reference graph and `SolrSchemaPsi`; [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 for the resolution the dynamic-field executor calls.
 
-[The design record](../../docs/design/pending/2026-08-04-declaration-targets/design.md) carries the
+[The design record](../../docs/design/archive/2026-08-04-declaration-targets/design.md) carries the
 route comparison — why the POM declaration searcher rather than the Symbol API — and the bounds on
 the configset walk.
 

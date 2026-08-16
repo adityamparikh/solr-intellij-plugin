@@ -23,9 +23,9 @@ It is a specification for a *slice* of the plugin described in
 [`specs/0002-solr-intellij-plugin.md`](0002-solr-intellij-plugin.md), which owns the product intent.
 This document owns what "solrconfig.xml as a first-class surface" means concretely. The reasoning
 behind each decision below lives in
-[`docs/design/pending/2026-08-07-solrconfig-intelligence/design.md`](../docs/design/pending/2026-08-07-solrconfig-intelligence/design.md)
+[`docs/design/archive/2026-08-07-solrconfig-intelligence/design.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/design.md)
 and its prerequisite,
-[`docs/design/pending/2026-08-07-solrconfig-catalog/design.md`](../docs/design/pending/2026-08-07-solrconfig-catalog/design.md).
+[`docs/design/archive/2026-08-07-solrconfig-catalog/design.md`](../docs/design/archive/2026-08-07-solrconfig-catalog/design.md).
 
 ## Goals
 
@@ -337,7 +337,7 @@ loses.
 ### This depends on a catalog population that does not exist yet
 
 Three of the four capabilities are blocked on
-[extending the catalog to `solrconfig.xml`'s classes and parameters](../docs/design/pending/2026-08-07-solrconfig-catalog/design.md).
+[extending the catalog to `solrconfig.xml`'s classes and parameters](../docs/design/archive/2026-08-07-solrconfig-catalog/design.md).
 The catalog's four kinds are all schema vocabulary; nothing corresponds to a request handler. Two
 findings make the extension tractable, both verified against the resolved artifact rather than
 recalled:
@@ -481,7 +481,7 @@ configset.
 - **Scope.** This is four capabilities across a generator, a descriptor, a completion contributor, a
   documentation provider, an inspection and a reference provider. The plan already says the step
   should be split when it starts, and
-  [`plan.md`](../docs/design/pending/2026-08-07-solrconfig-intelligence/plan.md) beside the design
+  [`plan.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md) beside the design
   record is that split.
 - **Widening the descriptor gate touches a file that currently works.** The schema's descriptors are
   the reason its attribute completion stopped guessing, and they feed completion, platform
@@ -527,11 +527,11 @@ configset.
 - [`specs/0002-solr-intellij-plugin.md`](0002-solr-intellij-plugin.md) — product intent
 - [`specs/plans/0002-solr-intellij-plugin-plan.md`](plans/0002-solr-intellij-plugin-plan.md) — Step 25
   in the Editor track owns delivery status
-- [`docs/design/pending/2026-08-07-solrconfig-intelligence/design.md`](../docs/design/pending/2026-08-07-solrconfig-intelligence/design.md)
-  and its [`plan.md`](../docs/design/pending/2026-08-07-solrconfig-intelligence/plan.md)
-- [`docs/design/pending/2026-08-07-solrconfig-catalog/design.md`](../docs/design/pending/2026-08-07-solrconfig-catalog/design.md)
+- [`docs/design/archive/2026-08-07-solrconfig-intelligence/design.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/design.md)
+  and its [`plan.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md)
+- [`docs/design/archive/2026-08-07-solrconfig-catalog/design.md`](../docs/design/archive/2026-08-07-solrconfig-catalog/design.md)
   — the prerequisite
-- [`docs/design/pending/2026-08-04-declaration-targets/design.md`](../docs/design/pending/2026-08-04-declaration-targets/design.md)
+- [`docs/design/archive/2026-08-04-declaration-targets/design.md`](../docs/design/archive/2026-08-04-declaration-targets/design.md)
   — where Find Usages on `solrconfig.xml` declarations was declined
 - [`docs/solr-configuration-files.md`](../docs/solr-configuration-files.md) — updated by this work;
   its table's "the rest of `solrconfig.xml` is a later concern" becomes wrong
