@@ -74,6 +74,25 @@ class SolrMisspelledParameterInspectionTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * A name the catalog knows as the *stem* of a family is not a misspelling of its own members.
+     *
+     * **Found by running this rule over the configsets Solr ships, where it fired on all four.**
+     * `<str name="spellcheck">on</str>` is how every one of them turns the spell checker on, and it
+     * was reported as a typo of `spellcheck.q`. Solr's convention is that `X` enables a component and
+     * `X.*` configures it, so a name with known members below it is a parameter whatever else the
+     * catalog does or does not carry.
+     *
+     * The catalog is missing this one for a reason that will recur: `SpellingParams` declares only the
+     * `spellcheck.` prefix — dropped by the generator's ends-with-a-dot rule, correctly — while the
+     * bare toggle lives on `SpellCheckComponent`. Every other component's toggle happens to be
+     * declared twice and survives by luck. That makes this a rule about the shape of the vocabulary
+     * rather than a patch for one name.
+     */
+    fun testAParameterFamilyRootIsNotATypoOfItsOwnMember() {
+        check(handler("""      <str name="spellcheck">on</str>"""))
+    }
+
+    /**
      * The fix is applied, not merely offered.
      *
      * Offering was never the half that broke. `SolrReplaceNameQuickFix` once listed the right
