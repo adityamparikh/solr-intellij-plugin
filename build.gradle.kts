@@ -37,12 +37,12 @@ dependencies {
         // of platform core.
         intellijIdea("2026.2")
 
-        // Java PSI, for resolving the class a `class` attribute names. Needed to *compile* the
-        // reference provider and to test it; the plugin itself depends on `com.intellij.modules.java`
-        // **optionally**, so the provider is registered only where Java PSI exists and the rest of the
-        // plugin works in an IDE without it. This is the dependency the comment above used to defer to
-        // Phase 3 — it arrives early because class navigation is the one Step 25 action that needs
-        // nothing else, and Phase 3 will need it unconditionally regardless.
+        // Java PSI, for resolving the class a `class` attribute names — needed to compile the
+        // reference provider and to test it, and matched by a hard `<depends>` in `plugin.xml`. It
+        // was optional there, so the provider registered only where Java PSI existed; the plugin
+        // targets IntelliJ IDEA, which bundles Java, so that condition was true wherever it was ever
+        // evaluated. This is the dependency the comment above used to defer to Phase 3, which needs
+        // it unconditionally in any case.
         bundledPlugin("com.intellij.java")
         testFramework(TestFrameworkType.Platform)
 
@@ -87,12 +87,10 @@ intellijPlatform {
             //
             // **IntelliJ IDEA only, and that is the product decision rather than an omission.** The
             // plugin targets IDEA and nothing else, so this list is complete rather than a first
-            // entry. It is stated here because the alternative reads as an oversight: `plugin.xml`
-            // takes `com.intellij.modules.java` as an *optional* dependency, which looks like a
-            // claim that the plugin runs in an IDE without Java PSI — and nothing verifies that,
-            // because nothing needs to. IDEA has been a single unified distribution since 2025.3
-            // and bundles Java, so the optional dependency is always satisfied in every IDE this
-            // list names.
+            // entry. Stated here because a one-item list otherwise reads as one somebody forgot to
+            // extend — and because the descriptor used to imply a wider claim, taking
+            // `com.intellij.modules.java` optionally so the plugin would load in an IDE without
+            // Java PSI. That is now a hard dependency, so the two agree: one IDE, said once.
             verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
         }
     }

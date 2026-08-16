@@ -13,14 +13,17 @@
     <depends>com.intellij.modules.platform</depends>
     <!-- Configset XML PSI: reference resolution, inspections, completion over schema.xml/solrconfig.xml -->
     <depends>com.intellij.modules.xml</depends>
-    <!-- Java PSI, optionally. Everything in `solr-withJava.xml` is registered only where the Java
-         module is present, which is how the platform expresses "this feature needs Java and the rest
-         of the plugin does not". In IntelliJ IDEA that is always; in a hypothetical non-Java IDE the
-         class reference is simply absent rather than the plugin failing to load.
+    <!-- Java PSI, for resolving the class a `class` attribute names.
 
-         Phase 3 (SolrJ in Java/Kotlin) will need this as a hard dependency. Optional now because
-         class navigation is the one action that needs nothing else built first. -->
-    <depends optional="true" config-file="solr-withJava.xml">com.intellij.modules.java</depends>
+         Hard rather than optional, because the plugin targets IntelliJ IDEA and nothing else. It was
+         optional, with its one registration held in a separate `solr-withJava.xml`, so that the
+         plugin would load in an IDE without Java support and simply lack class navigation there.
+         Nothing verified that, and nothing needed to: IDEA has been a single unified distribution
+         since 2025.3 and bundles Java, so the condition was true in every IDE that would ever run
+         this. A conditional branch that cannot be taken is not portability, it is a claim.
+
+         Phase 3 (SolrJ in Java/Kotlin) needs this unconditionally in any case. -->
+    <depends>com.intellij.modules.java</depends>
 
     <resource-bundle>messages.SolrBundle</resource-bundle>
 
@@ -92,6 +95,12 @@
         <psi.referenceContributor
                 language="XML"
                 implementation="org.apache.solr.ide.configset.solrconfig.reference.SolrConfigReferenceContributor"/>
+        <!-- The `class` attribute, in both files, resolved to the class it names. The one thing in
+             this plugin that touches Java PSI, which is why it lived in a separate descriptor behind
+             an optional dependency until that dependency became a hard one. -->
+        <psi.referenceContributor
+                language="XML"
+                implementation="org.apache.solr.ide.configset.navigation.SolrClassReferenceContributor"/>
 
         <!-- The other end of those references. The contributor above anchors every reference at a
              use site, which makes Ctrl-click work and left Find Usages refusing from the

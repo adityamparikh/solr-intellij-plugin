@@ -37,9 +37,10 @@ index; run me anyway.*
 
 **Nothing in this plugin reads an index.** The field model is parsed from the text
 of `managed-schema.xml` and `solrconfig.xml`. The activation gate reads library
-names off the project model rather than PSI, which is why the plugin needs no
-dependency on `com.intellij.modules.java`. There is no stub index, no file-based
-index, no symbol lookup anywhere in it.
+names off the project model rather than PSI. There is no stub index, no file-based
+index, no symbol lookup anywhere in it — with one exception, added later: resolving
+the class a `class` attribute names goes through `JavaPsiFacade`, which is why that
+one contribution both declines in dumb mode and guards with `DumbService`.
 
 We had simply never said so. The consequence was that completion, all three
 inspections, quick documentation and the inline match hints did nothing at all

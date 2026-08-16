@@ -30,10 +30,15 @@ import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
  * same question, and filing it under either aspect would make that aspect the owner of a position the
  * other one also has.
  *
- * **The only thing in this plugin that touches Java PSI**, which is why it is registered from
- * `solr-withJava.xml` behind an optional dependency rather than from `plugin.xml`. Everything else
- * reads a configset's own text, so the plugin loads and works in an IDE with no Java support; this
- * feature is simply absent there.
+ * **The only thing in this plugin that touches Java PSI.** It was registered from a separate
+ * `solr-withJava.xml` behind an optional dependency, so that an IDE without Java support would load
+ * the plugin and simply lack this one gesture. That is no longer how it ships: the plugin targets
+ * IntelliJ IDEA, which has bundled Java in a single unified distribution since 2025.3, so the
+ * condition was true everywhere it was ever evaluated. The dependency is hard and this is registered
+ * beside the others.
+ *
+ * Everything else here reads a configset's own text, which is why this class is also the only one
+ * that has to guard against a project that is still indexing.
  */
 class SolrClassReferenceContributor : PsiReferenceContributor() {
 
