@@ -74,9 +74,31 @@ class SolrElementCatalogTest {
      */
     @Test
     fun `a discontinued element is marked with Solr's own words`() {
-        val nrtMode = SolrElementCatalog.element("nrtMode", "", ten)
+        val nrtMode = SolrElementCatalog.element("nrtMode", "indexConfig", ten)
         assertNotNull("nrtMode should be carried, not dropped", nrtMode)
         assertTrue("expected Solr's notice: ${nrtMode!!.discontinued}", "discontinued" in nrtMode.discontinued)
+    }
+
+    /**
+     * And it is marked where Solr reads it, which is not where the catalog first put it.
+     *
+     * `SolrConfig` reads this one as `get(indexConfigPrefix).get("nrtMode")`, so the parent reaches
+     * the call through a local variable. The pass that could not follow one recorded no parent, an
+     * absent parent already meant *top level*, and the rule therefore fired on `<config><nrtMode>` —
+     * a position Solr never reads — while saying nothing about the position that stops a core
+     * starting. Both halves are asserted here because fixing only the first would leave the
+     * inspection quiet exactly where it matters.
+     */
+    @Test
+    fun `a discontinued element is placed where Solr reads it`() {
+        assertNull(
+            "nrtMode is not a child of <config>; Solr reads it under <indexConfig>",
+            SolrElementCatalog.element("nrtMode", "", ten),
+        )
+        assertNotNull(
+            "unlockOnStartup is read under <indexConfig> too",
+            SolrElementCatalog.element("unlockOnStartup", "indexConfig", ten),
+        )
     }
 
     /** What a reader should be offered excludes what Solr has retired. */

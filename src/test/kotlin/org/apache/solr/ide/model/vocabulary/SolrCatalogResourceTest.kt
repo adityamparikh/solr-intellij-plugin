@@ -177,13 +177,16 @@ class SolrCatalogResourceTest {
     @Test
     fun `the two lines are not the same catalog`() {
         val onlyInTen = "featureVectorCache"
+        // A cache, and Solr reads it off the query node — so it is looked up there rather than at the
+        // root. The catalog used to answer at the root for everything whose parent it could not see.
+        val itsParent = "query"
         assertTrue(
             "$onlyInTen should be part of Solr 10's vocabulary",
-            SolrElementCatalog.element(onlyInTen, "", versionFor(10)) != null,
+            SolrElementCatalog.element(onlyInTen, itsParent, versionFor(10)) != null,
         )
         assertTrue(
             "$onlyInTen should not be part of Solr 9's vocabulary",
-            SolrElementCatalog.element(onlyInTen, "", versionFor(9)) == null,
+            SolrElementCatalog.element(onlyInTen, itsParent, versionFor(9)) == null,
         )
     }
 

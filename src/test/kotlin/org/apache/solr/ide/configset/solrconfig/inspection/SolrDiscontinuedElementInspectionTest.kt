@@ -28,7 +28,30 @@ class SolrDiscontinuedElementInspectionTest : SolrConfigsetTestCase() {
         check(
             """
             <config>
-              <<warning descr="Solr: The <nrtMode> config has been discontinued and NRT mode is always used by Solr. This config will be removed in future versions.">nrtMode</warning>>true</nrtMode>
+              <indexConfig>
+                <<warning descr="Solr: The <nrtMode> config has been discontinued and NRT mode is always used by Solr. This config will be removed in future versions.">nrtMode</warning>>true</nrtMode>
+              </indexConfig>
+            </config>
+            """.trimIndent(),
+        )
+    }
+
+    /**
+     * And nothing is reported one level up, where Solr never reads it.
+     *
+     * This is the position the rule used to fire on, and it fired there for a reason worth keeping in
+     * front of a reader: `SolrConfig` reaches this element as `get(indexConfigPrefix).get("nrtMode")`,
+     * so the parent arrives through a local variable that the catalog generator could not follow. It
+     * recorded no parent; an absent parent already meant *top level*; and the rule inherited a
+     * confident claim about a position Solr ignores. A `<nrtMode>` directly under `<config>` is
+     * inert — Solr neither reads nor complains about it — so reporting it was the one thing an
+     * inspection here must never do.
+     */
+    fun testNothingIsReportedWhereSolrDoesNotReadTheElement() {
+        check(
+            """
+            <config>
+              <nrtMode>true</nrtMode>
             </config>
             """.trimIndent(),
         )
@@ -122,7 +145,9 @@ class SolrDiscontinuedElementInspectionTest : SolrConfigsetTestCase() {
             """
             <schema name="t" version="1.7">
               <fieldType name="string" class="solr.StrField"/>
-              <nrtMode>true</nrtMode>
+              <indexConfig>
+                <nrtMode>true</nrtMode>
+              </indexConfig>
             </schema>
             """.trimIndent(),
         )
@@ -140,7 +165,9 @@ class SolrDiscontinuedElementInspectionTest : SolrConfigsetTestCase() {
         check(
             """
             <config>
-              <nrtMode>true</nrtMode>
+              <indexConfig>
+                <nrtMode>true</nrtMode>
+              </indexConfig>
             </config>
             """.trimIndent(),
         )

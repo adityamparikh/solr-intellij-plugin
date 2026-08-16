@@ -1311,6 +1311,25 @@ private class ConfigElementMethodVisitor(
 
     private var pending: String? = null
 
+    /**
+     * Strings that reached a local, so a name arriving through one is still a name.
+     *
+     * `SolrConfig` hoists the prefix it reads the index subtree under — `ldc "indexConfig"` then
+     * `astore` — and loads it back at each use. Without this the `astore` merely cleared the pending
+     * literal, the reload put nothing in its place, and the two elements read that way were recorded
+     * with no parent at all.
+     */
+    private val locals = mutableMapOf<Int, String>()
+
+    /**
+     * The path of the node a chained read would be made against, or null where none is in hand.
+     *
+     * This is the receiver the older pass could not see. It is set by every read that returns a node
+     * and cleared by anything this visitor does not model, so a path is only ever claimed across
+     * instructions whose effect is known.
+     */
+    private var receiver: String? = null
+
     override fun visitLdcInsn(value: Any?) {
         // Cleared before the kind is tested, not after. A non-string `LDC` is as much an operation
         // between a name and its reader as any of the instructions below, and returning early left
@@ -1333,43 +1352,96 @@ private class ConfigElementMethodVisitor(
     ) {
         val literal = pending
         pending = null
-        val arity = name?.let { SolrConfigElements.arityOf(it) } ?: return
-        if (literal == null) return
+        val arity = name?.let { SolrConfigElements.arityOf(it) }
+        if (arity == null || literal == null) {
+            // Any other call consumes whatever was on the stack, so a node held across it is no
+            // longer the thing a following read would be made against.
+            receiver = null
+            return
+        }
+        // A read called on a node is nested; one called on the config itself starts at the document.
+        // Where it is nested and the chain was not followed, the position is unknown rather than the
+        // root — the distinction [SolrConfigElements.UNPLACED] exists to carry.
+        val parent = when {
+            owner != SolrConfigElements.NODE_CLASS -> ""
+            else -> receiver ?: SolrConfigElements.UNPLACED
+        }
+        val path = if (parent.isEmpty()) literal else "$parent/$literal"
         // A name already read wins on its first reading. Solr reads several elements twice — once to
         // build them and once to report them — and the second call is sometimes the weaker one, so
         // keeping the first is what preserves `childRequired` on `luceneMatchVersion`.
-        reads.putIfAbsent(literal, arity)
+        reads.putIfAbsent(path, arity)
+        receiver = path
     }
 
-    // Everything below clears the pending literal, and the omissions are the rule rather than an
-    // oversight. A name reaches its reader either immediately — `get("dataDir")` — or with one
-    // `invokedynamic` in between, which is the lambda `childRequired` takes as its second argument.
-    // Anything else between the two means the string was pushed for something other than this call,
-    // and the pass that did not clear here put a discontinuation notice in the vocabulary as an
-    // element name, because the notice was the last literal loaded before an unrelated read.
+    /**
+     * A string into a local, or a string back out of one.
+     *
+     * These are the two instructions the older pass was wrong to treat as noise. Everything else a
+     * local load or store can be still clears, including `aload_0` — `this` is not a node, and a
+     * receiver held across it would attribute the next read to whatever was last in hand.
+     */
+    override fun visitVarInsn(opcode: Int, varIndex: Int) {
+        val literal = pending
+        pending = null
+        when (opcode) {
+            Opcodes.ASTORE -> {
+                // A store of something this pass cannot name has to forget the slot rather than
+                // leave the previous string in it, or a reload would supply a stale name.
+                if (literal != null) locals[varIndex] = literal else locals.remove(varIndex)
+                receiver = null
+            }
+
+            Opcodes.ALOAD -> {
+                pending = locals[varIndex]
+                if (pending == null) receiver = null
+            }
+
+            else -> receiver = null
+        }
+    }
+
+    // Everything below clears the pending literal and the receiver with it, and the omissions are
+    // the rule rather than an oversight. A name reaches its reader either immediately —
+    // `get("dataDir")` — or through a local, or with one `invokedynamic` in between, which is the
+    // lambda `childRequired` takes as its second argument. Anything else between the two means the
+    // string was pushed for something other than this call, and the pass that did not clear here put
+    // a discontinuation notice in the vocabulary as an element name, because the notice was the last
+    // literal loaded before an unrelated read.
 
     override fun visitInsn(opcode: Int) {
         pending = null
+        receiver = null
     }
 
-    override fun visitVarInsn(opcode: Int, varIndex: Int) {
-        pending = null
-    }
-
+    /**
+     * The document root is a field read, and it is the one field read that supplies a receiver.
+     *
+     * Reaching `root` puts the document itself in hand, whose path is empty — so the elements Solr
+     * reads off it are top-level rather than unplaced. Every other field read clears, because a node
+     * from anywhere else is one whose own position this pass has not established.
+     */
     override fun visitFieldInsn(opcode: Int, owner: String?, name: String?, descriptor: String?) {
         pending = null
+        val isRoot = opcode == Opcodes.GETFIELD &&
+            name == SolrConfigElements.ROOT_FIELD &&
+            descriptor == SolrConfigElements.NODE_DESCRIPTOR
+        receiver = if (isRoot) "" else null
     }
 
     override fun visitTypeInsn(opcode: Int, type: String?) {
         pending = null
+        receiver = null
     }
 
     override fun visitIntInsn(opcode: Int, operand: Int) {
         pending = null
+        receiver = null
     }
 
     override fun visitJumpInsn(opcode: Int, label: Label?) {
         pending = null
+        receiver = null
     }
 
     /**
