@@ -169,6 +169,125 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
         assertEquals(listOf("""enableGraphQueries="true""""), dimmed)
     }
 
+    // --- analysis factories ----------------------------------------------------------------------
+    //
+    // A `<filter>`, `<tokenizer>` or `<charFilter>` inherits nothing — no chain-wide default, no
+    // outer element to fall through to — so the only thing that can make one of its attributes
+    // removable is the literal default the catalog read out of that factory's own constructor.
+    // Which makes the negative cases the whole of the work: the catalog records a default only
+    // where the bytecode proved one, and every other answer has to be silence.
+
+    /** A chain in the only place Solr allows one, so the components sit where the parser reads them. */
+    private fun analyzed(components: String) = """
+        <fieldType name="chain" class="solr.TextField">
+          <analyzer>
+            $components
+          </analyzer>
+        </fieldType>
+    """.trimIndent()
+
+    /**
+     * The default read out of the factory, and the attribute beside it that has none.
+     *
+     * Both are asserted in one fixture on purpose. `ignoreCase` and `words` are written identically
+     * and are two different questions: the first has a default the bytecode proved (`false`), the
+     * second is read with no fallback at all, so a comparison that treated "absent" as "matches"
+     * would dim a stop-word file that the filter genuinely needs.
+     */
+    fun testAFactoryAttributeRepeatingItsRecordedDefaultIsDimmed() {
+        val dimmed = dimmed(
+            analyzed("""<filter class="solr.StopFilterFactory" ignoreCase="false" words="stopwords.txt"/>"""),
+        )
+        assertEquals(listOf("""ignoreCase="false""""), dimmed)
+    }
+
+    fun testAFactoryAttributeThatDecidesSomethingIsNotDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="solr.StopFilterFactory" ignoreCase="true"/>""")),
+        )
+    }
+
+    /**
+     * A tokenizer, and a default that is neither true nor false.
+     *
+     * `maxTokenLength="255"` is the whole reason this reads the catalog's literal rather than a
+     * boolean table: the recorded default is a number, and so is every one on the word-delimiter
+     * filters beside it.
+     */
+    fun testATokenizerAttributeRepeatingItsRecordedDefaultIsDimmed() {
+        val dimmed = dimmed(
+            analyzed("""<tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>"""),
+        )
+        assertEquals(listOf("""maxTokenLength="255""""), dimmed)
+    }
+
+    /** The third element, which reaches the same catalog through the same tag mapping. */
+    fun testACharFilterAttributeRepeatingItsRecordedDefaultIsDimmed() {
+        val dimmed = dimmed(
+            analyzed("""<charFilter class="solr.JapaneseIterationMarkCharFilterFactory" normalizeKana="true"/>"""),
+        )
+        assertEquals(listOf("""normalizeKana="true""""), dimmed)
+    }
+
+    /**
+     * A required attribute never dims, because a required attribute has no default to restate.
+     *
+     * Solr marks these by reading them with `requireInt` rather than `getInt`, which takes no
+     * fallback — so the catalog carries the requirement and no value, and there is nothing to
+     * compare `minGramSize="1"` against however ordinary that number looks.
+     */
+    fun testARequiredFactoryAttributeIsNeverDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="2"/>""")),
+        )
+    }
+
+    /**
+     * A factory the catalog does not carry keeps every attribute, which is the custom-plugin case.
+     *
+     * Ordinary rather than exotic — a site's own filter is written exactly like a stock one — and
+     * the one where a wrong dim costs most, because nothing about the file tells the reader that
+     * the offer to delete was made without knowing what the class does.
+     */
+    fun testAFactoryClassTheCatalogDoesNotKnowIsNotDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="com.example.MyFilter" ignoreCase="false"/>""")),
+        )
+    }
+
+    /**
+     * The class is matched by kind as well as by name, as completion and the hover already match it.
+     *
+     * `maxTokenLength` is a tokenizer's attribute with a recorded default of `255`. Written on a
+     * `<filter>` it names no filter Solr has, so the value restates nothing — a catalog lookup that
+     * ignored the kind would find the tokenizer's entry and offer to delete it.
+     */
+    fun testATokenizersAttributeOnAFilterIsNotDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="solr.StandardTokenizerFactory" maxTokenLength="255"/>""")),
+        )
+    }
+
+    /** An attribute the factory does not read at all, which the catalog answers for by omission. */
+    fun testAnAttributeTheFactoryDoesNotReadIsNotDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="solr.StopFilterFactory" maxTokenLength="255"/>""")),
+        )
+    }
+
+    /** `class` is what makes the lookup possible, and nothing may offer to remove it. */
+    fun testAFactorysClassAttributeIsNeverDimmed() {
+        assertEquals(
+            emptyList<String>(),
+            dimmed(analyzed("""<filter class="solr.LowerCaseFilterFactory"/>""")),
+        )
+    }
+
     /**
      * Nothing this adds reaches the Problems view, which is the criterion that keeps it honest.
      *
@@ -180,6 +299,22 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
         myFixture.configureByText(
             "managed-schema.xml",
             schema("""<field name="sku" type="string" indexed="true" stored="false"/>"""),
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    /** The same guarantee for the factory half, which dims inside a chain a real configset would ship. */
+    fun testNothingIsReportedOnACorrectAnalyzerChain() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schema(
+                analyzed(
+                    """
+                    <tokenizer class="solr.StandardTokenizerFactory" maxTokenLength="255"/>
+                        <filter class="solr.LowerCaseFilterFactory"/>
+                    """.trimIndent(),
+                ),
+            ),
         )
         myFixture.checkHighlighting(true, false, true)
     }

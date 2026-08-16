@@ -90,11 +90,12 @@ whole, and the gutter action goes with the Server track.
 - [Step 24 — Completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done) — **done**
   — likewise. Corrects a dependency that parked field attribute completion behind the catalog, which it never needed.
 - [Step 26 — Showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-in-progress)
-  — **in progress**; likewise added late, belongs beside the two above. The schema half ships — the dim and the
-  intention that removes it, on every element that declares field properties: `<field>`, `<dynamicField>` and
-  `<fieldType>`. Its factory half is unblocked but unwritten: the catalog has recorded each factory
-  attribute's literal default and required marker since that column landed, so what remains is the
-  reading of it rather than a dependency.
+  — **in progress**; likewise added late, belongs beside the two above. Both halves now ship: the dim and the
+  intention that removes it, on every element that declares field properties — `<field>`, `<dynamicField>` and
+  `<fieldType>` — and on the three that name an analysis factory, `<filter>`, `<tokenizer>` and `<charFilter>`,
+  where the value is judged against the literal default the catalog read out of that factory's own code. The
+  heading still reads *in progress* only because renaming its anchor would edit six links spread through other
+  steps' sections; every action and every criterion below it is met.
 - [Step 27 — Saying what a property's value means](#step-27-saying-what-a-propertys-value-means-done) — **done**
   — likewise added late; belongs beside the three above. Extends the match-hint provider and the documentation provider
   both, so it needs the property table plus the two steps that already extend them.
@@ -1017,8 +1018,11 @@ intention rather than a quick-fix, because an intention carries no claim that an
    depends on the field type, written when such a default could not be resolved at all; the catalog now carries the
    traits that resolve them, so `omitNorms` on a `solr.StrField` is knowable and dims. What stays silent is what the
    model reports as `UNDETERMINED` — a type naming a class outside the catalog, which is the ordinary case for a custom
-   plugin. Factory attributes still wait on
-   [the catalog](#step-9-factory-catalog-generator-done) carrying defaults, and join with no new machinery here.
+   plugin. **Factory attributes have joined, and did so with no new machinery**, exactly as this line
+   predicted: an attribute on a `<filter>`, `<tokenizer>` or `<charFilter>` is judged against the literal default
+   the catalog read out of that factory's own constructor, and what stays silent there is a class the catalog does
+   not carry, an attribute the class does not read, and — the one that matters — an attribute whose default Solr
+   computes at runtime, which the catalog records as absent rather than guessing at.
 
 **Success criteria:**
 
@@ -1029,6 +1033,14 @@ intention rather than a quick-fix, because an intention carries no claim that an
   default depends on the field type", which the catalog's traits made both too strict and no longer the real question;
   [the design record](../../docs/design/pending/2026-08-13-restated-defaults/design.md) carries the argument.
 - [x] Nothing this step adds appears in the Problems view on a correct file.
+- [x] An attribute on an analysis factory restating that factory's recorded default dims, and the same intention
+  removes it. `ignoreCase="false"` on a `solr.StopFilterFactory` and `maxTokenLength="255"` on a
+  `solr.StandardTokenizerFactory` both dim; the intention test compares every setting the filter resolves to —
+  each written value folded together with the default it falls back to — before and after, not the text.
+- [x] A factory attribute whose default the catalog does not carry never dims. Four separate silences, each
+  proved by a test that was watched to fail: a class outside the catalog, an attribute the class does not read,
+  an attribute Solr requires and therefore has no default for, and a class of the wrong kind — a tokenizer's
+  attribute written on a `<filter>` finds the tokenizer's entry unless the kind is matched too.
 
 **What shipped:** actions 1 and 2, on every element that declares field properties — `<field>`, `<dynamicField>` and
 `<fieldType>`, which is the same set
@@ -1051,6 +1063,18 @@ a type exactly as a concrete field does, and none of these properties is about t
 settled it — `FOR_FIELD` is the properties legal on a field *or* a dynamic field — so excluding it would have been the
 editor disagreeing with the table it reads.
 
+**The factory half needed one new function and one new branch, and that is the whole of it.**
+`SolrClassEntry.restatesDefault` in `model` compares a written value against the literal the catalog recorded, and
+`SolrRestatedAttribute` — the one predicate the dim and the offer both read — learned a third kind of element. The
+intention needed no change at all, which is the property the sharing was built to buy rather than a happy accident.
+
+**No layering, and that is what makes this half a different question rather than a wider one.** A field property
+resolves through three tiers and can come out `UNDETERMINED`; a `<filter>` inherits nothing, so the only thing that
+can make one of its attributes removable is that factory's own recorded default, and every uncertainty is a plain
+absence. The comparison is on the literal text — `maxTokenLength="0255"` does not dim — which misses a real
+restatement rather than inventing one, and is cheaper than a coercion table that would have to be right for every
+value type before it could be trusted for any.
+
 **Acceptance:** No demo step of its own. It is the editor-side answer to the question the property table answers in the
 popup — which of these lines could go.
 
@@ -1058,8 +1082,8 @@ popup — which of these lines could go.
 [completing the schema's own vocabulary](#step-24-completing-the-schemas-own-vocabulary-done)
 for the property table it reads. The factory half additionally needed the defaults column in
 [the factory catalog generator](#step-9-factory-catalog-generator-done), **and that landed** —
-each factory attribute now carries its literal default and required marker where the bytecode proves
-them. Nothing blocks the factory half; it is unwritten rather than waiting.
+each factory attribute carries its literal default and required marker where the bytecode proves
+them, which is what this half now reads.
 
 ### Step 27: Saying what a property's value means (done)
 

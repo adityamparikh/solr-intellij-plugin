@@ -1,13 +1,19 @@
 <html>
 <body>
-Removes a field attribute whose value the field would have had anyway, leaving a schema that means
-exactly the same.
+Removes an attribute whose value the schema would have had anyway, leaving a file that means exactly
+the same.
 <p>
   A schema shows <code>indexed="true"</code> the same way whether deleting it would change the index
   or nothing at all. The difference is not in the file: it depends on what the field's
   <code>&lt;fieldType&gt;</code> declares, on the class that type names, and on the version the
   schema's own root element states. Attributes that carry no weight are dimmed, and this removes the
   one under the caret.
+</p>
+<p>
+  The same holds inside an analyzer, where the answer comes from one place rather than three. A
+  <code>&lt;filter&gt;</code>, <code>&lt;tokenizer&gt;</code> or <code>&lt;charFilter&gt;</code>
+  inherits nothing, so <code>ignoreCase="false"</code> on a stop filter is removable exactly when
+  <code>false</code> is the default that factory's own code falls back to.
 </p>
 <p>
   It is offered rather than applied because restating a default is correct Solr, and often
@@ -18,6 +24,8 @@ exactly the same.
 <p><small>Never offered where the value cannot be determined. A default that depends on the field
   type is resolved only when the catalog carries the class that type names — for a custom class it
   does not, and an attribute that might be load-bearing is left alone rather than dimmed on a
-  guess.</small></p>
+  guess. A factory attribute is judged only where the default was read out of that factory's own
+  code; one Solr computes at runtime, and one on a class outside the catalog, are left
+  alone.</small></p>
 </body>
 </html>

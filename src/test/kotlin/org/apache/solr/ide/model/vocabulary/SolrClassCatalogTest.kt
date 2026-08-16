@@ -236,6 +236,69 @@ class SolrClassCatalogTest {
         assertEquals(SolrValueType.FREE, attribute.valueType)
     }
 
+    // --- restating a factory's own default --------------------------------------------------------
+    //
+    // The judgement the dim and the removal intention both read for an analysis component. Every
+    // uncertainty has to answer false, because a true is rendered as an invitation to delete the
+    // line — so the negative cases below are the ones with something to prove.
+
+    /** One entry carrying all four shapes of attribute the catalog can record. */
+    private val factory = SolrClassCatalog.parse(
+        sequenceOf(
+            "tokenFilter\torg.example.F\tsolr.F\tignoreCase:bool=false,format:free=wordset," +
+                "maxGramSize:int=255,minGramSize:int!,words:free",
+        ),
+    ).single()
+
+    @Test
+    fun `a value equal to the recorded default restates it`() {
+        assertTrue(factory.restatesDefault("ignoreCase", "false"))
+        assertTrue("a default is not always a boolean", factory.restatesDefault("format", "wordset"))
+    }
+
+    @Test
+    fun `a value that differs from the recorded default does not restate it`() {
+        assertFalse(factory.restatesDefault("ignoreCase", "true"))
+        assertFalse(factory.restatesDefault("format", "snowball"))
+    }
+
+    /**
+     * The attribute Solr reads with no fallback, which is the case a wrong answer costs most.
+     *
+     * Deleting `words` takes the stop-word list away, and there is no value of it that restates
+     * anything — an absent default must never read as a match however the attribute is written.
+     */
+    @Test
+    fun `an attribute with no recorded default never restates one`() {
+        assertFalse(factory.restatesDefault("words", "stopwords.txt"))
+        assertFalse(factory.restatesDefault("words", ""))
+    }
+
+    /** A required attribute carries no default by construction, so it can restate nothing. */
+    @Test
+    fun `a required attribute never restates a default`() {
+        assertFalse(factory.restatesDefault("minGramSize", "1"))
+    }
+
+    @Test
+    fun `an attribute the class does not read restates nothing`() {
+        assertFalse(factory.restatesDefault("maxTokenLength", "255"))
+        assertTrue("the same spelling this class does read still answers", factory.restatesDefault("maxGramSize", "255"))
+    }
+
+    /**
+     * The comparison is on the literal text, which misses a restatement rather than inventing one.
+     *
+     * Nothing here coerces either side into the type the factory will parse it as, so `0255` reads
+     * as a different value from `255` even though Solr would take both as the same number. That is
+     * the direction to be wrong in: the reader loses a hint rather than an attribute.
+     */
+    @Test
+    fun `a value equal only after coercion does not restate the default`() {
+        assertFalse(factory.restatesDefault("maxGramSize", "0255"))
+        assertFalse(factory.restatesDefault("ignoreCase", "FALSE"))
+    }
+
     /** An older catalog, with only name and type, reads as neither required nor defaulted. */
     @Test
     fun `an entry without markers has no default and is not required`() {
