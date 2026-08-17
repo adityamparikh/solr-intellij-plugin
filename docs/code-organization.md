@@ -160,6 +160,157 @@ a fact you can derive from a file's text belongs in `parsing`, where the test co
 moment a change needs to know which file it is looking at, or wants to remember an answer, it has
 crossed into `reading` — and [the caching rule](#rules-that-hold-across-every-package) applies.
 
+## What each package puts on screen
+
+The boundaries above are argued in the abstract, which makes them easy to read as bureaucracy. They
+are not: **almost every leaf package corresponds to something a user can see**, and the central rule
+— that `configset.schema` and `configset.solrconfig` may never import each other — is visible in two
+screenshots side by side.
+
+Everything below is a real capture from the demo configset. Numbers are the entries in
+[the screenshot catalog](screenshots.md), which owns what each image must show and the gesture that
+produces it.
+
+### The schema aspect — `configset.schema.*`
+
+Every capability here fires with the caret in `managed-schema.xml`, and none of them knows that
+`solrconfig.xml` exists.
+
+**1 — `configset.schema.hint`.** The inline match and storage hints, computed by `SolrMatchAnalysis`
+in `model.schema` from each field's analyzer chain. No gesture: they render themselves.
+
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
+matches and how it is stored](images/01-hints-match-capability.png)
+
+**2 — `configset.schema.documentation`.** Quick documentation on a field, resolving every property
+and **where each value came from** — the field, its type, or Solr's default at this schema's version.
+
+![Quick documentation for the field category: a properties table giving each property's value, where
+that value came from, what it accepts, and what it means](images/02-quick-doc-field.png)
+
+**3 — the same package, on a `class` value.** Short name, kind, fully-qualified name, a summary read
+from Solr's own Javadoc at build time, and a Reference Guide link at the declared version.
+
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class.png)
+
+**16 — and on the schema's own `version`.** What the attribute decides in general, then what *this*
+declared value decides here.
+
+![Quick documentation on the schema version attribute: the general rule, then what this configset's
+declared 1.6 decides](images/16-hover-schema-version.png)
+
+**5 — `configset.schema.completion`.** Which attributes a `<field>` accepts, each with what it takes,
+and those already written withheld. Read from the property table in `model.schema`.
+
+![Attribute completion inside a field tag in managed-schema.xml, listing docValues, sortMissingLast,
+default, large, multiValued and omitNorms](images/05-completion-field-properties.png)
+
+**6 — the same package, catalog-backed.** Inside a `<filter>`, the attributes *that factory* accepts,
+recovered from its constructor bytecode at build time rather than hand-maintained.
+
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
+luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
+from](images/06-completion-factory-attributes.png)
+
+**4 — `configset.schema.inspection`.** A dangling `copyField`, underlined, with Alt-Enter offering the
+declared fields closest in spelling — the same set the inspection computed to decide it was wrong.
+
+![A copyField whose source names manufacturer, highlighted, with the Alt-Enter menu offering to
+change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix.png)
+
+**11 — `configset.schema.annotator`.** An attribute whose written value equals what Solr would have
+supplied anyway, dimmed. Correct rather than wrong, so it never reaches the Problems view.
+
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default.png)
+
+**12 — `configset.schema.intention`.** The first capability that *writes* rather than explains: a
+generated companion field, its type, and the `copyField` joining them.
+
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
+prefix-capable companion field'](images/12-intention-companion-fields.png)
+
+**9 — `configset.schema.reference`.** A filter's `words=` is a real reference to the file it names.
+
+![Navigation from a filter resource attribute to the stopwords file it names](images/09-nav-resource-file.png)
+
+### The `solrconfig.xml` aspect — `configset.solrconfig.*`
+
+Same editor, same gestures, entirely different vocabulary — and no import in either direction.
+
+**10 — `configset.solrconfig.descriptor`.** Element completion inside `<config>`, from the element
+catalog in `model.vocabulary`. Set this beside **5** above: that is the whole boundary rule, in two
+pictures.
+
+![Element completion inside the config element in solrconfig.xml, offering Solr's own top-level
+vocabulary — directoryFactory, dataDir, luceneMatchVersion, requestHandler,
+query](images/10-completion-solrconfig-structure.png)
+
+**17 — the same package, one level down.** Inside `<query>` the offer is different again, because the
+catalog keys every element to its parent path. `dataDir` is absent here; `filterCache` is not.
+
+![Element completion inside the query element offering eighteen elements including filterCache,
+cache, featureVectorCache, HashDocSet and listener](images/17-completion-query-nesting.png)
+
+**18 — and what it refuses to offer.** Inside `<indexConfig>`, only `deletionPolicy`. `nrtMode` is
+read by Solr at exactly this position and is still never offered, because completion filters to what
+Solr still accepts — knowing where an element belongs and recommending it are different questions.
+
+![Element completion inside indexConfig offering only deletionPolicy](images/18-completion-indexconfig-nesting.png)
+
+**15 — `configset.solrconfig.completion`.** Parameter names inside `<lst name="defaults">`, each
+labelled with the Solr class that declares it.
+
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names.png)
+
+**13 — the same package, reaching across.** Inside a `qf`, the *schema's* field names — which is the
+one place this aspect consults the other, and it does it through the shared model rather than by
+importing `configset.schema`.
+
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields.png)
+
+**8 — `configset.solrconfig.reference`.** A field name written in a parameter is a reference into the
+schema, and navigates there.
+
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it
+names](images/08-nav-solrconfig-field-reference.png)
+
+### Crossing both — `configset.navigation`
+
+**7 — Find Usages.** Invoked on a `<fieldType>` declaration, it reaches the fields that name it *and*
+the `qf` parameter in the other file, labelled in Solr's vocabulary rather than the platform's
+generic fallback.
+
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
+declaring this type'](images/07-find-usages-field-type.png)
+
+**14 — rename, before and after.** Renaming `category` from its schema declaration updates
+`solrconfig.xml`'s `qf` as part of the same refactoring, undone by a single Cmd+Z.
+
+![solrconfig.xml's qf parameter before the rename, reading name^3 description
+category](images/14-rename-cross-file-before.png)
+
+![The same qf parameter after renaming category to product_category from the schema declaration,
+updated with no separate edit](images/14-rename-cross-file-after.png)
+
+**This is why the package exists.** A capability that crosses the configset has no single aspect to
+live in, and filing it under either would force that aspect to import the other — the one thing the
+rule forbids.
+
+### The packages with nothing to show
+
+`configset.solrconfig.documentation` and `configset.solrconfig.inspection` do have visible output —
+parameter hovers, and the misspelled-parameter and non-indexed-field rules — that simply has no
+capture yet.
+
+But `configset.activation`, `configset.reading` and the two `parsing` packages produce nothing a user
+can point at, and **that is the point of them**: they decide whether this is a configset at all, turn
+its files into a model, and cache it. Every capability pictured above is a thin presentation layer
+over an answer one of those four already worked out, which is why none of them had to be large.
+
 ## Where does my change go?
 
 Two questions now, in order: **which file is the caret in**, then **what is the gesture**. If the
@@ -357,8 +508,10 @@ wrong claim about what a field matches is worse than no claim.
 artifacts — the classes a configset may name in a `class` attribute, in four kinds
 (`SolrClassKind`): [field types](glossary.md#field-type), [tokenizers](glossary.md#tokenizer), token
 [filters](glossary.md#filter) and [char filters](glossary.md#char-filter), each with the attribute
-names it reads. Generated rather than written down because the list runs to roughly 170 entries per
-line and changes between lines; see the `generateSolrCatalog` block in `build.gradle.kts`.
+names it reads. Generated rather than written down because the list runs to several hundred entries
+per line and changes between lines; see the `generateSolrCatalog` block in `build.gradle.kts`.
+*Deliberately not counted here — this sentence said "roughly 170" until someone checked, and the
+real figure is over four times that. Count it from the generated resource if you need the number.*
 
 ### `org.apache.solr.ide.configset.activation`
 
