@@ -197,12 +197,24 @@ done
 They are excluded from SonarCloud analysis. They are not this project's code and must never be edited
 to satisfy an analyser — the whole point of them is that nobody here wrote them.
 
-**One rule is held out by name**, `SolrUnusedFieldTypeInspection`, which reports 45 true findings on
-`sample_techproducts_configs`: Solr ships a palette of language and spatial types for fields the
-copier has not written yet. It is the only rule here whose finding is a fact about the file rather
-than a defect in it. The hold-out is pinned from both sides — everything else must still report
-nothing, and a separate test asserts the held-out rule does fire, so silencing it is not a way to
-pass.
+**One rule is held out by name**, and the hold-out is exactly one exception, not a general escape
+valve: eleven inspections are registered in `plugin.xml`, and ten of them are asserted, across all
+four shipped configsets, to report nothing at all. The eleventh, `SolrUnusedFieldTypeInspection`, is
+excluded from that assertion — by name, not by filtering on what it happened to say — because it
+reports 45 true findings on `sample_techproducts_configs` and two more on `_default`: Solr ships a
+palette of language and spatial types for fields the copier has not written yet, and reporting an
+unused type there is correct, not a bug. That makes it the only rule in this suite whose finding is a
+fact about the file rather than a defect in it, and so the one rule a *zero findings* gate cannot hold
+without lying.
+
+Being excluded from the zero-findings assertion is not the same as being untested, which is what
+"pinned from both sides" means. The first pin is the one every other rule already has: the exclusion
+only applies to these four shipped configsets, so if `SolrUnusedFieldTypeInspection` ever fired
+somewhere else in the suite, that fixture's own zero-findings test would still fail. The second pin
+is a test of its own, `testTheHeldOutRuleIsWhyItIsHeldOut`, which asserts the rule *does* fire on
+`sample_techproducts_configs` — so a regression that silenced it entirely, which would otherwise hide
+behind its own exclusion, fails that test instead
+(`src/test/kotlin/org/apache/solr/ide/configset/editing/SolrShippedConfigsetTest.kt:38-40,102-112`).
 
 ## Which Solr lines are supported, and the two copies of the answer
 

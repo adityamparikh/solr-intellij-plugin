@@ -209,8 +209,8 @@ value completion, which is a different gesture and, if it is wanted as an image,
 **✅ Captured.**
 
 **Shows** the end of the pipeline that starts in `buildSrc`: completion offering a factory's *own*
-attributes, read from its constructor bytecode at build time, each labelled with the factory it came
-from.
+attributes, read from its constructor bytecode at build time — CAT-2 in the manual suite spells out
+what that build-time pass actually does — each labelled with the factory it came from.
 
 **Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
 `managed-schema.xml:48`, put the caret before the closing `/`, type a space, and let completion

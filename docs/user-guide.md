@@ -170,9 +170,13 @@ a gap. A custom `class` the catalog does not know offers nothing on the tag at a
 **What it does.** Hovering `version` on the `<schema>` root explains what the attribute decides in
 general, then what *this configset's* declared value decides here — the demo's `version="1.6"` puts
 [`docValues`](glossary.md#docvalues) off and [`uninvertible`](glossary.md#uninvertible) on by
-default, both of which flip at 1.7. Solr changed several
-field defaults at that boundary without breaking already-deployed schemas, and this is the popup that
-makes the boundary visible rather than silent.
+default, both of which flip at 1.7. The `uninvertible` default is the one worth pausing on: with it
+true, sorting or faceting on a field that has no doc values still *works*, but only because Solr
+builds an in-memory field cache by un-inverting the index at query time — correct, silent, and
+expensive on a large index, rather than the explicit failure the same query would get once
+`uninvertible` defaults to false at 1.7. Solr changed several field defaults at that boundary without
+breaking already-deployed schemas, and this is the popup that makes the boundary visible rather than
+silent.
 
 **Try it.** Hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`. **F1 does not
 raise Quick Documentation on the default macOS keymap** — it opens the platform's own Help page
@@ -385,10 +389,16 @@ What they catch, briefly:
 - **A relevance or faceting parameter naming a field that cannot serve it** — `qf` on a non-indexed
   field, `facet.field` or `sort` on a field with neither `indexed` nor `docValues`. The same field can
   be searchable and unfacetable at once, and the two checks disagree about it on purpose.
-- **An analyzer chain ordering that silently defeats itself** — a case-folding rule placed after a
-  filter that already flattened case away, or a graph-producing filter placed below one that cannot
-  consume a graph. Every class exists, every attribute is legal, and Solr starts without complaint;
-  the filter simply never runs.
+- **An analyzer chain ordering that silently defeats itself.** Every class named is legal, every
+  attribute is legal, and Solr starts without complaint — this is the one finding in this list a
+  reader cannot see by looking at the file alone, because the problem is not any single tag but how
+  two tags relate to each other. A case-folding filter placed after a filter that already flattened
+  case away runs on input with nothing left to fold, so it does nothing. A filter such as
+  `SynonymGraphFilterFactory` can emit more than one token at the same position — `laptop` and
+  `notebook` occupying one slot rather than a flat sequence, what Lucene calls a *token graph* — and
+  `FlattenGraphFilterFactory` exists to collapse that graph back into a flat sequence for whatever
+  runs after it; placed *before* the filter that produces the graph instead of after it, it flattens
+  nothing, and the graph reaches a downstream filter that cannot represent alternatives at all.
 - **A configuration element Solr no longer accepts** — reported in Solr's own retirement sentence,
   naming its replacement where Solr names one.
 - **A parameter name that is almost one Solr reads** — an edit-distance check that knows the
