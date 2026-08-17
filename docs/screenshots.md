@@ -286,14 +286,19 @@ earns a place only if the README wants a second navigation example.
 
 ### 10. `solrconfig.xml`'s own structure — `10-completion-solrconfig-structure.png`
 
-**⚠️ Captured, but now stale again — reshoot before publishing.** The crop was fixed once already (the
-tab bar leaking `settings.gradle.kts (solr-plugin-demo)` was trimmed out), but the popup's *contents*
-have since gone stale for an unrelated reason: the catalog generator's element-placement fix, landed
-after this capture, moved `cache`, `featureVectorCache` and `HashDocSet` out from under `<config>` and
-under `<query>`, where all three actually belong. The image on disk still shows the pre-fix popup, so
-it now demonstrates the bug the fix removed rather than the feature. Reshoot against the current build
-before this ships, and correct this entry's **Shows** paragraph below against the reshoot's observed
-list rather than trusting either the old capture or this description.
+**✅ Captured, and reshot against the fixed catalog.** This image has now gone stale twice for two
+different reasons, which is worth recording because they are the two ways a screenshot rots. First the
+*crop* leaked `settings.gradle.kts (solr-plugin-demo)` from the tab bar. Then the *contents* went
+stale within the hour: the catalog generator's element-placement fix moved `cache`,
+`featureVectorCache` and `HashDocSet` out from under `<config>` and under `<query>`, where Solr
+actually reads them — so the capture began demonstrating the bug the fix removed rather than the
+feature. The current image is from a sandbox rebuilt after that fix, and all three are absent from it.
+
+**The reshoot needed a fresh sandbox, not just a rebuild.** A running `runIde` does not reload a
+regenerated catalog resource, so the first attempt reproduced the old popup perfectly and looked like
+the fix had failed. Anyone redoing this capture after a generator change must relaunch the sandbox,
+and should check `build/generated/solr-catalog-resources/solr-catalog/elements-10.tsv` on disk before
+concluding anything from what the popup shows.
 
 **Shows** the failure the platform's schema-less mode produces, replaced: typing `<` inside `<config>`
 offers Solr's own top-level vocabulary — `directoryFactory`, `dataDir`, `luceneMatchVersion`,

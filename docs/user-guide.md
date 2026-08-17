@@ -225,7 +225,7 @@ own top-level vocabulary, not a copy of the handful of tags already written abov
 typed character afterwards. (`STR-1` through `STR-6`)
 
 ![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
-vocabulary — query, requestHandler, directoryFactory, updateHandler — not an echo of sibling
+vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
 tags](images/10-completion-solrconfig-structure.png)
 
 ### Field names inside `solrconfig.xml` parameters

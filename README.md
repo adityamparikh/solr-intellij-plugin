@@ -98,7 +98,7 @@ marketplace listing rather than repeated here.
 ### `solrconfig.xml` completes its own structure, not the schema's echo
 
 ![Element completion inside the config element in solrconfig.xml, offering Solr's own top-level
-vocabulary — directoryFactory, query, requestHandler, updateHandler, luceneMatchVersion — rather than an
+vocabulary — directoryFactory, dataDir, luceneMatchVersion, requestHandler, query — rather than an
 echo of the sibling tags already written above the caret](docs/images/10-completion-solrconfig-structure.png)
 
 Before this shipped, the platform ran schema-less and guessed from whatever same-named tag happened
