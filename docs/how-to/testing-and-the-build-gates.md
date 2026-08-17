@@ -1,5 +1,10 @@
 # Testing, and clearing the build gates
 
+> **Who this is for.** A Java engineer who wants to know which test style a change needs, and what
+> the two build gates check before a PR is mergeable.
+> **Read first:** [Glossary](../glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [Contributing](../contributing.md) for the build commands these gates hook into.
+
 Two test conventions live in this repository, and what you are testing decides which one you get.
 Then two gates, both bound to `check`, both firing on `./gradlew build` — so CI should never be the
 first place you meet them.
@@ -8,12 +13,18 @@ first place you meet them.
 
 | What you are testing | Base class | Method naming | Costs |
 |---|---|---|---|
-| Anything with PSI in it — inspections, completion, references, documentation, hints, detection | `BasePlatformTestCase` | `testSomething()` | A headless IDE per run |
+| Anything with [PSI](../glossary.md#psi) in it — [inspections](../glossary.md#inspection), completion, references, documentation, hints, detection | [`BasePlatformTestCase`](../glossary.md#baseplatformtestcase) | `testSomething()` | A headless IDE per run |
 | Anything importing nothing from the platform — `model`, the parsers, `SolrSchemaElements` | none; plain JUnit 4 | `` `backtick names` `` with `@Test` | Nothing |
 | Anything touching `SolrConfigsetSettings` or `SolrConnectionSettings` | **`SolrConfigsetTestCase`** | `testSomething()` | A headless IDE per run |
 
 Eleven of the thirty-two test files are in the second group. Put your test there if you can — booting
 an IDE to exercise a pure function costs a second of wall-clock for nothing.
+
+> **In Java terms.** Plain JUnit over `model` is an ordinary unit test. `BasePlatformTestCase` is
+> closer to `@SpringBootTest` than to a unit test — it boots a real, if headless, IDE with its own
+> project context, which is why it costs a second instead of a millisecond. There is no third tier
+> here that goes further and drives a running IDE window the way a Selenium test drives a browser;
+> what that would catch is left to the manual test suite instead (see the last section below).
 
 **`BasePlatformTestCase` is JUnit 3-style despite the JUnit 4 dependency.** Methods must be named
 `testSomething()` and are discovered by that prefix, not by `@Test`. An `@Test` annotation on a
@@ -32,8 +43,8 @@ myFixture.configureByText("managed-schema.xml", content)
 
 **The path is part of the test's meaning, not incidental.** It shapes the directory structure the
 detector's heuristics read — whether a `schema.xml` sits in a directory some self-identifying name
-has already proven, whether two configsets are distinct. Choosing a path carelessly is choosing a
-different test.
+has already proven, whether two [configsets](../glossary.md#configset) are distinct. Choosing a path
+carelessly is choosing a different test.
 
 These are integration tests whatever they sit beside. They start a headless IDE, and
 `checkHighlighting` runs the platform's real analysis pass.
@@ -44,9 +55,9 @@ These are integration tests whatever they sit beside. They start a headless IDE,
 myFixture.checkHighlighting(true, false, false)
 ```
 
-It fails on highlights the fixture did **not** mark as well as on ones it did. That is what makes the
-zero-false-positive bar enforceable per test rather than only in review — a clean fixture is a real
-assertion that nothing fires, not decoration.
+It fails on highlights the [fixture](../glossary.md#fixture) did **not** mark as well as on ones it
+did. That is what makes the zero-false-positive bar enforceable per test rather than only in review —
+a clean fixture is a real assertion that nothing fires, not decoration.
 
 Which is why, for an inspection, you write the clean cases first. Solr configuration is full of
 syntax that resembles a field name without being one, and a warning on a correct file is what gets a
@@ -101,7 +112,8 @@ fun testNothingIsReportedOutsideASolrProject() {
 
 ## When every fixture test fails at once
 
-**A corrupted test sandbox is indistinguishable from a broken plugin until you know the signature.**
+**A corrupted test [sandbox](../glossary.md#sandbox) is indistinguishable from a broken plugin until
+you know the signature.**
 
 The fixture tests run against an IDE system directory at
 `.intellijPlatform/sandbox/<project>/<IDE>/system-test`. It persists between runs, and because it
@@ -127,8 +139,8 @@ Do not go looking for the cause in the code under test — this failure is upstr
 
 Every fixture test builds its subject directly — `myFixture.enableInspections(SomeInspection())`,
 `SolrSchemaParser.parse(text)` — which is what makes them fast and precise, and also means **nothing in
-the suite goes through `plugin.xml`**. A registration names its class as a string, so a wrong name
-compiles and every test passes while the platform finds nothing to load.
+the suite goes through [`plugin.xml`](../glossary.md#pluginxml)**. A registration names its class as a
+string, so a wrong name compiles and every test passes while the platform finds nothing to load.
 
 That is not hypothetical: a package rename moved three inspections and left three registrations pointing
 at the package that used to hold them. `./gradlew build` was green and all three were dead in the IDE.
@@ -140,7 +152,8 @@ names resolve. It is worth running for what it does cover, and CI runs it as its
 
 `SolrPluginDescriptorTest` is what closes it: plain JUnit, reflection over every class name in
 `plugin.xml`, milliseconds, and it runs in `./gradlew build` beside everything else. **If you add an
-extension point, that test already covers it** — there is nothing to remember. It carries a second
+[extension point](../glossary.md#extension-point), that test already covers it** — there is nothing
+to remember. It carries a second
 descriptor check for the same reason: an inspection registered with no
 `inspectionDescriptions/<shortName>.html` still works, and shows a blank panel in Settings →
 Inspections where its explanation should be. Nothing else notices, because no fixture test ever
@@ -241,8 +254,13 @@ say the same thing.
 
 ## The documentation gate
 
-Dokka runs with `reportUndocumented` and `failOnWarning`, and `dokkaGenerate` is a dependency of
-`check`.
+[Dokka](../glossary.md#dokka) runs with `reportUndocumented` and `failOnWarning`, and
+`dokkaGenerate` is a dependency of `check`.
+
+> **In Java terms.** Dokka is this project's Javadoc — it renders [KDoc](../glossary.md#kdoc)
+> comments into API documentation the same way `javadoc` renders `/** */` blocks. `failOnWarning` is
+> the part with no familiar default: an undocumented public declaration fails the build exactly as a
+> missing `@Override` never would, rather than merely showing up as a warning to skim past.
 
 **Any public class, function or property in `src/main/kotlin` without KDoc fails the build**, naming
 the declaration. Tests are exempt — only the `main` source set is gated. Overrides of platform
@@ -267,8 +285,12 @@ a symbol link**, so Markdown reference-style links (`[text][ref]`) do not work t
 
 ## The coverage gate
 
-Kover enforces an **80% line floor** via `koverVerify`, also bound to `check`. `SolrBundle` is
-excluded — platform resource-bundle plumbing with no branches of its own.
+[Kover](../glossary.md#kover) enforces an **80% line floor** via `koverVerify`, also bound to
+`check`. `SolrBundle` is excluded — platform resource-bundle plumbing with no branches of its own.
+
+> **In Java terms.** Kover is this project's JaCoCo: an instrumentation-based line-coverage tool
+> bound into the build's verification lifecycle, not a separately run report you have to remember to
+> generate.
 
 ```bash
 ./gradlew koverXmlReport   # build/reports/kover/report.xml

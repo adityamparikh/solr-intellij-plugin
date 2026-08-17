@@ -1,6 +1,12 @@
 # Manual test suite
 
-A repeatable verification pass over the sandbox IDE, run against the demo project. This
+> **Who this is for.** Someone sitting in front of a running sandbox IDE, mid-gesture, checking
+> whether a shipped feature behaves the way it claims to — not a newcomer reading ahead of the
+> code, and not a substitute for what the automated suite's fixtures already prove.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md), which owns what is actually built
+
+A repeatable verification pass over the [sandbox](glossary.md#sandbox) IDE, run against the demo project. This
 document owns three things: the **gesture** to make, the **expected outcome**, and the
 **record of the last pass**. It deliberately does not own what is built —
 [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) does, and a feature's checks
@@ -8,12 +14,18 @@ join this suite only when its code has shipped and there is something to press.
 
 **How to run a pass**
 
-1. `./gradlew runIde` — the sandbox opens `demo/`. Open `solr/conf/managed-schema.xml`.
+1. `./gradlew runIde` — the sandbox opens `demo/`. Open [`solr/conf/managed-schema.xml`](glossary.md#managed-schema).
 2. Uncheck every box from the previous pass (a pass is all-or-nothing; history lives in
    the [pass log](#pass-log), not in the boxes).
 3. Work top to bottom. The order matters: the baseline pass comes first because
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
+
+> **In Java terms.** `./gradlew runIde` does not run tests — it launches a second, disposable
+> IntelliJ instance with the plugin installed, closer to starting your Spring Boot app on a
+> scratch profile to click through by hand than to running its test suite. Nothing typed there
+> touches your everyday IDE or its indexes, which is the whole reason this document calls it a
+> sandbox.
 
 **The 📸 items are screenshots, and they are checkboxes like everything else.** Each one sits
 beside the check whose gesture produces it, names the file to save and where, and links to
@@ -32,10 +44,18 @@ is in [the testing guide](how-to/testing-and-the-build-gates.md).
 
 **Why these checks are manual at all.** Almost every claim below is also asserted
 headlessly (each section names its automated coverage). The manual pass exists for what
-a light fixture cannot see: whether the hint actually renders where a presenter can point
+a light [fixture](glossary.md#fixture) cannot see: whether the hint actually renders where a presenter can point
 at it, whether the popup is readable, whether features stay alive during real indexing.
 A check whose rendering risk disappears — because automation grows to cover it — should
 be retired from here, not accumulated.
+
+> **In Java terms.** A green `./gradlew test` run proves the fixtures it built are correct, not
+> that a feature works when someone actually presses it. This suite's own [pass log](#pass-log)
+> records two defects no automated assertion caught: a warning template that agreed with itself
+> in every fixture while naming the wrong requirement in practice (2026-08-10), and an inspection
+> confirmed green by tests that shared its own wrong assumption about where Solr reads a config
+> element (2026-08-16). Both were visible only to someone reading the rendered message in a real
+> editor.
 
 ---
 
@@ -48,7 +68,8 @@ be retired from here, not accumulated.
       hints. The demo project passes the outer gate through its Solr client dependency.
 - [ ] **ACT-2** — Features are alive **while the IDE is still indexing** (open the file
       immediately after launch, before the progress bar finishes). Everything is
-      dumb-aware by design; a feature that waits for indexing is a regression.
+      [dumb-aware](glossary.md#dumb-mode) by design; a feature that waits for indexing is a
+      regression.
 
 ## 2. Zero-false-positive baseline (BASE)
 
@@ -76,7 +97,7 @@ underline is a false positive, and a false positive on a correct file is a bug, 
 committed demo configset is dangling and exactly one field names an undeclared type, and
 which ones they are.
 
-## 3. Match-capability inlay hints (HINT)
+## 3. Match-capability [inlay hints](glossary.md#inlay-hint) (HINT)
 
 *Automated: `SolrMatchInlayHintsProviderTest`, `SolrMatchAnalysisTest`. Manual adds:
 placement and readability of the rendered hint.*
@@ -101,7 +122,7 @@ placement and readability of the rendered hint.*
       66-77, all nine fields in one frame, no interaction.
       [Catalog entry 1](screenshots.md#1-match-capability-hints--01-hints-match-capabilitypng).
 
-## 4. Navigation and Find Usages (NAV)
+## 4. Navigation and [Find Usages](glossary.md#find-usages) (NAV)
 
 *Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`,
 `SolrConfigFieldReferenceTest`, `SolrResourceFileReferenceTest`. Manual adds: the click
@@ -172,7 +193,7 @@ does carry `SearchHandler`. So the two answers differ here on purpose.
       tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
-## 4a. Rename (REN)
+## 4a. [Rename](glossary.md#rename-refactoring) (REN)
 
 *Renaming is the reference graph read backwards and then written to. Every check here ends
 in an undo — these edit both files, and the demo has to come back clean for the sections
@@ -197,7 +218,7 @@ below.*
       makes REN-4 defensible** — the configset is broken, and the plugin says so, rather than
       leaving it silently wrong. **Undo REN-4 and confirm the underline goes.**
 
-## 5. Quick documentation (DOC)
+## 5. [Quick documentation](glossary.md#documentation-provider) (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
 `SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrFieldPropertiesTest`,
@@ -300,7 +321,7 @@ stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 
 break these checks so much as delete DOC-5, leaving the suite testing one side of a
 boundary again.
 
-## 6. Inspections and quick-fixes (INSP)
+## 6. [Inspections](glossary.md#inspection) and [quick-fixes](glossary.md#quick-fix) (INSP)
 
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
@@ -405,7 +426,7 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       correctly ordered. No dimmed type is part of the baseline: every type the demo
       declares has a field behind it.
 
-## 7. Completion — the schema's own vocabulary (COMP)
+## 7. [Completion](glossary.md#completion-contributor) — the schema's own vocabulary (COMP)
 
 *Automated: `SolrSchemaVocabularyCompletionTest`, `SolrBooleanPropertyCompletionTest`,
 `SolrCopyFieldCompletionTest`, `SolrFieldTypeCompletionTest`, plus the pure-model
@@ -468,7 +489,7 @@ kinds. Nothing in that diff looks like a feature, which is exactly why a gesture
 
 ---
 
-## 9. Completion — field names inside `solrconfig.xml` parameters (PRM)
+## 9. Completion — field names inside [`solrconfig.xml`](glossary.md#solrconfigxml) parameters (PRM)
 
 *Automated: `SolrParameterFieldCompletionTest`, `SolrConfigFieldReferenceTest`. Manual adds: the
 popup where a reader actually meets it, inside a string the platform has no vocabulary for.*
@@ -575,7 +596,7 @@ its `<fieldType>` declares, and the demo's `*_t` is `text_general`, which declar
 `SolrRestatedDefaultAnnotatorTest` covers that path headlessly; either the demo grows a type that
 declares one, or this stays automated-only.
 
-## 12. Intentions — companion fields (INT)
+## 12. [Intentions](glossary.md#intention) — companion fields (INT)
 
 *Automated: `SolrAddPrefixCompanionIntentionTest`, `SolrAddExactCompanionIntentionTest`.
 Manual adds: these are the only gestures that write a new declaration, so the result has to be read

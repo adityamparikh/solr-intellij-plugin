@@ -2,15 +2,25 @@
 
 ![Build](https://github.com/adityamparikh/solr-intellij-plugin/workflows/Build/badge.svg)
 
+> **Who this is for.** A Java or Kotlin engineer who wants IDE support for Apache Solr
+> configuration files — no prior Solr or IntelliJ Platform plugin-development experience assumed —
+> evaluating whether this plugin is worth trying today.
+> **Read first:** [Glossary](docs/glossary.md) if Solr or IntelliJ Platform terms are new.
+
 IDE tooling for Apache Solr development in IntelliJ IDEA.
 
-Solr developers work across three disconnected surfaces: configset XML edited with no language
-support, queries iterated in the Admin UI or curl, and client code that references field names as
-unchecked string literals. Every boundary between them produces a class of silent runtime failure —
-a typo'd field name returns empty results rather than an error, a `copyField` pointing at a removed
-field fails only at core reload, a `qf` parameter on an unindexed field degrades relevance with no
-warning. This plugin closes those gaps with language intelligence, cross-file navigation, and
-inspections.
+Solr developers work across three disconnected surfaces: [configset](docs/glossary.md#configset) XML
+edited with no language support, queries iterated in the Admin UI or curl, and client code that
+references [field](docs/glossary.md#field) names as unchecked string literals. Every boundary between
+them produces a class of silent runtime failure — a typo'd field name returns empty results rather
+than an error, a [`copyField`](docs/glossary.md#copyfield) pointing at a removed field fails only at
+core reload, a `qf` parameter on an unindexed field degrades relevance with no warning. This plugin
+closes those gaps with language intelligence, cross-file navigation, and inspections.
+
+> **In Java terms.** A configset is roughly a Hibernate mapping plus `persistence.xml`: one file
+> (`managed-schema.xml`) declares the shape of your data, a second (`solrconfig.xml`) declares how
+> the engine around it behaves, and — like a mapping file — nothing checks either one against how
+> your code actually calls it. That gap is what this plugin closes on the configuration side.
 
 Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch and Kafka.
 
@@ -48,6 +58,14 @@ the storage shape that decides whether a matched document can be returned at all
 what the hint does when it cannot say everything: `notes` keeps only the storage shape, because its
 analyser is unrecognised, and `legacy` carries no hint at all, because its `type` is undeclared.
 
+> **In Java terms.** This is the same idea as an IDE showing the inferred type beside
+> `var x = list.get(0)` — the information exists, but only after tracing something you did not write
+> at that line. Here the trace runs from a field's `type` attribute into its
+> [field type](docs/glossary.md#field-type), and from there into its
+> [analyzer chain](docs/glossary.md#analyzer-chain) — nothing on the `<field>` declaration itself says
+> "whole value" or "tokenised." The inlay hint exists because that trace is real work a reader would
+> otherwise redo by hand for every field.
+
 ### Quick documentation on a field
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
@@ -64,7 +82,7 @@ name, one-sentence summary, accepted attributes, and a Reference Guide link](doc
 Read from the Solr artifacts themselves when the plugin was built — never fetched at edit time, and
 never copied out of the Reference Guide it links to.
 
-### An inspection catching what fails only at core reload
+### An inspection catching what fails only at [core](docs/glossary.md#core) reload
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
 open above it offering to change the name to *_t, category, description, legacy, name or
@@ -81,7 +99,8 @@ name a dynamic pattern.
 multiValued, omitNorms and more, each with a one-line summary and the values it accepts](docs/images/05-completion-field-properties.png)
 
 Attribute completion inside a `<field>` tag: each property with its one-line summary and what it
-accepts. `indexed` and `stored` are missing from the list because that tag already declares them.
+accepts. [`indexed`](docs/glossary.md#indexed) and [`stored`](docs/glossary.md#stored) are missing
+from the list because that tag already declares them.
 
 The same rule reaches the factories, whose attributes are read from constructor bytecode when the
 plugin is built:
@@ -132,7 +151,7 @@ and the comparison that only exists because two of them are connected.
 |---|---|---|
 | **Configuration** | Navigation, Find Usages, inspections, match-capability hints and quick-fixes, completion, rename | No |
 | **Server** | Browse collections, query console with structured results, index test documents, upload configsets and reload collections | Yes |
-| **Code** | Field names in SolrJ usage checked and completed, query syntax inside string literals, run a query from a gutter icon | No, better with one |
+| **Code** | Field names in [SolrJ](docs/glossary.md#solrj) usage checked and completed, query syntax inside string literals, run a query from a gutter icon | No, better with one |
 | **Repo vs. server** | Show where your configuration and the deployed server disagree | Both |
 
 No feature requires an input it might not have. A repository of bare XML gets the configuration
@@ -190,9 +209,14 @@ Requires **JDK 21 or later** (Solr 10 requires Java 21, which sets the toolchain
 ./gradlew buildPlugin # produce the distributable ZIP in build/distributions/
 ```
 
-The build enforces two gates as part of `check`: an 80% line-coverage floor (Kover) and a
-documentation gate that fails on any undocumented public declaration (Dokka). Both are described in
-[CLAUDE.md](CLAUDE.md).
+The build enforces two gates as part of `check`: an 80% line-coverage floor
+([Kover](docs/glossary.md#kover)) and a documentation gate that fails on any undocumented public
+declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md](CLAUDE.md).
+
+> **In Java terms.** Kover is this project's JaCoCo — a Kotlin-native line-coverage tool wired into
+> the same `check` task JaCoCo usually occupies. Dokka is its Javadoc: it renders KDoc into API docs,
+> and here it is configured to fail the build on an undocumented public declaration the way `javadoc
+> -Xdoclint:all -Werror` would.
 
 ## Installing
 

@@ -1,5 +1,10 @@
 # Platform mechanisms this plugin relies on
 
+> **Who this is for.** A Java engineer who wants to know why dumb mode and the field-model cache
+> are handled the way they are before touching either — both have already produced a real defect.
+> **Read first:** [Glossary](glossary.md) if IntelliJ Platform terms are new ·
+> [code-organization.md](code-organization.md)
+
 Two IntelliJ Platform mechanisms shape code all over this plugin, and neither is
 guessable from reading that code. Both were originally worked around rather than
 used — one silently, for months — so this records what they are, what we decided,
@@ -18,9 +23,16 @@ specific to us: the decision, the reasoning, and the evidence.
 
 When you open a project, IntelliJ builds **indexes** — a searchable database of
 every class, symbol and word in it. That takes seconds on a small project and
-minutes on a large one. Until it finishes, the IDE is in **dumb mode**: it runs,
-you can read and type, but anything backed by an index cannot answer, because its
+minutes on a large one. Until it finishes, the IDE is in **[dumb mode](glossary.md#dumb-mode)**: it
+runs, you can read and type, but anything backed by an index cannot answer, because its
 data source is half-built.
+
+> **In Java terms.** Dumb mode is the index being a database still importing — every query against
+> it fails, or is skipped outright, until the import finishes. `DumbAware` is not "this code is
+> thread-safe" or any other cross-cutting marker interface you may know from Java; it is a narrow
+> promise about one thing only — *I read no index* — and the two ways to make that promise differ by
+> extension point (an overridden method here, a marker interface there) with no compiler check that
+> you picked the right one for the base class you extended.
 
 The platform's rule is deliberately conservative:
 
@@ -28,7 +40,7 @@ The platform's rule is deliberately conservative:
 > while the project is indexing.
 
 The reasoning is sound. Answering from a partial index produces confidently wrong
-results — a Find Usages that reports three usages when there are nine is worse
+results — a [Find Usages](glossary.md#find-usages) that reports three usages when there are nine is worse
 than one that declines to answer. So the default is silence, and a feature that
 does not need an index has to say so. `DumbAware` is that declaration: *I read no
 index; run me anyway.*
@@ -37,7 +49,7 @@ index; run me anyway.*
 
 **Nothing in this plugin reads an index.** The field model is parsed from the text
 of `managed-schema.xml` and `solrconfig.xml`. The activation gate reads library
-names off the project model rather than PSI. There is no stub index, no file-based
+names off the project model rather than [PSI](glossary.md#psi). There is no stub index, no file-based
 index, no symbol lookup anywhere in it — with one exception, added later: resolving
 the class a `class` attribute names goes through `JavaPsiFacade`, which is why that
 one contribution both declines in dumb mode and guards with `DumbService`.
@@ -65,11 +77,11 @@ verified by compilation against the platform on the build classpath, not assumed
 
 | Contribution | How it opts in |
 |---|---|
-| `LocalInspectionTool` | `override fun isDumbAware()` |
-| `CompletionContributor` | `override fun isDumbAware()` |
-| `DocumentationProvider` | `DumbAware` marker interface |
-| Declarative inlay provider | `DumbAware` marker interface |
-| `PsiReferenceContributor` | **neither** — reference contributors are not filtered this way |
+| `LocalInspectionTool` ([inspection](glossary.md#inspection)) | `override fun isDumbAware()` |
+| [`CompletionContributor`](glossary.md#completion-contributor) | `override fun isDumbAware()` |
+| [`DocumentationProvider`](glossary.md#documentation-provider) | `DumbAware` marker interface |
+| Declarative [inlay](glossary.md#inlay-hint) provider | `DumbAware` marker interface |
+| `PsiReferenceContributor` | **neither** — [reference](glossary.md#reference) contributors are not filtered this way |
 
 The marker-interface cases are the dangerous ones. Adding `DumbAware` to a class
 the platform does not check for it **compiles cleanly and does nothing**, so a
@@ -123,9 +135,19 @@ Both directions are expensive to get wrong, and they are not symmetrical.
 
 ### What we do
 
-`CachedValuesManager` — the platform's mechanism. You supply a computation and a
-list of **dependencies**; the platform owns storage, thread-safety, eviction under
+[`CachedValuesManager`](glossary.md#cachedvaluesmanager) — the platform's mechanism. You supply a
+computation and a list of **dependencies**; the platform owns storage, thread-safety, eviction under
 memory pressure, and recomputation when any dependency's modification count moves.
+
+> **In Java terms.** Reaching for a `ConcurrentHashMap` and a manual `invalidate()` call is the
+> ordinary Java instinct here, and it is the wrong one. `CachedValuesManager` inverts the
+> relationship: you never call invalidate at all — you declare the *dependencies* whose modification
+> count the platform watches, and it evicts on your behalf when one moves. Closer to a memoizing
+> `Supplier` keyed off a `ModificationTracker` than to a hand-rolled LRU. The rule this codebase
+> enforces because of it: never build a second cache in front of `SolrConfigsetReader.modelFor` — it
+> already caches through `CachedValuesManager`, and a fact read from a file the reader does not
+> already read must join its dependency list (`sourcesOf`) or the model goes stale after the very
+> first edit, silently.
 
 Two decisions in it are ours, and both were arrived at by being wrong first.
 
@@ -138,10 +160,17 @@ surfaces as `InvalidVirtualFileAccessException` from inside the cache. Attaching
 the value to the directory makes the cache's lifetime exactly the directory's,
 and deletes the bookkeeping along with the map.
 
-This is also what makes the tests honest. `BasePlatformTestCase` reuses one light
-project across test *classes*, so anything a project-level service holds in a
+This is also what makes the tests honest. [`BasePlatformTestCase`](glossary.md#baseplatformtestcase)
+reuses one light project across test *classes*, so anything a project-level service holds in a
 field leaks into the next test — which is the same hazard `SolrConfigsetTestCase`
 already exists to manage for settings.
+
+> **In Java terms.** `BasePlatformTestCase` is closer to `@SpringBootTest` than to a plain JUnit
+> test — it boots a real (headless) IDE instance with a project and services wired up, rather than
+> instantiating one class in isolation. The cost that comes with that power is the same one
+> `@SpringBootTest` has: state a service holds in a field is *context-scoped*, not test-scoped, and
+> here the context is reused across test classes, not just test methods — so a leaked field is a
+> harder bug to spot than the Spring equivalent.
 
 **The dependency list is the two source files plus the VFS structure count.**
 Neither half can be dropped:

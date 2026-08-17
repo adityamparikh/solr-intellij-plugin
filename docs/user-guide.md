@@ -1,7 +1,14 @@
 # User guide
 
+> **Who this is for.** A Solr developer using this plugin day to day, looking up what a specific
+> gesture (hover, completion, Alt-Enter) does and what it should show. Solr schema vocabulary is
+> linked to the glossary throughout; IntelliJ Platform vocabulary is assumed only where a Java
+> engineer would already recognise the UI gesture (hover, Alt-Enter) rather than its internal name.
+> **Read first:** [Glossary](glossary.md) if Solr terms are new · [Project orientation](project-orientation.md)
+
 Everything the plugin does today, organised by what you are trying to do rather than by which
-IntelliJ extension point implements it. This is the configuration-files surface only — the
+IntelliJ [extension point](glossary.md#extension-point) implements it. This is the
+configuration-files surface only — the
 [server](../specs/plans/0002-solr-intellij-plugin-plan.md#server-track) and
 [code](../specs/plans/0002-solr-intellij-plugin-plan.md#code-track) surfaces the specification
 describes are not built yet, and this guide does not pretend otherwise. See
@@ -19,14 +26,18 @@ captured from:
 ./gradlew runIde
 ```
 
-The sandbox opens `demo/` and activates the plugin immediately — it declares `org.apache.solr:solr-solrj`,
-which passes the outer activation gate, and carries a real configset under `demo/solr/conf/`. Open
-`demo/solr/conf/managed-schema.xml` first; most of what follows lives there, and `demo/solr/conf/solrconfig.xml`
-is the other file this guide reaches into. If nothing below happens when you try it, see
+The [sandbox](glossary.md#sandbox) opens `demo/` and activates the plugin immediately — it declares
+`org.apache.solr:solr-solrj`, which passes the outer activation gate, and carries a real
+[configset](glossary.md#configset) under `demo/solr/conf/`. Open
+`demo/solr/conf/managed-schema.xml` first; most of what follows lives there, and
+`demo/solr/conf/solrconfig.xml` is the other file this guide reaches into — see the glossary for
+[managed-schema](glossary.md#managed-schema) and [solrconfig.xml](glossary.md#solrconfigxml) if
+either is unfamiliar. If nothing below happens when you try it, see
 [when nothing activates](contributing.md#when-nothing-activates) in the contributing guide before
 assuming a feature is broken.
 
-**Line numbers below name the demo fixture as committed and will drift as the demo changes.** Where a
+**Line numbers below name the demo [fixture](glossary.md#fixture) as committed and will drift as the
+demo changes.** Where a
 gesture edits the file, it says so, and every edit here is meant to be undone afterwards — the demo is
 a committed fixture, not a scratchpad. `git status --short demo/` should read empty when you are done.
 
@@ -40,13 +51,22 @@ authority on the precise result.
 
 ## What can this field actually match?
 
-**What it does.** Beside every field declaration, an inline hint states what a search against that
-field can actually do — whole-value or tokenised, case-sensitive or not, prefix-capable or not — and,
-beside it, the storage shape that decides whether a matched document can be returned at all: indexed,
-stored, doc-valued, single- or multi-valued. This is read from the field's own analyzer chain, the
-same fifteen-odd factories Solr itself would run, not asserted from the type name — a `TextField`
-using `KeywordTokenizerFactory` reads as whole-value despite the class name, because that is what the
-chain actually does.
+**What it does.** Beside every [field](glossary.md#field) declaration, an inline hint states what a
+search against that field can actually do — whole-value or tokenised, case-sensitive or not,
+prefix-capable or not — and, beside it, the storage shape that decides whether a matched document can
+be returned at all: [indexed](glossary.md#indexed), [stored](glossary.md#stored), doc-valued, single-
+or [multi-valued](glossary.md#multivalued). This is read from the field's own
+[analyzer chain](glossary.md#analyzer-chain) — the [tokenizer](glossary.md#tokenizer) and
+[filters](glossary.md#filter) Solr would run at index time — rather than asserted from the type's
+class name.
+A `TextField` using `KeywordTokenizerFactory` reads as **whole-value** despite the class name, because
+that tokenizer emits the entire input as one term, so the field matches exactly as a `StrField` does.
+
+**Order decides it, not just which [factories](glossary.md#factory) are present.** A
+`WordDelimiterFilterFactory` placed
+*after* that keyword tokenizer splits the single term again, and the field reads as tokenised despite
+its tokenizer — with the hint's evidence naming the filter that made it true rather than the tokenizer
+it overrode.
 
 Two silences matter as much as the hints themselves. A field whose analyzer chain names a factory the
 plugin does not recognise still shows its storage shape, with no match claim — a wrong hint is worse
@@ -74,7 +94,8 @@ than the rest, because the obvious first version only explained a *value* under 
 ### On a field
 
 **What it does.** Hovering (or F1 inside) a field's `name` shows every one of its resolved
-properties, **and where each came from** — the field itself, its field type, or Solr's own default at
+properties, **and where each came from** — the field itself, its [field type](glossary.md#field-type),
+or Solr's own default at
 the schema's declared version. That third column is what no external reference can supply, because it
 is about *this* schema. A **Meaning** column states the consequence of the resolved value in plain
 terms — *"Whether the original value can be returned in results"* beside `stored` — rather than only
@@ -87,8 +108,9 @@ that value came from, what it accepts, and what it means](images/02-quick-doc-fi
 
 ### On a class value
 
-**What it does.** Hovering any `class="solr.…"` value — a field type, a tokenizer, a filter, a char
-filter, or a `solrconfig.xml` plugin class — answers what the class is: short name and kind, the
+**What it does.** Hovering any `class="solr.…"` value — a field type, a tokenizer, a filter, a
+[char filter](glossary.md#char-filter), or a `solrconfig.xml` plugin class — answers what the class
+is: short name and kind, the
 fully-qualified name, a one-sentence summary read from Solr's own Javadoc at build time, the
 attributes it accepts, and a Reference Guide link at the version this configset declares. None of it
 is fetched at edit time or copied out of the guide it links to — see [the FAQ](faq.md) for why.
@@ -102,7 +124,8 @@ name, one-sentence summary, accepted attributes, and a Reference Guide link](ima
 ### On the schema's own elements
 
 **What it does.** Hovering the *tag* itself — `<schema>`, `<field>`, `<fieldType>`,
-`<dynamicField>`, `<copyField>`, `<uniqueKey>` — explains what the element is in Solr's terms, plus a
+[`<dynamicField>`](glossary.md#dynamic-field), [`<copyField>`](glossary.md#copyfield),
+[`<uniqueKey>`](glossary.md#uniquekey) — explains what the element is in Solr's terms, plus a
 configset-specific sentence where one is knowable: which two fields a `<copyField>` joins, which
 field is the unique key and of what type, how many fields use a given type.
 
@@ -134,18 +157,20 @@ the catalog does not know, answers with nothing rather than a guess.
 **What it does.** Hovering the *tag* of a factory (the word `filter`, not its `class` value) shows
 every attribute that class accepts, not only the ones written: written attributes are bold and
 labelled *on this filter*; unwritten ones show the catalog's recorded literal default, labelled *Solr
-default*; an attribute the catalog cannot supply a default for — `luceneMatchVersion` is the
-recurring example — shows an em dash labelled *no default recorded*, which is the feature rather than
+default*; an attribute the catalog cannot supply a default for —
+[`luceneMatchVersion`](glossary.md#lucenematchversion) is the recurring example — shows an em dash
+labelled *no default recorded*, which is the feature rather than
 a gap. A custom `class` the catalog does not know offers nothing on the tag at all.
 
 **Try it.** Hover the word `filter` (not the `class=` value) on the `EdgeNGramFilterFactory` filter at
 `managed-schema.xml:48`. (`DOC-4b`) *No image yet.*
 
-### On the schema's own version
+### On the schema's own [version](glossary.md#schema-version)
 
 **What it does.** Hovering `version` on the `<schema>` root explains what the attribute decides in
 general, then what *this configset's* declared value decides here — the demo's `version="1.6"` puts
-`docValues` off and `uninvertible` on by default, both of which flip at 1.7. Solr changed several
+[`docValues`](glossary.md#docvalues) off and [`uninvertible`](glossary.md#uninvertible) on by
+default, both of which flip at 1.7. Solr changed several
 field defaults at that boundary without breaking already-deployed schemas, and this is the popup that
 makes the boundary visible rather than silent.
 
@@ -160,7 +185,8 @@ off](images/16-hover-schema-version.png)
 ### On a `solrconfig.xml` parameter or parser name
 
 **What it does.** `solrconfig.xml` gets its own two documentation positions the schema provider
-declines. Hovering a request parameter's name — `qf`, `mm`, `defType` and 337 more — explains what
+declines. Hovering a [request parameter's](glossary.md#request-parameter) name — `qf`, `mm`, `defType`
+and 337 more — explains what
 that parameter is for and names the Java constant that declares it, read from Solr's own Javadoc.
 Hovering a `defType` value such as `edismax` names the query parser it selects. A parameter or name
 Solr itself does not declare — your own custom component's — answers with nothing, which is the
@@ -216,7 +242,8 @@ from](images/06-completion-factory-attributes.png)
 **What it does.** Before this shipped, `solrconfig.xml` ran through the platform's schema-less XML
 mode, which guesses completion from whatever same-named sibling tag happens to be nearby — a bad
 guess in a file made almost entirely of same-named tags. Element and attribute completion here now
-come from the same generated vocabulary the documentation and inspections read, and nesting is
+come from the same generated vocabulary the documentation and [inspections](glossary.md#inspection)
+read, and nesting is
 respected: what completes inside `<query>` is not what completes inside `<config>`, and an element
 Solr no longer accepts (`nrtMode`, `mainIndex`, and three more) is never offered, anywhere.
 
@@ -230,7 +257,8 @@ tags](images/10-completion-solrconfig-structure.png)
 
 ### Field names inside `solrconfig.xml` parameters
 
-**What it does.** Sixteen request-handler parameters are known to hold field names — `qf`, `pf`,
+**What it does.** Sixteen [request-handler](glossary.md#request-handler) parameters are known to hold
+field names — `qf`, `pf`,
 `fl`, `sort` among them — and completion inside one of them offers the schema's own fields, with a
 dynamic pattern such as `*_t` shown italicised to mark it as a pattern rather than a literal field.
 Scoped narrowly on purpose: `rows` and `defType` hold no field names, a caret immediately after a
@@ -262,8 +290,9 @@ terms.sort, each labelled with its declaring Params class](images/15-completion-
 
 ## Navigating and finding usages
 
-**What it does.** Every string that names something elsewhere in the configset is a real reference:
-Ctrl/Cmd-click (or Cmd-hover for the tooltip) jumps to the declaration, Find Usages (⌥F7) lists every
+**What it does.** Every string that names something elsewhere in the configset is a real
+[reference](glossary.md#reference): Ctrl/Cmd-click (or Cmd-hover for the tooltip) jumps to the
+declaration, [Find Usages](glossary.md#find-usages) (⌥F7) lists every
 place a declaration is used — including across the file boundary, schema to `solrconfig.xml` — and
 the result list is labelled in Solr's own vocabulary (*Field type*, *Field declaring this type*), not
 the platform's generic fallback. Four reference kinds resolve: a field's `type`, a `copyField`'s
@@ -303,8 +332,9 @@ generated catalog regardless, because that needs no class on the classpath at al
 
 ## Renaming safely across a configset
 
-**What it does.** Shift+F6 on a field, dynamic field or field type declaration renames it everywhere
-a reference resolves to it — including across the file boundary into `solrconfig.xml` — through the
+**What it does.** Shift+F6 on a field, dynamic field or field type declaration
+[renames](glossary.md#rename-refactoring) it everywhere a reference resolves to it — including across
+the file boundary into `solrconfig.xml` — through the
 same reference graph Find Usages reads. The rename dialog itself is labelled correctly (*Rename field
 'category' and its usages to:*, not the platform's fallback class name), which matters because a
 correct rename under a wrong-looking dialog reads as broken to everyone but its author.
@@ -332,8 +362,9 @@ declaration — updated with no separate edit](images/14-rename-cross-file-after
 
 ## Catching mistakes before Solr does
 
-**What it does.** Eleven inspections watch for the ways a configset fails silently — at core reload,
-at query time, or not at all until a reader notices a query "just doesn't work." Ten of the eleven are
+**What it does.** Eleven inspections watch for the ways a configset fails silently — at
+[core](glossary.md#core) reload, at query time, or not at all until a reader notices a query "just
+doesn't work." Ten of the eleven are
 held to a zero-false-positive bar: the shipped `_default` and `sample_techproducts_configs` configsets
 Solr itself ships produce no findings from them, on either supported line, and a custom plugin class
 with its own parameters produces none either. **The eleventh, the unused-field-type check, is held out
@@ -348,8 +379,8 @@ What they catch, briefly:
   fields closest in spelling, dynamic patterns included as candidates.
 - **A field naming an undeclared field type**, and the reverse — **a declared field type nothing
   uses** — the one finding here that is not a defect, so it is drawn dimmed rather than underlined,
-  with no quick-fix: whether it is dead weight or provision for a field not yet written is a judgement
-  the editor cannot make.
+  with no [quick fix](glossary.md#quick-fix): whether it is dead weight or provision for a field not
+  yet written is a judgement the editor cannot make.
 - **A `solrconfig.xml` handler parameter naming a field the schema does not declare.**
 - **A relevance or faceting parameter naming a field that cannot serve it** — `qf` on a non-indexed
   field, `facet.field` or `sort` on a field with neither `indexed` nor `docValues`. The same field can
@@ -380,7 +411,8 @@ notes](images/04-inspection-copyfield-quickfix.png)
 **What it does.** An attribute whose written value equals what Solr would have supplied anyway
 renders dimmed — the same idiom an IDE uses for any other redundant code, at information severity,
 never reaching the Problems view, because a restated default is correct rather than wrong. An
-Alt-Enter intention on a dimmed attribute removes it, leaving a schema whose resolved properties are
+Alt-Enter [intention](glossary.md#intention) on a dimmed attribute removes it, leaving a schema whose
+resolved properties are
 identical. The comparison covers both field properties (`indexed`, `stored`, and the rest, resolved
 through three tiers — field, field type, Solr's own default) and analysis-factory attributes, judged
 against the literal default the catalog read out of that factory's own bytecode. Wherever the default
@@ -421,8 +453,9 @@ alongside](images/12-intention-companion-fields.png)
 
 ## What is not here yet
 
-Nothing server-side (a live connection, browsing collections, a query console, the repository-vs-server
-drift view) and nothing in Java or Kotlin code (field-name checks against SolrJ calls, query-syntax
+Nothing server-side (a live connection, browsing [collections](glossary.md#collection), a query
+console, the repository-vs-server drift view) and nothing in Java or Kotlin code (field-name checks
+against [SolrJ](glossary.md#solrj) calls, query-syntax
 injection) exists yet. [The specification](../specs/0002-solr-intellij-plugin.md) describes the intent
 for both; [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place
 that says what is actually built, today, and it is worth reading directly rather than trusting a

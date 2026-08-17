@@ -2,11 +2,17 @@
 
 ### A hands-on introduction for Java and Kotlin engineers
 
-> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. [Part 11](#part-11--this-repo-as-the-worked-example), added after the tutorial itself, bridges the two: it maps every concept above onto this repository's real code, with the two decisions this repo made that the toy tutorial above did not need to — why parsing here does not lean on PSI the way Part 3 describes, and how dumb mode is actually enforced.
+> **Who this is for.** A Java or Kotlin engineer new to the IntelliJ Platform who wants to build a
+> small working plugin end to end — completion, an inspection with a quick-fix, and references —
+> before touching this repository's own code.
+> **Read first:** [Glossary](glossary.md) if a term below is unfamiliar · nothing else; this is the
+> starting point for the platform itself.
+
+> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. [Part 11](#part-11--this-repo-as-the-worked-example), added after the tutorial itself, bridges the two: it maps every concept above onto this repository's real code, with the two decisions this repo made that the toy tutorial above did not need to — why parsing here does not lean on [PSI](glossary.md#psi) the way Part 3 describes, and how [dumb mode](glossary.md#dumb-mode) is actually enforced.
 
 You already know how to make a JVM project do something useful. This tutorial is about making your *IDE* do something useful — and it turns out the distance between those two skills is much shorter than most engineers assume.
 
-By the end you'll have built a working plugin that adds code completion, a custom inspection with a quick-fix, and Ctrl-click navigation with rename refactoring to a file format the IDE has never heard of. Roughly 200 lines of Kotlin. No prior platform knowledge required.
+By the end you'll have built a working plugin that adds code completion, a custom [inspection](glossary.md#inspection) with a [quick-fix](glossary.md#quick-fix), and Ctrl-click navigation with [rename refactoring](glossary.md#rename-refactoring) to a file format the IDE has never heard of. Roughly 200 lines of Kotlin. No prior platform knowledge required.
 
 The reason to do this now rather than three years ago: the tooling finally got good. The IntelliJ Platform Gradle Plugin 2.x replaced a decade of accumulated Groovy-era configuration with a clean, explicit Kotlin DSL. Project scaffolding is a form you fill in rather than a repo you clone and gut. The APIs you'll touch below have been stable for years, and the test framework runs a real headless IDE in a few seconds. Plugin development stopped being folklore.
 
@@ -14,7 +20,13 @@ The reason to do this now rather than three years ago: the tooling finally got g
 
 ## What we're building
 
-Our subject is an Apache Solr **configset** — specifically `managed-schema`, an XML file that defines the fields of a search index. You need no Solr knowledge whatsoever. Here's the entire format we care about:
+Our subject is an Apache Solr **[configset](glossary.md#configset)** — specifically
+[`managed-schema`](glossary.md#managed-schema), an XML file that defines the fields of a search
+index. You need no Solr knowledge whatsoever. Here's the entire format we care about:
+
+> **In Java terms.** A configset is the schema plus the configuration of a search index — roughly a
+> Hibernate mapping file plus `persistence.xml`, but checked into a repository as plain XML rather
+> than read only by a running database. `managed-schema` below is the mapping half.
 
 ```xml
 <schema name="example" version="1.6">
@@ -34,15 +46,15 @@ Our subject is an Apache Solr **configset** — specifically `managed-schema`, a
 </schema>
 ```
 
-The `title` / `title_exact` pair is worth a word, since it recurs throughout the tutorial. It's the standard way to make one piece of content matchable two ways: `title` is tokenized, so a search for one word hits it; `title_exact` is an untokenized `string`, so it supports exact whole-value matching, sorting, and faceting. `copyField` duplicates the value into the second field at index time, so the application only ever sends `title`.
+The `title` / `title_exact` pair is worth a word, since it recurs throughout the tutorial. It's the standard way to make one piece of content matchable two ways: `title` is tokenized, so a search for one word hits it; `title_exact` is an untokenized `string`, so it supports exact whole-value matching, sorting, and faceting. [`copyField`](glossary.md#copyfield) duplicates the value into the second field at index time, so the application only ever sends `title`.
 
 Three element types, and one relationship worth noticing: `<field type="...">` points at a `<fieldType name="...">`, and `<copyField source/dest>` points at `<field name="...">`. Those cross-references are strings. The IDE treats them as ordinary text, which means a typo produces no error anywhere — the file opens fine, and the failure surfaces much later at runtime. That's the exact shape of problem IDE tooling exists to kill, and it's why this makes a good tutorial subject: it's a real bug class, not a toy.
 
 We'll ship three features:
 
-1. **Completion** — typing inside `type="…"` suggests the field types defined in the file.
+1. **Completion** — typing inside `type="…"` suggests the [field types](glossary.md#field-type) defined in the file.
 2. **An inspection with a quick-fix** — `copyField` pointing at a nonexistent field gets a warning, and Alt+Enter offers to create it.
-3. **References** — Ctrl-click on `dest="title_exact"` jumps to the field, Find Usages works, and rename refactoring updates every reference. All from one small class.
+3. **[References](glossary.md#reference)** — Ctrl-click on `dest="title_exact"` jumps to the field, [Find Usages](glossary.md#find-usages) works, and rename refactoring updates every reference. All from one small class.
 
 Substitute your own domain and the same three patterns cover an enormous range of useful plugins.
 
@@ -144,8 +156,13 @@ Three lines deserve a second look:
 - `testFramework(TestFrameworkType.Platform)` is easy to forget and produces baffling test-compilation errors when missing. It also needs that `import` at the top of the file — another easy miss.
 - `id` is permanent. Once published, changing it means publishing a different plugin. Choose deliberately.
 
+> **In Java terms.** The plugin `id` is like a Maven `groupId:artifactId` once it's on Central:
+> nothing stops you from publishing a new one, but every existing install, every Marketplace link,
+> and every dependency somebody declared on you points at the old string forever. Renaming is really
+> retiring one artifact and launching another.
+
 > **Why JUnit 4 in 2026?**
-> Not an oversight — it's what the platform's test framework requires. `BasePlatformTestCase`, which you'll use in Part 7, descends from JUnit 3's `TestCase`, and the SDK's dependency documentation pairs `TestFrameworkType.Platform` with exactly this artifact.
+> Not an oversight — it's what the platform's test framework requires. [`BasePlatformTestCase`](glossary.md#baseplatformtestcase), which you'll use in Part 7, descends from JUnit 3's `TestCase`, and the SDK's dependency documentation pairs `TestFrameworkType.Platform` with exactly this artifact.
 >
 > There is a `TestFrameworkType.JUnit5`, and it's the right choice for UI integration tests written against the Starter framework. But for the light PSI-level tests in this tutorial it currently carries two documented defects — a missing `opentest4j` dependency and JUnit 4 classes still referenced at runtime — so you'd add JUnit 4 back as a workaround anyway. Start on the supported path; revisit when those are closed.
 
@@ -157,7 +174,7 @@ Now the moment that makes it real:
 
 A second IntelliJ launches, with its own settings directory, your plugin installed. This is your dev loop for everything that follows. It's a JVM process like any other — `./gradlew runIde --debug-jvm` and attach a remote debugger if you like breakpoints, which you will.
 
-> **Checkpoint.** Open *Settings → Plugins → Installed* in the sandbox and find your plugin by name. If it's there, your build is correct and everything after this is just writing code.
+> **Checkpoint.** Open *Settings → Plugins → Installed* in the [sandbox](glossary.md#sandbox) and find your plugin by name. If it's there, your build is correct and everything after this is just writing code.
 
 ---
 
@@ -189,7 +206,7 @@ That's the whole model. If you're comfortable writing a controller without think
 
 You'll see the term everywhere, and it sounds heavier than it is.
 
-An **extension point is an interface plus a list of everybody who implemented it.**
+An **[extension point](glossary.md#extension-point) is an interface plus a list of everybody who implemented it.**
 
 That's genuinely it. `CompletionContributor` is an interface. The platform keeps a list of every class in every installed plugin that implements it. When the user hits Ctrl+Space, the platform walks that list and calls each one, asking "got anything for this position?"
 
@@ -211,7 +228,7 @@ The IntelliJ Platform does not do this. There is no annotation that registers an
 </extensions>
 ```
 
-That file is `src/main/resources/META-INF/plugin.xml`, and it's the only wiring mechanism there is.
+That file is [`src/main/resources/META-INF/plugin.xml`](glossary.md#pluginxml), and it's the only wiring mechanism there is.
 
 Now, why would they do it this way? Because a user might have sixty plugins installed, and the IDE has to start fast. Scanning sixty JARs for annotations at every startup would be brutal. Instead, each plugin ships a tiny XML file listing what it offers, the platform reads those in milliseconds, and it doesn't actually load or instantiate your class until the first time someone needs it. Lazy, cheap, predictable.
 
@@ -219,7 +236,7 @@ Good reason. But it means you need to internalize this:
 
 **If your class isn't in `plugin.xml`, it does not exist.**
 
-And here's the part that stings — nothing tells you. No warning at build time, no error at runtime, no log line. You write a beautiful completion contributor, hit Ctrl+Space in the sandbox, and get nothing. Not a stack trace. Just silence.
+And here's the part that stings — nothing tells you. No warning at build time, no error at runtime, no log line. You write a beautiful [completion contributor](glossary.md#completion-contributor), hit Ctrl+Space in the sandbox, and get nothing. Not a stack trace. Just silence.
 
 So when a feature doesn't fire, check `plugin.xml` before you check anything else. Every single one of us has lost an hour to this, exactly once, and then never again.
 
@@ -852,6 +869,11 @@ Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Insta
 3. **Your code sees every file of that language.** Guard on identity or you'll pollute completion in unrelated files.
 4. **PSI elements are invalidated by edits.** Don't cache them across operations; use `SmartPsiElementPointer` if you must hold one.
 5. **Your feature is switched off while the project indexes** — and nothing tells you. IntelliJ skips any contribution that hasn't declared itself *dumb-aware*, on the assumption it reads an index. If yours doesn't read one, say so: `LocalInspectionTool` and `CompletionContributor` let you override `isDumbAware()`, while `DocumentationProvider` and inlay providers take the `DumbAware` marker interface. Get this wrong and your plugin does nothing for the first minutes after project open, silently, which users read as "broken" rather than "waiting". Watch the marker-interface cases in particular: applying `DumbAware` to a class the platform doesn't check compiles cleanly and changes nothing.
+
+   > **In Java terms.** Dumb mode is what an index looks like mid-import: it's still being built, so
+   > queries against it are refused until it's ready, rather than answered with a partial or stale
+   > result. Declaring a class dumb-aware is a promise that it never queries that index at all —
+   > which is only safe to declare when it's actually true.
 6. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
 7. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
 8. **The plugin ID is permanent.** Decide before your first publish.
@@ -877,7 +899,7 @@ to you, that's the signal to read the platform SDK page for it before touching t
 |---|---|---|---|
 | `fileType` | file-type association | Makes the extensionless `managed-schema` parse as XML — [the exact trap Part 4 warns about](#the-step-that-will-bite-you-extensionless-files) | `plugin.xml:33` |
 | `codeInsight.declarativeInlayProvider` | inlay hint | The match-capability hint beside every field | `SolrMatchInlayHintsProvider`, `plugin.xml:38-45` |
-| `annotator` | annotator (new — not in Parts 4-6) | Dims an attribute that only restates its default; an `Annotator` runs like an inspection but at information severity with no Problems-view entry | `SolrRestatedDefaultAnnotator`, `plugin.xml:51-53` |
+| `annotator` | [annotator](glossary.md#annotator) (new — not in Parts 4-6) | Dims an attribute that only restates its default; an `Annotator` runs like an inspection but at information severity with no Problems-view entry | `SolrRestatedDefaultAnnotator`, `plugin.xml:51-53` |
 | `xml.elementDescriptorProvider` | descriptor (new) | Teaches the platform's own XML support this file's element vocabulary, replacing its schema-less sibling-echo guess. Two registrations, one per file, because a single provider serving both would make one file the owner of the other's positions | `SolrSchemaElementDescriptorProvider` / `SolrConfigElementDescriptorProvider`, `plugin.xml:58-67` |
 | `lang.documentationProvider` | documentation | F1 / hover, exactly [Part 2's table](#so-which-lists-are-there) | Two registrations, schema and `solrconfig.xml`, `plugin.xml:74-84` |
 | `psi.referenceContributor` | reference | Same interface [Part 6](#part-6--feature-3-references-three-features-for-the-price-of-one) builds, three registrations: schema, `solrconfig.xml`, and a third for the one reference kind that resolves into Java PSI (a `class=` value) | `plugin.xml:89-103` |
@@ -886,7 +908,7 @@ to you, that's the signal to read the platform SDK page for it before touching t
 | `elementDescriptionProvider` / `usageTypeProvider` | presentation (new) | What the Find Usages header and the rename dialog say about a target and a result — *Field type* / *Field declaring this type*, not the platform's fallback class name. Found by using the feature, not by reading a spec: without these, both read `Solr Declaration Target`, which is this plugin's own internal class name leaking onto the screen | `plugin.xml:125-128` |
 | `completion.contributor` | completion | Same interface as [Part 4](#part-4--feature-1-completion), two registrations | `plugin.xml:135-143` |
 | `localInspection` | inspection | Same shape as [Part 5](#part-5--feature-2-an-inspection-with-a-quick-fix), eleven registrations | `plugin.xml:148-283` |
-| `intentionAction` | intention (new) | An Alt+Enter menu item on code that has nothing wrong with it — no underline, never in the Problems view. The distinguishing question, stated in this repo's own [code organization guide](code-organization.md#the-organising-principle): if your change would underline something, it's an inspection; if it wouldn't, it's an intention | Three registrations, `plugin.xml:288-305` |
+| `intentionAction` | [intention](glossary.md#intention) (new) | An Alt+Enter menu item on code that has nothing wrong with it — no underline, never in the Problems view. The distinguishing question, stated in this repo's own [code organization guide](code-organization.md#the-organising-principle): if your change would underline something, it's an inspection; if it wouldn't, it's an intention | Three registrations, `plugin.xml:288-305` |
 
 Two things worth noticing about the list as a whole. First, every inspection is `level="WARNING"`,
 never `ERROR` — the comment beside the block in `plugin.xml` explains why: this plugin's model of a
@@ -917,15 +939,31 @@ plain JUnit for exactly this reason, and `SolrSchemaParserTest`
 looks like: `import org.junit.Test`, no `BasePlatformTestCase`, and it runs against a Kotlin string,
 not a fixture file.
 
-So there are two parses of the same text living side by side, on purpose: PSI answers "what's under
-this caret right now," which every position-based feature needs, and the DOM-based parser answers
-"what does this configset mean," which is a pure function nothing about the editor should be able to
-make expensive or flaky to test. `SolrConfigsetReader` is the seam between them — it feeds PSI text
-(so unsaved edits are seen) into the DOM parser and caches the result through the platform's
-`CachedValuesManager`, so the rest of the plugin never parses twice. If you're building a plugin whose
-correctness matters as much as this one's — anything with a "must never produce a false positive"
-requirement — this split is worth copying; if your format is smaller or the stakes are lower, reading
-straight off PSI everywhere, the way Part 3 teaches, is simpler and completely fine.
+So there are two parses of the same text living side by side, and each answers a different question.
+PSI answers "what's under this caret right now" — every position-based feature needs exactly that,
+and it's the question Parts 4 through 6 above spend their whole time answering. The DOM-based parser
+answers a different question, "what does this configset mean," and that question has to stay
+answerable as a pure function of the text, because nothing about the editor is allowed to make it
+expensive or flaky to test.
+
+`SolrConfigsetReader` is the seam between the two, and it does three things in order. First, it reads
+the *current* PSI text rather than what's on disk, so an edit still sitting in the editor buffer —
+not yet saved — is already visible to the model. Second, it hands that string to the DOM parser,
+exactly as `SolrSchemaParserTest` does when it hands the parser a Kotlin string directly. Third, it
+caches the result through the platform's `CachedValuesManager`, keyed so that a change to the schema
+or `solrconfig.xml` invalidates it and a change to anything else in the project does not; without that
+cache, every inspection and every hint would reparse the whole configset from scratch on every
+keystroke. One more consequence of treating the text this way, worth knowing because it's easy to
+get wrong by hand: the DOM parser is configured to refuse doctypes and external entities before it
+ever touches the string, because a configset is read from a project that may have just been cloned,
+and leaving entity resolution on would let a crafted file reach the local filesystem or the network
+during what the user experiences as simply opening a file in the editor
+(`src/main/kotlin/org/apache/solr/ide/configset/reading/SolrXmlDocuments.kt:39-46`).
+
+If you're building a plugin whose correctness matters as much as this one's — anything with a "must
+never produce a false positive" requirement — this split is worth copying; if your format is smaller
+or the stakes are lower, reading straight off PSI everywhere, the way Part 3 teaches, is simpler and
+completely fine.
 
 ### Dumb mode: the thing Part 10 mentions and this repo enforces everywhere
 

@@ -1,5 +1,11 @@
 # Module Solr IntelliJ Plugin
 
+> **Who this is for.** A Java engineer new to Apache Solr and the IntelliJ Platform, looking for an
+> overview of what is built before reading the per-package KDoc below.
+> **Read first:** [Glossary](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/glossary.md)
+> if Solr or IntelliJ Platform terms are new ·
+> [docs/contributing.md](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/contributing.md)
+
 IDE tooling for Apache Solr development on the IntelliJ Platform.
 
 Developers building on Solr work across three disconnected surfaces: configset

@@ -1,5 +1,9 @@
 # Project orientation
 
+> **Who this is for.** A reader deciding where to look next in this project — new to Solr, to the
+> IntelliJ Platform, or both — who wants the shape of the work before the plan's step-by-step detail.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new · [README](../README.md)
+
 A reader's map of where this project stands — for someone who wants to know "what's the situation
 here" before diving into the plan's step-by-step detail, not a second source of truth for it.
 
@@ -12,20 +16,30 @@ instead of restating it. What this document adds is orientation: which of the th
 specification promises exist in any form, how they relate, and where to look next depending on what
 you're trying to do.
 
+> **In Java terms.** This is the same discipline as normalizing a database schema: pick one column —
+> here, [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) — to own a fact, and every other
+> place that needs it references or links to that column instead of storing its own copy. A derived
+> column can drift from the one it was computed from; a second status paragraph can drift from the
+> plan the same way, and by the same mechanism — someone updates one copy and not the other. [The
+> section below](#a-correction-this-documents-own-research-produced) is that failure caught once,
+> not prevented forever.
+
 ## The shape of the project
 
 The [specification](../specs/0002-solr-intellij-plugin.md) describes three surfaces unified by one
-shared model of what a Solr field is and what it can do:
+shared model of what a Solr [field](glossary.md#field) is and what it can do:
 
-- **Configuration** — editor intelligence over configset XML: completion, navigation, Find Usages,
-  rename, inspections, quick documentation, inlay hints, and a couple of intentions that generate new
-  configuration rather than only explaining or flagging what exists. Needs no running Solr.
+- **Configuration** — editor intelligence over [configset](glossary.md#configset) XML: completion,
+  navigation, [Find Usages](glossary.md#find-usages), [rename](glossary.md#rename-refactoring),
+  [inspections](glossary.md#inspection), quick documentation, [inlay hints](glossary.md#inlay-hint),
+  and a couple of [intentions](glossary.md#intention) that generate new configuration rather than only
+  explaining or flagging what exists. Needs no running Solr.
 - **Server** — a live connection: browsing collections, a query console, indexing test documents,
   uploading and reloading configsets, and the drift view that shows where a repository and a deployed
   server disagree. Needs a running Solr.
-- **Code** — Java/Kotlin support: checking and completing field names used from SolrJ, query-syntax
-  injection inside string literals, running a query from a gutter icon. Needs neither, works better
-  with a live connection for the query-console bridge.
+- **Code** — Java/Kotlin support: checking and completing field names used from
+  [SolrJ](glossary.md#solrj), query-syntax injection inside string literals, running a query from a
+  gutter icon. Needs neither, works better with a live connection for the query-console bridge.
 
 The plan groups work into tracks that mirror this split, plus a Foundation track underneath all three
 and a cross-cutting track (CI, documentation) that runs continuously. Read

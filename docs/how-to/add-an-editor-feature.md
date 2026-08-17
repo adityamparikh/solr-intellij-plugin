@@ -1,5 +1,12 @@
 # Add an editor feature
 
+> **Who this is for.** A Java engineer who has read the plugin development tutorial (or already
+> knows the platform) and wants the concrete, repository-specific checklist for landing one new
+> inspection, completion, reference, or documentation feature.
+> **Read first:** [Glossary](../glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [The plugin development tutorial](../modern-intellij-plugin-development.md) for the platform
+> concepts this guide assumes.
+
 This guide assumes you know roughly what a `LocalInspectionTool` or a `CompletionContributor` is. If
 you do not, [the plugin development tutorial](../modern-intellij-plugin-development.md) teaches the
 platform from scratch and this guide will make more sense afterwards. What follows is what is
@@ -12,9 +19,10 @@ have seen the spine, each other capability is a small variation on it.
 
 ## The walkthrough: an inspection
 
-We will follow `SolrUnknownFieldTypeInspection`, which reports a `field` whose `type` names a field
-type the configset does not declare. It is sixty-one lines of Kotlin and it reaches into seven other
-places. That fan-out is the thing worth learning; the Kotlin is the easy part.
+We will follow `SolrUnknownFieldTypeInspection`, which reports a `field` whose `type` names a
+[field type](../glossary.md#field-type) the [configset](../glossary.md#configset) does not declare.
+It is sixty-one lines of Kotlin and it reaches into seven other places. That fan-out is the thing
+worth learning; the Kotlin is the easy part.
 
 ### 1. The inspection class
 
@@ -33,8 +41,9 @@ class SolrUnknownFieldTypeInspection : LocalInspectionTool() {
 }
 ```
 
-The KDoc on the class is not optional — see [the documentation gate](#the-documentation-gate). Write
-it saying *why the defect matters*, not what the code does. The real one explains that Solr refuses
+The [KDoc](../glossary.md#kdoc) on the class is not optional — see
+[the documentation gate](#the-documentation-gate). Write it saying *why the defect matters*, not what
+the code does. The real one explains that Solr refuses
 to load a core with an unknown field type, so this fails at deploy time rather than while the file is
 being written.
 
@@ -47,18 +56,24 @@ override fun isDumbAware(): Boolean = true
 **This is a promise about data sources, not a performance tweak.** It says the feature works while
 the project is still indexing, which is true here because the model is parsed from the configset's
 own text and nothing consults an index. The platform's default is to skip contributions during
-indexing, which would withhold a working feature exactly when a reader is most likely to be opening
-files for the first time.
+[dumb mode](../glossary.md#dumb-mode), which would withhold a working feature exactly when a reader
+is most likely to be opening files for the first time.
+
+> **In Java terms.** Dumb mode is what a search index looks like mid-import: the database is still
+> being built, so queries against it are refused until it is ready, rather than answered with a
+> partial or stale result. Declaring `isDumbAware() = true` says "I never query that index" — it is
+> only honest when it is true, because the platform takes your word for it.
 
 If you ever add a feature that *does* read an index, drop the declaration or guard with
 `DumbService`. No build gate catches this.
 
-**Which mechanism you use depends on the extension point**, and this repository uses both:
+**Which mechanism you use depends on the [extension point](../glossary.md#extension-point)**, and
+this repository uses both:
 
 | Extension point | How it declares |
 |---|---|
 | `LocalInspectionTool`, `CompletionContributor` | `override fun isDumbAware(): Boolean = true` |
-| Documentation provider, inlay hints provider | implement the `DumbAware` marker interface |
+| [Documentation provider](../glossary.md#documentation-provider), [inlay hint](../glossary.md#inlay-hint) provider | implement the `DumbAware` marker interface |
 
 Copy whichever the neighbouring class of the same kind uses. [`platform-mechanisms.md`](../platform-mechanisms.md)
 carries the reasoning behind the rule.
@@ -96,18 +111,20 @@ reads as sloppiness in the one place the plugin is asking to be believed.
 SolrInspections.replacementFixes(wrong, candidates, familyText)
 ```
 
-Quick-fixes offering each valid candidate, ranked by edit distance because the overwhelmingly common
-cause is a typo, and capped at six because a schema with eighty fields must not answer one typo with
-eighty menu items. **The inspection already computed the valid set in order to decide** — discarding
-it and leaving the reader to find it is the difference between an editor that helps and one that
-complains.
+[Quick-fixes](../glossary.md#quick-fix) offering each valid candidate, ranked by edit distance
+because the overwhelmingly common cause is a typo, and capped at six because a schema with eighty
+fields must not answer one typo with eighty menu items. **The
+[inspection](../glossary.md#inspection) already computed the valid set in order to decide** —
+discarding it and leaving the reader to find it is the difference between an editor that helps and
+one that complains.
 
 ```kotlin
 SolrInspections.isCheckableFieldName(name)
 ```
 
 Excludes the names Solr answers for itself — `score`, `_version_`, `_root_` — and anything containing
-a wildcard, which is a pattern rather than a reference. Use it anywhere you are about to flag a field
+a wildcard, which is a pattern rather than a [reference](../glossary.md#reference). Use it anywhere
+you are about to flag a field
 name.
 
 **This is where reviews get stuck.** Solr configuration is full of syntax that looks like a field
@@ -160,7 +177,7 @@ the configset does not declare.
 
 ### 7. Register it in `plugin.xml`
 
-`src/main/resources/META-INF/plugin.xml`
+[`src/main/resources/META-INF/plugin.xml`](../glossary.md#pluginxml)
 
 ```xml
 <localInspection
@@ -211,9 +228,15 @@ class SolrUnknownFieldTypeInspectionTest : SolrConfigsetTestCase() {
 
 Four things are doing work here:
 
-- **`SolrConfigsetTestCase`, not `BasePlatformTestCase`.** It puts a Solr client on the fixture's
-  classpath, without which the outer activation gate would reject the file and your test would pass
-  for the wrong reason — asserting nothing fires against a project the plugin is correctly ignoring.
+- **`SolrConfigsetTestCase`, not [`BasePlatformTestCase`](../glossary.md#baseplatformtestcase).** It
+  puts a Solr client on the fixture's classpath, without which the outer activation gate would reject
+  the file and your test would pass for the wrong reason — asserting nothing fires against a project
+  the plugin is correctly ignoring.
+
+  > **In Java terms.** `BasePlatformTestCase` boots a real, if headless, IDE for the test — closer to
+  > `@SpringBootTest` than to a plain unit test, and priced accordingly. `SolrConfigsetTestCase` is
+  > this repository's subclass of it, the way a project base test class wires in the fixtures every
+  > `@SpringBootTest` in the codebase needs.
 - **`testSomething()` naming.** These are JUnit 3-style and discovered by the prefix, not by `@Test`.
 - **`checkHighlighting` fails on unmarked highlights too**, which is what makes the clean cases real
   assertions rather than decoration.

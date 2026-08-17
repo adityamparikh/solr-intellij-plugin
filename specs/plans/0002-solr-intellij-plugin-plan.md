@@ -383,8 +383,10 @@ A pure function from analyzer chain to match capability. Independent of everythi
 **Actions:**
 
 1. Classify a field's index-time chain: whole value or tokenized, prefix-capable or not, case-sensitive or not.
-2. Name the roughly fifteen factories that determine this in code, rather than reading them from the generated catalog.
-   The spec's "The factory catalog" says why.
+2. Name the factories that determine this in code, rather than reading them from the generated catalog.
+   The spec's "The factory catalog" says why. *This line said "roughly fifteen" when it was written and
+   the sets have since outgrown it; the count is dropped rather than corrected, because it drifted into
+   the spec, the user guide and the code comment before anyone counted.*
 3. Test exhaustively against canonical types and against the orderings that change the answer.
 
 **Success criteria:**

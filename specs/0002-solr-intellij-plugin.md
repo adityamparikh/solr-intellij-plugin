@@ -296,10 +296,12 @@ appearing to be covered. A reader hovering `solr.StrField` and getting nothing i
 disappointment as hovering `solr.StandardTokenizerFactory` and getting nothing, and both
 are this catalog's job.
 
-**Match analysis is a deliberate exception to all of this.** The roughly fifteen factories
-that determine whether a field matches whole values or tokens are named in code, not read
-from the catalog, because that set *defines* the semantics rather than enumerating what
-exists — and it has been stable across Solr majors while the surrounding list has not.
+**Match analysis is a deliberate exception to all of this.** The factories that determine
+whether a field matches whole values or tokens are named in code, not read from the
+catalog, because that set *defines* the semantics rather than enumerating what exists — and
+it has been stable across Solr majors while the surrounding list has not. Stable is not
+fixed: the set has grown, and an earlier revision of this sentence put a number on it that
+had gone stale in four documents at once by the time anyone counted.
 
 Which entry applies is decided in this order:
 

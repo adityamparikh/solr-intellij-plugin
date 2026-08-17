@@ -1,5 +1,11 @@
 # Extend the field model
 
+> **Who this is for.** A Java engineer adding a new fact — a field, an attribute, a relationship —
+> to the plain data model every editor feature in this plugin reads from.
+> **Read first:** [Glossary](../glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [Add an editor feature](add-an-editor-feature.md) for how a feature consumes what this model
+> produces.
+
 `org.apache.solr.ide.model` is what every feature reads, and the only package with no IntelliJ types
 in it. This guide covers adding a new fact to it: where the fact enters, how it reaches a feature,
 and the two rules that make the package worth having.
@@ -9,9 +15,9 @@ and the two rules that make the package worth having.
 **No IntelliJ types. Ever.**
 
 This is load-bearing rather than stylistic. Roughly a third of the test files in this repository are
-plain JUnit 4 — no fixture, no headless IDE, no second of wall-clock per test — and they can be
-because the code they test imports nothing from the platform. One platform import costs that, for
-every test in the file and every test written against it afterwards.
+plain JUnit 4 — no [fixture](../glossary.md#fixture), no headless IDE, no second of wall-clock per
+test — and they can be because the code they test imports nothing from the platform. One platform
+import costs that, for every test in the file and every test written against it afterwards.
 
 **Which tier a test is in is decided by the base class it extends, not by what the file imports**, and
 that is worth stating because the obvious measurement gets it wrong. A test extending
@@ -59,7 +65,8 @@ something no `SolrConfigsetFacts` field carries throws the value away silently.
 `SolrCopyField`, `SolrAnalyzerChain`, `SolrAnalyzerComponent`, `SolrFieldReference`. Add a `data
 class` here, or a property to an existing one.
 
-Every public property needs KDoc. Say what the value means in Solr's terms, not what the type is.
+Every public property needs [KDoc](../glossary.md#kdoc). Say what the value means in Solr's terms,
+not what the type is.
 
 ### 2. The parser
 
@@ -70,10 +77,16 @@ Every public property needs KDoc. Say what the value means in Solr's terms, not 
 fun parse(xml: CharSequence): SolrConfigsetFacts
 ```
 
-**They are pure functions from text to facts**, using the JDK's DOM rather than IntelliJ's XML PSI.
-That is what lets them be tested without an IDE, and it is why the signature takes a `CharSequence`
-rather than a `PsiFile`. Keep it that way — a parser that needs PSI has moved into the platform and
-takes the model's testability with it.
+**They are pure functions from text to facts**, using the JDK's DOM rather than IntelliJ's XML
+[PSI](../glossary.md#psi). That is what lets them be tested without an IDE, and it is why the
+signature takes a `CharSequence` rather than a `PsiFile`. Keep it that way — a parser that needs PSI
+has moved into the platform and takes the model's testability with it.
+
+> **In Java terms.** PSI is a parse tree that stays live and mutable while the user types — closer
+> to an AST your IDE maintains for you than to a tree you built once and can now trust to be stale.
+> That liveness is exactly what a feature answering "what's under this caret right now" needs, and
+> exactly what this parser doesn't: it wants one fixed answer for one string of text, the same way a
+> plain `DocumentBuilder.parse(String)` call would give you, so it uses that instead.
 
 External entities and doctypes are refused. A cloned repository is not trusted input, and entity
 resolution would run while the user is merely opening a file. Anything you add that resolves an
@@ -93,8 +106,16 @@ data class SolrConfigsetFacts(
 )
 ```
 
-One configset's raw parse output, as plain lists. Default every new property so that a parser which
-does not produce it still compiles.
+One [configset](../glossary.md#configset)'s raw parse output, as plain lists — `copyFields` are
+[copyField](../glossary.md#copyfield) directives, `uniqueKey` is the schema's
+[uniqueKey](../glossary.md#uniquekey) declaration, and `luceneMatchVersion` is the
+[luceneMatchVersion](../glossary.md#lucenematchversion) `solrconfig.xml` declares. Default every new
+property so that a parser which does not produce it still compiles.
+
+> **In Java terms.** A `data class` is what you'd otherwise hand-write or generate: `equals`,
+> `hashCode`, `toString`, and a `copy` for free from one field list, verified by the compiler rather
+> than produced by an annotation processor. `SolrConfigsetFacts` leans on that `copy` to default new
+> properties without every existing caller having to change.
 
 ### 4. `SolrFieldModel`
 
