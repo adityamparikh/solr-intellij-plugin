@@ -76,18 +76,21 @@ org.apache.solr.ide
 │   ├── schema                          managed-schema.xml / schema.xml
 │   │   ├── parsing               (1)     one file's TEXT → facts. No IntelliJ types at all
 │   │   ├── inspection            (6)     the squiggly underline, and Alt+Enter fixes on it
-│   │   ├── intention             (6)     Alt+Enter on code that is already CORRECT
+│   │   ├── intention             (7)     Alt+Enter on code that is already CORRECT
 │   │   ├── completion            (1)     the popup on Ctrl+Space
 │   │   ├── reference             (1)     what makes a string Ctrl+Clickable
 │   │   ├── documentation         (4)     the popup on F1 / hover
 │   │   ├── hint                  (1)     grey text the IDE draws that is not in the file
-│   │   └── descriptor            (1)     teaching the platform's XML support this file's shape
+│   │   ├── descriptor            (1)     teaching the platform's XML support this file's shape
+│   │   └── annotator             (2)     dimming code that is correct but says nothing extra
 │   │
 │   └── solrconfig                (1)   solrconfig.xml — same gestures, fewer of them so far
 │       ├── parsing               (1)
-│       ├── inspection            (3)
-│       ├── completion            (2)
-│       └── reference             (1)
+│       ├── inspection            (6)
+│       ├── completion            (4)
+│       ├── reference             (1)
+│       ├── descriptor            (1)     the structure completion replacing the schema-less guess
+│       └── documentation         (2)     the two positions the schema provider declines
 │
 └── server
     └── connection                (1)   how to reach a running Solr, and remembering it
@@ -147,10 +150,10 @@ describes each one by what the user sees.
 | Something the editor reports as wrong | `configset.schema.inspection` | `configset.solrconfig.inspection` |
 | What is offered at the caret | `configset.schema.completion` | `configset.solrconfig.completion` |
 | Which strings become references | `configset.schema.reference` | `configset.solrconfig.reference` |
-| What a hover explains | `configset.schema.documentation` | *(arrives with `solrconfig.xml` support)* |
+| What a hover explains | `configset.schema.documentation` | `configset.solrconfig.documentation` |
 | Something shown inline without being asked | `configset.schema.hint` | — |
 | Something offered on a file already correct | `configset.schema.intention` | — |
-| What the platform's XML support knows | `configset.schema.descriptor` | — |
+| What the platform's XML support knows | `configset.schema.descriptor` | `configset.solrconfig.descriptor` |
 
 And the parts that belong to no single file:
 
@@ -377,21 +380,29 @@ draw when they stay silent on globs.
 `SolrSchemaPsi` exists because the model holds no PSI: it can say a field type exists but not where
 it was written, and navigation needs the second answer.
 
-### `org.apache.solr.ide.configset.schema.documentation`
+### `org.apache.solr.ide.configset.schema.documentation` and `org.apache.solr.ide.configset.solrconfig.documentation`
 
-Quick documentation on a schema element, on a field, and on its type.
+Quick documentation on a schema element, on a field, and on its type; and, in the second package,
+`solrconfig.xml`'s own two answerable positions.
 
-Every position a reader would try answers: the element, a property attribute, and a value inside one.
-That matters more than it sounds — the resolved property table is the one thing here no external
-documentation can supply, and it was once reachable only with the caret inside a field's `name`
-quotes, so hovering the element or hovering `omitNorms` itself returned something less useful than
-the thing sitting one gesture away.
+Every position a reader would try in the schema answers: the element, a property attribute, and a
+value inside one. That matters more than it sounds — the resolved property table is the one thing
+here no external documentation can supply, and it was once reachable only with the caret inside a
+field's `name` quotes, so hovering the element or hovering `omitNorms` itself returned something less
+useful than the thing sitting one gesture away.
 
 It answers what the Reference Guide cannot: not what `omitNorms` means in general, but what it is
 *for this field in this schema*, and whether that value came from the field, from its type, or from
 Solr's default. Some defaults genuinely depend on the field type, and those are reported as such
 rather than given a plausible value. `SolrSchemaElements` holds what each element is and what *this*
 one does where the model can say.
+
+`configset.solrconfig.documentation` answers a narrower, separate pair of positions the schema
+provider declines: what a request parameter is for, and what a `defType` value selects — read from the
+generated parameter catalog rather than from `SolrSchemaElements`, since neither position names a
+schema concept. Registered second in `plugin.xml`, so a position both providers could in principle
+claim goes to the schema one first; in practice they never collide, because each declines outright
+unless its own resource carries the name under the caret.
 
 Documentation links to the Reference Guide rather than copying it, at the version the configset
 declares. Links are page-level — anchors drift between releases and field types have no per-class

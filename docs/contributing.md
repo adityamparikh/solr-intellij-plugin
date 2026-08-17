@@ -88,10 +88,23 @@ The plugin is gated twice, and silence is the designed behaviour outside a Solr 
 2. **Is the file's name one the plugin recognises?** See the role tiers in
    [code organization](code-organization.md).
 
-The escape hatch for both is **Mark Directory as Solr Configset Root**, in `SolrConfigsetSettings`.
-That is the only way a configset repository with no build file activates at all. Detection is
-deliberately heuristic and therefore fallible in both directions, which is why the override exists —
-when features "don't activate", it is usually the answer.
+**There is no user-facing escape hatch for either gate yet.** `SolrConfigsetSettings` carries the
+manual override the spec promises — a marked directory bypasses the outer dependency gate, which is
+the only way a configset repository with no build file can activate at all — but nothing in
+`plugin.xml` reaches it: there is no registered `<action>`, no settings page, no `Configurable`
+anywhere in the plugin. *Mark Directory as Solr Configset Root* is a bundle string
+(`SolrBundle.properties`) with no action behind it, left over from before the gesture that would use
+it was built. [Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch)
+is where this is tracked, and every one of its success criteria is still unticked — this is not an
+oversight in this guide, it is genuinely unbuilt.
+
+So today, if detection is silent and you need to prove the rest of your change works anyway, the only
+way in is code rather than UI: call `SolrConfigsetSettings.getInstance(project).addManualRoot(dir)`
+yourself — from a scratch file, a one-off test, or a debugger — or, if you would rather commit a
+marked root for a fixture that has no build file, hand-edit that project's `solr.xml` component to
+match the shape `SolrConfigsetSettings.State` persists (see that class's KDoc for the exact fields).
+Neither is a substitute for the settings page; both are what a contributor can actually reach before
+it exists.
 
 ## Where work comes from
 

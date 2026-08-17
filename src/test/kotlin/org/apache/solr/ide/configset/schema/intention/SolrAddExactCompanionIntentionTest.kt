@@ -31,6 +31,10 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
 
     private val stringType = """<fieldType name="string" class="solr.StrField" sortMissingLast="true"/>"""
 
+    /** The same fixture at a declared version, for the properties whose default the version decides. */
+    private fun schemaAtVersion(version: String, body: String) =
+        schema(body).replace("version='1.6'", "version='$version'")
+
     private fun applyIntention(body: String) {
         myFixture.configureByText("managed-schema.xml", schema(body))
         myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
@@ -44,6 +48,72 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
         assertTrue(text, text.contains("""<copyField source="name" dest="name_exact"/>"""))
         // Reuse means no second type: the one declaration of `string` is the fixture's own.
         assertEquals(text, 1, text.split("""class="solr.StrField"""").size - 1)
+    }
+
+    /**
+     * A multi-valued source gets a multi-valued companion, or the schema breaks at index time.
+     *
+     * `copyField` copies every value the source receives, so Solr rejects a multi-valued source
+     * feeding a single-valued destination with *multiple values encountered for non-multiValued copy
+     * field* — and it rejects it while indexing the user's documents, not while they are looking at
+     * the schema. The intention wrote a single-valued companion unconditionally, which made accepting
+     * it a way to break indexing later with an edit the plugin had offered.
+     */
+    fun testAMultiValuedSourceGetsAMultiValuedCompanion() {
+        applyIntention("""$stringType<field name="ta<caret>gs" type="text_general" multiValued="true"/>""")
+
+        val text = myFixture.file.text
+        assertTrue(
+            text,
+            text.contains(
+                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
+            ),
+        )
+        assertTrue(text, text.contains("""<copyField source="tags" dest="tags_exact"/>"""))
+    }
+
+    /**
+     * And a single-valued source keeps the shorter tag, so the attribute is not written by habit.
+     *
+     * Asserted on the word rather than on a rendering of the whole tag: the fixture declares no
+     * multi-valued field anywhere, so any occurrence at all is this defect. A first version of this
+     * matched one long concatenated literal and would have passed silently the moment the attribute
+     * order or spacing changed — a test that fails for no reason it names is worth less than none.
+     */
+    fun testASingleValuedSourceGetsNoMultiValuedAttribute() {
+        applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
+
+        val text = myFixture.file.text
+        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
+        assertFalse(text, "multiValued" in text)
+    }
+
+    /**
+     * Below schema version 1.1, `multiValued` defaults to *true*, and the companion has to follow.
+     *
+     * A first version of this rule read the field's attribute, then the type's, then defaulted to
+     * false, on the stated reasoning that `multiValued` has one flat default unlike `docValues` and
+     * `uninvertible`. The property table says otherwise and so does Solr, so a `version="1.0"`
+     * schema declaring nothing would have regenerated the exact defect the rule exists to prevent:
+     * a single-valued companion fed by a source Solr treats as multi-valued, failing at index time
+     * on the user's data.
+     *
+     * The fixture declares no `multiValued` anywhere. Everything here comes from the version.
+     */
+    fun testTheVersionDefaultDecidesWhenTheSchemaSaysNothing() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schemaAtVersion("1.0", """$stringType<field name="ta<caret>gs" type="text_general"/>"""),
+        )
+        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+
+        val text = myFixture.file.text
+        assertTrue(
+            text,
+            text.contains(
+                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
+            ),
+        )
     }
 
     fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {

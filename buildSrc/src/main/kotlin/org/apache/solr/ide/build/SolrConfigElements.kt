@@ -5,7 +5,8 @@ package org.apache.solr.ide.build
  *
  * @property name the element or attribute as a reader writes it
  * @property parent the path it sits under, empty for a top-level element or one Solr accepts at any
- *   depth
+ *   depth, and [SolrConfigElements.UNPLACED] for one Solr reads off a node whose own path the scan
+ *   could not follow
  * @property arity how many Solr accepts, or [SolrConfigElements.ATTRIBUTE] where this is not an
  *   element at all
  * @property source which of the three declarations it came from
@@ -41,6 +42,31 @@ internal object SolrConfigElements {
     /** The class that reads the configuration tree, and therefore names its elements. */
     const val DECLARING_CLASS = "org/apache/solr/core/SolrConfig"
 
+    /**
+     * The node a nested read is made against, and therefore the signal that a read *is* nested.
+     *
+     * A read called on [DECLARING_CLASS] starts at the document, so its literal is a top-level
+     * element. One called on a node is a step further down, so its literal is a child of whatever
+     * that node is — known where the chain was followed, [UNPLACED] where it was not. The owner is
+     * what tells the two apart, and it is why an unfollowed chain can be reported as unknown rather
+     * than quietly reported as the root.
+     */
+    const val NODE_CLASS = "org/apache/solr/common/ConfigNode"
+
+    /**
+     * The field holding the document root, whose path is empty because it *is* the document.
+     *
+     * `SolrConfig` reads its top-level elements as `root.getAll("lib")` and
+     * `root.childRequired("luceneMatchVersion", …)` rather than off itself, so without this the
+     * owner test would call them nested, find no path for the receiver, and report [UNPLACED] for
+     * two elements that really are children of `<config>`. Naming the field is reading a fact out of
+     * Solr, and the type is checked with it so an unrelated field called `root` cannot stand in.
+     */
+    const val ROOT_FIELD = "root"
+
+    /** The descriptor a field holding a node carries, for telling [ROOT_FIELD] from its namesakes. */
+    const val NODE_DESCRIPTOR = "L$NODE_CLASS;"
+
     /** Solr accepts one, and the file need not contain it. */
     const val SINGLE = "single"
 
@@ -55,6 +81,41 @@ internal object SolrConfigElements {
 
     /** An element rather than an attribute, which is the whole of what the resource records. */
     const val ELEMENT = "element"
+
+    /**
+     * The parent of an element Solr reads off a node the scan lost track of.
+     *
+     * **An absent parent and an unobserved one are different claims, and conflating them is how this
+     * catalog shipped a false positive.** `SolrConfig` reads `<nrtMode>` as
+     * `get(indexConfigPrefix).get("nrtMode")`, where the prefix reaches the call through a local
+     * variable; the pass that could not follow it recorded no parent, and an empty parent already
+     * meant *top level*. So the catalog announced `<nrtMode>` as a child of `<config>` — a position
+     * Solr never reads — and the discontinuation rule fired there while staying silent on
+     * `<indexConfig><nrtMode>`, the position that stops a core starting.
+     *
+     * Chained reads are now followed, so that case is observed rather than guessed. This value is
+     * what remains for the ones that are not: a read whose receiver is a node, whose own path the
+     * scan could not name. A consumer must decline to place such an element rather than offering it
+     * anywhere, which is the same refusal `SolrMatchAnalysis` makes of a factory it does not know.
+     *
+     * Not a legal XML name, so it can never collide with a path Solr actually declares.
+     */
+    const val UNPLACED = "?"
+
+    /**
+     * Whether [parent] names a position, as against saying there is none or that none was seen.
+     *
+     * **A path *under* the marker is not a position either**, which is the half that is easy to
+     * miss: a chain rooted on an unobserved node would yield `?/a`, and testing equality with the
+     * bare marker alone would call that placed. The element would then be recorded under a parent no
+     * source ever named — the same ambiguity [UNPLACED] exists to remove, one segment further along.
+     * The tracker also refuses to extend a chain out of an unplaced read, so both ends are closed.
+     *
+     * @param parent the parent path from a reading
+     * @return true where the path is a real one
+     */
+    fun isPlaced(parent: String): Boolean =
+        parent.isNotEmpty() && parent != UNPLACED && !parent.startsWith("$UNPLACED/")
 
     /**
      * What a merged entry is written as: an element, or an attribute of the one above it.
@@ -180,16 +241,22 @@ internal object SolrConfigElements {
     /**
      * One row per element, folding together what each source that names it knows.
      *
-     * **A parentless reading is absorbed into a parented one, and that is the only merge that moves
-     * an element.** `SolrConfig` reads a nested element off its parent node —
+     * **A reading that names no position is absorbed into one that does, and that is the only merge
+     * that moves an element.** `SolrConfig` reads a nested element off its parent node —
      * `get("indexConfig").getAll("deletionPolicy")` — so the literal names the child while the
-     * receiver carries the parent, which a pass reading literals cannot see. Kept as its own row it
-     * would announce `<deletionPolicy>` as a top-level element and a consumer would offer it inside
-     * `<config>`, where Solr ignores it. What that reading *did* observe is the arity, and that
-     * survives the fold.
+     * receiver carries the parent. Kept as its own row it would announce `<deletionPolicy>` as a
+     * top-level element and a consumer would offer it inside `<config>`, where Solr ignores it. What
+     * that reading *did* observe is the arity, and that survives the fold.
      *
-     * Parentless is therefore not read as "unknown" in general: `<dataDir>` really is top-level, and
-     * stays so because no source ever gives it a parent.
+     * Both kinds of positionless reading absorb: a genuinely parentless one, and an
+     * [UNPLACED] one from a chain the scan could not follow. Neither counts as a position when
+     * deciding what to absorb *into*, or an unplaced row would capture the parentless readings of a
+     * name nothing ever placed.
+     *
+     * Parentless is therefore not read as "unknown": `<dataDir>` really is top-level, and stays so
+     * because no source ever gives it a parent. That distinction used to be carried by the empty
+     * string alone, and [UNPLACED] exists because it could not carry it — see that constant for the
+     * defect this cost.
      *
      * Arity takes the most specific answer rather than the first, since `single` is also what a
      * source says when it has nothing to add, while `required` and `repeated` are things one saw.
@@ -198,9 +265,9 @@ internal object SolrConfigElements {
      * @return one entry per distinct placement, sorted by parent then name
      */
     fun merge(entries: List<SolrConfigElement>): List<SolrConfigElement> {
-        val parented = entries.filter { it.parent.isNotEmpty() }.map { it.name }.toSet()
-        val placed = entries.filterNot { it.parent.isEmpty() && it.name in parented }
-        val absorbed = entries.filter { it.parent.isEmpty() && it.name in parented }.groupBy { it.name }
+        val parented = entries.filter { isPlaced(it.parent) }.map { it.name }.toSet()
+        val placed = entries.filterNot { !isPlaced(it.parent) && it.name in parented }
+        val absorbed = entries.filter { !isPlaced(it.parent) && it.name in parented }.groupBy { it.name }
 
         return placed
             .groupBy { it.parent to it.name }

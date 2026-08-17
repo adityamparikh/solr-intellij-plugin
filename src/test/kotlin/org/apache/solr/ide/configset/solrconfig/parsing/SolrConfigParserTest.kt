@@ -34,6 +34,59 @@ class SolrConfigParserTest {
 
     private fun references(xml: CharSequence = config) = SolrConfigParser.parse(xml).fieldReferences
 
+    /**
+     * `fl` written one name per line is Solr, and used to yield a field with a line break in it.
+     *
+     * Solr separates these names on commas and whitespace alike, so a multi-line `fl` is an ordinary
+     * way to write a long list. This branch split on `","` and a literal `" "`, which left the
+     * newline inside the token — and a newline is not one of the excluded characters, so the trimmed
+     * result was a single "field" spelling two names at once. The unknown-field inspection then
+     * reported a field nobody wrote, on a file Solr reads correctly.
+     *
+     * The boostable branch beside it always split on a whitespace regex and never had this. The two
+     * disagreeing about what separates a name from the next is the defect, so the case is asserted
+     * for both.
+     */
+    @Test
+    fun `names separated by newlines are read as names`() {
+        val xml = """
+            <config>
+              <requestHandler name="/select" class="solr.SearchHandler">
+                <lst name="defaults">
+                  <str name="fl">id
+            name
+            price</str>
+                  <str name="qf">name
+            description</str>
+                </lst>
+              </requestHandler>
+            </config>
+        """.trimIndent()
+
+        val fl = references(xml).filter { it.parameterName == "fl" }
+        assertEquals(listOf("id", "name", "price"), fl.map { it.fieldName })
+
+        val qf = references(xml).filter { it.parameterName == "qf" }
+        assertEquals(listOf("name", "description"), qf.map { it.fieldName })
+    }
+
+    /** Commas and whitespace mix freely in one value, which is also how Solr reads them. */
+    @Test
+    fun `names separated by a mix of commas and whitespace are read as names`() {
+        val xml = """
+            <config>
+              <requestHandler name="/select" class="solr.SearchHandler">
+                <lst name="defaults">
+                  <str name="fl">id, name  price,,category</str>
+                </lst>
+              </requestHandler>
+            </config>
+        """.trimIndent()
+
+        val fl = references(xml).filter { it.parameterName == "fl" }
+        assertEquals(listOf("id", "name", "price", "category"), fl.map { it.fieldName })
+    }
+
     @Test
     fun `boosted qf terms yield a field and its boost`() {
         val qf = references().filter { it.parameterName == "qf" }

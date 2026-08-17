@@ -79,10 +79,26 @@ object SolrFieldOperations {
         schemaVersion: SolrSchemaVersion,
         typeTraits: Set<SolrTypeTrait>? = null,
     ): Boolean? {
+        // Solr reads these with `Boolean.parseBoolean`, which ignores case — so `indexed="TRUE"` is a
+        // field that works, and a case-sensitive comparison here resolved it to a definite *false* and
+        // underlined a correct file. The plugin already agreed with Solr on the other side of this:
+        // the invalid-value inspection accepts `TRUE` because `SolrValueType.BOOLEAN` matches
+        // ignoring case, so one rule blessed the spelling that another misread.
+        //
+        // Anything that is neither spelling resolves to null rather than to false. Solr would read it
+        // as false, but a value this table cannot recognise is one the schema has not clearly stated,
+        // and reporting on it would be guessing — which is the whole reason null is not "no" above.
+        // The invalid-value inspection is what tells the reader the value is wrong.
         fun resolved(property: SolrFieldProperty): Boolean? = SolrFieldProperties
             .resolve(property, field, fieldType, schemaVersion, typeTraits)
             .value
-            ?.equals("true")
+            ?.let {
+                when {
+                    it.equals("true", ignoreCase = true) -> true
+                    it.equals("false", ignoreCase = true) -> false
+                    else -> null
+                }
+            }
 
         val indexed = resolved(INDEXED)
         val docValues = resolved(DOC_VALUES)

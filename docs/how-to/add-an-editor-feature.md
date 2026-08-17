@@ -245,7 +245,7 @@ Here is what differs.
 
 ### Completion
 
-`configset/completion/SolrConfigsetCompletionContributor.kt` — extends `CompletionContributor`,
+`configset/schema/completion/SolrSchemaCompletionContributor.kt` — extends `CompletionContributor`,
 registered as `<completion.contributor language="XML">`, declares `override fun isDumbAware()`.
 
 The contributor registers *providers* against PSI patterns in its `init` block; each provider extends
@@ -263,7 +263,7 @@ No description HTML, no `shortName`.
 
 ### References and navigation
 
-`configset/reference/SolrConfigsetReferenceContributor.kt` — extends `PsiReferenceContributor`,
+`configset/schema/reference/SolrSchemaReferenceContributor.kt` — extends `PsiReferenceContributor`,
 registered as `<psi.referenceContributor language="XML">`, implements `registerReferenceProviders`.
 
 You write three things rather than one: a `PsiReferenceProvider` returning references for a matched
@@ -286,7 +286,7 @@ field type exists but not where it was written, and navigation needs the second 
 
 ### Quick documentation
 
-`configset/documentation/SolrConfigsetDocumentationProvider.kt` — extends
+`configset/schema/documentation/SolrSchemaDocumentationProvider.kt` — extends
 `AbstractDocumentationProvider` **and implements `DumbAware`** (marker interface, not an override),
 registered as `<lang.documentationProvider language="XML">`.
 
@@ -304,7 +304,7 @@ provider.
 
 ### Inlay hints
 
-`configset/hint/SolrMatchInlayHintsProvider.kt` — implements `InlayHintsProvider` and `DumbAware`,
+`configset/schema/hint/SolrMatchInlayHintsProvider.kt` — implements `InlayHintsProvider` and `DumbAware`,
 with a collector implementing `collectFromElement`.
 
 Its registration is the most involved of the five, because it is the only one with a user-facing

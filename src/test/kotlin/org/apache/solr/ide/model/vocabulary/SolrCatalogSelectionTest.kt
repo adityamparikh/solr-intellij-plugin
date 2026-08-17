@@ -45,6 +45,9 @@ class SolrCatalogSelectionTest {
     /** The cache Solr 10 added, and the only element that separates the two vocabularies. */
     private val elementOnlyInTen = "featureVectorCache"
 
+    /** Where Solr reads it: a cache, off the query node rather than off the document. */
+    private val parentOfElementOnlyInTen = "query"
+
     /**
      * A configset's own declaration is the arm that answers when there is no server, and the
      * selection records that it was.
@@ -134,7 +137,7 @@ class SolrCatalogSelectionTest {
         )
         assertNull(
             "$version reached Solr 10's element vocabulary",
-            SolrElementCatalog.element(elementOnlyInTen, "", version),
+            SolrElementCatalog.element(elementOnlyInTen, parentOfElementOnlyInTen, version),
         )
     }
 
@@ -150,7 +153,7 @@ class SolrCatalogSelectionTest {
         )
         assertNotNull(
             "$version should reach Solr 10's element vocabulary",
-            SolrElementCatalog.element(elementOnlyInTen, "", version),
+            SolrElementCatalog.element(elementOnlyInTen, parentOfElementOnlyInTen, version),
         )
     }
 }

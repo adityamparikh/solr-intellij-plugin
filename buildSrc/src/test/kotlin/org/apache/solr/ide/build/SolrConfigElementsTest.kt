@@ -1,6 +1,7 @@
 package org.apache.solr.ide.build
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -163,6 +164,76 @@ class SolrConfigElementsTest {
             listOf(SolrConfigElement("dataDir", "", SolrConfigElements.SINGLE, SolrConfigElements.FROM_CONFIG)),
         )
         assertEquals("", merged.single().parent)
+    }
+
+    /**
+     * An unobserved parent defers exactly as a parentless one does.
+     *
+     * Both say "this reading names no position"; they differ only in whether a position was expected.
+     * A reading that could not follow the chain must not keep its own row beside the one that knows
+     * where the element goes, or the catalog would carry the element twice.
+     */
+    @Test
+    fun `an unplaced reading defers to a source that knows the parent`() {
+        val merged = SolrConfigElements.merge(
+            listOf(
+                SolrConfigElement("nrtMode", SolrConfigElements.UNPLACED, SolrConfigElements.REPEATED, SolrConfigElements.FROM_CONFIG),
+                SolrConfigElement("nrtMode", "indexConfig", SolrConfigElements.SINGLE, SolrConfigElements.FROM_PLUGINS),
+            ),
+        )
+        val single = merged.single { it.name == "nrtMode" }
+        assertEquals("indexConfig", single.parent)
+        assertEquals(SolrConfigElements.REPEATED, single.arity)
+    }
+
+    /**
+     * And an unplaced reading nothing else places survives as unplaced, rather than as top-level.
+     *
+     * This is the whole reason the value exists. Collapsing it to the empty string would restore the
+     * defect it was added for: an element whose position was never observed, reported as a child of
+     * `<config>` with the same confidence as one that really is.
+     */
+    @Test
+    fun `an unplaced reading no source places stays unplaced`() {
+        val merged = SolrConfigElements.merge(
+            listOf(SolrConfigElement("nrtMode", SolrConfigElements.UNPLACED, SolrConfigElements.SINGLE, SolrConfigElements.FROM_CONFIG)),
+        )
+        assertEquals(SolrConfigElements.UNPLACED, merged.single().parent)
+    }
+
+    /**
+     * An unplaced row is not a position to absorb *into*, which is the half easily got wrong.
+     *
+     * If it counted as one, a genuinely parentless reading of the same name would be folded into it
+     * and the element would be reported at a position no source ever established.
+     */
+    @Test
+    fun `an unplaced reading does not capture a parentless one`() {
+        val merged = SolrConfigElements.merge(
+            listOf(
+                SolrConfigElement("listener", SolrConfigElements.UNPLACED, SolrConfigElements.SINGLE, SolrConfigElements.FROM_CONFIG),
+                SolrConfigElement("listener", "", SolrConfigElements.SINGLE, SolrConfigElements.FROM_EDITABLE),
+            ),
+        )
+        assertEquals(2, merged.size)
+    }
+
+    /**
+     * Only a real path is a position — including a path that merely *starts* under the marker.
+     *
+     * `?/a` is the half easily missed: testing equality with the bare marker alone would call it
+     * placed, and the element would be recorded under a parent no source established. Both ends are
+     * closed — the tracker refuses to extend a chain out of an unplaced read, and this refuses to
+     * believe such a path if one ever reaches it.
+     */
+    @Test
+    fun `what counts as a position`() {
+        assertTrue(SolrConfigElements.isPlaced("query"))
+        assertTrue(SolrConfigElements.isPlaced("updateHandler/autoCommit"))
+        assertFalse(SolrConfigElements.isPlaced(""))
+        assertFalse(SolrConfigElements.isPlaced(SolrConfigElements.UNPLACED))
+        assertFalse(SolrConfigElements.isPlaced("${SolrConfigElements.UNPLACED}/indexConfig"))
+        assertFalse(SolrConfigElements.isPlaced("${SolrConfigElements.UNPLACED}/a/b"))
     }
 
     /** Two genuinely different placements of one name are two elements, not a conflict. */

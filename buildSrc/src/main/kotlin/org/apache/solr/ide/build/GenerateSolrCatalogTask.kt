@@ -1303,25 +1303,28 @@ private class ConfigElementClassVisitor(
     ): MethodVisitor = ConfigElementMethodVisitor(reads, messages)
 }
 
-/** Pairs a pending literal with the reader called next; see [ConfigElementClassVisitor]. */
+/**
+ * Translates instructions into [SolrConfigReadTracker] events, and owns nothing else.
+ *
+ * Every rule this pass applies lives in the tracker, where it can be tested against a synthetic
+ * instruction sequence. What is left here is the mapping from ASM's callbacks onto those events,
+ * which is the part that genuinely needs a jar to exercise.
+ */
 private class ConfigElementMethodVisitor(
     private val reads: MutableMap<String, String>,
     private val messages: MutableList<String>,
 ) : MethodVisitor(Opcodes.ASM9) {
 
-    private var pending: String? = null
+    private val tracker = SolrConfigReadTracker()
 
     override fun visitLdcInsn(value: Any?) {
-        // Cleared before the kind is tested, not after. A non-string `LDC` is as much an operation
-        // between a name and its reader as any of the instructions below, and returning early left
-        // the previous string pending across it.
         if (value !is String) {
-            pending = null
+            tracker.nonStringLoaded()
             return
         }
         // Every string is a candidate message; only the last one before a call is a candidate name.
         messages += value
-        pending = value
+        tracker.stringLoaded(value)
     }
 
     override fun visitMethodInsn(
@@ -1331,46 +1334,48 @@ private class ConfigElementMethodVisitor(
         descriptor: String?,
         isInterface: Boolean,
     ) {
-        val literal = pending
-        pending = null
-        val arity = name?.let { SolrConfigElements.arityOf(it) } ?: return
-        if (literal == null) return
+        val read = tracker.called(owner, name, descriptor) ?: return
         // A name already read wins on its first reading. Solr reads several elements twice — once to
         // build them and once to report them — and the second call is sometimes the weaker one, so
         // keeping the first is what preserves `childRequired` on `luceneMatchVersion`.
-        reads.putIfAbsent(literal, arity)
+        reads.putIfAbsent(read.path, read.arity)
     }
 
-    // Everything below clears the pending literal, and the omissions are the rule rather than an
-    // oversight. A name reaches its reader either immediately — `get("dataDir")` — or with one
-    // `invokedynamic` in between, which is the lambda `childRequired` takes as its second argument.
-    // Anything else between the two means the string was pushed for something other than this call,
-    // and the pass that did not clear here put a discontinuation notice in the vocabulary as an
-    // element name, because the notice was the last literal loaded before an unrelated read.
-
-    override fun visitInsn(opcode: Int) {
-        pending = null
+    override fun visitVarInsn(opcode: Int, varIndex: Int) = when (opcode) {
+        Opcodes.ASTORE -> tracker.stored(varIndex)
+        Opcodes.ALOAD -> tracker.loaded(varIndex)
+        else -> tracker.opaqueInstruction()
     }
 
-    override fun visitVarInsn(opcode: Int, varIndex: Int) {
-        pending = null
-    }
-
+    /** The document root is a field read, and it is the one field read that supplies a receiver. */
     override fun visitFieldInsn(opcode: Int, owner: String?, name: String?, descriptor: String?) {
-        pending = null
+        val isRoot = opcode == Opcodes.GETFIELD &&
+            name == SolrConfigElements.ROOT_FIELD &&
+            descriptor == SolrConfigElements.NODE_DESCRIPTOR
+        if (isRoot) tracker.rootLoaded() else tracker.opaqueInstruction()
     }
 
-    override fun visitTypeInsn(opcode: Int, type: String?) {
-        pending = null
-    }
+    override fun visitInsn(opcode: Int) = tracker.opaqueInstruction()
 
-    override fun visitIntInsn(opcode: Int, operand: Int) {
-        pending = null
-    }
+    override fun visitTypeInsn(opcode: Int, type: String?) = tracker.opaqueInstruction()
 
-    override fun visitJumpInsn(opcode: Int, label: Label?) {
-        pending = null
-    }
+    override fun visitIntInsn(opcode: Int, operand: Int) = tracker.opaqueInstruction()
+
+    override fun visitJumpInsn(opcode: Int, label: Label?) = tracker.opaqueInstruction()
+
+    // The switch and array forms are here to make the tracker's "everything not modelled clears"
+    // true rather than nearly true. Today's `SolrConfig` contains no switch over a config read, so
+    // none of them fires — which is exactly why they would have been noticed only after a future
+    // Solr line quietly recorded an element under whatever name preceded the switch.
+
+    override fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label?, vararg labels: Label?) =
+        tracker.opaqueInstruction()
+
+    override fun visitLookupSwitchInsn(dflt: Label?, keys: IntArray?, labels: Array<out Label>?) =
+        tracker.opaqueInstruction()
+
+    override fun visitMultiANewArrayInsn(descriptor: String?, numDimensions: Int) =
+        tracker.opaqueInstruction()
 
     /**
      * The one instruction that is transparent, and only in the shape that earned it.
@@ -1389,11 +1394,10 @@ private class ConfigElementMethodVisitor(
     ) {
         val returns = descriptor?.substringAfterLast(')').orEmpty()
         if (returns == "Ljava/lang/String;" || returns == "Ljava/lang/CharSequence;") {
-            pending = null
+            tracker.stringConcatenated()
         }
     }
 }
-
 /** Collects the static initializer's constants, in order, for [SolrConfigPlugins.pair]. */
 private class PluginDeclarationClassVisitor(
     private val constants: MutableList<Any>,

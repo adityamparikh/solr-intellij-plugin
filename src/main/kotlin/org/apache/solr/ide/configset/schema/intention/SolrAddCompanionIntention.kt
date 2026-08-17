@@ -126,10 +126,15 @@ abstract class SolrAddCompanionIntention : IntentionAction, DumbAware {
             if (lastType != null) schema.addAfter(typeTag, lastType) else schema.addSubTag(typeTag, true)
         }
 
-        // Immediately after the source field, so the pair reads together.
+        // Immediately after the source field, so the pair reads together. `multiValued` is carried
+        // over from the source because `copyField` copies every value it receives: a multi-valued
+        // source feeding a single-valued companion fails at index time, on the user's documents,
+        // rather than anywhere the editor could have shown it. It is written only when true, so the
+        // common case keeps the shorter tag.
+        val multiValued = if (plan.multiValued) """ multiValued="true"""" else ""
         schema.addAfter(
             factory.createTagFromText(
-                """<field name="${plan.companionField}" type="${plan.typeName}" indexed="true" stored="false"/>""",
+                """<field name="${plan.companionField}" type="${plan.typeName}" indexed="true" stored="false"$multiValued/>""",
             ),
             fieldTag,
         )

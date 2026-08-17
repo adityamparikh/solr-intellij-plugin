@@ -177,13 +177,16 @@ class SolrCatalogResourceTest {
     @Test
     fun `the two lines are not the same catalog`() {
         val onlyInTen = "featureVectorCache"
+        // A cache, and Solr reads it off the query node — so it is looked up there rather than at the
+        // root. The catalog used to answer at the root for everything whose parent it could not see.
+        val itsParent = "query"
         assertTrue(
             "$onlyInTen should be part of Solr 10's vocabulary",
-            SolrElementCatalog.element(onlyInTen, "", versionFor(10)) != null,
+            SolrElementCatalog.element(onlyInTen, itsParent, versionFor(10)) != null,
         )
         assertTrue(
             "$onlyInTen should not be part of Solr 9's vocabulary",
-            SolrElementCatalog.element(onlyInTen, "", versionFor(9)) == null,
+            SolrElementCatalog.element(onlyInTen, itsParent, versionFor(9)) == null,
         )
     }
 
@@ -194,6 +197,43 @@ class SolrCatalogResourceTest {
      * these assertions are about is the generator's output being complete and current, and a resource
      * left out of the list is one nothing would notice going stale.
      */
+    /**
+     * No shipped element carries a position the generator could not establish.
+     *
+     * The generator marks such a parent `?` rather than leaving it empty, because empty already
+     * means *top level* and conflating the two is what placed `<nrtMode>` under `<config>` — a
+     * position Solr never reads — while the discontinued-element rule stayed silent on the one that
+     * stops a core starting. Nothing consumes a `?` row today, so an element wearing one is simply
+     * absent from every surface: invisible rather than wrong, which is the intended failure.
+     *
+     * **This asserts the count is still zero, which is a claim about Solr as much as about the
+     * scan.** Both supported lines currently reach every element through a shape the pass can
+     * follow. A future line that stores a node in a local inside `SolrConfig` would break that, and
+     * the first symptom is an element quietly missing from completion — which no other test here
+     * would notice, because every other assertion names elements that *are* present.
+     */
+    @Test
+    fun `no shipped element has a position the scan could not establish`() {
+        listOf(9, 10).forEach { line ->
+            val resource = "/solr-catalog/elements-$line.tsv"
+            val text = checkNotNull(SolrClassCatalog::class.java.getResourceAsStream(resource)) {
+                "$resource is not on the test classpath"
+            }.use { it.readBytes().decodeToString() }
+
+            val unplaced = text.lineSequence()
+                .filterNot { it.startsWith("#") || it.isBlank() }
+                .map { it.split('\t') }
+                .filter { it.size > 1 && (it[1] == "?" || it[1].startsWith("?/")) }
+                .map { it[0] }
+                .toList()
+
+            assertTrue(
+                "Solr $line ships elements the scan could not place, so they reach no surface: $unplaced",
+                unplaced.isEmpty(),
+            )
+        }
+    }
+
     private fun resourceNamesFor(line: Int) = listOf(
         "/solr-catalog/solr-$line.tsv",
         "/solr-catalog/parameters-$line.tsv",

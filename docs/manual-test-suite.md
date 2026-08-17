@@ -364,12 +364,20 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       once** — the check that the two inspections ask different questions rather than one question twice.
       The completion side shows the same split with no edit at all: PRM-4's `sort` list withholds `text`
       where the `qf` list offers it.
-- [ ] **INSP-13** — In `solrconfig.xml`, add `<nrtMode>true</nrtMode>` directly inside `<config>`:
-      the element name is underlined and the message is **Solr's own sentence**, naming the config
-      as discontinued. Add `<indexDefaults>` instead and the message names `<indexConfig>` as the
-      replacement. **The wording is the feature** — a paraphrase would drop the only part saying
-      what to do next. Now move the same `<nrtMode>` inside a made-up `<acmeThing>` wrapper: the
-      warning goes, because a retirement belongs to a position rather than to a word. Undo.
+- [ ] **INSP-13** — In `solrconfig.xml`, add `<indexConfig><nrtMode>true</nrtMode></indexConfig>`
+      inside `<config>`: the element name is underlined and the message is **Solr's own sentence**,
+      naming the config as discontinued. Add `<indexDefaults>` directly inside `<config>` instead —
+      that one really is top-level — and the message names `<indexConfig>` as the replacement.
+      **The wording is the feature** — a paraphrase would drop the only part saying what to do next.
+      Now move the same `<nrtMode>` inside a made-up `<acmeThing>` wrapper: the warning goes, because
+      a retirement belongs to a position rather than to a word. Undo.
+- [ ] **INSP-13b** — Move that same `<nrtMode>` up one level, directly inside `<config>`:
+      **the warning goes**, and it should. Solr reads this element as
+      `get(indexConfigPrefix).get("nrtMode")` and never looks for it at the root, so a `<nrtMode>`
+      under `<config>` is inert — Solr neither honours nor complains about it. This is the position
+      the rule used to fire on, and the check exists because the earlier wording of INSP-13 asked for
+      the underline *here* and was pressed green against it. See the pass-log note for
+      2026-08-16 and `SolrConfigElements.UNPLACED` for how the catalog came to believe it.
 - [ ] **INSP-14** — Inside the `/select` handler's `<lst name="defaults">`, rename `<str name="rows">`
       to `<str name="rwos">`: underlined, and Alt-Enter offers `rows`. Then write `<str name="pf2">`
       and `<str name="pf3">` side by side — **neither is flagged**, though they are one edit apart.
@@ -701,12 +709,13 @@ the reason this list is worth as little as its last row.
 | 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
 | 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
 | 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
-| 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **not completed** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application |
+| 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **superseded** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application. **INSP-13's green is no longer evidence**: it was measured against a position Solr does not read — see the 2026-08-16 note |
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 | 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
+| 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
-**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Thirteen
-checks were pressed, all thirteen green:
+**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
+checks were pressed, all twenty-seven green:
 
 - **ACT-1 and HINT-1…5** — the plugin is alive on open and every hint renders inline. `string`
   fields read *whole value, case-sensitive*; `text_general` ones *tokenised, case-insensitive*;
@@ -974,3 +983,76 @@ sentences it quotes are literals in the generated element vocabulary, both keyed
 `nrtMode` carries *The `<nrtMode>` config has been discontinued and NRT mode is always used by Solr…*
 and `indexDefaults` carries *…discontinued. Use `<indexConfig>` instead.* The parent key is also why
 the check's third half works — move the element inside `<acmeThing>` and no row matches it.
+
+### 2026-08-16 — INSP-13's green was measured against the wrong position
+
+**The paragraph directly above is the defect, written down and not noticed.** "Both keyed to parent
+`config`" was true of the catalog and false of Solr. `SolrConfig` reads `<nrtMode>` and
+`<unlockOnStartup>` as `get(indexConfigPrefix).get("…")`, under `<indexConfig>`; only
+`<indexDefaults>`, `<mainIndex>` and `<jmx>` are read at the root. The generator's pass could follow
+a parent written as a literal but not one arriving through a local variable, recorded no parent for
+those two, and an absent parent already meant *top level* — so the catalog placed them under
+`<config>` and the rule inherited a confident claim about a position Solr ignores.
+
+**INSP-13 was written to match, and pressing it confirmed the check rather than the behaviour.** The
+underline appeared exactly where the check said it would, which is why nothing looked wrong. What the
+gesture could not show is the two things that follow from the same error: a `<nrtMode>` under
+`<config>` — inert to Solr — was reported, and one under `<indexConfig>`, which stops a core
+starting, was not.
+
+**Status: superseded, not re-pressed.** INSP-13 now asks for the underline under `<indexConfig>`, and
+INSP-13b pins the position that must stay clean. The 2026-08-15 green stands as a record of what was
+pressed and no longer stands as evidence about this rule. Both need a fresh sandbox press.
+
+The generator now follows the chain, and says [`UNPLACED`](../buildSrc/src/main/kotlin/org/apache/solr/ide/build/SolrConfigElements.kt)
+where it still cannot — an element whose position was never observed is no longer reported as a child
+of the root. **Eight further element names moved with the fix, and they are listed rather than counted** — a
+first draft of this paragraph said twelve, which is the same mistake as reading a status out of a
+number instead of out of the thing it counts. The list below is *measured*: the generator was reverted,
+the catalog regenerated, and the two resources diffed in full for both supported lines. That matters
+because the obvious way to check — comparing the children of `<config>` before and after — is blind to
+anything that moved between two non-root parents. Nothing did, and only a whole-catalog diff can say so:
+
+| Element | Now read under | Line |
+|---|---|---|
+| `HashDocSet`, `cache`, `maxWarmingSearchers`, `minPrefixQueryTermLength`, `slowQueryThresholdMillis`, `useColdSearcher` | `<query>` | both |
+| `featureVectorCache` | `<query>` | Solr 10 only |
+| `listener` | `<query>` **and** `<updateHandler>` — one name, two rows, because Solr reads it twice | both |
+
+`lib` and `luceneMatchVersion` were checked and did **not** move: they are read off the document root
+and belong at the top level, which is what `ROOT_FIELD` exists to establish.
+
+**Both halves have since been pressed, and the check for the second one already existed.** An earlier
+draft of this paragraph said a `<` typed inside `<query>` was "a gesture no check currently
+describes". That was wrong: **STR-2 describes exactly it**, and has since the section was written.
+Claiming a gap without reading the section it would sit in is the same error as reading a status out
+of the code — the answer was two screens up.
+
+STR-1 shows the elements leaving `<config>`; STR-2 shows them arriving under `<query>`. Both were
+pressed on 2026-08-16 and both are green — `filterCache` and its siblings offered inside `<query>`,
+`dataDir` absent from that list, and the eighteen offered there sharing almost nothing with what
+`<config>` offers. That second observation is the one that matters: everything else verifying this
+fix — the tests, the whole-catalog diff, STR-1 — only shows what *left* the root. Had the elements
+left without arriving, all of it would still have read green while the plugin was strictly worse than
+before.
+
+**`<indexConfig>` offers `deletionPolicy` and nothing else, and that is STR-3 seen from a third
+side.** The two elements this whole fix was about — `nrtMode` and `unlockOnStartup` — are *not*
+offered there, and must not be: `SolrElementCatalog.offerableChildrenOf` filters to elements Solr
+still accepts, and both carry a retirement notice. So the catalog knows exactly where Solr reads them,
+the inspection reports them where Solr reads them, and completion refuses to suggest them anywhere.
+Those are three different questions with three different right answers, and the instruction that sent
+someone to press this expected all three at that caret — a reminder that an expectation written from
+the fix rather than from the contract is as wrong as a check written from the plugin rather than from
+Solr.
+
+Two elements' worth of the known gap shows here too: `lockType`, `httpCaching` and `infoStream` sit in
+all four shipped configsets and in neither catalog, because `SolrConfig` does not read them. Nothing
+about this fix changed that, and a reader whose own file contains `<lockType>` will see it offered
+nowhere.
+
+**The standing lesson is the one this suite has now paid for twice.** A check written from the
+plugin's behaviour asserts that the plugin is self-consistent. Only a check written from *Solr's*
+behaviour can catch the plugin being confidently wrong, and the earlier note that this rule "asserts
+nothing of its own and quotes Solr instead" was true of the sentence and not of the position it was
+attached to.
