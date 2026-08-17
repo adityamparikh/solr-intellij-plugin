@@ -68,12 +68,20 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
         assertTrue(text, text.contains("""<copyField source="tags" dest="tags_exact"/>"""))
     }
 
-    /** And a single-valued source keeps the shorter tag, so the attribute is not written by habit. */
+    /**
+     * And a single-valued source keeps the shorter tag, so the attribute is not written by habit.
+     *
+     * Asserted on the word rather than on a rendering of the whole tag: the fixture declares no
+     * multi-valued field anywhere, so any occurrence at all is this defect. A first version of this
+     * matched one long concatenated literal and would have passed silently the moment the attribute
+     * order or spacing changed — a test that fails for no reason it names is worth less than none.
+     */
     fun testASingleValuedSourceGetsNoMultiValuedAttribute() {
         applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
 
         val text = myFixture.file.text
-        assertFalse(text, text.contains("""name="name_exact"""" + """ type="string" indexed="true" stored="false" multiValued"""))
+        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
+        assertFalse(text, "multiValued" in text)
     }
 
     fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {
