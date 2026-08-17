@@ -436,6 +436,64 @@ changes.
 
 **Verifies** DOC-9.
 
+### 17. Nesting — what completes inside `<query>` — `17-completion-query-nesting.png`
+
+**✅ Captured.**
+
+**Shows** the half of structure completion that entry 10 cannot: not what the plugin *declines* to
+offer at the root, but what it offers in the right place instead. Typing `<` inside `<query>` offers
+eighteen elements — `boolTofilterOptimizer`, `cache`, `documentCache`, `enableLazyFieldLoading`,
+`featureVectorCache`, `fieldValueCache`, `filterCache`, `HashDocSet`, `listener`, `maxBooleanClauses`,
+`maxWarmingSearchers`, `minPrefixQueryTermLength`, `queryResultCache`, `queryResultMaxDocsCached`,
+`queryResultWindowSize`, `slowQueryThresholdMillis`, `useColdSearcher`, `useFilterForSortedQuery` —
+and `dataDir` is not among them. Set beside entry 10, the two images are the whole claim: the
+vocabularies differ by position, which is what a schema-less sibling echo can never do.
+
+**This is the capture that closes a real gap in the evidence.** Every other artifact verifying the
+element-placement fix — the tests, the whole-catalog diff, entry 10 — observes only what *left*
+`<config>`. Had those elements left without arriving anywhere, all of it would still have read green.
+This is the only thing that shows they arrived.
+
+**Capture** the demo declares no `<query>`, so type `<query></query>` inside `<config>` first, put the
+caret between the tags and type `<`. Frame the popup. **Revert the file afterwards** — `git checkout
+-- demo/solr/conf/solrconfig.xml` — and confirm `git status --short demo/` is empty. IntelliJ's
+autosave can put an intermediate typing state on disk even when the editor looks clean; refocusing the
+sandbox after the revert makes it reload from disk.
+
+**A running sandbox does not reload a regenerated catalog.** After any generator change, relaunch
+`runIde` before capturing, and use entry 10's `<config>` popup as the canary: if `cache`,
+`featureVectorCache` or `HashDocSet` appear there, the sandbox predates the fix and nothing seen in it
+means anything.
+
+**Redo when** the generated element vocabulary changes, or `SolrConfig` changes which elements it
+reads off the query node.
+
+**Verifies** STR-2.
+
+### 18. Nesting — `<indexConfig>`, and what is never offered — `18-completion-indexconfig-nesting.png`
+
+**✅ Captured.**
+
+**Shows** `<indexConfig>` offering exactly one element, `deletionPolicy`, beside entry 17's eighteen.
+The contrast is the point twice over. It is nesting again at a parent with almost no live children —
+and it is the visible half of STR-3: `nrtMode` and `unlockOnStartup` are read by Solr at this exact
+position, are keyed to it in the catalog, are reported by the discontinued-element inspection when
+written here, and are **still not offered**, because `SolrElementCatalog.offerableChildrenOf` filters
+to what Solr still accepts. Knowing where an element belongs and recommending it are different
+questions, and this image is the one place both answers are visible at once.
+
+**Not a regression, and do not report it as one:** `lockType`, `httpCaching` and `infoStream` appear
+in all four shipped configsets and in neither catalog, because `SolrConfig` does not read them. A
+reader whose own file contains `<lockType>` sees it offered nowhere. That gap predates the placement
+fix and is recorded in the manual suite's 2026-08-16 note.
+
+**Capture** as entry 17, with `<indexConfig></indexConfig>` in place of `<query></query>`. Same revert
+discipline.
+
+**Redo when** entry 17 is redone.
+
+**Verifies** STR-3.
+
 ---
 
 ## Not yet capturable

@@ -712,6 +712,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **superseded** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application. **INSP-13's green is no longer evidence**: it was measured against a position Solr does not read — see the 2026-08-16 note |
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 | 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
+| 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
 checks were pressed, all twenty-seven green:
@@ -1021,9 +1022,34 @@ anything that moved between two non-root parents. Nothing did, and only a whole-
 `lib` and `luceneMatchVersion` were checked and did **not** move: they are read off the document root
 and belong at the top level, which is what `ROOT_FIELD` exists to establish.
 
-**Every one of these is unpressed.** STR-1's offered list inside `<config>` is what would show the
-eight leaving, and a `<` typed inside `<query>` is what would show them arriving — a gesture no check
-currently describes, and the positive half of this fix that nothing has yet observed.
+**Both halves have since been pressed, and the check for the second one already existed.** An earlier
+draft of this paragraph said a `<` typed inside `<query>` was "a gesture no check currently
+describes". That was wrong: **STR-2 describes exactly it**, and has since the section was written.
+Claiming a gap without reading the section it would sit in is the same error as reading a status out
+of the code — the answer was two screens up.
+
+STR-1 shows the elements leaving `<config>`; STR-2 shows them arriving under `<query>`. Both were
+pressed on 2026-08-16 and both are green — `filterCache` and its siblings offered inside `<query>`,
+`dataDir` absent from that list, and the eighteen offered there sharing almost nothing with what
+`<config>` offers. That second observation is the one that matters: everything else verifying this
+fix — the tests, the whole-catalog diff, STR-1 — only shows what *left* the root. Had the elements
+left without arriving, all of it would still have read green while the plugin was strictly worse than
+before.
+
+**`<indexConfig>` offers `deletionPolicy` and nothing else, and that is STR-3 seen from a third
+side.** The two elements this whole fix was about — `nrtMode` and `unlockOnStartup` — are *not*
+offered there, and must not be: `SolrElementCatalog.offerableChildrenOf` filters to elements Solr
+still accepts, and both carry a retirement notice. So the catalog knows exactly where Solr reads them,
+the inspection reports them where Solr reads them, and completion refuses to suggest them anywhere.
+Those are three different questions with three different right answers, and the instruction that sent
+someone to press this expected all three at that caret — a reminder that an expectation written from
+the fix rather than from the contract is as wrong as a check written from the plugin rather than from
+Solr.
+
+Two elements' worth of the known gap shows here too: `lockType`, `httpCaching` and `infoStream` sit in
+all four shipped configsets and in neither catalog, because `SolrConfig` does not read them. Nothing
+about this fix changed that, and a reader whose own file contains `<lockType>` will see it offered
+nowhere.
 
 **The standing lesson is the one this suite has now paid for twice.** A check written from the
 plugin's behaviour asserts that the plugin is self-consistent. Only a check written from *Solr's*
