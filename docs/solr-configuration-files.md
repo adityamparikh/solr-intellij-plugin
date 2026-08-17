@@ -1,5 +1,10 @@
 # Solr Configuration Files, and What This Plugin Covers
 
+> **Who this is for.** A Java engineer with no Solr background who needs to know which files exist,
+> which are hand-edited versus API-written, and which of them this plugin actually covers.
+> **Read first:** [Glossary](glossary.md) for Solr vocabulary · [Module.md](Module.md) for what the
+> plugin is
+
 This document maps the configuration surface of an Apache Solr deployment: which
 files exist, what goes in each, whether they are hand-edited or written by an
 API, and — in the final section — which of them this plugin targets and which it
@@ -25,7 +30,7 @@ this is a map, not a spec.
 **SolrCloud** cluster or in **user-managed** mode (called *standalone* before
 Solr 9 renamed it). Solr 10 changed `bin/solr start` to default to SolrCloud;
 user-managed mode is neither deprecated nor removed, and `--user-managed`
-selects it. In 9.x, user-managed is still the default. Configset files are
+selects it. In 9.x, user-managed is still the default. [Configset](glossary.md#configset) files are
 identical in both modes — the difference is where the authoritative copy lives
 and how it is deployed, not what it contains.
 
@@ -40,11 +45,18 @@ taking effect" questions.
 |---|---|---|---|
 | **Server** | The Jetty process | `server/etc/`, `server/resources/` | Same — on each node's disk |
 | **Node** | One Solr node | `$SOLR_HOME/solr.xml` | `$SOLR_HOME/solr.xml` — in 9.x it could also be loaded from `/solr.xml` in ZooKeeper; **Solr 10 removed that** |
-| **Configset** | One collection or core | `$SOLR_HOME/<core>/conf/` | **ZooKeeper**, under `/configs/<configset-name>` |
+| **Configset** | One [collection](glossary.md#collection) or [core](glossary.md#core) | `$SOLR_HOME/<core>/conf/` | **ZooKeeper**, under `/configs/<configset-name>` |
 
 The tier that matters for this plugin is the third. A **configset** is a
-directory of files — `solrconfig.xml`, a schema, and their supporting
+directory of files — [`solrconfig.xml`](glossary.md#solrconfigxml), a schema, and their supporting
 resources — that defines how one collection indexes and queries documents.
+
+> **In Java terms.** A configset is roughly a Hibernate mapping plus `persistence.xml`: one part
+> declares the shape of your data (the schema — fields and their types), the other configures the
+> engine that reads and writes it (`solrconfig.xml` — caching, commit behavior, the endpoints
+> exposed). Both are hand-edited files that live in your repository, not generated at build time —
+> which is why an editor that understands them, the way an IDE understands a JPA mapping file, is
+> worth building.
 
 In SolrCloud the authoritative copy of a configset lives in ZooKeeper, not on
 disk. The directory in your project is a *source* copy that gets uploaded, by
@@ -66,7 +78,7 @@ tuned repeatedly over a project's life.
 
 | Section | What it configures |
 |---|---|
-| `<luceneMatchVersion>` | Back-compat behavior target for Lucene components |
+| [`<luceneMatchVersion>`](glossary.md#lucenematchversion) | Back-compat behavior target for Lucene components |
 | `<lib>` | Extra JARs on the core's classpath — **removed in Solr 10**; use modules and the package manager instead |
 | `<dataDir>`, `<directoryFactory>` | Where and how index files are stored |
 | `<codecFactory>`, `<indexReaderFactory>` | Low-level Lucene codec and reader selection |
@@ -87,8 +99,9 @@ Two properties make this file the plugin's strongest target:
 
 - **Relevance configuration lives here.** The dismax/edismax `qf`, `pf`, `bf`,
   `boost` and `mm` parameters that determine search quality are `<str>` elements
-  inside a request handler's `defaults`. They name schema fields as bare
-  strings, with no validation of any kind. A typo degrades relevance silently.
+  inside a [request handler](glossary.md#request-handler)'s `defaults`. They name schema
+  [fields](glossary.md#field) as bare strings, with no validation of any kind. A typo degrades
+  relevance silently.
 - **It is iterated on continuously.** Cache sizes, commit cadence, and handler
   defaults get tuned across a project's entire life, long after the schema has
   stabilized.
@@ -100,11 +113,11 @@ into indexed terms, and which field identifies a document.
 
 | Element | What it declares |
 |---|---|
-| `<field>` | A named field: its `type`, and flags — `indexed`, `stored`, `docValues`, `multiValued`, `required`, `default`, `omitNorms`, `termVectors`, `useDocValuesAsStored`, `sortMissingLast` |
-| `<dynamicField>` | A glob (`*_s`, `*_txt`) matching any field whose name fits the pattern |
-| `<copyField>` | Duplicates values from `source` into `dest` at index time — the mechanism behind catch-all search fields and multi-field patterns |
-| `<fieldType>` | A named analysis and storage strategy: a Lucene class, plus optional `<analyzer type="index">` and `<analyzer type="query">` chains of `<charFilter>` → `<tokenizer>` → `<filter>` |
-| `<uniqueKey>` | The field identifying a document — required for updates, deletes, and SolrCloud routing |
+| `<field>` | A named field: its `type`, and flags — [`indexed`](glossary.md#indexed), [`stored`](glossary.md#stored), [`docValues`](glossary.md#docvalues), [`multiValued`](glossary.md#multivalued), `required`, `default`, [`omitNorms`](glossary.md#omitnorms), `termVectors`, `useDocValuesAsStored`, `sortMissingLast` |
+| [`<dynamicField>`](glossary.md#dynamic-field) | A glob (`*_s`, `*_txt`) matching any field whose name fits the pattern |
+| [`<copyField>`](glossary.md#copyfield) | Duplicates values from `source` into `dest` at index time — the mechanism behind catch-all search fields and multi-field patterns |
+| [`<fieldType>`](glossary.md#field-type) | A named analysis and storage strategy: a Lucene class, plus optional `<analyzer type="index">` and `<analyzer type="query">` [chains](glossary.md#analyzer-chain) of [`<charFilter>`](glossary.md#char-filter) → [`<tokenizer>`](glossary.md#tokenizer) → [`<filter>`](glossary.md#filter) |
+| [`<uniqueKey>`](glossary.md#uniquekey) | The field identifying a document — required for updates, deletes, and SolrCloud routing |
 | `<similarity>` | Scoring model, globally or per field type (BM25 by default) |
 
 The `<fieldType>` analyzer chains are the conceptually hardest part of a Solr
@@ -113,8 +126,15 @@ exact matching, case-insensitive matching, prefix matching, or phrase queries is
 an *emergent property* of a chain of a dozen filter classes — and getting it
 wrong produces no error, just queries that quietly do not match.
 
+> **In Java terms.** An analyzer chain is a `Function<String, List<String>>` pipeline applied to a
+> field's text at index time (and, separately, at query time): a char filter transforms the raw
+> string, a tokenizer splits it into tokens, and each filter in turn maps or drops tokens — the same
+> shape as `Stream.map`/`filter` composed in sequence. The limit of the analogy is where it stops
+> being obviously wrong: a misordered or mismatched chain doesn't throw, it just silently changes
+> what a query can match, which is why there is "the least feedback" of anything in this file.
+
 **On the filename.** The classic file is `schema.xml`. The managed file was
-historically extensionless (`managed-schema`) and current Solr versions use
+historically extensionless ([`managed-schema`](glossary.md#managed-schema)) and current Solr versions use
 `managed-schema.xml` — the name is set by `managedSchemaResourceName` and is a
 convention, not a mechanism. Tooling has to handle all three names, and the
 extensionless variant is a genuine trap: IDEs key file type off the extension,
@@ -164,7 +184,7 @@ or support them.
 | `data-config.xml` / DIH config | DataImportHandler was deprecated and then removed from the Solr distribution; it continues as a community package |
 | `velocity/*.vm` | The Velocity response writer and `/browse` UI were removed |
 | `xslt/*.xsl` | The XSLT response writer was deprecated and relocated to an optional module |
-| `<defaultSearchField>`, `<solrQueryParser defaultOperator>` in the schema | Removed — replaced by `df` and `q.op` request parameters |
+| `<defaultSearchField>`, `<solrQueryParser defaultOperator>` in the schema | Removed — replaced by `df` and `q.op` [request parameters](glossary.md#request-parameter) |
 | `CurrencyField`, `EnumField`, `ExternalFileField` field types | Removed in Solr 10 — `CurrencyFieldType` and `EnumFieldType` are the surviving forms; `ExternalFileField` has no replacement |
 | `<lib>` directives | Removed in Solr 10 — replaced by modules and the package manager |
 | `python`, `ruby`, `php` and XLSX response writers | Removed in Solr 10 |
@@ -326,7 +346,7 @@ below stays correct.
 
 | File | Scope |
 |---|---|
-| `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, factory classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes |
+| `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, [factory](glossary.md#factory) classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes |
 | `solrconfig.xml` | **The parameters that name schema fields, in both directions.** Handler parameters (`qf`, `df`, `fl`, `sort`, facet, highlight and grouping fields) resolve to schema fields and offer them in completion; hovering one shows the field it names. Inspections flag a parameter naming a field the schema does not declare, a query field that cannot be searched, and a facet or sort naming a field that cannot serve it. **The plugin classes and the request parameters are modelled too**: a `class` attribute completes, explains itself and navigates to the class, and a parameter name inside `defaults`, `appends` or `invariants` completes and explains itself. The file's own *elements and attributes* are not yet modelled |
 
 The asymmetry is deliberate. In `solrconfig.xml` the plugin targets the
@@ -396,7 +416,7 @@ in §2.3 remain hand-edited by design.
 | Capability | Phase |
 |---|---|
 | Live connections, query console, schema-aware document editing and indexing | 2 |
-| Field-name validation inside SolrJ query strings in Java/Kotlin | 3 |
+| Field-name validation inside [SolrJ](glossary.md#solrj) query strings in Java/Kotlin | 3 |
 | Collection explorer, configset upload to ZooKeeper, deployed-vs-repo config diff, classification of schema edits as safe-live / requires-reload / requires-reindex, analysis-chain debugger | 4 |
 
 Deployment mode starts to matter from Phase 2 and matters most in Phase 4.

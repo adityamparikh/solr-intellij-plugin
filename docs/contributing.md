@@ -1,5 +1,10 @@
 # Contributing
 
+> **Who this is for.** A Java engineer setting up this repository for the first time, who wants a
+> working build, an oriented first run, and to know where a task comes from.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [README](../README.md) for the short version of what this plugin is.
+
 How to get the plugin building, find work worth doing, and get a change merged.
 
 For where code goes once you are writing it, see [code organization](code-organization.md). For the
@@ -34,9 +39,13 @@ a clean build regenerate the catalog. The consequence is that a first build — 
 `./gradlew clean` — downloads a large dependency set before it compiles anything. On a slow
 connection this looks like a hang. It is not.
 
-Why it exists: a configset names Solr classes as strings, and the plugin cannot complete or explain
-`class="solr.StrField"` without knowing what exists. That list runs to roughly 170 entries per line
-and changes between lines, so it is generated rather than written down.
+Why it exists: a [configset](glossary.md#configset) names Solr classes as strings, and the plugin
+cannot complete or explain `class="solr.StrField"` without knowing what exists. That list runs to
+roughly 170 entries per line and changes between lines, so it is generated rather than written down.
+
+> **In Java terms.** A configset is the schema plus the config of a search index — roughly a
+> Hibernate mapping file plus `persistence.xml`, checked into the repository next to the code that
+> depends on it rather than held only in a running database.
 
 ### Commands
 
@@ -58,16 +67,17 @@ Verifications**. They appear in the run-configuration dropdown after the Gradle 
 
 ### First run
 
-`./gradlew runIde` launches a sandbox IDE with the plugin installed, and opens the `demo/` project
-rather than whatever the sandbox had open last. That is deliberate — `demo/` is a real Solr
+`./gradlew runIde` launches a [sandbox](glossary.md#sandbox) IDE with the plugin installed, and opens
+the `demo/` project rather than whatever the sandbox had open last. That is deliberate — `demo/` is a real Solr
 application: it declares `org.apache.solr:solr-solrj` in its build, which passes the outer activation
 gate, and it carries a real configset under `demo/solr/conf/`. So the plugin activates immediately
-and you can see the features working without building a fixture first.
+and you can see the features working without building a [fixture](glossary.md#fixture) first.
 
-Open `demo/solr/conf/managed-schema.xml` and you should see inline hints beside each field whose
-type the schema declares, saying what it can match and how it is stored. Two fields are quiet on
-purpose: `notes` carries only the storage half, because its analyser names a factory the plugin
-does not recognise, and `legacy` carries no hint at all, because its type is undeclared. If you
+Open `demo/solr/conf/managed-schema.xml` and you should see inline hints beside each
+[field](glossary.md#field) whose type the schema declares, saying what it can match and how it is
+stored. Two fields are quiet on purpose: `notes` carries only the storage half, because its analyser
+names a [factory](glossary.md#factory) the plugin does not recognise, and `legacy` carries no hint at
+all, because its type is undeclared. If you
 see nothing anywhere, the plugin has not activated; see [when nothing
 activates](#when-nothing-activates).
 
@@ -88,21 +98,38 @@ The plugin is gated twice, and silence is the designed behaviour outside a Solr 
 2. **Is the file's name one the plugin recognises?** See the role tiers in
    [code organization](code-organization.md).
 
-**There is no user-facing escape hatch for either gate yet.** `SolrConfigsetSettings` carries the
-manual override the spec promises — a marked directory bypasses the outer dependency gate, which is
-the only way a configset repository with no build file can activate at all — but nothing in
-`plugin.xml` reaches it: there is no registered `<action>`, no settings page, no `Configurable`
-anywhere in the plugin. *Mark Directory as Solr Configset Root* is a bundle string
-(`SolrBundle.properties`) with no action behind it, left over from before the gesture that would use
-it was built. [Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch)
+> **In Java terms.** This first gate is why nothing happens in a bare configset repository: the
+> plugin only wakes up in a project whose dependencies actually include a Solr client, the same way a
+> Spring auto-configuration only activates when a matching class is on the classpath.
+
+**There is no user-facing escape hatch for either gate yet**, and that claim is really three separate
+facts, worth keeping apart rather than reading as one. First, the specification *promises* a manual
+override: a way to mark a directory as a Solr configset root, so that a repository with no build
+file — the one case the outer dependency gate can never pass on its own — can still activate. Second,
+`SolrConfigsetSettings` is where that promise actually lives in code: it carries the manual override,
+and a directory marked through it does bypass the outer gate exactly as promised. Third, and this is
+the part that is actually missing, nothing in [`plugin.xml`](glossary.md#pluginxml) reaches that code:
+there is no registered `<action>`, no settings page, no `Configurable` anywhere in the plugin that a
+user could click to mark a directory. *Mark Directory as Solr Configset Root* looks like it should be
+that action — it reads like a menu item — but it is only a bundle string in `SolrBundle.properties`
+with no action behind it, left over from before the gesture that would use it was built. There is no
+hidden way to reach this from the UI today; the settings page the promise implies simply does not
+exist yet.
+[Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch)
 is where this is tracked, and every one of its success criteria is still unticked — this is not an
 oversight in this guide, it is genuinely unbuilt.
+
+> **In Java terms.** `plugin.xml` is this plugin's `META-INF/services` file: a class the platform
+> should call has to be listed there by name, or, as far as the IDE is concerned, it does not exist.
+> There is no classpath scanning to fall back on — which is exactly the gap above: the code side of
+> the override exists, but nothing lists a way to call it.
 
 So today, if detection is silent and you need to prove the rest of your change works anyway, the only
 way in is code rather than UI: call `SolrConfigsetSettings.getInstance(project).addManualRoot(dir)`
 yourself — from a scratch file, a one-off test, or a debugger — or, if you would rather commit a
 marked root for a fixture that has no build file, hand-edit that project's `solr.xml` component to
-match the shape `SolrConfigsetSettings.State` persists (see that class's KDoc for the exact fields).
+match the shape `SolrConfigsetSettings.State` persists (see that class's [KDoc](glossary.md#kdoc)
+for the exact fields).
 Neither is a substitute for the settings page; both are what a contributor can actually reach before
 it exists.
 
@@ -133,8 +160,8 @@ they are written in user terms, and a step is not finished until they are true.
 The [demo runbook](demo/README.md) is worth reading alongside them. Its steps are acceptance criteria
 phrased as things a user does: *"Ctrl-click `name` inside the `qf` line and land in the schema"* is a
 sharper definition of done than "request-handler parameters resolve to schema fields", because it can
-only pass when the whole path works — detection, model, reference resolution, and the platform
-registration that unit tests routinely miss. A green test suite is not the same as a working feature,
+only pass when the whole path works — detection, model, [reference](glossary.md#reference)
+resolution, and the platform registration that unit tests routinely miss. A green test suite is not the same as a working feature,
 and this is where that gap shows up.
 
 ## Commits and pull requests
@@ -190,11 +217,12 @@ the gate for exactly this reason, with `always()` so partial output survives a f
 
 Both fire on `./gradlew build` locally, so CI should not be the first place you meet them.
 
-- **Documentation.** Dokka with `reportUndocumented` and `failOnWarning`. Any public class, function
-  or property in `src/main/kotlin` without KDoc fails the build, naming the declaration. Tests are
-  exempt.
-- **Coverage.** Kover enforces an 80% line floor. The floor sits below actual coverage on purpose, so
-  landing hard-to-unit-test UI and PSI code does not immediately block a PR.
+- **Documentation.** [Dokka](glossary.md#dokka) with `reportUndocumented` and `failOnWarning`. Any
+  public class, function or property in `src/main/kotlin` without KDoc fails the build, naming the
+  declaration. Tests are exempt.
+- **Coverage.** [Kover](glossary.md#kover) enforces an 80% line floor. The floor sits below actual
+  coverage on purpose, so landing hard-to-unit-test UI and [PSI](glossary.md#psi) code does not
+  immediately block a PR.
 
 [Testing and the build gates](how-to/testing-and-the-build-gates.md) covers clearing both.
 
@@ -212,7 +240,7 @@ correctly — a shallow clone makes every line look new.
 
 - A public declaration with no KDoc, or KDoc that restates the signature.
 - A commit body that does not say why.
-- An inspection that can fire on a correct file. Solr configuration is full of syntax that looks like
+- An [inspection](glossary.md#inspection) that can fire on a correct file. Solr configuration is full of syntax that looks like
   a field name without being one; see the ground rules in `SolrInspections`.
 - Anything on the editor path that contacts a server, or reads an index while declaring itself
   dumb-aware.

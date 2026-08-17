@@ -1,5 +1,10 @@
 # FAQ
 
+> **Who this is for.** A reader who has already used quick documentation (F1 / hover) in this plugin
+> and wants to know why it is built the way it is — what is generated, what is hand-maintained, and
+> why it links to the Reference Guide instead of copying it.
+> **Read first:** [Glossary](glossary.md) if Solr terms are new · [User guide](user-guide.md)
+
 Questions that came up about quick documentation's design — why it works the way it does, and why
 the alternatives that sound obvious were rejected. Each answer traces back to code and KDoc already
 in the repository, or to the upstream documentation it names, rather than restating intent; follow
@@ -10,7 +15,8 @@ mechanically from Solr's published artifacts: attribute names, types, defaults, 
 the class hierarchy from bytecode, plus one summary sentence from the `-sources` jar — extracted at
 build time against a pinned version per supported major line, and shipped inside the plugin. What it
 says about *your schema* is resolved live from the files in front of it. One table of about twenty
-field properties is hand-maintained, deliberately, for reasons argued below. Nothing is copied from
+[field](glossary.md#field) properties is hand-maintained, deliberately, for reasons argued below.
+Nothing is copied from
 the Reference Guide; concept-level explanation is linked instead. One reason covers nearly all of
 it: text extracted mechanically from an artifact Solr published cannot drift out of sync with it,
 and text copied by hand always can. The next section shows the whole of it in two screenshots; the
@@ -29,7 +35,7 @@ Reference Guide link](images/03-quick-doc-class-annotated.png)
 | ① | `solr.StandardTokenizerFactory — tokenizer factory` | Build time. The short name is composed from the class's simple name; the *kind* is which Lucene SPI service file listed it. |
 | ② | `org.apache.lucene.analysis.standard.StandardTokenizerFactory` | Build time, from the scanned `.class` file. Note it is a **Lucene** class, despite the `solr.` spelling a configset uses. |
 | ③ | `Factory for StandardTokenizer.` | Build time, from the `-sources` jar. Lucene's source reads `Factory for {@link StandardTokenizer}.` — the first sentence survives, the `{@link}` is rendered to its text. |
-| ④ | `luceneMatchVersion`, `maxTokenLength — a whole number` | Build time, from the factory's constructor bytecode: what it reads out of its argument map, and the type of each value. |
+| ④ | [`luceneMatchVersion`](glossary.md#lucenematchversion), `maxTokenLength — a whole number` | Build time, from the factory's constructor bytecode: what it reads out of its argument map, and the type of each value. |
 | ⑤ | `Tokenizers in the Reference Guide ↗` | Constructed here, never fetched. The line beneath it names where the version came from — here, the configset's own `<luceneMatchVersion>`. |
 
 Everything above the link is a lookup into a file generated when the plugin was built. Nothing was
@@ -67,7 +73,7 @@ says *see the guide*, because asserting one answer where Solr has two is how a p
 distrusted. A hand-maintained table is allowed to be incomplete; it is not allowed to be confidently
 wrong.
 
-`omitNorms` used to sit in that list and no longer does: it reads **true**, *Solr default for
+[`omitNorms`](glossary.md#omitnorms) used to sit in that list and no longer does: it reads **true**, *Solr default for
 solr.StrField*. Its two answers — true for primitive types, false for text — turned out to be
 decided by the field type's *class*, which the plugin already knows, so resolution reaches the answer
 rather than declining to guess. That is the shape of the exception shrinking: a row leaves the
@@ -160,7 +166,8 @@ From `SolrVersionSelection.fromLuceneMatchVersion` (in `SolrReferenceGuide.kt`):
   ZooKeeper publish sources, and the generator drops them by filename, scanning `solr-*` and
   `lucene-*` alone because nothing else carries a class a configset can name.
 
-**Not from the SolrJ dependency either.** `SolrProjectDetector` matches `SOLR_CLIENT_COORDINATES`
+**Not from the [SolrJ](glossary.md#solrj) dependency either.** `SolrProjectDetector` matches
+`SOLR_CLIENT_COORDINATES`
 "as substrings of the library name so that every version matches and no version is named here" — a
 gate asking *whether* a Solr client is present, never *which*. Reading that version would not help
 anyway: SolrJ depends on `solr-api`, Jetty and Jackson, not on `solr-core` or any Lucene analysis

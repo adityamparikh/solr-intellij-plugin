@@ -1,6 +1,12 @@
 # Manual test suite
 
-A repeatable verification pass over the sandbox IDE, run against the demo project. This
+> **Who this is for.** Someone sitting in front of a running sandbox IDE, mid-gesture, checking
+> whether a shipped feature behaves the way it claims to — not a newcomer reading ahead of the
+> code, and not a substitute for what the automated suite's fixtures already prove.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md), which owns what is actually built
+
+A repeatable verification pass over the [sandbox](glossary.md#sandbox) IDE, run against the demo project. This
 document owns three things: the **gesture** to make, the **expected outcome**, and the
 **record of the last pass**. It deliberately does not own what is built —
 [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) does, and a feature's checks
@@ -8,12 +14,18 @@ join this suite only when its code has shipped and there is something to press.
 
 **How to run a pass**
 
-1. `./gradlew runIde` — the sandbox opens `demo/`. Open `solr/conf/managed-schema.xml`.
+1. `./gradlew runIde` — the sandbox opens `demo/`. Open [`solr/conf/managed-schema.xml`](glossary.md#managed-schema).
 2. Uncheck every box from the previous pass (a pass is all-or-nothing; history lives in
    the [pass log](#pass-log), not in the boxes).
 3. Work top to bottom. The order matters: the baseline pass comes first because
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
+
+> **In Java terms.** `./gradlew runIde` does not run tests — it launches a second, disposable
+> IntelliJ instance with the plugin installed, closer to starting your Spring Boot app on a
+> scratch profile to click through by hand than to running its test suite. Nothing typed there
+> touches your everyday IDE or its indexes, which is the whole reason this document calls it a
+> sandbox.
 
 **The 📸 items are screenshots, and they are checkboxes like everything else.** Each one sits
 beside the check whose gesture produces it, names the file to save and where, and links to
@@ -32,10 +44,18 @@ is in [the testing guide](how-to/testing-and-the-build-gates.md).
 
 **Why these checks are manual at all.** Almost every claim below is also asserted
 headlessly (each section names its automated coverage). The manual pass exists for what
-a light fixture cannot see: whether the hint actually renders where a presenter can point
+a light [fixture](glossary.md#fixture) cannot see: whether the hint actually renders where a presenter can point
 at it, whether the popup is readable, whether features stay alive during real indexing.
 A check whose rendering risk disappears — because automation grows to cover it — should
 be retired from here, not accumulated.
+
+> **In Java terms.** A green `./gradlew test` run proves the fixtures it built are correct, not
+> that a feature works when someone actually presses it. This suite's own [pass log](#pass-log)
+> records two defects no automated assertion caught: a warning template that agreed with itself
+> in every fixture while naming the wrong requirement in practice (2026-08-10), and an inspection
+> confirmed green by tests that shared its own wrong assumption about where Solr reads a config
+> element (2026-08-16). Both were visible only to someone reading the rendered message in a real
+> editor.
 
 ---
 
@@ -48,7 +68,8 @@ be retired from here, not accumulated.
       hints. The demo project passes the outer gate through its Solr client dependency.
 - [ ] **ACT-2** — Features are alive **while the IDE is still indexing** (open the file
       immediately after launch, before the progress bar finishes). Everything is
-      dumb-aware by design; a feature that waits for indexing is a regression.
+      [dumb-aware](glossary.md#dumb-mode) by design; a feature that waits for indexing is a
+      regression.
 
 ## 2. Zero-false-positive baseline (BASE)
 
@@ -76,7 +97,7 @@ underline is a false positive, and a false positive on a correct file is a bug, 
 committed demo configset is dangling and exactly one field names an undeclared type, and
 which ones they are.
 
-## 3. Match-capability inlay hints (HINT)
+## 3. Match-capability [inlay hints](glossary.md#inlay-hint) (HINT)
 
 *Automated: `SolrMatchInlayHintsProviderTest`, `SolrMatchAnalysisTest`. Manual adds:
 placement and readability of the rendered hint.*
@@ -101,7 +122,7 @@ placement and readability of the rendered hint.*
       66-77, all nine fields in one frame, no interaction.
       [Catalog entry 1](screenshots.md#1-match-capability-hints--01-hints-match-capabilitypng).
 
-## 4. Navigation and Find Usages (NAV)
+## 4. Navigation and [Find Usages](glossary.md#find-usages) (NAV)
 
 *Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`,
 `SolrConfigFieldReferenceTest`, `SolrResourceFileReferenceTest`. Manual adds: the click
@@ -123,15 +144,26 @@ gesture, caret placement, the Find Usages tool window.*
       `<field name="description">` declaration alike.
 - [ ] **NAV-6** — Find Usages on `<dynamicField name="*_t">` in the schema reports the
       `pf` parameter naming `body_t` in `solrconfig.xml` — a name the pattern supplies and
-      never spells, which the word index alone cannot reach. The result is highlighted at
-      `body_t` itself, not across the whole parameter value.
+      never spells. IntelliJ's default Find Usages narrows candidates through a **word index**
+      first — a build-time index of every literal word in the project — and only then asks each
+      candidate whether it truly refers to what is being searched for; `body_t` shares no word
+      with `*_t`, so the default search never offers it as a candidate to ask in the first place.
+      This is exactly the case a word index cannot reach: a usage that resolves to the
+      declaration without ever spelling it. The result is highlighted at `body_t` itself, not
+      across the whole parameter value.
 - [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
       In NAV-3's window the header reads **Field type** over `text_general`, and the results
-      group under **Field declaring this type** — not *Solr Declaration Target*, which is the
-      plugin's own class name leaking through the platform's fallback, and not
-      *Unclassified*. In NAV-6's, the header reads **Dynamic field** and the group reads
-      **Handler parameter in solrconfig.xml**. A correct result list under either of those
-      two wrong labels reads as broken to everyone but its author.
+      group under **Field declaring this type** — not *Solr Declaration Target*. That is what
+      IntelliJ falls back to when nothing registers a description for a search target: it takes
+      the underlying Java class's own name — `SolrDeclarationTarget`, this plugin's internal
+      type — and de-camel-cases it into a phrase, which reads exactly like real information and
+      is a bug leaking through rather than one. And not *Unclassified* either, the platform's
+      default grouping label for a usage no registered classifier claims — the generic bucket
+      every search result falls into until something says what kind of usage it is. In NAV-6's,
+      the header reads **Dynamic field** and the group reads **Handler parameter in
+      solrconfig.xml**. A correct result list under either of those two wrong labels reads as
+      broken to everyone but its author, because nothing distinguishes a mislabelled correct
+      answer from a genuine defect.
 - [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
@@ -172,7 +204,7 @@ does carry `SearchHandler`. So the two answers differ here on purpose.
       tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
-## 4a. Rename (REN)
+## 4a. [Rename](glossary.md#rename-refactoring) (REN)
 
 *Renaming is the reference graph read backwards and then written to. Every check here ends
 in an undo — these edit both files, and the demo has to come back clean for the sections
@@ -197,7 +229,7 @@ below.*
       makes REN-4 defensible** — the configset is broken, and the plugin says so, rather than
       leaving it silently wrong. **Undo REN-4 and confirm the underline goes.**
 
-## 5. Quick documentation (DOC)
+## 5. [Quick documentation](glossary.md#documentation-provider) (DOC)
 
 *Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
 `SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrFieldPropertiesTest`,
@@ -300,7 +332,7 @@ stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 
 break these checks so much as delete DOC-5, leaving the suite testing one side of a
 boundary again.
 
-## 6. Inspections and quick-fixes (INSP)
+## 6. [Inspections](glossary.md#inspection) and [quick-fixes](glossary.md#quick-fix) (INSP)
 
 *Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
 `SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
@@ -391,12 +423,20 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       other, and a chain whose filter never runs is just as silent. Undo.
 
       *What lets this fire is a catalog row rather than the edit.* Searchable is `indexed` **or**
-      `docValues`, and an undetermined `docValues` leaves the rule with no definite answer and this
-      check with nothing to see. `name` is `text_general`, whose `solr.TextField` the generated catalog
-      carries with an **empty** traits column — a class it knows, carrying no trait — so `docValues`
-      resolves to a definite false at the demo's `version="1.6"` rather than to silence. The same edit
-      on a field whose type names a class the catalog has never seen underlines nothing, which is the
-      inspection working rather than failing.
+      `docValues`, and the rule reports nothing unless it can say `docValues` is definitely true or
+      definitely false — an *undetermined* `docValues` leaves it with no answer and this check with
+      nothing to see. `docValues` is undetermined whenever the field type's class carries no entry in
+      the generated catalog's **traits column**, the per-class list (`primitive`, `sortableText`,
+      `docValuesByDefault`, and so on) the build records for every field-type class it recognises and
+      uses to work out what a property defaults to. `name` is `text_general`, whose class is
+      `solr.TextField` — a class the catalog *does* know, and knows to carry none of those traits, so
+      its traits column is **empty** rather than missing. Empty is not the same claim as missing:
+      missing means the catalog never heard of the class and the rule must stay silent; empty means
+      the catalog looked and found nothing, which lets `docValues` resolve to a definite false at the
+      demo's `version="1.6"`. **That distinction is the whole reason this check can fire at all** — had
+      `text_general` named a class the catalog does not carry, `docValues` would stay undetermined,
+      the same edit would underline nothing, and the check would read as correct forever without ever
+      having proved anything.
 - [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
       their BASE counts — **two** warnings in `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
@@ -405,7 +445,7 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       correctly ordered. No dimmed type is part of the baseline: every type the demo
       declares has a field behind it.
 
-## 7. Completion — the schema's own vocabulary (COMP)
+## 7. [Completion](glossary.md#completion-contributor) — the schema's own vocabulary (COMP)
 
 *Automated: `SolrSchemaVocabularyCompletionTest`, `SolrBooleanPropertyCompletionTest`,
 `SolrCopyFieldCompletionTest`, `SolrFieldTypeCompletionTest`, plus the pure-model
@@ -443,8 +483,13 @@ popup, against the demo configset's declared Solr line.*
       declared Solr line.
 - [ ] **CAT-2** — `<filter class="solr.WordDelimiterGraphFilterFactory" ` offers the
       factory's own attributes — `generateWordParts`, `catenateAll`,
-      `splitOnCaseChange` among them. This is the check that proves the
-      constructor-bytecode pass reached the editor.
+      `splitOnCaseChange` among them. **This is the check that proves the constructor-bytecode
+      pass reached the editor** — the build-time step, in `buildSrc`, that reads each analysis
+      factory's compiled `.class` file with the ASM library and walks its constructor
+      instruction by instruction to recover the names of the arguments it reads. A factory
+      declares its own attributes only in that one constructor and nowhere else, which is why
+      reading it is enough: nobody hand-maintains this list, and CAT-2 is what confirms the list
+      the build extracted is the one the editor actually offers.
 - [ ] 📸 **Capture `docs/images/06-completion-factory-attributes.png`** — not from CAT-2,
       which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
       filter at line 48, caret before the closing `/`, space, and frame
@@ -468,7 +513,7 @@ kinds. Nothing in that diff looks like a feature, which is exactly why a gesture
 
 ---
 
-## 9. Completion — field names inside `solrconfig.xml` parameters (PRM)
+## 9. Completion — field names inside [`solrconfig.xml`](glossary.md#solrconfigxml) parameters (PRM)
 
 *Automated: `SolrParameterFieldCompletionTest`, `SolrConfigFieldReferenceTest`. Manual adds: the
 popup where a reader actually meets it, inside a string the platform has no vocabulary for.*
@@ -536,12 +581,20 @@ a guess that looks exactly like knowledge, in a file made almost entirely of sam
       completion offers what a source describes, while judgement about an unknown attribute belongs
       to the inspections and they decline it here.
 - [ ] **STR-6** — In a `<requestHandler>`, the same gesture offers **nothing**, and that is correct
-      rather than a gap. `EditableSolrConfigAttributes.json` is the only source describing
-      attributes, and it covers seven paths — the four caches, `requestParsers`, and the two commit
-      elements. `name` and `class` are declared by `SolrConfig.plugins`' `REQUIRE_NAME` and
-      `REQUIRE_CLASS` flags, which the generator does not read. **Silence here is the honest answer**;
-      an offer would mean the plugin had started guessing. The day those flags are read this check
-      inverts, and it should be rewritten rather than deleted.
+      rather than a gap. Attribute completion has exactly one source to draw from:
+      `EditableSolrConfigAttributes.json`, a resource shipped inside Solr's own jar that types the
+      handful of subtrees Solr's Config API can rewrite at runtime. That resource covers seven paths
+      — the four caches, `requestParsers`, and the two commit elements — and `<requestHandler>` is not
+      one of them, so completion there has nothing to read from. `name` and `class` are real,
+      required attributes on a `<requestHandler>`, but Solr does not declare them through that
+      resource either: they come from `SolrConfig.plugins`, the list in Solr's own source that
+      registers every pluggable element, where each entry carries `REQUIRE_NAME` and `REQUIRE_CLASS`
+      flags saying so. This build's generator already reads that same list — it is where
+      `<requestHandler>` itself, and the classes it may name, come from — but only for the plugin's
+      tag name and class root, not for those two requirement flags. **Silence here is the honest
+      answer**; an offer would mean the plugin had started guessing at attributes it has never
+      actually read. The day the generator also decodes those flags, this check inverts, and it
+      should be rewritten rather than deleted.
 
 ## 11. An attribute that restates its default (DIM)
 
@@ -575,7 +628,7 @@ its `<fieldType>` declares, and the demo's `*_t` is `text_general`, which declar
 `SolrRestatedDefaultAnnotatorTest` covers that path headlessly; either the demo grows a type that
 declares one, or this stays automated-only.
 
-## 12. Intentions — companion fields (INT)
+## 12. [Intentions](glossary.md#intention) — companion fields (INT)
 
 *Automated: `SolrAddPrefixCompanionIntentionTest`, `SolrAddExactCompanionIntentionTest`.
 Manual adds: these are the only gestures that write a new declaration, so the result has to be read
@@ -983,6 +1036,23 @@ sentences it quotes are literals in the generated element vocabulary, both keyed
 `nrtMode` carries *The `<nrtMode>` config has been discontinued and NRT mode is always used by Solr…*
 and `indexDefaults` carries *…discontinued. Use `<indexConfig>` instead.* The parent key is also why
 the check's third half works — move the element inside `<acmeThing>` and no row matches it.
+
+> **Reading the entry below if bytecode is unfamiliar.** It talks about a "local variable" the
+> generator's scanner could not follow, and that is worth unpacking before the log itself does the
+> talking — this note is commentary, not part of the record. Solr's source reaches `<nrtMode>`
+> through a chain: it computes an `indexConfigPrefix` naming the `<indexConfig>` node, then calls
+> `.get("nrtMode")` on whatever that lookup returns — ordinary Java, no different in shape from
+> `String prefix = ...; node.get(prefix)`. A tool reading compiled bytecode instruction by
+> instruction can follow a chained call when its argument is a literal string sitting right there in
+> the instruction — `get("query")`, say. It cannot follow one whose argument is a **local
+> variable**: a value computed earlier, stored into a JVM local-variable slot, then loaded back out
+> several instructions later at the call site. Without reversing course to ask "what was stored in
+> that slot", a straight pass over the bytecode sees only the load, not where the value came from —
+> so `indexConfigPrefix` arrived at the call as an opaque value rather than a name, and the read
+> looked exactly like one with no parent at all. That is why the discontinued-element rule could
+> confidently underline `<nrtMode>` written directly under `<config>`, a position Solr never reads,
+> while staying silent on the same element under `<indexConfig>`, the one position that actually
+> stops a core starting.
 
 ### 2026-08-16 — INSP-13's green was measured against the wrong position
 

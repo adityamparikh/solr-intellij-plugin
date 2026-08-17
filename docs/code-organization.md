@@ -1,5 +1,10 @@
 # Code organization
 
+> **Who this is for.** A Java engineer new to both Apache Solr and the IntelliJ Platform who needs
+> to know which package a change belongs in, and what each package boundary forbids.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [contributing.md](contributing.md)
+
 Where a change goes, and what the package you put it in will not let you do.
 
 This is the human-facing account. The API reference renders the same structure from KDoc — run
@@ -14,24 +19,37 @@ collapses wherever there is only one gesture.
 
 The specification describes three surfaces — configuration files, a live server, and Java/Kotlin
 code — unified by one model of what fields exist and what they can do. Those surfaces are the top
-level. Inside a surface comes *which Solr thing this is about*: for `configset` that is the file,
-`schema` or `solrconfig`. Only then comes the IDE gesture — `inspection`, `completion`, `reference`,
+level. Inside a surface comes *which Solr thing this is about*: for [`configset`](glossary.md#configset)
+that is the file, `schema` or `solrconfig`. Only then comes the IDE gesture —
+[`inspection`](glossary.md#inspection), `completion`, [`reference`](glossary.md#reference),
 `documentation` — and each of those is **one capability, not one layer**: there is no `service`
 package, no `util`, no `impl`.
 
 The middle level is what makes the tree say what a change is *about* rather than only which
-extension point it uses. `SolrSchemaParser` and `SolrConfigParser` read entirely different files and
-share no vocabulary; as peers in one `parsing` package only their class names said so.
+[extension point](glossary.md#extension-point) it uses. `SolrSchemaParser` and `SolrConfigParser`
+read entirely different files and share no vocabulary; as peers in one `parsing` package only their
+class names said so.
+
+> **In Java terms.** An extension point is an SPI. `plugin.xml` is `META-INF/services`, the platform
+> is the `ServiceLoader`, and it calls you — you never construct these classes yourself.
 
 **A capability falls under an aspect when the caret that triggers it is always in that aspect's
-file.** An inspection visits tags in one file and reports there; a completion provider answers at a
-caret in one file; a reference contributor decides which tags in which file carry references. A
-capability that traverses the configset by nature does not: Find Usages starts on a schema
-declaration and must reach `solrconfig.xml`, and rename must update the `qf` line. Those live at the
-configset root, in `configset.navigation`, because filing them under `schema` would make
-`configset.schema` import `configset.solrconfig`.
+file.** "Caret" here is doing more work than the word usually carries: ask which file the user's
+cursor is sitting in at the moment the capability fires, and that answer is the package it belongs
+in. A completion provider that only ever fires with the caret inside `managed-schema.xml`, for
+instance, belongs to `configset.schema` on this test alone. An inspection visits tags in one file
+and reports there; a completion provider answers at a caret in one file; a reference contributor
+decides which tags in which file carry references. A capability that traverses the configset by
+nature has no single such file: [Find Usages](glossary.md#find-usages) starts on a schema
+declaration and must reach [`solrconfig.xml`](glossary.md#solrconfigxml) to find every usage, and
+[rename](glossary.md#rename-refactoring) must update the `qf` line there too — which is exactly why
+a traversing capability cannot live inside one aspect's package. Those live at the configset root,
+in `configset.navigation`, because filing them under `schema` would make `configset.schema` import
+`configset.solrconfig`.
 
-**The prohibition is one-directional, and reading it as symmetry gets two correct files wrong.**
+**The prohibition is one-directional, and reading it as symmetry gets two correct files wrong** —
+`configset.reading` and `configset.navigation`, both named below, because each imports both aspects
+on purpose and a symmetric reading of the rule would flag that as the same violation it is not.
 Neither aspect may import the other. A package *above* the aspects may import both, and two of them
 must: `configset.reading` names both parsers because choosing between them by file kind is the whole
 of its job, and `configset.navigation` names both aspects' reference types because a usage-type
@@ -49,11 +67,15 @@ rather than inside a running IDE.
 Inside `model` the same distinction runs again. `model.schema` is what a field *is*, whichever
 source described it; `model.vocabulary` is what a configuration file may legally contain. The test
 that separates them: **would the server reader need this to interpret what it fetched?** Solr's
-schema API returns `indexed`, `stored`, `omitNorms` and analyzer chains, so all of `model.schema`
-applies to a collection. It returns JSON and has no elements or attributes, so nothing in
-`model.vocabulary` will ever have a server half.
+schema API returns [`indexed`](glossary.md#indexed), [`stored`](glossary.md#stored),
+[`omitNorms`](glossary.md#omitnorms) and [analyzer chains](glossary.md#analyzer-chain), so all of
+`model.schema` applies to a [collection](glossary.md#collection). It returns JSON and has no
+elements or attributes, so nothing in `model.vocabulary` will ever have a server half.
 
-New packages are created when they have a file to hold, not in advance.
+**Rule, not aside: new packages are created when they have a file to hold, not in advance.** Do not
+scaffold a `configset.solrconfig.hint` package because `configset.schema.hint` exists — wait until
+there is an actual hint to put in solrconfig's, the way `configset.solrconfig.descriptor` was
+created only once structure completion needed somewhere to live.
 
 ## The tree
 
@@ -105,7 +127,7 @@ is best described by what the user sees:
 | Package | What the user sees | You are changing it when |
 |---|---|---|
 | `inspection` | A **squiggly underline**, an entry in the Problems view, and often an Alt+Enter fix on it | Something in the file is *wrong* and the plugin should say so |
-| `intention` | An **Alt+Enter menu item on a file with nothing wrong with it** — no underline | You are offering an improvement or a generated edit, not reporting a defect |
+| [`intention`](glossary.md#intention) | An **Alt+Enter menu item on a file with nothing wrong with it** — no underline | You are offering an improvement or a generated edit, not reporting a defect |
 | `completion` | The **popup on Ctrl+Space**, or as you type | You want to offer what may legally be written at the caret |
 | `reference` | **Ctrl+Click navigates**, Find Usages finds, rename updates | A string in one file names something declared elsewhere |
 | `documentation` | The **popup on F1**, or on hover | You want to explain the thing under the caret |
@@ -177,13 +199,25 @@ share downward only, through `model`, `configset.reading`, `configset.editing` a
 that from `model`, never from the schema aspect — which is exactly what
 `SolrNonIndexedRelevanceFieldInspection` does.
 
+> **In Java terms.** This is a dependency rule enforced by review, not by the compiler — the same
+> discipline as a hexagonal-architecture port boundary between two adapters that must not know about
+> each other. Nothing stops `configset.schema` from importing `configset.solrconfig` at compile time;
+> what stops it is that reviewers treat it as a design violation, the way they would a controller
+> importing another controller's repository directly instead of going through a shared service.
+
 ## Rules that hold across every package
 
 These are the constraints a change can silently violate. None of them is enforced by a build gate.
 
 **Nothing in `model` imports an IntelliJ type.** This is what makes the model testable without a
-fixture, and it is load-bearing rather than stylistic — roughly a third of the test suite is plain
-JUnit 4 precisely because of it. One platform import costs that.
+[fixture](glossary.md#fixture), and it is load-bearing rather than stylistic — roughly a third of
+the test suite is plain JUnit 4 precisely because of it. One platform import costs that.
+
+> **In Java terms.** This is the same discipline as a domain layer that imports no Spring or JPA
+> type — `model` is `SolrFieldModel` and friends staying plain data, the same way a domain
+> `Order` class stays a POJO instead of an `@Entity`. It buys the same thing a POJO domain model
+> buys: those classes are testable with plain JUnit and no container, rather than needing
+> `@SpringBootTest` — or here, `BasePlatformTestCase` — just to construct one.
 
 **Nothing on the editor path contacts a server.** Configset editing works with no connection
 configured at all. `server` is unreachable from any editor feature.
@@ -272,7 +306,7 @@ flowchart LR
 because otherwise four features would import the fifth.
 
 The parsers are **pure functions from text to facts**, using the JDK's DOM rather than IntelliJ's XML
-PSI, which is what lets them be tested without an IDE. External entities and doctypes are refused: a
+[PSI](glossary.md#psi), which is what lets them be tested without an IDE. External entities and doctypes are refused: a
 cloned repository is not trusted input, and entity resolution would run while the user is merely
 opening a file.
 
@@ -284,8 +318,10 @@ in a map this plugin owns, so its lifetime is the directory's and a configset th
 takes its cache with it. Its dependency list is the two source files **plus the VFS structure
 count**: the first rebuilds the model when this schema changes and leaves it alone when unrelated
 code does, the second notices a `solrconfig.xml` that appears later. Neither half can be dropped, and
-the reflex choice of `PsiModificationTracker.MODIFICATION_COUNT` is a performance regression here —
-[`platform-mechanisms.md`](platform-mechanisms.md) records why.
+the reflex choice of `PsiModificationTracker.MODIFICATION_COUNT` is a performance regression here: it
+advances on **any** PSI change in the whole project, not just this configset's two files, so a
+keystroke in an unrelated Java file would reparse both of them —
+[`platform-mechanisms.md`](platform-mechanisms.md) records the full account.
 
 `SolrConfigsetScanner` answers the question the per-file locator cannot: which configsets does this
 *project* contain. It walks content roots and prunes build output and dependency trees, so it is not
@@ -319,7 +355,8 @@ wrong claim about what a field matches is worse than no claim.
 
 `SolrClassCatalog` reads the catalog generated at build time from every supported Solr line's
 artifacts — the classes a configset may name in a `class` attribute, in four kinds
-(`SolrClassKind`): field types, tokenizers, token filters and char filters, each with the attribute
+(`SolrClassKind`): [field types](glossary.md#field-type), [tokenizers](glossary.md#tokenizer), token
+[filters](glossary.md#filter) and [char filters](glossary.md#char-filter), each with the attribute
 names it reads. Generated rather than written down because the list runs to roughly 170 entries per
 line and changes between lines; see the `generateSolrCatalog` block in `build.gradle.kts`.
 
@@ -398,7 +435,8 @@ rather than given a plausible value. `SolrSchemaElements` holds what each elemen
 one does where the model can say.
 
 `configset.solrconfig.documentation` answers a narrower, separate pair of positions the schema
-provider declines: what a request parameter is for, and what a `defType` value selects — read from the
+provider declines: what a [request parameter](glossary.md#request-parameter) is for, and what a
+`defType` value selects — read from the
 generated parameter catalog rather than from `SolrSchemaElements`, since neither position names a
 schema concept. Registered second in `plugin.xml`, so a position both providers could in principle
 claim goes to the schema one first; in practice they never collide, because each declines outright

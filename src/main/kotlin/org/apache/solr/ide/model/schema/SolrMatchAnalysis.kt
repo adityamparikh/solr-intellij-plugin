@@ -141,9 +141,14 @@ object SolrMatchAnalysis {
 
     // --- the named factories ------------------------------------------------------------------
     //
-    // Roughly fifteen factories decide these three questions. Everything else in a chain changes
-    // which *terms* end up in the index without changing whether the field matches whole values or
-    // tokens, prefixes or not, case-sensitively or not.
+    // The sets below decide these three questions. Everything else in a chain changes which *terms*
+    // end up in the index without changing whether the field matches whole values or tokens,
+    // prefixes or not, case-sensitively or not.
+    //
+    // Deliberately not counted here. An earlier version of this comment said "roughly fifteen",
+    // which the sets outgrew without anyone noticing, and the number had been copied into the spec,
+    // the plan and the user guide by the time it was wrong in all four. A reader who needs the count
+    // can read the sets; a reader who needs the rule is not helped by it.
 
     /** Tokenizers emitting the entire input as one term. */
     private val WHOLE_VALUE_TOKENIZERS = setOf("KeywordTokenizerFactory")

@@ -1,5 +1,10 @@
 # Screenshot catalog
 
+> **Who this is for.** Someone about to take or verify a screenshot for this repo's documentation,
+> mid-capture in the sandbox — not someone browsing for an explanation of a feature.
+> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
+> [Manual test suite](manual-test-suite.md), whose gestures every capture here follows
+
 The images that document what this plugin does, and how to reproduce each one. This document owns
 three things: **what each image must show**, **the gesture that produces it**, and **what change
 invalidates it**.
@@ -10,10 +15,17 @@ describes, and the wording there is the authority on what the feature is suppose
 features exist belongs to [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md); an image
 joins the catalog when its feature ships, the same rule the test suite follows.
 
-**Capture them during a manual pass.** The gestures are identical, the sandbox is already open, and
+**Capture them during a manual pass.** The gestures are identical, the [sandbox](glossary.md#sandbox) is already open, and
 a screenshot is evidence that the check passed rather than a separate errand. A pass that produces
 no new images is fine; a pass that produces images without running the checks is how a stale picture
 gets published.
+
+> **In Java terms.** A capture in this catalog behaves like a golden-file test's expected output —
+> evidence a specific gesture produced a specific result, tied to a commit. Unlike a golden file,
+> nothing here diffs it automatically, so it can go stale in two independent ways that no build
+> catches: its **crop** (leaking a branch name, or framing the wrong popup) and its **contents**
+> (the feature it shows having since changed). Entry 10 went stale both ways within the same hour,
+> which is worth knowing before assuming a correct-looking crop means a correct picture.
 
 ## Conventions
 
@@ -44,7 +56,7 @@ shows the capability; `<name>-annotated.png` carries the markers and belongs onl
 explains what they mean. Publishing a marked-up image somewhere without that explanation leaves a
 reader with numbered circles and no key.
 
-**Dokka needs absolute URLs.** `docs/Module.md` is a Dokka input, so a relative image path breaks in
+**[Dokka](glossary.md#dokka) needs absolute URLs.** `docs/Module.md` is a Dokka input, so a relative image path breaks in
 the rendered API docs. Reference images there as
 `https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/images/<name>.png`, matching
 how that file already links. Relative paths are correct everywhere else.
@@ -56,7 +68,7 @@ who cannot see it should lose nothing but the illustration.
 
 ## The catalog
 
-Every capture starts the same way: `./gradlew runIde`, then open `demo/solr/conf/managed-schema.xml`
+Every capture starts the same way: `./gradlew runIde`, then open [`demo/solr/conf/managed-schema.xml`](glossary.md#managed-schema)
 in the sandbox. The demo project is built for this — several defects in it are deliberate.
 
 ### 1. Match-capability hints — `01-hints-match-capability.png`
@@ -83,7 +95,7 @@ capability is recognised, or the demo schema's field list changes.
 
 **Verifies** HINT-1 through HINT-5.
 
-### 2. Quick documentation on a field — `02-quick-doc-field.png`
+### 2. [Quick documentation](glossary.md#documentation-provider) on a field — `02-quick-doc-field.png`
 
 **✅ Captured.**
 
@@ -131,7 +143,7 @@ complete-configuration popup put those facts on screen.
 
 **Verifies** DOC-2 and DOC-4.
 
-### 4. Inspection and quick-fix — `04-inspection-copyfield-quickfix.png`
+### 4. [Inspection](glossary.md#inspection) and [quick-fix](glossary.md#quick-fix) — `04-inspection-copyfield-quickfix.png`
 
 **✅ Captured.** Reshot after the `*_t` dynamic field joined the demo schema, which changed which
 six names this menu offers.
@@ -171,7 +183,7 @@ same frame, its underline too — but no underline this pass did not already kno
 kind of underline anywhere in frame is a false positive, and the screenshot should not be
 published until it is gone.
 
-### 5. Completion over the schema's own vocabulary — `05-completion-field-properties.png`
+### 5. [Completion](glossary.md#completion-contributor) over the schema's own vocabulary — `05-completion-field-properties.png`
 
 **✅ Captured.**
 
@@ -192,13 +204,13 @@ value completion, which is a different gesture and, if it is wanted as an image,
 
 **Verifies** COMP-2 and COMP-4.
 
-### 6. Catalog-backed factory attributes — `06-completion-factory-attributes.png`
+### 6. Catalog-backed [factory](glossary.md#factory) attributes — `06-completion-factory-attributes.png`
 
 **✅ Captured.**
 
 **Shows** the end of the pipeline that starts in `buildSrc`: completion offering a factory's *own*
-attributes, read from its constructor bytecode at build time, each labelled with the factory it came
-from.
+attributes, read from its constructor bytecode at build time — CAT-2 in the manual suite spells out
+what that build-time pass actually does — each labelled with the factory it came from.
 
 **Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
 `managed-schema.xml:48`, put the caret before the closing `/`, type a space, and let completion
@@ -220,7 +232,7 @@ you type the class first. A screenshot should not require editing the fixture, s
 the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
 to the demo, which is a fixture change and belongs to CAT-2, not here.
 
-### 7. Find Usages on a field type — `07-find-usages-field-type.png`
+### 7. [Find Usages](glossary.md#find-usages) on a [field type](glossary.md#field-type) — `07-find-usages-field-type.png`
 
 **✅ Captured, current.** Reshot with both corrections below already made: invoked from the
 declaration, and framing four results rather than the three an earlier caption promised.
@@ -248,7 +260,7 @@ four from either caret, because the `*_t` dynamic field joined the demo schema d
 declaration — a `dynamicField` rather than this `fieldType` — and has no image of its own;
 the usage list this one frames is the same machinery answering the easier question.
 
-### 8. Navigation from `solrconfig.xml` into the schema — `08-nav-solrconfig-field-reference.png`
+### 8. Navigation from [`solrconfig.xml`](glossary.md#solrconfigxml) into the schema — `08-nav-solrconfig-field-reference.png`
 
 **✅ Captured.**
 
@@ -334,7 +346,7 @@ changes.
 
 **Verifies** DIM-1.
 
-### 12. Intentions — companion fields — `12-intention-companion-fields.png`
+### 12. [Intentions](glossary.md#intention) — companion fields — `12-intention-companion-fields.png`
 
 **✅ Captured.**
 
@@ -370,7 +382,7 @@ already documents for attribute completion, confirmed true here too. Undo the sp
 
 **Verifies** PRM-1.
 
-### 14. Rename's cross-file update — `14-rename-cross-file-before.png` / `14-rename-cross-file-after.png`
+### 14. [Rename](glossary.md#rename-refactoring)'s cross-file update — `14-rename-cross-file-before.png` / `14-rename-cross-file-after.png`
 
 **✅ Captured.** A before/after pair sharing one entry number, on the same rule an annotated pair
 follows: they document one gesture and belong together.
