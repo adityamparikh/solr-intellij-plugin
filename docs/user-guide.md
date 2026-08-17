@@ -41,7 +41,7 @@ demo changes.** Where a
 gesture edits the file, it says so, and every edit here is meant to be undone afterwards — the demo is
 a committed fixture, not a scratchpad. `git status --short demo/` should read empty when you are done.
 
-**Check IDs in parentheses** (`HINT-1`, `NAV-3`, and so on) point at the
+**Links in parentheses** point at the specific checks in the
 [manual test suite](manual-test-suite.md), which owns the exact wording of each gesture and its
 expected outcome, plus whether it has actually been pressed against a running sandbox and when. This
 guide explains *why* a capability exists and roughly what you will see; the manual suite is the
@@ -78,7 +78,8 @@ gesture needed, the hints render themselves. `id`, `sku` and `category` read who
 case-sensitive; `description` and `text` (type `text_general`) read tokenised and case-insensitive;
 `name_prefix` additionally reads prefix-capable. `notes` (type `custom_text`, whose analyzer names an
 unrecognised factory) keeps only the storage-shape phrases; `legacy` (type `discontinued`, undeclared
-in the schema) shows nothing at all. (`HINT-1` through `HINT-5`)
+in the schema) shows nothing at all. (Verified by
+[the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).)
 
 ![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
 matches and how it is stored](images/01-hints-match-capability.png)
@@ -101,7 +102,8 @@ is about *this* schema. A **Meaning** column states the consequence of the resol
 terms — *"Whether the original value can be returned in results"* beside `stored` — rather than only
 restating the property name.
 
-**Try it.** Caret inside `name="category"` at `managed-schema.xml:70`, press F1. (`DOC-1`, `DOC-2`)
+**Try it.** Caret inside `name="category"` at `managed-schema.xml:70`, press F1. (Verified by
+[the quick-documentation checks on a field](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
 that value came from, what it accepts, and what it means](images/02-quick-doc-field.png)
@@ -116,7 +118,7 @@ attributes it accepts, and a Reference Guide link at the version this configset 
 is fetched at edit time or copied out of the guide it links to — see [the FAQ](faq.md) for why.
 
 **Try it.** Caret inside `class="solr.StandardTokenizerFactory"` at `managed-schema.xml:33`, F1.
-(`DOC-4`)
+(Verified by [the quick-documentation check on a class value](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
 name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class.png)
@@ -129,7 +131,8 @@ name, one-sentence summary, accepted attributes, and a Reference Guide link](ima
 configset-specific sentence where one is knowable: which two fields a `<copyField>` joins, which
 field is the unique key and of what type, how many fields use a given type.
 
-**Try it.** Hover `<copyField>` or `<uniqueKey>` anywhere in `managed-schema.xml`. (`DOC-3`)
+**Try it.** Hover `<copyField>` or `<uniqueKey>` anywhere in `managed-schema.xml`. (Verified by
+[the quick-documentation check on the schema's own elements](manual-test-suite.md#5-quick-documentation-doc).)
 
 ### On an attribute's own name
 
@@ -139,7 +142,8 @@ This is distinct from hovering the *value*, which resolves what this configset a
 the two `copyField` ends read differently from each other, since `source` and `dest` mean different
 things.
 
-**Try it.** Hover the word `source` or `dest` inside any `<copyField>` tag. (`DOC-8`)
+**Try it.** Hover the word `source` or `dest` inside any `<copyField>` tag. (Verified by
+[the quick-documentation check on an attribute's own name](manual-test-suite.md#5-quick-documentation-doc).)
 
 ### On a factory's individual attribute
 
@@ -150,7 +154,8 @@ of dozen attributes a reader is likely to hover. An attribute the catalog does n
 the catalog does not know, answers with nothing rather than a guess.
 
 **Try it.** Hover `minGramSize` on the `EdgeNGramFilterFactory` filter at `managed-schema.xml:48`.
-(`DOC-7`) *No image yet — see [the screenshot catalog](screenshots.md#not-yet-capturable).*
+(Verified by [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc).)
+*No image yet — see [the screenshot catalog](screenshots.md#not-yet-capturable).*
 
 ### On a factory's complete configuration
 
@@ -163,7 +168,9 @@ labelled *no default recorded*, which is the feature rather than
 a gap. A custom `class` the catalog does not know offers nothing on the tag at all.
 
 **Try it.** Hover the word `filter` (not the `class=` value) on the `EdgeNGramFilterFactory` filter at
-`managed-schema.xml:48`. (`DOC-4b`) *No image yet.*
+`managed-schema.xml:48`. (Verified by
+[the quick-documentation check on a factory's complete configuration](manual-test-suite.md#5-quick-documentation-doc).)
+*No image yet.*
 
 ### On the schema's own [version](glossary.md#schema-version)
 
@@ -180,7 +187,8 @@ silent.
 
 **Try it.** Hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`. **F1 does not
 raise Quick Documentation on the default macOS keymap** — it opens the platform's own Help page
-instead, which has nothing to do with this plugin; Ctrl+J is the reliable gesture. (`DOC-9`)
+instead, which has nothing to do with this plugin; Ctrl+J is the reliable gesture. (Verified by
+[the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation on the schema's version attribute: the general rule, then what this
 configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
@@ -197,7 +205,9 @@ Solr itself does not declare — your own custom component's — answers with no
 honest response: a generator built from Solr's own source can never see a plugin outside it.
 
 **Try it.** F1 on `qf` inside `solrconfig.xml`'s `<str name="qf">` (line 28), or on `class=` inside a
-`<requestHandler>` such as the `/select` handler at line 24. (`PRM-9`, `CAT-4`)
+`<requestHandler>` such as the `/select` handler at line 24. (Verified by
+[the documentation check on a request parameter's name](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm)
+and [the documentation check on a catalog-backed class](manual-test-suite.md#8-completion--catalog-backed-cat).)
 
 ---
 
@@ -218,7 +228,8 @@ than asserting one.
 
 **Try it.** Caret after `stored="true"` on `managed-schema.xml:70`, **before the closing `/`**, type a
 space. `indexed` and `stored` are absent from the popup because line 70 already declares them.
-Undo the space afterwards. (`COMP-1` through `COMP-6`)
+Undo the space afterwards. (Verified by
+[the completion checks over the schema's own vocabulary](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp).)
 
 ![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
 multiValued, omitNorms and more, each with a one-line summary and the values it
@@ -235,7 +246,8 @@ maintained.
 **Try it.** Caret before the closing `/` on the `EdgeNGramFilterFactory` filter at
 `managed-schema.xml:48`, type a space: `luceneMatchVersion` and `preserveOriginal` appear, each
 labelled with the factory they belong to (`minGramSize` and `maxGramSize` are absent because the tag
-already declares them). Undo the space afterwards. (`CAT-1`, `CAT-2`)
+already declares them). Undo the space afterwards. (Verified by
+[the catalog-backed completion checks](manual-test-suite.md#8-completion--catalog-backed-cat).)
 
 ![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
 luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
@@ -253,7 +265,8 @@ Solr no longer accepts (`nrtMode`, `mainIndex`, and three more) is never offered
 
 **Try it.** Put the caret on a blank line directly inside `<config>` and type `<`: the offer is Solr's
 own top-level vocabulary, not a copy of the handful of tags already written above the caret. Undo the
-typed character afterwards. (`STR-1` through `STR-6`)
+typed character afterwards. (Verified by
+[the checks on solrconfig.xml's own structure completion](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).)
 
 ![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
 vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
@@ -275,7 +288,8 @@ to write `qf`.
 **Try it.** Caret inside `<str name="qf">` after the existing text (`solrconfig.xml:28`), **type a
 space**, then invoke completion: the schema's fields are offered, `*_t` italicised. The space matters —
 completion did not fire with the caret directly against existing text and no trailing whitespace, the
-same rule the schema-vocabulary completion above documents. (`PRM-1` through `PRM-9`)
+same rule the schema-vocabulary completion above documents. (Verified by
+[the checks on field-name completion inside solrconfig.xml parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
 their types, including the *_t dynamic pattern](images/13-completion-parameter-fields.png)
@@ -285,7 +299,8 @@ and invoke completion there instead of inside a value: Solr's own parameter name
 labelled with the class that declares it and, for a family of related names, a short description
 telling them apart. A parameter already set earlier in the same list is withheld — typing `qf` here
 when line 28 already declares one offers only `mlt.qf` and `hl.queryFieldPattern`, not plain `qf`,
-which is this behaving correctly rather than a sparse or broken popup. (`PRM-6`, `PRM-7`)
+which is this behaving correctly rather than a sparse or broken popup. (Verified by
+[the checks on parameter-name completion](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
 terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names.png)
@@ -309,17 +324,22 @@ itself, which the platform's own word index cannot find on its own.
 **Try it.**
 
 - Cmd-click a field's `type="text_general"` at `managed-schema.xml:68` to jump to the
-  `<fieldType name="text_general">` declaration. (`NAV-1`)
+  `<fieldType name="text_general">` declaration. (Verified by
+  [the check that a field's type navigates to its declaration](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 - Find Usages (⌥F7) invoked from the `<fieldType name="text_general">` declaration itself
   (`managed-schema.xml:31`) lists four usages — `name`, `description`, `text`, and the `*_t` dynamic
-  field. (`NAV-3`, `NAV-7`)
+  field. (Verified by
+  [the Find Usages checks on a field type, including how the results are labelled](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 - Cmd-hover `name` inside `solrconfig.xml:28`'s `<str name="qf">name^3 description category</str>`
   raises a navigation tooltip landing in the schema — each name in the string navigates on its own.
-  (`NAV-4`)
+  (Verified by
+  [the check that a solrconfig.xml parameter navigates into the schema](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 - Find Usages on `<dynamicField name="*_t">` (`managed-schema.xml:84`) reports the `pf` parameter
-  naming `body_t` in `solrconfig.xml`, highlighted at `body_t` alone. (`NAV-6`)
+  naming `body_t` in `solrconfig.xml`, highlighted at `body_t` alone. (Verified by
+  [the check that Find Usages on a dynamic field reaches a name its pattern only supplies](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 - Cmd-click `words="stopwords.txt"` at `managed-schema.xml:34` opens the resource file, including
-  through `lang/`. (`NAV-5`)
+  through `lang/`. (Verified by
+  [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 
 ![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
 declaring this type'](images/07-find-usages-field-type.png)
@@ -330,7 +350,8 @@ declaring this type'](images/07-find-usages-field-type.png)
 `/select` handler resolves nowhere, and draws no warning for failing to — the demo depends only on
 `solr-solrj`, and the class lives in `solr-core`, which is not on its classpath. A configset naming a
 class outside the current project is ordinary, not wrong; documentation still answers from the
-generated catalog regardless, because that needs no class on the classpath at all. (`NAV-9`, `NAV-10`)
+generated catalog regardless, because that needs no class on the classpath at all. (Verified by
+[the checks on navigating to a class outside the project](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 
 ---
 
@@ -353,8 +374,8 @@ defensible rather than silently wrong.
 **Try it.** Caret on `category` in `<field name="category">` at `managed-schema.xml:70`, press
 Shift+F6, apply directly (no Preview step needed) to rename to `product_category`: the declaration
 updates and so does the `qf` line in `solrconfig.xml:28`, with no separate action. A single Cmd+Z
-undoes both files as one refactoring — confirm with `git status --short demo/` afterwards. (`REN-1`,
-`REN-2`)
+undoes both files as one refactoring — confirm with `git status --short demo/` afterwards. (Verified by
+[the rename checks that the dialog is labelled correctly and the cross-file update follows](manual-test-suite.md#4a-rename-ren).)
 
 ![solrconfig.xml's qf parameter before a rename, reading name^3 description
 category](images/14-rename-cross-file-before.png)
@@ -408,7 +429,8 @@ What they catch, briefly:
 
 **Try it.** `managed-schema.xml`, untouched, shows exactly two warnings — a planted dangling
 `manufacturer` copyField and a planted undeclared field type — and nothing else; `solrconfig.xml`
-shows none. Both are deliberate fixtures and should never be "fixed." (`BASE-1`, `BASE-2`)
+shows none. Both are deliberate fixtures and should never be "fixed." (Verified by
+[the zero-false-positive baseline checks](manual-test-suite.md#2-zero-false-positive-baseline-base).)
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
 open above it offering to change the name to *_t, category, description, legacy, name or
@@ -431,7 +453,8 @@ know, for instance.
 
 **Try it.** Open `managed-schema.xml` untouched — no edit needed. `indexed="true"` and
 `stored="true"` render dimmed across the field block; `stored="false"` on `name_prefix` renders at
-full strength. (`DIM-1` through `DIM-4`)
+full strength. (Verified by
+[the restated-default dimming checks](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).)
 
 ![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
 defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default.png)
@@ -453,7 +476,8 @@ policy [every write in this plugin follows](code-organization.md#rules-that-hold
 **Try it.** Caret inside `description` (`managed-schema.xml:71`, a `text_general` field), press
 Alt-Enter: **Add exact-match companion field (string)** and **Add prefix-capable companion field
 (text_prefix)** appear above the platform's own generic items. Applying either produces a schema that
-still parses. (`INT-1`, `INT-2`)
+still parses. (Verified by
+[the companion-field intention checks](manual-test-suite.md#12-intentions--companion-fields-int).)
 
 ![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
 prefix-capable companion field' intentions, with the exact-match explanation shown

@@ -42,8 +42,10 @@ where all three actually belong; the generator now follows the bytecode call cha
 element off its parent node rather than stopping at calls made directly on `SolrConfig`, so an element
 that chain reaches is placed under its real parent instead of defaulting to the root when the chain went
 unfollowed. What completes inside `<query>` is not what completes inside `<config>`. [The manual suite's
-STR-1 through STR-6](../../docs/manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str) press this,
-STR-1 and STR-3 with a recorded pass, and [screenshot catalog entry 10](../../docs/screenshots.md#10-solrconfigxmls-own-structure--10-completion-solrconfig-structurepng)
+structure-completion checks](../../docs/manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str)
+press this — the checks that top-level completion inside `<config>` offers Solr's own vocabulary and
+that a discontinued element is never offered have a recorded pass — and
+[screenshot catalog entry 10](../../docs/screenshots.md#10-solrconfigxmls-own-structure--10-completion-solrconfig-structurepng)
 captures it against the sandbox.
 
 **Two facts were recorded before anything showed them, and now two surfaces do.** The catalog's attribute defaults and
@@ -635,8 +637,10 @@ vocabulary, which carries each retirement notice as the literal Solr ships besid
 inspection asserts nothing of its own and quotes Solr instead.
 
 **What held the heading open after that was a gesture rather than a rule, and both now exist.** Every one of the
-seven is reachable by hand in the sandbox: the last two to get one are the non-indexed relevance check at INSP-15 and
-the discontinued element at INSP-13. INSP-13 has been pressed; INSP-15 has been audited against the demo lines it
+seven is reachable by hand in the sandbox: the last two to get one are
+[the non-indexed relevance check](../../docs/manual-test-suite.md#6-inspections-and-quick-fixes-insp) and
+[the discontinued-element check](../../docs/manual-test-suite.md#6-inspections-and-quick-fixes-insp). The
+discontinued-element check has been pressed; the non-indexed relevance check has been audited against the demo lines it
 names and the catalog row its rule turns on, and not pressed. **That distinction is the manual suite's to record and
 not this step's to wait on** — a step ships a gesture with an outcome it can produce, and whether anyone has pressed
 it is what [the pass log](../../docs/manual-test-suite.md) exists to say. Reading a pass out of this heading is the
@@ -1203,7 +1207,7 @@ covers the phrasing and the silence rules in full.
 - [x] A property that resolves to `UNDETERMINED` contributes no phrase, while the other three still render — the silence
   is per property, not per hint.
 
-**Acceptance:** [the manual test suite's HINT-1 through HINT-5](../../docs/manual-test-suite.md),
+**Acceptance:** [the manual test suite's match-capability hint checks](../../docs/manual-test-suite.md#3-match-capability-inlay-hints-hint),
 and [screenshot catalog entry 1](../../docs/screenshots.md), both rendered against
 `demo/solr/conf/managed-schema.xml`.
 
@@ -1248,8 +1252,9 @@ the file boundary. This step inverts the three, which is how it proves itself.
    same call the reference's own `resolve()` makes, so the two cannot disagree.
 3. Correct what this step disproves — the clause moved off
    [references and navigation](#step-5-references-navigation-and-find-usages-done) above,
-   [the manual suite's NAV-3 and NAV-4](../../docs/manual-test-suite.md), which currently describe
-   the refusal as expected behaviour and will fail a correct plugin, and demo step 27's gesture.
+   [the manual suite's Find Usages checks on a field type and on a solrconfig.xml parameter](../../docs/manual-test-suite.md#4-navigation-and-find-usages-nav),
+   which currently describe the refusal as expected behaviour and will fail a correct plugin, and demo
+   step 27's gesture.
 
 Distinct from [Step 10's action 3](#step-10-completion-validation-and-quick-documentation-done),
 dynamic field pattern awareness, which is about completion and validation. Neither closes the other;
@@ -1266,8 +1271,11 @@ this one is the search direction only.
   plugin does not model — `<requestHandler name="/select">` among them.
 - [x] A same-named field in a second configset in the same project is not reported; Solr resolves per
   configset and so does this.
-- [x] Step 5's criterion, NAV-3, NAV-4 and demo step 27 describe what the plugin does. NAV-6 was
-  added alongside them for the dynamic-field gesture, which no existing check covered.
+- [x] Step 5's criterion,
+  [the Find Usages checks on a field type and on a solrconfig.xml parameter](../../docs/manual-test-suite.md#4-navigation-and-find-usages-nav),
+  and demo step 27 describe what the plugin does.
+  [The Find Usages check on a dynamic field](../../docs/manual-test-suite.md#4-navigation-and-find-usages-nav)
+  was added alongside them for the dynamic-field gesture, which no existing check covered.
 
 **Two claims in the design record were wrong, and the build said so.** `RenameableDelegatePsiTarget`
 was named as the ready-made target class; it requires a `PsiNamedElement`, which an
@@ -1683,7 +1691,9 @@ have stopped working the day 10.1 shipped.
 
 **Nothing explains boost syntax.** A caret on the `^3` of `qf`'s `name^3` answers nothing, and
 [the parameter completion work](#step-25-solrconfigxml-as-a-first-class-surface-done) made that
-more conspicuous rather than less: PRM-3 asserts completion is *silent* after a `^`, which is right —
+more conspicuous rather than less:
+[the check that a boost offers no field](../../docs/manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm)
+asserts completion is *silent* after a `^`, which is right —
 completing there would write `name^name` — but silence in completion was taken to settle the position,
 and documentation was never asked. A reader who has just been told what `qf` is meets `^3` in the same
 value and gets nothing. This is a new capability rather than a fix, and it is the first thing the
