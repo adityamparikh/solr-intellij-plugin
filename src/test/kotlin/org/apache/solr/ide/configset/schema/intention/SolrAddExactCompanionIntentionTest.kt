@@ -31,6 +31,10 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
 
     private val stringType = """<fieldType name="string" class="solr.StrField" sortMissingLast="true"/>"""
 
+    /** The same fixture at a declared version, for the properties whose default the version decides. */
+    private fun schemaAtVersion(version: String, body: String) =
+        schema(body).replace("version='1.6'", "version='$version'")
+
     private fun applyIntention(body: String) {
         myFixture.configureByText("managed-schema.xml", schema(body))
         myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
@@ -82,6 +86,34 @@ class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
         val text = myFixture.file.text
         assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
         assertFalse(text, "multiValued" in text)
+    }
+
+    /**
+     * Below schema version 1.1, `multiValued` defaults to *true*, and the companion has to follow.
+     *
+     * A first version of this rule read the field's attribute, then the type's, then defaulted to
+     * false, on the stated reasoning that `multiValued` has one flat default unlike `docValues` and
+     * `uninvertible`. The property table says otherwise and so does Solr, so a `version="1.0"`
+     * schema declaring nothing would have regenerated the exact defect the rule exists to prevent:
+     * a single-valued companion fed by a source Solr treats as multi-valued, failing at index time
+     * on the user's data.
+     *
+     * The fixture declares no `multiValued` anywhere. Everything here comes from the version.
+     */
+    fun testTheVersionDefaultDecidesWhenTheSchemaSaysNothing() {
+        myFixture.configureByText(
+            "managed-schema.xml",
+            schemaAtVersion("1.0", """$stringType<field name="ta<caret>gs" type="text_general"/>"""),
+        )
+        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+
+        val text = myFixture.file.text
+        assertTrue(
+            text,
+            text.contains(
+                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
+            ),
+        )
     }
 
     fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {

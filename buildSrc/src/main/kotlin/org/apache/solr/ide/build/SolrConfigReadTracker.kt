@@ -148,7 +148,12 @@ internal class SolrConfigReadTracker {
             else -> receiver ?: SolrConfigElements.UNPLACED
         }
         val path = if (parent.isEmpty()) literal else "$parent/$literal"
-        receiver = if (returnsNode(descriptor)) path else null
+        // **A chain does not grow out of a position that was never established.** Extending onto an
+        // unplaced read produces `?/a`, and a path one segment deep reads as a real position to
+        // everything downstream — [SolrConfigElements.isPlaced] rejects the bare marker, so `?/a`
+        // would be treated as placed and the element recorded under a parent no source ever named.
+        // That is the very ambiguity the marker exists to remove, reappearing one segment along.
+        receiver = if (returnsNode(descriptor) && parent != SolrConfigElements.UNPLACED) path else null
         return SolrConfigRead(path, arity)
     }
 

@@ -114,6 +114,26 @@ class SolrConfigReadTrackerTest {
     }
 
     /**
+     * A chain does not grow out of a position that was never established.
+     *
+     * Extending onto an unplaced read yields `?/a`, and a path one segment deep looks like a real
+     * position to everything downstream — so the element would be recorded under a parent no source
+     * ever named. The marker would then protect a single read and fail on exactly the chains that
+     * make a position hard to establish in the first place.
+     */
+    @Test
+    fun `a chain does not extend out of an unplaced read`() {
+        val t = tracker()
+        t.stringLoaded("a")
+        t.called(node, "get", getsNode)
+        t.stringLoaded("b")
+        assertEquals(
+            SolrConfigRead("${SolrConfigElements.UNPLACED}/b", SolrConfigElements.SINGLE),
+            t.called(node, "get", getsNode),
+        )
+    }
+
+    /**
      * A slot reused for something this pass cannot name forgets its string.
      *
      * Locals are reused aggressively, so a remembered name outliving its scope would be handed back

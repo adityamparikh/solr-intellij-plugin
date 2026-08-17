@@ -1363,6 +1363,20 @@ private class ConfigElementMethodVisitor(
 
     override fun visitJumpInsn(opcode: Int, label: Label?) = tracker.opaqueInstruction()
 
+    // The switch and array forms are here to make the tracker's "everything not modelled clears"
+    // true rather than nearly true. Today's `SolrConfig` contains no switch over a config read, so
+    // none of them fires — which is exactly why they would have been noticed only after a future
+    // Solr line quietly recorded an element under whatever name preceded the switch.
+
+    override fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label?, vararg labels: Label?) =
+        tracker.opaqueInstruction()
+
+    override fun visitLookupSwitchInsn(dflt: Label?, keys: IntArray?, labels: Array<out Label>?) =
+        tracker.opaqueInstruction()
+
+    override fun visitMultiANewArrayInsn(descriptor: String?, numDimensions: Int) =
+        tracker.opaqueInstruction()
+
     /**
      * The one instruction that is transparent, and only in the shape that earned it.
      *

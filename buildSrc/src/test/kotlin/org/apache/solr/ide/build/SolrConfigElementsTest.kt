@@ -218,13 +218,22 @@ class SolrConfigElementsTest {
         assertEquals(2, merged.size)
     }
 
-    /** Only a real path is a position: the empty string is not one, and neither is the unplaced marker. */
+    /**
+     * Only a real path is a position — including a path that merely *starts* under the marker.
+     *
+     * `?/a` is the half easily missed: testing equality with the bare marker alone would call it
+     * placed, and the element would be recorded under a parent no source established. Both ends are
+     * closed — the tracker refuses to extend a chain out of an unplaced read, and this refuses to
+     * believe such a path if one ever reaches it.
+     */
     @Test
     fun `what counts as a position`() {
         assertTrue(SolrConfigElements.isPlaced("query"))
         assertTrue(SolrConfigElements.isPlaced("updateHandler/autoCommit"))
         assertFalse(SolrConfigElements.isPlaced(""))
         assertFalse(SolrConfigElements.isPlaced(SolrConfigElements.UNPLACED))
+        assertFalse(SolrConfigElements.isPlaced("${SolrConfigElements.UNPLACED}/indexConfig"))
+        assertFalse(SolrConfigElements.isPlaced("${SolrConfigElements.UNPLACED}/a/b"))
     }
 
     /** Two genuinely different placements of one name are two elements, not a conflict. */

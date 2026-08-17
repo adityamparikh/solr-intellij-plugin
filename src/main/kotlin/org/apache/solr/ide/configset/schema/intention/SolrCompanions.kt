@@ -2,6 +2,7 @@ package org.apache.solr.ide.configset.schema.intention
 
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.schema.SolrFieldType
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrMatchCapability
@@ -83,7 +84,7 @@ internal object SolrCompanions {
 
         // First in document order wins, and the intention names the winner so that a schema
         // declaring several does not have one chosen for it silently.
-        val multiValued = isMultiValued(field, fieldType)
+        val multiValued = isMultiValued(field, fieldType, model)
 
         val declared = model.fieldTypes.values.map { it.effective }.firstOrNull(reusable)
         if (declared != null) {
@@ -106,17 +107,29 @@ internal object SolrCompanions {
      * — and it fails on the user's data, long after the intention was accepted and the schema looked
      * fine. Writing a companion that cannot receive what it is fed is worse than not offering one.
      *
-     * Read from the field, then the type, then Solr's default of false, which is the same order
-     * `multiValued` resolves in generally. There is no version or class dependence to consult:
-     * unlike `docValues` and `uninvertible`, this property has one flat default across every schema
-     * version and every field type.
+     * **Resolved through the property table rather than by reading the two attributes here.** A
+     * first version walked the field, then the type, then defaulted to false, on the reasoning that
+     * this property has one flat default unlike `docValues` and `uninvertible`. That reasoning was
+     * wrong and the table says so: `multiValued` defaults to *true* below schema version 1.1, which
+     * Solr does too. A `version="1.0"` schema would therefore have regenerated the exact companion
+     * this rule exists to prevent — single-valued, fed by a source Solr treats as multi-valued.
      *
-     * The type's attribute is compared ignoring case, because Solr reads it with
-     * `Boolean.parseBoolean`; a spelling that is neither word is Solr's `false`, and here that
-     * agrees with the default anyway.
+     * It was also a third hand-rolled copy of a resolution one call away. The version is an
+     * ordinary input to it, not a special case, and hard-coding a default is what hid that.
+     *
+     * The comparison ignores case because Solr reads the attribute with `Boolean.parseBoolean`. A
+     * spelling that is neither word resolves to false here rather than to undetermined: unlike the
+     * operation rules, which stay silent on an unclear schema, this one has to write something, and
+     * a single-valued companion is what Solr itself would infer from that value.
      */
-    private fun isMultiValued(field: SolrField, fieldType: SolrFieldType): Boolean =
-        field.multiValued
-            ?: fieldType.attributes["multiValued"]?.equals("true", ignoreCase = true)
+    private fun isMultiValued(field: SolrField, fieldType: SolrFieldType, model: SolrFieldModel): Boolean =
+        SolrFieldProperties
+            .resolve(MULTI_VALUED, field, fieldType, model.schemaVersion, model.traitsOf(fieldType))
+            .value
+            ?.equals("true", ignoreCase = true)
             ?: false
+
+    private val MULTI_VALUED = requireNotNull(SolrFieldProperties.byName("multiValued")) {
+        "the property table must carry 'multiValued'"
+    }
 }

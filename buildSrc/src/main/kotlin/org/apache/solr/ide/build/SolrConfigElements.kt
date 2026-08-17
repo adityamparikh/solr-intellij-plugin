@@ -105,10 +105,17 @@ internal object SolrConfigElements {
     /**
      * Whether [parent] names a position, as against saying there is none or that none was seen.
      *
+     * **A path *under* the marker is not a position either**, which is the half that is easy to
+     * miss: a chain rooted on an unobserved node would yield `?/a`, and testing equality with the
+     * bare marker alone would call that placed. The element would then be recorded under a parent no
+     * source ever named — the same ambiguity [UNPLACED] exists to remove, one segment further along.
+     * The tracker also refuses to extend a chain out of an unplaced read, so both ends are closed.
+     *
      * @param parent the parent path from a reading
      * @return true where the path is a real one
      */
-    fun isPlaced(parent: String): Boolean = parent.isNotEmpty() && parent != UNPLACED
+    fun isPlaced(parent: String): Boolean =
+        parent.isNotEmpty() && parent != UNPLACED && !parent.startsWith("$UNPLACED/")
 
     /**
      * What a merged entry is written as: an element, or an attribute of the one above it.
