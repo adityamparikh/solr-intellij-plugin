@@ -8,3 +8,8 @@
 /build/
 /buildSrc/build/
 /demo/build/
+
+# Microsoft Office lock files, written beside an open document and deleted on close.
+# One was committed by a `git add -A` that swept the working tree; it is 165 bytes of
+# machine-local state naming whoever had the deck open.
+~$*
