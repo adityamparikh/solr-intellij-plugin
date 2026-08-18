@@ -49,6 +49,9 @@ are each one step's own work once the reader beneath them exists.
 - Settle whether the model the editor reads ever carries server data, because the answer decides
   whether the boundary above is one rule or two, and whether an inspection can say something a
   reviewer cannot reproduce.
+- Decide whose proxy and certificate configuration the client obeys — the IDE's or the JDK's — because
+  the wrong answer fails silently for exactly the developers who cannot diagnose it, and because it
+  cannot be retrofitted after a transport is written without rewriting the transport.
 - State plainly what the plugin may claim when repository and server disagree, and what it must not —
   the same lesson the Editor track paid for four times, applied here before the code exists rather than
   after a defect report.
@@ -159,8 +162,10 @@ generalize directly to the server track and are adopted rather than rediscovered
 no dependency — the toolchain is already pinned to JDK 21
 (`build.gradle.kts:22-26`) — and it natively supports what the non-functional requirements below need:
 per-request timeouts (`HttpRequest.Builder.timeout`), asynchronous execution
-(`HttpClient.sendAsync` returning a `CompletableFuture`), and TLS with no extra configuration for a
-server behind HTTPS. **This is a recommendation to verify, not an assumed fact about IntelliJ's
+(`HttpClient.sendAsync` returning a `CompletableFuture`), and TLS for a server behind HTTPS — which,
+measured rather than assumed, is the IDE's TLS and the IDE's proxying, because the platform installs
+both as JVM defaults an unconfigured client picks up. [NFR-7](#requirements) has the measurements and
+the one case that does not work this way. **This is a recommendation to verify, not an assumed fact about IntelliJ's
 runtime** — the parent specification's own precedent for platform-API uncertainty is "the exact
 platform APIs... must be verified during implementation rather than assumed here," and the same
 caution applies to a JDK API used inside a plugin classloader for the first time.
@@ -191,8 +196,8 @@ a 401 challenge and retrying. Verified against the Reference Guide's Basic Authe
 credentials are exactly a base64-encoded `username:password` pair per RFC 7617, and Solr's default
 `blockUnknown=true` rejects an unauthenticated request outright rather than issuing a negotiable
 challenge — so a challenge-response round trip would cost a request for no protocol reason. TLS is used
-whenever `baseUrl` is `https://`; nothing in this specification adds certificate-pinning or a custom
-trust store, which is left to the JDK's platform trust store unless a future step asks otherwise.
+whenever `baseUrl` is `https://`, and which certificates are trusted is [NFR-7](#requirements)'s
+subject rather than this requirement's: it is the IDE's trust store, not the JDK's.
 
 **FR-5 — The server reader produces a `SolrConfigsetFacts`, not a new type.** This is the specification's
 central design decision, and it follows directly from `SolrConfigsetFacts`'s own KDoc: it is
@@ -464,6 +469,55 @@ response but absent from `SolrField`'s typed accessors is not an error — it is
 the same way the schema parser does, rather than silently dropping anything it does not have a named
 property for.
 
+**NFR-7 — The IDE's proxy and certificates reach the client through the JVM defaults it already
+installs; the one thing that does not is proxy authentication.** A developer who has told IntelliJ
+about their corporate proxy, or accepted their employer's internal certificate authority once, has
+told *the IDE*. What a plugin must do to honour that turns out to be almost nothing — and the almost
+is the part worth specifying.
+
+**Measured on the bundled JBR 25 this plugin runs on, not read from javadoc**, because two of the
+three answers are not what the API's shape suggests:
+
+| Concern | Reaches an unconfigured `HttpClient`? | Evidence |
+|---|---|---|
+| Which proxy | **Yes** | A client built either way contacted a fake proxy installed via `ProxySelector.setDefault` for a request to an unresolvable host. Note `client.proxy()` still reports `Optional.empty` — the selector is consulted per request, so the getter is not the answer |
+| Which certificates | **Yes** | `HttpClient.newBuilder().build().sslContext() == SSLContext.getDefault()` is `true` |
+| Proxy credentials | **No** | Against a 401 challenge, the client returned 401 and `java.net.Authenticator.getDefault()` was never consulted. `HttpClient` ignores the JVM default authenticator by design |
+
+The IDE fills both defaults: `CertificateManager` calls `SSLContext.setDefault` and is the only class
+in the distribution calling `HttpsURLConnection.setDefaultSSLSocketFactory`, and
+`JdkProxyProvider$Companion` and `OverrideDefaultJdkProxy` call `ProxySelector.setDefault`.
+
+**So the requirement is mostly a prohibition: do not set `proxy` or `sslContext` on the builder.**
+Passing the IDE's selector or context explicitly would be a dependency taken for something already
+true, and for the proxy it would mean an `@ApiStatus.Internal` class — `JdkProxyProvider` — reached
+for no gain. That the IDE's own certificate flow comes with it is the point: an internal Solr behind a
+self-signed certificate raises the same *accept this certificate?* dialog as everywhere else in the
+IDE, through `ConfirmingTrustManager`, and the answer is remembered.
+
+**One consequence looks like a bug and is not**: that trust manager blocks the calling thread while it
+asks, so the first request to an untrusted host does not return until the developer answers. It is a
+second reason [NFR-2](#requirements)'s off-the-EDT rule is load-bearing rather than stylistic.
+
+**Proxy authentication is the one gap, and it takes the public API rather than the internal one.**
+Where the configured proxy demands credentials, the client needs an explicit `authenticator`, since
+the JDK will not consult the default. `ProxyAuthentication` carries no API-status annotation — it is
+public platform API — and is the right source; `JdkProxyProvider.getAuthenticator()` would serve too
+and is internal, so it is not used. A plugin that skips this works everywhere except behind an
+authenticating proxy, which is the configuration most likely to be corporate and least likely to be
+diagnosable from what the plugin reports.
+
+**What the ecosystem does, which is how this was found.** Across the 1,352 bundled plugin jars in the
+2026.2 distribution, **no plugin references `JdkProxyProvider`** — the class purpose-built for handing
+JDK-shaped proxy objects to a JDK client. Twenty-nine use `com.intellij.util.io.HttpRequests`, the
+platform's own HTTP facade, which itself references neither the proxy settings nor
+`CertificateManager`: it does not need to, for the same reason this plugin does not. An earlier
+revision of this requirement reasoned from the JDK's documented defaults, concluded the IDE's proxy
+would be missed, and specified an internal API to avoid it. The conclusion was wrong, and the way it
+was wrong is the argument for measuring: everything about the API's shape suggested otherwise, and
+`proxy()` returning `Optional.empty` would have confirmed it to anyone who checked the getter instead
+of the behaviour.
+
 ## Testing Strategy
 
 Two tiers, matching Step 11's action 5 and action 6 exactly, plus the boundary contract test NFR-1
@@ -476,6 +530,7 @@ requires and was not itself named as a plan action.
 | Contract test per supported line | The reader parses what a real Solr of that line actually returns — the wire-format risk a fake cannot cover, per the parent specification's own reasoning for requiring this tier | Testcontainers, `solr:10.0.0` and `solr:9.10.1`, pinned by tag never `latest`; started and stopped by the test itself, satisfying the standing rule that no automated test needs a Solr a developer started by hand |
 | `SolrConnectionSettings` | Persistence and PasswordSafe round-trip | `SolrConfigsetTestCase`, per the existing rule for anything touching persistent connection or configset settings |
 | Pairing persistence | A pairing round-trips through the workspace state with its root path macro-collapsed; removing a connection removes its pairings; a configset with none produces no server read at all — the silence being the assertion worth having, per [FR-12](#requirements) | `SolrConfigsetTestCase`, since it touches the same persistent settings |
+| Client construction | The builder sets **no** `proxy` and **no** `sslContext`, per [NFR-7](#requirements) — the JVM defaults the IDE installs are what should reach it, and setting either would take a dependency for something already true. Asserted as absence, which is the only form this can take: a test cannot conjure a proxy the IDE configured. An authenticator *is* set where one is available | Plain JUnit 4 if the builder is separable from the send, which is a reason to separate them |
 | The editor model stays one-sided | `SolrConfigsetReader.modelFor` reports `REPOSITORY_ONLY` for every fact **with a connection configured and a pairing present** — the editor is unmoved by connection state, per [FR-13](#requirements). The assertion is worth more than it looks: it is the one that fails the day somebody wires a server half in "just for completion" | `SolrConfigsetTestCase` |
 | Boundary contract | Only `org.apache.solr.ide.server` and the named allowlist import `org.apache.solr.ide.server`; every other package, discovered by walking the source tree, does not | Plain JUnit 4, or whatever `SolrDumbModeContractTest` itself uses, for consistency |
 | `SolrFieldModel.of` with a real server half | The four agreement states populate correctly from two genuinely different `SolrConfigsetFacts`, not only the synthetic one-sided fixtures Step 3 already covers | Plain JUnit 4 |
