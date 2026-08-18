@@ -88,12 +88,13 @@ where the rest read `stored`, with `text` alone reading `multi-valued`; `notes` 
 storage-shape phrases, with no match claim, because its analyser names a factory the plugin does
 not recognise; and `legacy` carries no hint at all, because its `type` is undeclared. `legacy`
 will also show the undeclared-field-type inspection's underline in frame — that is correct and
-not something to crop out; see BASE-1.
+not something to crop out; see
+[the zero-false-positive baseline check on the schema](manual-test-suite.md#2-zero-false-positive-baseline-base).
 
 **Redo when** the hint wording changes, a property's inline phrase changes, a new analysis
 capability is recognised, or the demo schema's field list changes.
 
-**Verifies** HINT-1 through HINT-5.
+**Verifies** [the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).
 
 ### 2. [Quick documentation](glossary.md#documentation-provider) on a field — `02-quick-doc-field.png`
 
@@ -117,7 +118,7 @@ remembers the size, so this is a once-per-machine adjustment rather than a step 
 **Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
 `From` column's wording changes.
 
-**Verifies** DOC-1.
+**Verifies** [the quick-documentation check on a field](manual-test-suite.md#5-quick-documentation-doc).
 
 ### 3. Quick documentation on a class value — `03-quick-doc-class.png`
 
@@ -141,7 +142,7 @@ table still shows name and value type alone, because that is all the popup rende
 correct for what the plugin displays; it goes stale when the per-attribute hover and the
 complete-configuration popup put those facts on screen.
 
-**Verifies** DOC-2 and DOC-4.
+**Verifies** [the quick-documentation checks on a field's Reference Guide link and on a class value](manual-test-suite.md#5-quick-documentation-doc).
 
 ### 4. [Inspection](glossary.md#inspection) and [quick-fix](glossary.md#quick-fix) — `04-inspection-copyfield-quickfix.png`
 
@@ -172,7 +173,7 @@ there is nothing to undo.
 
 **Redo when** the quick-fix ordering or the inspection message changes.
 
-**Verifies** INSP-1.
+**Verifies** [the dangling-copyField inspection check](manual-test-suite.md#6-inspections-and-quick-fixes-insp).
 
 **The count is the claim, and the demo schema now plants two.** `DemoConfigsetTest` pins that
 exactly one reference in the committed demo configset is dangling and exactly one field names an
@@ -197,20 +198,24 @@ instead — `fieldType`, `field`, `copyField` — which is the wrong popup and a
 publish. Undo the space afterwards; the demo configset is a committed fixture.
 
 **The `(default)` marking is not in this popup, and this entry used to ask for it.** The attribute
-*name* list carries `Property`, summary and accepted values; COMP-4's default marking belongs to
-value completion, which is a different gesture and, if it is wanted as an image, a different entry.
+*name* list carries `Property`, summary and accepted values; the default marking
+[the check on marking the default boolean value](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp)
+covers belongs to value completion, which is a different gesture and, if it is wanted as an image, a
+different entry.
 
 **Redo when** the property vocabulary changes, or the `(default)` marking rule changes.
 
-**Verifies** COMP-2 and COMP-4.
+**Verifies** [the completion checks on omitting already-present attributes and marking the default boolean value](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp).
 
 ### 6. Catalog-backed [factory](glossary.md#factory) attributes — `06-completion-factory-attributes.png`
 
 **✅ Captured.**
 
 **Shows** the end of the pipeline that starts in `buildSrc`: completion offering a factory's *own*
-attributes, read from its constructor bytecode at build time — CAT-2 in the manual suite spells out
-what that build-time pass actually does — each labelled with the factory it came from.
+attributes, read from its constructor bytecode at build time —
+[the catalog-backed factory-attribute check](manual-test-suite.md#8-completion--catalog-backed-cat) in
+the manual suite spells out what that build-time pass actually does — each labelled with the factory
+it came from.
 
 **Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
 `managed-schema.xml:48`, put the caret before the closing `/`, type a space, and let completion
@@ -225,12 +230,14 @@ by the identical constructor-bytecode route, so the claim this image makes is un
 
 **Redo when** the catalog gains columns — the same trigger as image 3, and for the same reason.
 
-**Exercises the path CAT-2 checks, with a different factory.** CAT-2 names
-`solr.WordDelimiterGraphFilterFactory`, which the demo configset does not declare — that check has
-you type the class first. A screenshot should not require editing the fixture, so this captures
-`EdgeNGramFilterFactory`, which the demo declares at line 48 and which reaches the editor by exactly
-the same constructor-bytecode route. Capturing CAT-2 verbatim means adding the WordDelimiter filter
-to the demo, which is a fixture change and belongs to CAT-2, not here.
+**Exercises the same path as
+[the check that a factory's constructor-bytecode attributes complete](manual-test-suite.md#8-completion--catalog-backed-cat),
+with a different factory.** That check names `solr.WordDelimiterGraphFilterFactory`, which the demo
+configset does not declare — pressing it has you type the class first. A screenshot should not require
+editing the fixture, so this captures `EdgeNGramFilterFactory`, which the demo declares at line 48 and
+which reaches the editor by exactly the same constructor-bytecode route. Capturing that check verbatim
+means adding the WordDelimiter filter to the demo, which is a fixture change and belongs there, not
+here.
 
 ### 7. [Find Usages](glossary.md#find-usages) on a [field type](glossary.md#field-type) — `07-find-usages-field-type.png`
 
@@ -256,7 +263,9 @@ four from either caret, because the `*_t` dynamic field joined the demo schema d
 
 **Redo when** the demo schema's fields change, or the usage grouping changes.
 
-**Verifies** NAV-3. NAV-6 exercises the same declaration-target machinery from a *different*
+**Verifies** [the Find Usages check on a field type declaration](manual-test-suite.md#4-navigation-and-find-usages-nav).
+[The Find Usages check on a dynamic field](manual-test-suite.md#4-navigation-and-find-usages-nav)
+exercises the same declaration-target machinery from a *different*
 declaration — a `dynamicField` rather than this `fieldType` — and has no image of its own;
 the usage list this one frames is the same machinery answering the easier question.
 
@@ -274,7 +283,7 @@ landing in `managed-schema.xml`. The tooltip version reads better in one frame; 
 
 **Redo when** the demo's handler parameters change, or boost syntax handling changes.
 
-**Verifies** NAV-4.
+**Verifies** [the check that a solrconfig.xml parameter navigates into the schema](manual-test-suite.md#4-navigation-and-find-usages-nav).
 
 ### 9. Navigation to a resource file — `09-nav-resource-file.png` *(optional)*
 
@@ -287,13 +296,16 @@ landing in `managed-schema.xml`. The tooltip version reads better in one frame; 
 beside the reference.
 
 **Cmd+hover raises a tooltip that is the absolute path, and that path is somebody's home
-directory.** It is the faster gesture and the right one for checking NAV-5 by hand; it is the wrong
+directory.** It is the faster gesture and the right one for checking
+[the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav)
+by hand; it is the wrong
 one to publish, for the same reason this catalog crops out the branch chip. Quick Definition shows
 the same resolution as the file it opens, named `stopwords.txt` and nothing more.
 
 **Redo when** resource attribute coverage changes.
 
-**Verifies** NAV-5. Lower priority — it demonstrates the same navigation machinery as image 8 and
+**Verifies** [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).
+Lower priority — it demonstrates the same navigation machinery as image 8 and
 earns a place only if the README wants a second navigation example.
 
 ### 10. `solrconfig.xml`'s own structure — `10-completion-solrconfig-structure.png`
@@ -327,13 +339,15 @@ and type `<`. Frame the completion popup.
 **Redo when** the generated element vocabulary changes, or the demo's `solrconfig.xml` gains or loses
 top-level children.
 
-**Verifies** STR-1.
+**Verifies** [the check that top-level completion inside `<config>` offers Solr's own vocabulary](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
 
 ### 11. An attribute that restates its default — `11-dimmed-restated-default.png`
 
 **✅ Captured.**
 
-**Shows** the dimmed rendering DIM-1 describes, needing no edit: `indexed="true"` and
+**Shows** the dimmed rendering
+[the check that a restated default renders dimmed](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim)
+describes, needing no edit: `indexed="true"` and
 `stored="true"` render fully greyed — name and value both — on the field block, while
 `stored="false"` on `name_prefix` renders at full strength. A restated default is correct Solr, so
 nothing here reaches the Problems view; the dim is the only claim being made.
@@ -344,7 +358,7 @@ interaction — the dim renders itself, exactly like image 1's hints.
 **Redo when** the demo schema's declared attributes change, or the dimming rule's set of properties
 changes.
 
-**Verifies** DIM-1.
+**Verifies** [the check that a restated default renders dimmed](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).
 
 ### 12. [Intentions](glossary.md#intention) — companion fields — `12-intention-companion-fields.png`
 
@@ -362,13 +376,15 @@ either item in the menu writes a new `<field>` and `<fieldType>` into the schema
 **Redo when** the intentions' wording changes, or the demo's `description` field stops being
 tokenised.
 
-**Verifies** INT-1.
+**Verifies** [the companion-field intention check that a tokenised field offers to add its missing companions](manual-test-suite.md#12-intentions--companion-fields-int).
 
 ### 13. Field-name completion inside a `solrconfig.xml` parameter — `13-completion-parameter-fields.png`
 
 **✅ Captured.**
 
-**Shows** the inverse of INSP-4's warning: the schema's own fields offered inside a handler parameter
+**Shows** the inverse of
+[the check that a handler parameter naming an undeclared field is flagged](manual-test-suite.md#6-inspections-and-quick-fixes-insp):
+the schema's own fields offered inside a handler parameter
 known to hold them, each labelled with its type, and the dynamic pattern `*_t` offered alongside the
 literal fields rather than only literal spellings.
 
@@ -380,7 +396,7 @@ already documents for attribute completion, confirmed true here too. Undo the sp
 
 **Redo when** the demo schema's field list changes.
 
-**Verifies** PRM-1.
+**Verifies** [the check that field-name completion inside a qf parameter offers the schema's fields](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).
 
 ### 14. [Rename](glossary.md#rename-refactoring)'s cross-file update — `14-rename-cross-file-before.png` / `14-rename-cross-file-after.png`
 
@@ -399,7 +415,7 @@ demo/` is clean.
 
 **Redo when** the demo's `qf` value or the `category` field changes.
 
-**Verifies** REN-2.
+**Verifies** [the rename check that a cross-file field reference follows the rename](manual-test-suite.md#4a-rename-ren).
 
 ### 15. Parameter-name completion — `15-completion-parameter-names.png`
 
@@ -415,21 +431,24 @@ description distinguishing it from its siblings.
 `CommonParams`) heads the list, followed by `expand.sort`, `facet.sort`, `group.sort` and
 `terms.sort`. Undo the added line afterwards.
 
-**A parameter already set on the same list is withheld, and that is PRM-7 rather than a broken
-popup.** Typing `qf` at the same position offers only `mlt.qf` and `hl.queryFieldPattern` — plain
-`qf` is absent because line 28 already declares it in the same `<lst name="defaults">`. Worth
-knowing before reusing this gesture: an apparently generic, sparse list at this position is more
-often PRM-7 firing correctly than a capture gone wrong.
+**A parameter already set on the same list is withheld, and that is
+[the check that an already-set parameter is not offered again](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm)
+rather than a broken popup.** Typing `qf` at the same position offers only `mlt.qf` and
+`hl.queryFieldPattern` — plain `qf` is absent because line 28 already declares it in the same
+`<lst name="defaults">`. Worth knowing before reusing this gesture: an apparently generic, sparse
+list at this position is more often that check firing correctly than a capture gone wrong.
 
 **Redo when** the generated parameter catalog changes.
 
-**Verifies** PRM-6.
+**Verifies** [the check that a defaults list's own name offers Solr's request parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).
 
 ### 16. Quick documentation on the schema's `version` — `16-hover-schema-version.png`
 
 **✅ Captured.**
 
-**Shows** the two-paragraph structure DOC-9 describes: what `version` decides in general, then what
+**Shows** the two-paragraph structure
+[the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc)
+describes: what `version` decides in general, then what
 the demo's declared `1.6` decides here — `docValues` off, `uninvertible` on, `autoGeneratePhraseQueries`
 off.
 
@@ -446,7 +465,7 @@ regression to chase.
 **Redo when** the demo schema's declared version changes, or the version-dependent property list
 changes.
 
-**Verifies** DOC-9.
+**Verifies** [the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc).
 
 ### 17. Nesting — what completes inside `<query>` — `17-completion-query-nesting.png`
 
@@ -480,7 +499,7 @@ means anything.
 **Redo when** the generated element vocabulary changes, or `SolrConfig` changes which elements it
 reads off the query node.
 
-**Verifies** STR-2.
+**Verifies** [the check that completion inside `<query>` offers what belongs there and not `dataDir`](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
 
 ### 18. Nesting — `<indexConfig>`, and what is never offered — `18-completion-indexconfig-nesting.png`
 
@@ -488,7 +507,9 @@ reads off the query node.
 
 **Shows** `<indexConfig>` offering exactly one element, `deletionPolicy`, beside entry 17's eighteen.
 The contrast is the point twice over. It is nesting again at a parent with almost no live children —
-and it is the visible half of STR-3: `nrtMode` and `unlockOnStartup` are read by Solr at this exact
+and it is the visible half of
+[the check that a discontinued element is never offered](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str):
+`nrtMode` and `unlockOnStartup` are read by Solr at this exact
 position, are keyed to it in the catalog, are reported by the discontinued-element inspection when
 written here, and are **still not offered**, because `SolrElementCatalog.offerableChildrenOf` filters
 to what Solr still accepts. Knowing where an element belongs and recommending it are different
@@ -504,7 +525,7 @@ discipline.
 
 **Redo when** entry 17 is redone.
 
-**Verifies** STR-3.
+**Verifies** [the check that a discontinued element is never offered](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
 
 ---
 
@@ -515,14 +536,21 @@ into the catalog when its feature ships **and** someone shoots it, mirroring the
 own "Not yet in the suite" list:
 
 - The settings page, and *Mark Directory as Solr Configset Root* — not yet built
-- Hover documentation on a factory attribute — owner, value type, default or required marker (DOC-7)
-- A factory's complete effective configuration, unwritten attributes shown at their defaults (DOC-4b)
-- An attribute's own name answering on hover — `name`, `type`, `source`, `dest` (DOC-8)
-- `solrconfig.xml` attribute completion inside a cache tag such as `<filterCache>` (STR-5)
-- The analyzer-chain ordering inspection (INSP-7), the discontinued-element and misspelled-parameter
-  inspections (INSP-13, INSP-14), and the field-operation split (INSP-10 through INSP-12)
-- Class navigation landing in a resolvable class (NAV-9) — needs `solr-core` added to the demo's
-  dependencies first, a fixture change out of scope for a screenshot pass
+- Hover documentation on a factory attribute — owner, value type, default or required marker
+  (see [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc))
+- A factory's complete effective configuration, unwritten attributes shown at their defaults
+  (see [the quick-documentation check on a factory's complete configuration](manual-test-suite.md#5-quick-documentation-doc))
+- An attribute's own name answering on hover — `name`, `type`, `source`, `dest`
+  (see [the quick-documentation check on an attribute's own name](manual-test-suite.md#5-quick-documentation-doc))
+- `solrconfig.xml` attribute completion inside a cache tag such as `<filterCache>`
+  (see [the check that a cache tag's attribute completion offers Solr's cache attributes](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str))
+- The analyzer-chain ordering inspection, the discontinued-element and misspelled-parameter
+  inspections, and the field-operation split — all covered by
+  [the inspections and quick-fixes checks](manual-test-suite.md#6-inspections-and-quick-fixes-insp)
+- Class navigation landing in a resolvable class
+  (see [the checks on navigating to a class outside the project](manual-test-suite.md#4-navigation-and-find-usages-nav))
+  — needs `solr-core` added to the demo's dependencies first, a fixture change out of scope for a
+  screenshot pass
 - Everything server-side: connections, the tool window, the query console, the drift view
 - Everything in Java and Kotlin code: field-name checks, query language injection
 

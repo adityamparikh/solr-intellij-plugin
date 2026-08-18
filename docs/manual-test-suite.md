@@ -152,15 +152,17 @@ gesture, caret placement, the Find Usages tool window.*
       declaration without ever spelling it. The result is highlighted at `body_t` itself, not
       across the whole parameter value.
 - [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
-      In NAV-3's window the header reads **Field type** over `text_general`, and the results
+      In [the Find Usages check on a field type](#4-navigation-and-find-usages-nav)'s window the
+      header reads **Field type** over `text_general`, and the results
       group under **Field declaring this type** — not *Solr Declaration Target*. That is what
       IntelliJ falls back to when nothing registers a description for a search target: it takes
       the underlying Java class's own name — `SolrDeclarationTarget`, this plugin's internal
       type — and de-camel-cases it into a phrase, which reads exactly like real information and
       is a bug leaking through rather than one. And not *Unclassified* either, the platform's
       default grouping label for a usage no registered classifier claims — the generic bucket
-      every search result falls into until something says what kind of usage it is. In NAV-6's,
-      the header reads **Dynamic field** and the group reads **Handler parameter in
+      every search result falls into until something says what kind of usage it is. In
+      [the Find Usages check on a dynamic field](#4-navigation-and-find-usages-nav)'s, the
+      header reads **Dynamic field** and the group reads **Handler parameter in
       solrconfig.xml**. A correct result list under either of those two wrong labels reads as
       broken to everyone but its author, because nothing distinguishes a mislabelled correct
       answer from a genuine defect.
@@ -168,18 +170,21 @@ gesture, caret placement, the Find Usages tool window.*
       `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
       opens the file, including through `lang/`; each entry in a comma-separated list
       navigates on its own.
-- [ ] **NAV-8** — **How a resource file's usages are labelled**, which is NAV-7's question asked
+- [ ] **NAV-8** — **How a resource file's usages are labelled**, which is
+      [the results-labelling question](#4-navigation-and-find-usages-nav) asked
       of the fourth kind of reference. Find Usages on `stopwords.txt` itself — from the
       Project view, or from the caret on the path — lists both
       `<filter class="solr.StopFilterFactory">` occurrences under **Analyzer component
       reading this file**, not *Unclassified*. This one shipped wrong: the classification
       skipped file references on the assumption the platform grouped them, and nothing does.
-- [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at NAV-3 — the Find Usages
+- [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at
+      [the Find Usages check on a field type](#4-navigation-and-find-usages-nav) — the Find Usages
       tool window with its results, invoked from the `<fieldType name="text_general">`
       declaration, which is the gesture the demo now performs.
       [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
-- [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at NAV-4 — Cmd+hover
-      `name` in `solrconfig.xml:28`, framing the navigation tooltip.
+- [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at
+      [the check that a solrconfig.xml parameter navigates into the schema](#4-navigation-and-find-usages-nav) —
+      Cmd+hover `name` in `solrconfig.xml:28`, framing the navigation tooltip.
       [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
 **The demo cannot exercise the landing half of this, and the reason is worth reading.** It depends on
 `solr-solrj` alone, while `solr.SearchHandler` is `org.apache.solr.handler.component.SearchHandler`
@@ -198,9 +203,10 @@ does carry `SearchHandler`. So the two answers differ here on purpose.
       answers from the catalog rather than dying, with no class on the classpath and no index ready.
       This is the gesture whose collapse once took the whole popup down with it, including the parts
       that needed no index at all.
-- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at NAV-5 — caret on
-      `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
-      NAV-5 itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
+- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at
+      [the check that a filter's resource path navigates to the file](#4-navigation-and-find-usages-nav) —
+      caret on `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
+      that navigation itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
       tooltip is an absolute path through your home directory.
       [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
 
@@ -213,7 +219,9 @@ below.*
 - [ ] **REN-1** — Caret on `category` in `<field name="category">` at
       `managed-schema.xml:70`, press Shift+F6. **Read the dialog before typing:** it must
       say *Rename **field** 'category'*, not *Rename Solr Declaration Target 'category'* —
-      the same description NAV-7 checks, reached by a second refactoring.
+      the same description
+      [the check on how Find Usages results are labelled](#4-navigation-and-find-usages-nav)
+      checks, reached by a second refactoring.
 - [ ] **REN-2** — Complete that rename to `product_category`. The declaration updates, and
       so does the `qf` line in `solrconfig.xml:28` — the cross-file half, and the one a
       hand-edit misses. **Undo, and confirm both files are clean.**
@@ -224,10 +232,12 @@ below.*
       updates with it — but the `pf` naming `body_t` in `solrconfig.xml` is left exactly as
       written, because `body_t` is a name the pattern supplied and rewriting it to `*_txt`
       would put a glob where a field name belongs.
-- [ ] **REN-5** — Still in REN-4's state, look at that `pf`: `body_t` is now underlined by the
+- [ ] **REN-5** — Still in [the deliberately-partial dynamic-field rename](#4a-rename-ren)'s
+      state, look at that `pf`: `body_t` is now underlined by the
       unknown-field inspection, because nothing declares it any more. **That report is what
-      makes REN-4 defensible** — the configset is broken, and the plugin says so, rather than
-      leaving it silently wrong. **Undo REN-4 and confirm the underline goes.**
+      makes [that partial rename](#4a-rename-ren) defensible** — the configset is broken, and the
+      plugin says so, rather than leaving it silently wrong. **Undo it and confirm the underline
+      goes.**
 
 ## 5. [Quick documentation](glossary.md#documentation-provider) (DOC)
 
@@ -261,8 +271,9 @@ below.*
 - [ ] **DOC-6** — Change the root element to `version="1.7"`, re-open the same popup:
       `uninvertible` now reports **false**, `useDocValuesAsStored` stays true, and both
       origins name 1.7. **Undo, and confirm the values return.** One side alone proves
-      nothing — a table hard-coding `true` passes DOC-5 — so it is the flip that is the
-      check.
+      nothing — a table hard-coding `true` passes
+      [the check on schema version 1.6's property defaults](#5-quick-documentation-doc) —
+      so it is the flip that is the check.
 - [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
       on the attribute name). The popup names the owning class, the value type (*a whole
       number*), and the required marker, above them a **Does** row saying what the attribute
@@ -278,7 +289,8 @@ below.*
       two `copyField` ends read differently from each other.
 - [ ] **DOC-9** — Hover `version` on the demo's `<schema>` root. Two paragraphs: what the
       attribute decides anywhere, then **what `1.6` decides here** — `docValues` off,
-      `uninvertible` on. The second paragraph is computed from the file, so DOC-6's edit to
+      `uninvertible` on. The second paragraph is computed from the file, so
+      [the version-flip check](#5-quick-documentation-doc)'s edit to
       `1.7` should flip it; check that too while the file is already changed, and undo with
       the rest.
 - [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Hover an
@@ -292,45 +304,57 @@ below.*
       row had been drafted and withdrawn, on the argument that the popup already carries a
       per-attribute guide link and prose would duplicate something always current.
       That argument is recorded and still open in the design record, but it was never acted on:
-      the table shipped with the step and the *Does* row is on screen, which is what DOC-7 now
+      the table shipped with the step and the *Does* row is on screen, which is what
+      [the check on a factory's attribute hover](#5-quick-documentation-doc) now
       asks for. A verification check stating the opposite of the shipped behaviour is worse than
       a missing one, because pressing it invites deleting a feature to make the document true.
 
       *The other half of this check has no fixture.* A `copyField`'s `name` must never gain the
       `<field>` description — but the committed demo declares no `<copyField name=…>`, so there
-      is nothing to hover, the same shape of gap NAV-5 records. `SolrAttributeDocumentationTest`
+      is nothing to hover, the same shape of gap
+      [the check on a filter's resource path](#4-navigation-and-find-usages-nav) records.
+      `SolrAttributeDocumentationTest`
       covers it headlessly, along with the whole inventory of positions that answer; either the
       demo grows one or this stays a note.
 
-- [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at DOC-1 — caret inside
+- [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at
+      [the quick-documentation check on a field](#5-quick-documentation-doc) — caret inside
       `name="category"` at line 70, F1, cropped to the popup **including the
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
       the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
       arrival if taken before that lands.
       [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
-      DOC-4's `03-quick-doc-class.png` is current and needs nothing.
+      [The quick-documentation check on a class value](#5-quick-documentation-doc)'s
+      `03-quick-doc-class.png` is current and needs nothing.
 
-**DOC-4's `Accepts` table shows a name and a value type, and nothing more.** That is the
+**[The quick-documentation check on a class value](#5-quick-documentation-doc)'s `Accepts`
+table shows a name and a value type, and nothing more.** That is the
 class-*value* popup on purpose, and Javadoc is per class, so it has no honest per-argument
 prose to add beside a default either. Defaults and required markers live on the other two
-positions: on one attribute as DOC-7's hover, and on the whole tag as DOC-4b's
+positions: on one attribute as
+[the check on a factory's attribute hover](#5-quick-documentation-doc), and on the whole tag
+as [the check on a factory's complete configuration](#5-quick-documentation-doc)'s
 complete-configuration table. A tester looking for `minGramSize` marked required on the
-class value wants DOC-7 or DOC-4b, and is looking at the wrong element rather than at a
+class value wants one of those two, and is looking at the wrong element rather than at a
 broken feature.
 
-**DOC-5 and DOC-6 are one check in two halves, and the pair is the point.** Solr's field
+**[The check on schema version 1.6's property defaults and its version-flip
+counterpart](#5-quick-documentation-doc) are one check in two halves, and the pair is the
+point.** Solr's field
 defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
 false from it, which is how Solr changed a default without breaking deployed schemas. A
-provider that ignores the version entirely still passes DOC-5, because 1.6 is where the
-demo sits — only DOC-6's flip distinguishes reading the file from hard-coding its answer.
+provider that ignores the version entirely still passes the 1.6 half, because 1.6 is where the
+demo sits — only the version-flip's result distinguishes reading the file from hard-coding its answer.
 `SolrFieldPropertiesTest` and `SolrBooleanPropertyCompletionTest` already assert both
 sides headlessly; what these two add is that the popup and the completion list render what
 resolution decided, which no fixture can see.
 
-DOC-6 edits the demo, so it belongs with the INSP checks in ending on an undo. The demo
-stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 would not
-break these checks so much as delete DOC-5, leaving the suite testing one side of a
-boundary again.
+The version-flip check edits the demo, so it belongs with the
+[inspection and quick-fix checks](#6-inspections-and-quick-fixes-insp) in ending on an undo.
+The demo stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 would not
+break these checks so much as delete
+[the 1.6 property-defaults check](#5-quick-documentation-doc), leaving the suite testing one
+side of a boundary again.
 
 ## 6. [Inspections](glossary.md#inspection) and [quick-fixes](glossary.md#quick-fix) (INSP)
 
@@ -342,13 +366,15 @@ boundary again.
 `SolrReferenceQuickFixTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
 
-Every check here ends with **undo until the baseline (BASE) is clean again**.
+Every check here ends with **undo until
+[the baseline](#2-zero-false-positive-baseline-base) is clean again**.
 
 - [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
       and Alt-Enter offers the declared fields, closest spelling first.
 - [ ] 📸 **Capture `docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted*
-      `manufacturer` rule at line 92 rather than the edit INSP-1 makes, so the image needs
-      no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
+      `manufacturer` rule at line 92 rather than the edit
+      [the dangling-copyField check](#6-inspections-and-quick-fixes-insp) makes, so the image
+      needs no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
       every item in it rewrites the file.
       [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
@@ -391,11 +417,14 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       To see the warning, declare the absence rather than defaulting it: add `docValues="false"` to
       `category` in the schema. `category` in the `facet.field` is then underlined, and at 1.6 it is
       not, because `uninvertible` defaults true below 1.7. Undo both edits.
-- [ ] **INSP-12** — With INSP-11's `docValues="false"` still on `category`, `<str name="qf">category</str>`
+- [ ] **INSP-12** — With
+      [the unfacetable-field check](#6-inspections-and-quick-fixes-insp)'s `docValues="false"`
+      still on `category`, `<str name="qf">category</str>`
       stays clean while the `facet.field` is underlined. **The same field, searchable and unfacetable at
       once** — the check that the two inspections ask different questions rather than one question twice.
-      The completion side shows the same split with no edit at all: PRM-4's `sort` list withholds `text`
-      where the `qf` list offers it.
+      The completion side shows the same split with no edit at all:
+      [the sort-clause completion check](#9-completion--field-names-inside-solrconfigxml-parameters-prm)'s
+      `sort` list withholds `text` where the `qf` list offers it.
 - [ ] **INSP-13** — In `solrconfig.xml`, add `<indexConfig><nrtMode>true</nrtMode></indexConfig>`
       inside `<config>`: the element name is underlined and the message is **Solr's own sentence**,
       naming the config as discontinued. Add `<indexDefaults>` directly inside `<config>` instead —
@@ -407,7 +436,8 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       **the warning goes**, and it should. Solr reads this element as
       `get(indexConfigPrefix).get("nrtMode")` and never looks for it at the root, so a `<nrtMode>`
       under `<config>` is inert — Solr neither honours nor complains about it. This is the position
-      the rule used to fire on, and the check exists because the earlier wording of INSP-13 asked for
+      the rule used to fire on, and the check exists because the earlier wording of
+      [the discontinued-element check](#6-inspections-and-quick-fixes-insp) asked for
       the underline *here* and was pressed green against it. See the pass-log note for
       2026-08-16 and `SolrConfigElements.UNPLACED` for how the catalog came to believe it.
 - [ ] **INSP-14** — Inside the `/select` handler's `<lst name="defaults">`, rename `<str name="rows">`
@@ -417,9 +447,12 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
 - [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false` at `managed-schema.xml:68`, then look
       at the `/select` handler's `qf` at `solrconfig.xml:28`. `name` is underlined — **`name` alone, not the
       `^3` beside it and not the two field names after it** — reading *Solr: 'name' is not indexed, so 'qf'
-      cannot search or boost it*, and `solrconfig.xml` goes from BASE-2's zero problems to exactly one.
+      cannot search or boost it*, and `solrconfig.xml` goes from
+      [the `solrconfig.xml` baseline check](#2-zero-false-positive-baseline-base)'s zero problems to
+      exactly one.
       The finding is invisible in Solr: the core starts, the query runs, and the field simply never
-      matches. **One of two such checks rather than the only one** — INSP-7's ordering finding is the
+      matches. **One of two such checks rather than the only one** —
+      [the analyzer-chain ordering check](#6-inspections-and-quick-fixes-insp)'s finding is the
       other, and a chain whose filter never runs is just as silent. Undo.
 
       *What lets this fire is a catalog row rather than the edit.* Searchable is `indexed` **or**
@@ -437,11 +470,14 @@ Every check here ends with **undo until the baseline (BASE) is clean again**.
       `text_general` named a class the catalog does not carry, `docValues` would stay undetermined,
       the same edit would underline nothing, and the check would read as correct forever without ever
       having proved anything.
-- [ ] **INSP-9** — Undo everything, including DOC-6's version edit: both files return to
-      their BASE counts — **two** warnings in `managed-schema.xml`, zero in
+- [ ] **INSP-9** — Undo everything, including
+      [the version-flip check](#5-quick-documentation-doc)'s version edit: both files return to
+      [their baseline](#2-zero-false-positive-baseline-base) counts — **two** warnings in
+      `managed-schema.xml`, zero in
       `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
       planted `legacy` field's undeclared type are part of the baseline and stay underlined.
-      None of INSP-7's three edits survives into the baseline: the demo's own chains are
+      None of [the analyzer-chain ordering check](#6-inspections-and-quick-fixes-insp)'s three
+      edits survives into the baseline: the demo's own chains are
       correctly ordered. No dimmed type is part of the baseline: every type the demo
       declares has a field behind it.
 
@@ -465,8 +501,8 @@ the user meets it — ordering, summaries, what the platform mixes in.*
       offer the declared fields; `<analyzer type=` offers `index`/`query`.
 - [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default.
       Change the root element to `version="1.7"` and it marks **false** instead; undo. Same
-      claim as DOC-5 and DOC-6, in the surface where a reader meets it first, and the same
-      reason for testing both sides.
+      claim as [the schema-version property-default checks](#5-quick-documentation-doc), in the
+      surface where a reader meets it first, and the same reason for testing both sides.
 - [ ] 📸 **Capture `docs/images/05-completion-field-properties.png`** — caret after
       `stored="true"` on line 70 and before the `/`, type a space, frame the summaries and
       the accepted values. Undo the space afterwards.
@@ -490,7 +526,8 @@ popup, against the demo configset's declared Solr line.*
       declares its own attributes only in that one constructor and nowhere else, which is why
       reading it is enough: nobody hand-maintains this list, and CAT-2 is what confirms the list
       the build extracted is the one the editor actually offers.
-- [ ] 📸 **Capture `docs/images/06-completion-factory-attributes.png`** — not from CAT-2,
+- [ ] 📸 **Capture `docs/images/06-completion-factory-attributes.png`** — not from
+      [the constructor-bytecode attribute check](#8-completion--catalog-backed-cat),
       which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
       filter at line 48, caret before the closing `/`, space, and frame
       `luceneMatchVersion` and `preserveOriginal` — not `minGramSize` and `maxGramSize`,
@@ -506,7 +543,9 @@ popup, against the demo configset's declared Solr line.*
       worth checking by hand**: nothing in the build establishes that a constructed URL
       resolves, so a page the guide renames fails here and nowhere else.
 
-*Why CAT-3 and CAT-4 are manual at all, given fixtures cover both.* The three surfaces they
+*Why [the request-handler class completion check and the class-value documentation
+check](#8-completion--catalog-backed-cat) are manual at all, given fixtures cover both.*
+The three surfaces they
 exercise — completion, documentation, navigation — were never written for `solrconfig.xml`;
 they were already general, and gained the whole file when the catalog learned Solr's plugin
 kinds. Nothing in that diff looks like a feature, which is exactly why a gesture belongs here.
@@ -518,7 +557,9 @@ kinds. Nothing in that diff looks like a feature, which is exactly why a gesture
 *Automated: `SolrParameterFieldCompletionTest`, `SolrConfigFieldReferenceTest`. Manual adds: the
 popup where a reader actually meets it, inside a string the platform has no vocabulary for.*
 
-This is the inverse of INSP-1's warning. The list that lets an inspection say `descriptoin` is not a
+This is the inverse of
+[the dangling-copyField check](#6-inspections-and-quick-fixes-insp)'s warning. The list that lets
+an inspection say `descriptoin` is not a
 field is the list that offers `description` first, and until it shipped the plugin only ever
 corrected.
 
@@ -569,8 +610,9 @@ a guess that looks exactly like knowledge, in a file made almost entirely of sam
       under `<config>`. **The demo declares no `<query>`**, so type one first; the catalog keys
       `filterCache` to that parent and `dataDir` to the root, which is what the check reads.
 - [ ] **STR-3** — `nrtMode` is **not** offered anywhere, though the catalog carries it. An element
-      Solr rejects must never be completed; INSP-13 is the same fact from the other side, reporting
-      one already written.
+      Solr rejects must never be completed;
+      [the discontinued-element inspection check](#6-inspections-and-quick-fixes-insp) is the same
+      fact from the other side, reporting one already written.
 - [ ] **STR-4** — Inside a made-up `<acmeThing>`, completion offers nothing rather than echoing its
       siblings, and typing any element inside it draws no warning. **Silence and permissiveness
       together** — the plugin has nothing to say about a custom component and must not pretend either
@@ -605,10 +647,13 @@ Manual adds: dimming is a rendering claim, and only a real editor shows whether 
 **The one surface here that must never reach the Problems view.** A restated default is correct
 Solr; the file is right and merely says something twice.
 
-**The untouched demo is already full of restated defaults, so DIM-1 needs no edit.** Every field
+**The untouched demo is already full of restated defaults, so
+[the untouched-schema dim check](#11-an-attribute-that-restates-its-default-dim) needs no edit.**
+Every field
 declares `indexed="true"` and most declare `stored="true"`, and Solr defaults both to true — so the
 dim is part of the baseline rather than something a gesture produces. That is worth knowing before
-BASE-1: a dozen greyed attributes in a clean schema is this feature working, not a defect.
+[the zero-false-positive baseline check on the schema](#2-zero-false-positive-baseline-base): a
+dozen greyed attributes in a clean schema is this feature working, not a defect.
 
 - [ ] **DIM-1** — Open `managed-schema.xml` untouched. The `indexed="true"` and `stored="true"` on
       the field block render greyed, whole-attribute, and **nothing about them appears in the
@@ -653,20 +698,28 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
-  type carries — DOC-5's version resolution settles a different pair of properties
+  type carries — [the check that a field's property table reports a version-derived
+  default](#5-quick-documentation-doc)'s version resolution settles a different pair of properties
 - A configuration element **removed between two supported Solr lines**, which is a different check
-  from INSP-13 and has nothing to press: the two lines differ by one element, `featureVectorCache`,
+  from [the discontinued-element check](#6-inspections-and-quick-fixes-insp) and has nothing to
+  press: the two lines differ by one element, `featureVectorCache`,
   *added* in 10. Nothing was removed, so there is no gesture until a future line drops something
 - **Do not read INSP's length as an inspection count** — eleven inspection classes exist, and the
-  INSP checks above are scenarios over them rather than one apiece: INSP-1 and INSP-3 are both the
-  dangling-`copyField` inspection, once on a written edit and once on a live deletion; INSP-10 to
-  INSP-12 are the two `solrconfig.xml` field checks, including one scenario whose whole point is
-  that the two disagree about the same field; and INSP-9 restores the baseline rather than testing
+  [INSP checks above](#6-inspections-and-quick-fixes-insp) are scenarios over them rather than one
+  apiece: [INSP-1 and INSP-3](#6-inspections-and-quick-fixes-insp) are both the
+  dangling-`copyField` inspection, once on a written edit and once on a live deletion;
+  [INSP-10 to INSP-12](#6-inspections-and-quick-fixes-insp) are the two `solrconfig.xml` field
+  checks, including one scenario whose whole point is
+  that the two disagree about the same field; and [INSP-9](#6-inspections-and-quick-fixes-insp)
+  restores the baseline rather than testing
   anything. **Four of the eleven belong to plan steps other than the inspections one**, and their
-  checks sit here all the same: the two attribute checks at INSP-5 and INSP-6, the misspelled
-  parameter at INSP-14, and the unsupported field operation at INSP-10 to INSP-12. The seven the
-  inspections step plans have a gesture apiece at INSP-1 to INSP-4, INSP-7, INSP-8, INSP-13 and
-  INSP-15 — all seven, since the last two of those were written. **A gesture is not a pass**; which
+  checks sit here all the same: the two attribute checks at
+  [INSP-5 and INSP-6](#6-inspections-and-quick-fixes-insp), the misspelled
+  parameter at [INSP-14](#6-inspections-and-quick-fixes-insp), and the unsupported field operation at
+  [INSP-10 to INSP-12](#6-inspections-and-quick-fixes-insp). The seven the
+  inspections step plans have a gesture apiece at
+  [INSP-1 to INSP-4, INSP-7, INSP-8, INSP-13 and INSP-15](#6-inspections-and-quick-fixes-insp) —
+  all seven, since the last two of those were written. **A gesture is not a pass**; which
   of them anyone has pressed is the [pass log](#pass-log)'s to say and no other line's
 
 ### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
