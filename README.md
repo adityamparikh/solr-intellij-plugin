@@ -188,6 +188,7 @@ they are written down — a compatibility matrix ships with the first release.
 | [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done — the one file that owns status |
 | [Project orientation](docs/project-orientation.md) | A reader's map of where the project stands, pointing into the plan rather than restating it |
 | [User guide](docs/user-guide.md) | Every editor capability, organised by what you're trying to do, with the gesture and the outcome |
+| [Inspection catalog](docs/inspection-catalog.md) | Every registered inspection: what it reports, its severity, and what it deliberately stays silent about |
 | [Contributing](docs/contributing.md) | Setup, first run, where work comes from, and how a change gets merged |
 | [Code organization](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [How-to guides](docs/how-to/) | Adding an editor feature, extending the field model, testing against the gates |

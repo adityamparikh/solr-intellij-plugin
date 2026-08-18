@@ -10,6 +10,7 @@ behind a link. Read the relevant one before designing anything.
 | [`docs/contributing.md`](docs/contributing.md) | Setup, first run, where work comes from, commit and PR mechanics, CI |
 | [`docs/code-organization.md`](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [`docs/how-to/add-an-editor-feature.md`](docs/how-to/add-an-editor-feature.md) | Adding an inspection, completion, reference, documentation or hint |
+| [`docs/inspection-catalog.md`](docs/inspection-catalog.md) | What each registered inspection reports, its registered severity, and what it stays silent about |
 | [`docs/how-to/extend-the-field-model.md`](docs/how-to/extend-the-field-model.md) | Adding to `model` and the parsers that fill it |
 | [`docs/how-to/testing-and-the-build-gates.md`](docs/how-to/testing-and-the-build-gates.md) | Test conventions, and clearing Dokka and Kover |
 | [`docs/manual-test-suite.md`](docs/manual-test-suite.md) | The sandbox verification pass: gesture, expected outcome, pass history — never build status |
