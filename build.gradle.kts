@@ -5,6 +5,7 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedArtifactResult
 import org.gradle.jvm.JvmLibrary
 import org.gradle.language.base.artifact.SourcesArtifact
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
@@ -94,6 +95,36 @@ intellijPlatform {
             verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
         }
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Release metadata. The Marketplace shows two things this build has to produce rather than hold in
+// a file: the plugin's change notes, and the build range it claims.
+// ---------------------------------------------------------------------------------------------
+
+// `<change-notes>` comes from CHANGELOG.md rather than being written twice. Keeping them separate is
+// how a release ships notes that describe the previous one: the changelog is what a contributor
+// edits, so it is the copy that stays true, and this renders it rather than restating it.
+tasks.patchPluginXml {
+    changeNotes = provider {
+        with(changelog) {
+            renderItem(
+                // The released section when this build is one, the unreleased section otherwise, so
+                // a snapshot build shows what is *about* to ship rather than an empty element.
+                (getOrNull(project.version.toString()) ?: getUnreleased())
+                    .withHeader(false)
+                    .withEmptySections(false),
+                Changelog.OutputType.HTML,
+            )
+        }
+    }
+}
+
+changelog {
+    // The file already follows Keep a Changelog and predates this block; these two lines only tell
+    // the plugin what it is reading, so `patchPluginXml` above can find a version's section.
+    path = file("CHANGELOG.md").canonicalPath
+    repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
 }
 
 // Open the demo fixture in the sandbox IDE instead of whatever project the sandbox happened to

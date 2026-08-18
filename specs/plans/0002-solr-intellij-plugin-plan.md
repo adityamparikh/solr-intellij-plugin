@@ -2183,6 +2183,24 @@ quietly rots.
 
 - [ ] All release-blocking documentation exists and CI checks pass.
 
+**What 0.1.0 needed and what it got.** The release is the Editor track and says so: it reads files and
+never opens a socket, which is the design rather than a first release's limitation, and the Marketplace
+description leads with it rather than apologising for it.
+
+- **Action 4 shipped.** [The compatibility matrix](../../docs/compatibility.md) names the IDE build,
+  the two Solr releases and the toolchain, and names where each is *declared* in the build — it is
+  written from `build.gradle.kts` rather than beside it, which is what
+  [CI gates](#step-20-ci-gates-in-progress)' remaining drift check will assert. `CHANGELOG.md` cut its
+  first version section, and `<change-notes>` is now rendered from it by `patchPluginXml` rather than
+  written a second time in the descriptor.
+- **Action 1 was already most of the way there** — the README has the quick start, the feature tour
+  with screenshots and the stated limits; what it lacked was a status paragraph that was true and an
+  install section that did not begin "not yet available".
+- **Action 3 was already done** and had been for months: [`docs/contributing.md`](../../docs/contributing.md).
+- **Action 5 is partial.** The Marketplace description is written; the screenshots exist in the README;
+  a recording of the headline features does not, and is the one release-blocking item this step cannot
+  claim.
+
 **Acceptance:** No demo step. The compatibility matrix written here is what makes the version-drift check
 in [CI gates](#step-20-ci-gates-in-progress) meaningful rather than vacuous.
 
