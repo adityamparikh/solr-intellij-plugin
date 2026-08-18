@@ -494,6 +494,42 @@ wrong — is recorded as an open question beside
 [showing that an attribute restates the default](#step-26-showing-that-an-attribute-restates-the-default-done)
 rather than settled here.
 
+**And the track shipped four defects, all found after it was declared done, and all in surfaces these
+steps mark complete.** They are recorded here rather than reopening the steps, because every one of
+them is fixed and every step's criteria were honestly met — what was wrong was not the work but a fact
+underneath it. Three of the four share a shape the standing rules already forbid: the plugin claiming
+something is wrong with a configset Solr reads without complaint.
+
+- **The generated element vocabulary placed `<nrtMode>` and `<unlockOnStartup>` at the top level.**
+  Solr reads both under `<indexConfig>`, so the discontinued-element rule underlined a position Solr
+  never reads and stayed silent on the one that stops a core starting. The scan could follow a parent
+  written as a literal but not one arriving through a local variable. Ten element names moved when it
+  was fixed; `SolrConfigElements.UNPLACED` now distinguishes *no parent* from *no parent observed*,
+  because conflating them is what published a guess as a claim.
+- **Boolean field properties were compared case-sensitively**, so `indexed="TRUE"` — which Solr reads
+  with `Boolean.parseBoolean` — resolved to a definite false and the operation rules underlined a
+  schema that works. The plugin already disagreed with itself here: the invalid-value inspection
+  accepted the spelling the operation rule misread.
+- **The companion-field intentions ignored `multiValued`**, so accepting one on a multi-valued field
+  wrote a `copyField` into a single-valued destination — a schema that parses, passes every editor
+  check, and fails while Solr is indexing the user's documents.
+- **`fl` and its kin were split on a literal space**, so a parameter written one name per line — which
+  Solr accepts — produced a field name with a newline inside it, and the unknown-field inspection
+  reported a field nobody wrote.
+
+**The lesson is the same one this track already paid for twice, and it is worth stating in its
+general form.** Every check that should have caught these was written from the plugin's own behaviour,
+and a check written that way can only ever prove the plugin is self-consistent. Each defect was found
+by asking Solr instead — reading `SolrConfig`'s bytecode, `FieldProperties.parseProperties`, and what
+`copyField` does at index time. The manual suite's INSP-13 was *pressed and logged green* against the
+wrong position, which is why the suite's own pass log now marks that entry superseded rather than
+deleting it.
+
+One completeness gap remains open and is not a defect: `httpCaching`, `lockType` and `infoStream`
+appear in all four shipped configsets and in neither catalog, because `SolrConfig` does not read them.
+A reader whose own file contains `<lockType>` sees it offered nowhere. Closing it means teaching the
+generator to read further Solr classes, which is new work rather than a fix.
+
 ### Step 5: References, navigation and Find Usages (done)
 
 **Actions:**
@@ -640,11 +676,16 @@ inspection asserts nothing of its own and quotes Solr instead.
 seven is reachable by hand in the sandbox: the last two to get one are
 [the non-indexed relevance check](../../docs/manual-test-suite.md#6-inspections-and-quick-fixes-insp) and
 [the discontinued-element check](../../docs/manual-test-suite.md#6-inspections-and-quick-fixes-insp). The
-discontinued-element check has been pressed; the non-indexed relevance check has been audited against the demo lines it
-names and the catalog row its rule turns on, and not pressed. **That distinction is the manual suite's to record and
-not this step's to wait on** — a step ships a gesture with an outcome it can produce, and whether anyone has pressed
-it is what [the pass log](../../docs/manual-test-suite.md) exists to say. Reading a pass out of this heading is the
-same mistake as reading a status out of the code.
+discontinued-element check has been pressed — **and its one recorded pass is not evidence any more.** It was pressed
+on 2026-08-15 against `<nrtMode>` written directly inside `<config>`, which is the position the element-placement
+defect recorded at this track's opening made look wrong when it was in fact the position Solr never reads; the pass
+log now marks that entry superseded rather than deleting it, records why under its 2026-08-16 entry, and still wants
+a fresh press against `<indexConfig>`, where the fix moved the underline. The non-indexed relevance check has been
+audited against the demo lines it names and the catalog row its rule turns on, and not pressed — and that audit
+predates the same track's boolean-comparison defect, so it wants redoing rather than reuse too. **That distinction
+is the manual suite's to record and not this step's to wait on** — a step ships a gesture with an outcome it can
+produce, and whether anyone has pressed it is what [the pass log](../../docs/manual-test-suite.md) exists to say.
+Reading a pass out of this heading is the same mistake as reading a status out of the code.
 
 **Acceptance:** demo steps
 [25 — *show the dangling reference*](../../docs/demo/README.md#step-25-show-the-dangling-reference)
@@ -711,7 +752,11 @@ shipped with no exit to the UI.
   targets.
 - [x] Quick-fixes produce valid configset edits.
     - [x] The `_prefix` companion, its copy rule, and the field type when one has to be written.
-    - [x] The `_exact` companion, on the same terms.
+    - [x] The `_exact` companion, on the same terms. **"Valid" meant "parses and passes every editor check" when
+      this was ticked, and Solr's definition turned out to be narrower.** Neither companion carried `multiValued`
+      from its source field, so a companion generated for a multi-valued field parsed cleanly, passed every check
+      here, and failed once Solr tried to index a document through the resulting `copyField`. One of the four
+      defects recorded at this track's opening; fixed there, not by reopening this criterion.
 
 **Acceptance:** demo steps
 [28 to 33 — the hints and the generated fix](../../docs/demo/README.md#step-28-show-the-hint-on-a-string-field). A
@@ -895,6 +940,14 @@ Actions 1 and 3 are the two that remain, and both are startable.
    sort syntax stay untouched: `qf` offers `name` rather than `name^3`, a caret after `name^` is inside a boost, and a
    `sort`'s second token is a direction rather than a field.
 
+   **The parser this action and the unknown-field inspection both read had its own defect.** `fl` and the other plain
+   field-list parameters were split on a literal comma and a literal space rather than on whitespace generally, so a
+   list written one name per line — which Solr accepts, splitting on commas and whitespace alike — left the newline
+   inside the token and produced one "field" spelling two names together. The unknown-field inspection reported the
+   result as unknown, and this action's completion and documentation would have offered the same broken name rather
+   than the two real ones. One of the four defects recorded at this track's opening; the separator is now a
+   whitespace-or-comma pattern.
+
 **Which operations a field supports has to be settled first, and it is not an Editor-track concern.** Action 5 cannot
 offer a field the inspections then underline, so the rule deciding whether a field is searchable, filterable, facetable or
 sortable has to exist before it — and that rule has a consumer in every track. The configuration surface asks whether a
@@ -910,6 +963,14 @@ with *neither* `indexed` nor `docValues` are accepted silently and rejected by S
 disjunction, and the plugin has never expressed one: every property check today resolves a single property and compares
 it. **This may deserve its own step in the model area rather than a slot under an Editor-track step**, which is a
 placement decision this plan owns.
+
+**The comparison this table runs on had its own defect, found later still.** `SolrFieldOperations` resolved each
+property with `.equals("true")`, so `indexed="TRUE"` — a spelling `Boolean.parseBoolean` accepts, since that is how
+Solr itself reads it — resolved to a definite *false* rather than to true, and every disjunction built on this table
+inherited the wrong answer for a schema Solr loads without complaint. One of the four defects recorded at this
+track's opening; fixed by comparing case-insensitively and resolving to null, not false, for a spelling that is
+neither word — leaving a genuinely invalid value for the invalid-value inspection to name rather than a guess this
+table would otherwise make on its behalf.
 
 **Success criteria:**
 
@@ -1050,6 +1111,16 @@ runtime-editable resource without being confirmed removed outright; see
 [the correction under action 1 above](#step-6-inspections-done) for both, and for why the weaker claim
 is the one this document makes. Worth having on record even though it does not change what this
 section decided, since the rule this step needed was about elements.
+
+**Being on this list settles whether the pass reads the element at all, not where it sits — and that second
+question had its own defect, discovered after this section was written.** The generator could follow a parent
+written as a literal beside the reading call but not one reaching it through a local variable, and `SolrConfig`
+reads both `<nrtMode>` and `<unlockOnStartup>` by reloading `"indexConfig"` out of a local rather than writing it
+beside the call — so both were catalogued at the top level, one level above where Solr actually rejects them. The
+`discontinued` marking was correct throughout; the nesting a reader would have completed into was not. Recorded at
+this track's opening as the first of the four defects; fixed by tracking strings through locals and following the
+receiver chain, with `SolrConfigElements.UNPLACED` now standing for "no parent observed" so the next element a
+chain fails to reach is visible rather than silently placed at the root.
 
 The distribution tarball and the vendored-files fallback are both retired regardless, and the shipped
 configsets stay what this step's criteria want them for: the zero-findings fixture.
