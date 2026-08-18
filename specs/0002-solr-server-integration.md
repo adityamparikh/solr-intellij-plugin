@@ -43,6 +43,9 @@ are each one step's own work once the reader beneath them exists.
   new shape.
 - Fix the version-selection gap this investigation found: the model already declares a `SERVER` source
   of authority and has no path that ever produces it.
+- Settle which live collection a configset on disk is compared against, since nothing in the plugin
+  knows today and a connection names a server rather than a collection — four steps need one answer
+  and would otherwise reach four.
 - State plainly what the plugin may claim when repository and server disagree, and what it must not —
   the same lesson the Editor track paid for four times, applied here before the code exists rather than
   after a defect report.
@@ -130,7 +133,8 @@ generalize directly to the server track and are adopted rather than rediscovered
 - **"Where the catalog cannot answer, the plugin says nothing"** becomes, here, *where the server
   cannot be asked, the plugin says nothing* — silence over a false positive extends past the editor
   track's inspections into what a drift comparison is willing to assert. See
-  [Disagreement is data, not a verdict](#disagreement-is-data-not-a-verdict).
+  [FR-9](#requirements), and [FR-12](#requirements) for the case where the plugin does not even know
+  which collection to ask.
 - **"A dead link is worse than no link"** — that document's rule for Reference Guide anchors —
   generalizes to *a stale server fact is worse than no server fact*, which is why
   [NFR-4](#requirements) requires stale data to be labelled, matching the parent specification's own
@@ -188,7 +192,9 @@ central design decision, and it follows directly from `SolrConfigsetFacts`'s own
 deliberately "what a *parser* produces," shaped so the same type serves both sources
 (`SolrConfigsetFacts.kt:10-15`). The server reader is therefore a second parser — of JSON rather than
 XML — with the same contract `SolrSchemaParser` already has: pure input to `SolrConfigsetFacts` output,
-testable with no IDE fixture. Concretely, against the Schema API's full-schema endpoint (`GET
+testable with no IDE fixture. **`<collection>` is not something the reader works out** — it comes from
+the pairing [FR-12](#requirements) defines, and a configset with no pairing is not read at all.
+Concretely, against the Schema API's full-schema endpoint (`GET
 /<collection>/schema`, verified against the Reference Guide's Schema API page, wrapping the schema
 under a `"schema"` key with `fields`, `dynamicFields` *(via `/schema/dynamicfields`, not present on the
 full-schema response's top level per the same page — verify per [open question
@@ -201,16 +207,18 @@ full-schema response's top level per the same page — verify per [open question
 | `fieldTypes` | `schema.fieldTypes[]` | `class` → `className`; the analyzer chain (`analyzer`/`indexAnalyzer`/`queryAnalyzer`) is present but its exact JSON shape is unverified — see [open question 3](#open-questions) |
 | `copyFields` | `schema.copyFields[]` | `source`/`dest` — **whether `dest` is ever an array bundling several destinations under one entry, requiring expansion into several `SolrCopyField` facts, is unverified** — see [open question 4](#open-questions) |
 | `uniqueKey` | `schema.uniqueKey` | |
-| `schemaVersion` | `schema.version` | A JSON number, e.g. `1.5`. `SolrSchemaVersion` already wraps a `Float` directly (`SolrSchemaVersion.kt:23`), so this is a direct construction with **no string round trip and no format reconciliation** — the two representations were never actually different, only reached through different call sites |
+| `schemaVersion` | **not populated by this parser** | The server reports one, and nothing would read it: `SolrFieldModel.of` takes `SolrSchemaVersion.of(repo.schemaVersion)` — the repository half, deliberately, because "the schema version is a property of the file the user is editing" (`SolrFieldModel.kt:207-209`). Populating it would create a value that looks consumed and is discarded on the next line, which is the mistake the element catalog's `valueType` column already made and paid for. If a future step wants to show a schema-version disagreement it must change `of` first, and that is a change to argue for rather than to arrive by accident. **Note also that `SolrConfigsetFacts.schemaVersion` is a `String?` "exactly as written" (`SolrConfigsetFacts.kt:26-28`), not a `Float`** — an earlier draft of this row claimed the opposite and inferred from it that no string round trip was needed |
 | `fieldReferences` | always empty | Already documented on the type: "always empty for a server, which reports its configuration rather than the file that produced it" (`SolrConfigsetFacts.kt:22-23`) |
 | `luceneMatchVersion` | **not populated by this parser** | See [FR-6](#requirements) — the server's own version is a different fact, carried differently |
 
 **FR-6 — The server's reported Solr version becomes a new, distinct fact, not a value for
 `luceneMatchVersion`.** `luceneMatchVersion` names a *Lucene* back-compat target the configset
 declares; a connected server reports its own running *Solr* version directly, with no Lucene-version
-translation needed at all — the [`fromLuceneMatchVersion` translation
-table](0002-solr-intellij-plugin.md#solr-configuration-files-gets-the-same-treatment-as-the-schema)
-exists specifically because a configset only ever *implies* a line, where a server *is* one. Verified
+translation needed at all — `fromLuceneMatchVersion` exists specifically because a configset only ever
+*implies* a line, where a server *is* one. The parent specification's
+[factory catalog section](0002-solr-intellij-plugin.md#the-factory-catalog) is where the three-tier
+order is stated; an earlier draft of this sentence linked an anchor that does not exist in that
+document, which is the failure its own "a dead link is worse than no link" rule names. Verified
 against the Reference Guide's System Info Handler page: the endpoint (`/admin/info/system`, called out
 by that page's title even though the exact JSON key path was not confirmed by this investigation — see
 [open question 5](#open-questions)) reports a `lucene.solr-spec-version` field.
@@ -221,13 +229,33 @@ that type has to stay symmetric between the two sources (per its own stated purp
 never has a server version to report. `SolrFieldModel.solrVersion` becomes:
 
 ```
-server version reported → SolrVersionSelection(serverVersion, SolrVersionSource.SERVER)
+server version reported → SolrVersionSelection(guideSegmentFor(major of it) ?: "latest", SERVER)
 else luceneMatchVersion  → SolrVersionSelection.fromLuceneMatchVersion(it)
 else                      → SolrVersionSelection.DEFAULT
 ```
 
 which is exactly the three-tier order the parent specification already states under "Which entry
 applies is decided in this order," implemented for the first time rather than described.
+
+**The first argument is a Reference Guide path segment, not a version, and an earlier draft of this
+section got that wrong.** `SolrVersionSelection(guidePathSegment, source)` is what the type takes
+(`SolrReferenceGuide.kt:151-154`), and `fromLuceneMatchVersion` never passes a version into it — it
+reads the segment out of the catalog with `SolrClassCatalog.guideSegmentFor(major)`
+(`SolrReferenceGuide.kt:157-162`). Handing it `"10.0.0"` would produce links to
+`…/guide/solr/10.0.0/…`, which is a variant of a defect this plugin has already shipped once and
+fixed: an earlier revision assembled the segment as `${major}_0`, sent every Solr 9 configset to the
+Solr **9.0** documentation, and the links were live and about the wrong Solr — "harder to notice than
+a 404," in that fix's own words. The server arm must translate through the same catalog lookup, for
+the same reason.
+
+**A server on a line this build ships no catalog for reports `latest` as its segment and keeps
+`SERVER` as its source.** `guideSegmentFor` returns null there, and the two obvious alternatives are
+both worse: falling back to `DEFAULT` would discard the fact that a server answered at all, and
+constructing a segment would invent a guide URL for a release that may not be published. Naming the
+newest guide while still saying the connected server decided it is the honest pair, and it satisfies
+the parent specification's "an unrecognized server version is reported rather than refused" — the
+version string itself stays available for display beside the connection, which is where a reader
+looks to find out what they are actually talking to.
 
 **FR-7 — Collections, cores, shards, replicas and aliases read from the Collections API.** Verified
 against the Reference Guide's Cluster and Node Management page: `CLUSTERSTATUS`
@@ -278,18 +306,74 @@ indexed document is stated explicitly in that confirmation per Step 15's own act
 silently, because an uncommitted document that "isn't findable yet" is indistinguishable from a failed
 index to a user who was not told which one to expect.
 
+**FR-12 — A configset is compared against a collection only where a human has said which, and that
+pairing is stored.** Every read in [FR-5](#requirements) is addressed to `<baseUrl>/<collection>/…`,
+and `SolrConnection` carries no collection: `baseUrl` is documented as "the server root, such as
+`http://localhost:8983/solr`" (`SolrConnectionSettings.kt:22`). Nothing else in the plugin knows which
+live collection a directory of XML corresponds to, and **nothing may infer it**. A configset directory
+named `techproducts` is not evidence that a collection called `techproducts` on this server was built
+from it; it is evidence that somebody named two things the same way, which is how a drift view ends up
+confidently comparing a schema against a collection it has nothing to do with.
+
+**A pairing is the triple (configset root, connection id, collection name)**, and it is what every
+server-side read and the whole of Step 14 is addressed by. Four consequences, each of which would
+otherwise be decided differently by four steps:
+
+- **It persists per-user, beside the connections in the workspace file — never in the shared
+  `solr.xml`.** A pairing names a connection id, and connections are per-developer by construction:
+  the URL may be a personal port-forward and the credential is personal by definition. Writing a
+  pairing to the project-level settings would commit a reference to a connection nobody else can
+  resolve. The configset root is stored macro-collapsed, exactly as
+  `SolrConfigsetSettings.addManualRoot` already stores one (`SolrConfigsetSettings.kt:134`), so a
+  pairing survives the project moving on disk.
+- **A configset may have several pairings; a comparison has exactly one.** In SolrCloud a configset is
+  uploaded once and used by many collections, so forcing one pairing would make the common case
+  unrepresentable. What must not happen is a comparison that silently merges or picks among them: the
+  drift view compares against one named collection at a time, and says which.
+- **No pairing is the ordinary state, and the plugin says nothing in it.** A project with configsets
+  and no connection, or with a connection nobody has paired, produces no drift content and no server
+  half in any model — not an empty comparison, not a prompt, not a guess. This is the same rule the
+  editor track holds everywhere: where the plugin cannot be sure, it is silent.
+- **A pairing is created by a human and only by a human.** The chooser may *pre-select* a collection
+  whose name matches the configset directory, because a default in a dialog somebody confirms is a
+  convenience rather than a claim. Writing the pairing without asking would be the claim.
+
+**Removing a connection removes its pairings**, since the triple no longer resolves. A pairing whose
+collection is absent from the server is reported when it is used and left in place — a collection can
+be down, renamed back, or not yet created, and deleting the user's stated intent because a server was
+temporarily unreachable is the plugin discarding information it did not author.
+
+**What this does not settle** is where the chooser lives — a dialog from the drift view, a field on the
+connection, an action on the configset root in the project tree. That is Step 12's or Step 14's UI
+question, per this document's non-goals. The triple, its persistence, and the prohibition on inferring
+it are what four steps need agreed before any of them starts.
+
 ### Non-functional
 
 **NFR-1 — The editor-path boundary is enforced by a test, not only by CLAUDE.md's prose.** A contract
 test — the same shape as `SolrDumbModeContractTest`, which already holds the dumb-mode promise to more
-than a comment — asserts that no class under the editor-facing packages (`configset.schema`,
-`configset.solrconfig`, `configset.hint`, `configset.intention`, `configset.reading`, and any inspection
-or completion package) imports anything from `org.apache.solr.ide.server`. This is the concrete answer
-to "what enforces it": today nothing does, because nothing on the editor path has ever had a server
-package to import. Once Step 11 creates one, the boundary stops being self-evident and starts being
-something a future change could cross by accident — an inspection author reaching for "just check the
-live server" to resolve an edge case the repository alone cannot answer, which is precisely the
-shortcut this rule exists to close off before it is taken once.
+than a comment — asserts that **the only packages importing `org.apache.solr.ide.server` are
+`org.apache.solr.ide.server` itself and a short, explicitly named allowlist**: the tool windows and
+actions that exist to talk to a server, which Steps 12 through 15 add. Every other package in the
+plugin, discovered by walking the source tree rather than listed, must not import it.
+
+**Stated as an allowlist of server consumers rather than a denylist of editor packages, and that is
+the whole of the design.** An earlier draft enumerated the editor-facing packages to forbid —
+`configset.schema`, `configset.solrconfig`, `configset.hint`, `configset.intention`,
+`configset.reading` — and two of those five do not exist; the packages under `configset` are
+`activation`, `editing`, `navigation`, `reading`, `schema` and `solrconfig`. A hand-maintained list of
+what to forbid was wrong on the day it was written, and would have gone quietly wronger every time
+someone added a package, because a package missing from the list is a package the test permits. This
+plugin has paid for a hand-maintained copy of a list before — two of them, for the supported Solr
+lines, drifting silently in both directions until a test compared them against what the build
+generated. Inverted, the failure mode inverts with it: a new package that reaches for the server fails
+the test until someone adds it to the allowlist deliberately, in a diff a reviewer sees.
+
+This is the concrete answer to "what enforces it": today nothing does, because nothing on the editor
+path has ever had a server package to import. Once Step 11 creates one, the boundary stops being
+self-evident and starts being something a future change could cross by accident — an inspection author
+reaching for "just check the live server" to resolve an edge case the repository alone cannot answer,
+which is precisely the shortcut this rule exists to close off before it is taken once.
 
 **NFR-2 — Nothing here blocks the UI thread; every call is asynchronous.** `HttpClient.sendAsync`
 already returns a `CompletableFuture` rather than blocking the calling thread; the requirement is that
@@ -345,7 +429,8 @@ requires and was not itself named as a plan action.
 | Fake HTTP layer | Success, timeout, authentication failure, malformed response, and an unrecognized server version — the five states Step 11 names, none of which a real server produces reliably on demand. An embedded `com.sun.net.httpserver.HttpServer` needs no new dependency and can simulate all five | Plain JUnit 4 |
 | Contract test per supported line | The reader parses what a real Solr of that line actually returns — the wire-format risk a fake cannot cover, per the parent specification's own reasoning for requiring this tier | Testcontainers, `solr:10.0.0` and `solr:9.10.1`, pinned by tag never `latest`; started and stopped by the test itself, satisfying the standing rule that no automated test needs a Solr a developer started by hand |
 | `SolrConnectionSettings` | Persistence and PasswordSafe round-trip | `SolrConfigsetTestCase`, per the existing rule for anything touching persistent connection or configset settings |
-| Boundary contract | No editor-path package imports `org.apache.solr.ide.server` | Plain JUnit 4, or whatever `SolrDumbModeContractTest` itself uses, for consistency |
+| Pairing persistence | A pairing round-trips through the workspace state with its root path macro-collapsed; removing a connection removes its pairings; a configset with none produces no server read at all — the silence being the assertion worth having, per [FR-12](#requirements) | `SolrConfigsetTestCase`, since it touches the same persistent settings |
+| Boundary contract | Only `org.apache.solr.ide.server` and the named allowlist import `org.apache.solr.ide.server`; every other package, discovered by walking the source tree, does not | Plain JUnit 4, or whatever `SolrDumbModeContractTest` itself uses, for consistency |
 | `SolrFieldModel.of` with a real server half | The four agreement states populate correctly from two genuinely different `SolrConfigsetFacts`, not only the synthetic one-sided fixtures Step 3 already covers | Plain JUnit 4 |
 | Version selection | `SERVER` outranks `CONFIGSET` outranks `DEFAULT`, and a model built with no server half still resolves exactly as it does today — a regression test for [FR-6](#requirements) that must not change existing behaviour when no connection exists | Plain JUnit 4 |
 

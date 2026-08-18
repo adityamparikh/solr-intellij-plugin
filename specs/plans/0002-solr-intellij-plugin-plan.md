@@ -179,6 +179,14 @@ whole, and the gutter action goes with the Server track.
   path and no assumption about the working directory. Only the two files the plugin parses are vendored; `conf/` holds
   stopword lists and mapping tables nothing here reads, and a feature that comes to read one brings its file with it.
 - [ ] A local Solr, for manual verification only.
+- [ ] **Testcontainers, which is not in `gradle/libs.versions.toml` today.**
+  [The server reader](#step-11-http-client-connections-and-the-server-reader) requires a contract test
+  per supported line against a real Solr the test starts itself, and that is a new build dependency
+  rather than something already resolvable. It belongs here beside the artifact lines above because it
+  is the same kind of fact: something the first person to start that step discovers is missing, at the
+  point where they can least afford the detour.
+  [The testing strategy](../0002-solr-server-integration.md#testing-strategy) says which tier uses it
+  and which uses the fake HTTP layer.
 - [x] Package namespace settled — it stays `org.apache.solr.ide`, so there is no rename.
   [The activation gate overhaul](#step-2-overhaul-the-activation-gate-done) is the step that had to know and is where
   the reasoning lives, including what the decision leaves open. This line records only that the question is closed,
@@ -1802,9 +1810,18 @@ job and is gone, its cases promoted into the reference and class-value suites.
 
 ### Step 11: HTTP client, connections and the server reader
 
+**[`specs/0002-solr-server-integration.md`](../0002-solr-server-integration.md) is the specification for
+this step and the four after it**, and it is the document to read before writing any of them — the same
+relation [`solrconfig.xml` intelligence](../0002-solrconfig-xml-intelligence.md) has to
+[its step](#step-25-solrconfigxml-as-a-first-class-surface-done). The actions below say *what* to build;
+that document settles the questions that otherwise get answered mid-implementation, and records seven
+it could not close, which are worth reading before the container fixture is written rather than after.
+
 **Actions:**
 
-1. A minimal HTTP and JSON client for the endpoints the plugin needs. No SolrJ dependency — see the spec.
+1. A minimal HTTP and JSON client for the endpoints the plugin needs. No SolrJ dependency — see
+   [FR-1 and FR-2](../0002-solr-server-integration.md#functional), which settle the transport and leave
+   the JSON reader an open question deliberately.
 2. Connection definitions in per-user settings, credentials in PasswordSafe. Basic auth and TLS.
 3. Server reader: schema, collections, cores, and the fields actually present in the index.
 4. Populate the server half of the field model.
@@ -1820,7 +1837,14 @@ job and is gone, its cases promoted into the reference and class-value suites.
 **Success criteria:**
 
 - [ ] A connection can be created, stored and used; credentials never reach project files.
-- [ ] The server half of the model populates.
+- [ ] The server half of the model populates — and **populating it is not the whole of this
+  criterion**. `SolrVersionSource.SERVER` exists today with user-facing text and no production code
+  path can produce it: `SolrFieldModel.solrVersion` reads only `luceneMatchVersion`, and
+  `SolrFieldModel.of` discards the server value outright. Filling the server half while leaving that
+  alone satisfies this line as written and still resolves a connected server's classes against a
+  version read from a file. [FR-5 and FR-6](../0002-solr-server-integration.md#functional) say what
+  the reader must produce and why the version is a separate fact rather than a value for the existing
+  one.
 - [ ] All five failure modes tested against the fake layer.
 - [ ] The reader parses what a real Solr of each supported line actually returns.
 - [ ] Server state refreshes only on request or connection change — never on a timer.
@@ -1890,6 +1914,15 @@ shows as a difference; upload and reload clear it, naming the target server firs
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
 [the server reader](#step-11-http-client-connections-and-the-server-reader)
+
+**Two constraints on this step live in the specification rather than here, and a reader working from
+the plan alone would meet neither.**
+[FR-9](../0002-solr-server-integration.md#functional) forbids this view resolving `.effective` on a
+disagreeing fact: that accessor silently prefers the repository, having been built for single-source
+display, so using it in the one view whose purpose is showing disagreement would hide exactly what the
+view exists to show. [FR-10](../0002-solr-server-integration.md#functional) requires upload and reload
+to re-fetch the server's facts rather than clearing the difference on a successful write — a 2xx is
+proof the request was accepted, not proof the server now agrees.
 
 ### Step 15: Indexing test documents
 
