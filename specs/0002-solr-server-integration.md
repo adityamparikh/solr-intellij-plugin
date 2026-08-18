@@ -46,6 +46,9 @@ are each one step's own work once the reader beneath them exists.
 - Settle which live collection a configset on disk is compared against, since nothing in the plugin
   knows today and a connection names a server rather than a collection — four steps need one answer
   and would otherwise reach four.
+- Settle whether the model the editor reads ever carries server data, because the answer decides
+  whether the boundary above is one rule or two, and whether an inspection can say something a
+  reviewer cannot reproduce.
 - State plainly what the plugin may claim when repository and server disagree, and what it must not —
   the same lesson the Editor track paid for four times, applied here before the code exists rather than
   after a defect report.
@@ -67,7 +70,11 @@ are each one step's own work once the reader beneath them exists.
   configset, reloading a collection. Creating or deleting a collection, changing replication factor,
   and cluster-property management are out of scope until a step asks for them.
 - **Query relevance grammar and the scoring-explanation tree's rendering.** Step 13 owns the console;
-  this document specifies only that field completion in it reads the same model as the editor.
+  this document specifies only that field completion in it reads a `SolrFieldModel` built through the
+  same merge function the editor uses — **its own instance, built for the collection being queried**,
+  not the editor's. See [FR-13](#requirements): the console is about a collection, and completing a
+  field that collection does not have would be the console misdescribing the thing it is about to
+  query.
 - **Per-property drift diffing.** [FR-9](#requirements) below settles that a *field* is DISAGREEING as
   a whole, matching what `SolrFact` already computes; whether the drift view eventually diffs
   `indexed` from `docValues` inside a disagreeing field is Step 14's presentation question, not this
@@ -348,6 +355,45 @@ connection, an action on the configset root in the project tree. That is Step 12
 question, per this document's non-goals. The triple, its persistence, and the prohibition on inferring
 it are what four steps need agreed before any of them starts.
 
+**FR-13 — The editor's model never carries a server half. The two-source model is built where it is
+asked for.** `SolrConfigsetReader.modelFor` — the entry point all twenty-five editor-path callers
+reach — calls `SolrFieldModel.of(facts)` with no server argument, and continues to. Four reasons, of
+which the first is mechanical and the rest are about what an editor is for:
+
+- **The cache cannot express a server half.** `modelFor` caches on the `PsiDirectory` with its
+  dependencies listed as the configset's source files plus `VFS_STRUCTURE_MODIFICATIONS`
+  (`SolrConfigsetReader.kt:73-81`), and the KDoc there already rejects
+  `PsiModificationTracker.MODIFICATION_COUNT` for being too broad. A completed fetch is neither a file
+  edit nor a VFS structure change, so a server-aware editor model needs a dependency that advances on
+  every fetch — invalidating every configset's model and re-running every inspection on every open
+  file, for data the editor's own answers would barely use. CLAUDE.md's standing rule that a fact the
+  reader does not already read must join `sourcesOf` is the same observation from the other side: a
+  server is not a source it can read.
+- **It would make editor answers irreproducible.** An inspection that fires only while connected
+  cannot be reproduced in review, and cannot be reproduced at all by the golden-configset gate, which
+  runs every inspection over Solr's own configsets with no server anywhere. The same file would
+  highlight differently in two developers' IDEs and in CI, which is the property that makes a warning
+  worth acting on.
+- **It would make the editor describe fields the file does not contain.** `SolrFact.effective` prefers
+  the repository, so a server half changes an editor answer only where the repository is *silent* —
+  that is, only by adding facts about fields the user's own schema does not declare. An editor feature
+  exists to explain the file in front of the reader.
+- **It collapses "contacts" and "consumes" into one rule.** [NFR-1](#requirements) forbids the editor
+  path from *contacting* a server. If the editor model could carry server data, that rule would need a
+  second half about consuming it — and a boundary with two halves is one people cross by taking the
+  other.
+
+**The mechanism this needs already exists and has no production caller yet.**
+`SolrConfigsetReader.factsFor(configset)` returns the repository half alone, documented as "exposed for
+the drift comparison, which needs the two halves separately rather than the merged model"
+(`SolrConfigsetReader.kt:86-91`). A server-side surface builds
+`SolrFieldModel.of(factsFor(configset), serverFacts)` itself, once per pairing
+([FR-12](#requirements)). Step 14 is that method's first caller; today only its tests reach it.
+
+**So Step 11's second success criterion — "the server half of the field model populates" — is satisfied
+by `of` being called with a real server half on the drift path, and not by `modelFor` changing.** The
+seam was built to be fed from somewhere; this says where, and just as importantly where not.
+
 ### Non-functional
 
 **NFR-1 — The editor-path boundary is enforced by a test, not only by CLAUDE.md's prose.** A contract
@@ -430,6 +476,7 @@ requires and was not itself named as a plan action.
 | Contract test per supported line | The reader parses what a real Solr of that line actually returns — the wire-format risk a fake cannot cover, per the parent specification's own reasoning for requiring this tier | Testcontainers, `solr:10.0.0` and `solr:9.10.1`, pinned by tag never `latest`; started and stopped by the test itself, satisfying the standing rule that no automated test needs a Solr a developer started by hand |
 | `SolrConnectionSettings` | Persistence and PasswordSafe round-trip | `SolrConfigsetTestCase`, per the existing rule for anything touching persistent connection or configset settings |
 | Pairing persistence | A pairing round-trips through the workspace state with its root path macro-collapsed; removing a connection removes its pairings; a configset with none produces no server read at all — the silence being the assertion worth having, per [FR-12](#requirements) | `SolrConfigsetTestCase`, since it touches the same persistent settings |
+| The editor model stays one-sided | `SolrConfigsetReader.modelFor` reports `REPOSITORY_ONLY` for every fact **with a connection configured and a pairing present** — the editor is unmoved by connection state, per [FR-13](#requirements). The assertion is worth more than it looks: it is the one that fails the day somebody wires a server half in "just for completion" | `SolrConfigsetTestCase` |
 | Boundary contract | Only `org.apache.solr.ide.server` and the named allowlist import `org.apache.solr.ide.server`; every other package, discovered by walking the source tree, does not | Plain JUnit 4, or whatever `SolrDumbModeContractTest` itself uses, for consistency |
 | `SolrFieldModel.of` with a real server half | The four agreement states populate correctly from two genuinely different `SolrConfigsetFacts`, not only the synthetic one-sided fixtures Step 3 already covers | Plain JUnit 4 |
 | Version selection | `SERVER` outranks `CONFIGSET` outranks `DEFAULT`, and a model built with no server half still resolves exactly as it does today — a regression test for [FR-6](#requirements) that must not change existing behaviour when no connection exists | Plain JUnit 4 |
