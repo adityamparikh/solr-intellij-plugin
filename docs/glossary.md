@@ -131,12 +131,17 @@ word with the pattern (`src/main/resources/META-INF/plugin.xml:113`).
 Solr's word for a class that implements a [tokenizer](#tokenizer), [filter](#filter), [char
 filter](#char-filter) or field type — anything named in a `class` attribute, conventionally with a
 `Factory` suffix and a `solr.` shorthand prefix (`solr.LowerCaseFilterFactory`). The set of factories
-a given Solr line ships is roughly 170 entries and changes between major versions, which is why it is
-**generated at build time** from Solr's own jars rather than hand-maintained — see
+a given Solr line ships runs to several hundred entries and changes between major versions, which is
+why it is **generated at build time** from Solr's own jars rather than hand-maintained — see
 [ASM](#asm) and `SolrClassCatalog`
 (`src/main/kotlin/org/apache/solr/ide/model/vocabulary/SolrClassCatalog.kt:1`). `SolrClassKind`
-(`SolrClassCatalog.kt:12`) enumerates the eleven kinds a configset can name a class as, from
-`FIELD_TYPE` and `TOKENIZER` through `REQUEST_HANDLER` and `DIRECTORY_FACTORY`.
+(`SolrClassCatalog.kt:12`) enumerates the kinds a configset can name a class as, from `FIELD_TYPE`
+and `TOKENIZER` through `REQUEST_HANDLER` and `DIRECTORY_FACTORY`.
+
+*Neither figure is counted here, and both were wrong when they were.* This entry said "roughly 170
+entries" — the real count is over four times that — and "the eleven kinds", where the enum has
+twenty-two. Read the generated resource under `build/generated/solr-catalog-resources/` or the enum
+itself if you need a number; a count written into prose has nothing checking it and will drift again.
 
 **Deliberate exception:** the small set of factories `SolrMatchAnalysis` uses to decide what a field
 can *match* (whole-value vs. tokenized, case-sensitive, prefix-capable) are named directly in code,

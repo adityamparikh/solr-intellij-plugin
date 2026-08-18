@@ -41,7 +41,9 @@ connection this looks like a hang. It is not.
 
 Why it exists: a [configset](glossary.md#configset) names Solr classes as strings, and the plugin
 cannot complete or explain `class="solr.StrField"` without knowing what exists. That list runs to
-roughly 170 entries per line and changes between lines, so it is generated rather than written down.
+several hundred entries per line and changes between lines, so it is generated rather than written
+down — count it from the generated resource if you need the figure, rather than trusting one written
+here.
 
 > **In Java terms.** A configset is the schema plus the config of a search index — roughly a
 > Hibernate mapping file plus `persistence.xml`, checked into the repository next to the code that
