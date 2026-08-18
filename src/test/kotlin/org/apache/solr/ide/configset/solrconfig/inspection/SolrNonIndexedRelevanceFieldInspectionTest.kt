@@ -44,7 +44,7 @@ class SolrNonIndexedRelevanceFieldInspectionTest : SolrConfigsetTestCase() {
         """<requestHandler name="/select"><lst name="defaults">${parameters.joinToString("")}</lst></requestHandler>"""
 
     private fun notIndexed(field: String, parameter: String) =
-        """<warning descr="Solr: '$field' is not indexed, so '$parameter' cannot search or boost it">$field</warning>"""
+        """<warning descr="Solr: '$field' is not indexed and has no doc values, so '$parameter' cannot search or boost it">$field</warning>"""
 
     // --- clean fixtures, written first -----------------------------------------------------------
 
