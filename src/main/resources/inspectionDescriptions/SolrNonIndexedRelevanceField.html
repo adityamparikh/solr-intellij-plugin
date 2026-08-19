@@ -1,13 +1,19 @@
 <html>
 <body>
 Reports a query-field parameter in <code>solrconfig.xml</code> that names a field the schema declares
-but does not index.
+but that Solr cannot search.
 <p>
   The field is there, spelled correctly, and the parameter still does nothing. A <code>qf</code>
-  naming an <code>indexed="false"</code> field adds no clause to the query and no boost to the score,
-  because its terms were never written to the inverted index for the query parser to match against.
-  Solr does not complain, the handler still answers, and results are ranked by everything except the
-  field the author meant to emphasise.
+  naming such a field adds no clause to the query and no boost to the score, because there is nothing
+  for the query parser to match against. Solr does not complain, the handler still answers, and
+  results are ranked by everything except the field the author meant to emphasise.
+</p>
+<p>
+  <b>Searchable is a disjunction, not a single attribute.</b> A field is searchable when it is
+  <code>indexed</code> <i>or</i> when it has <code>docValues</code> — Solr turns an exact match on a
+  doc-values-only field into a range query over the doc values rather than refusing it. So a field
+  written <code>indexed="false" docValues="true"</code> is <i>not</i> reported: the parameter works.
+  What is reported is a field with neither.
 </p>
 <p>
   Four parameters are examined: <code>qf</code>, <code>pf</code>, <code>pf2</code> and
@@ -17,11 +23,13 @@ but does not index.
   field there is correct and common.
 </p>
 <p>
-  <code>indexed</code> is resolved rather than read: from the field, then from its field type, then
-  from Solr's own default for the schema version and the type's class. Where that resolution cannot
-  reach an answer — a field type naming a class this build has never seen — nothing is reported.
+  Both attributes are resolved rather than read: from the field, then from its field type, then from
+  Solr's own default for the schema version and the type's class. Where that resolution cannot reach
+  an answer for either one — a field type naming a class this build has never seen — nothing is
+  reported.
 </p>
 <p><small>Example: <code>&lt;str name="qf"&gt;title^3 body&lt;/str&gt;</code> where the schema
-  declares <code>&lt;field name="body" type="text_general" indexed="false" stored="true"/&gt;</code>.</small></p>
+  declares <code>&lt;field name="body" type="text_general" indexed="false" stored="true"/&gt;</code>
+  and the type supplies no doc values.</small></p>
 </body>
 </html>

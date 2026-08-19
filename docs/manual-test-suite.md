@@ -446,7 +446,7 @@ Every check here ends with **undo until
       That pair is the whole reason the rule checks knownness before distance. Undo.
 - [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false` at `managed-schema.xml:68`, then look
       at the `/select` handler's `qf` at `solrconfig.xml:28`. `name` is underlined — **`name` alone, not the
-      `^3` beside it and not the two field names after it** — reading *Solr: 'name' is not indexed, so 'qf'
+      `^3` beside it and not the two field names after it** — reading *Solr: 'name' is not indexed and has no doc values, so 'qf'
       cannot search or boost it*, and `solrconfig.xml` goes from
       [the `solrconfig.xml` baseline check](#2-zero-false-positive-baseline-base)'s zero problems to
       exactly one.
