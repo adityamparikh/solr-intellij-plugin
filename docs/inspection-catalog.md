@@ -194,6 +194,13 @@ and no boost to the score.
 **Finding: defect.** Solr does not complain, the handler still answers, and results are ranked by
 everything except the field the author meant to emphasise.
 
+**Searchable is a disjunction, not a single attribute.** A field is searchable when it is `indexed`
+*or* when it has `docValues` — Solr turns an exact match on a doc-values-only field into a range
+query over the doc values rather than refusing it. So a field written
+`indexed="false" docValues="true"` is **not** reported: the parameter works. What is reported is a
+field with neither. The registered display name still says "non-indexed", which names the common half
+rather than the rule.
+
 **Reads four parameters**: `qf`, `pf`, `pf2` and `pf3` — the ones whose values become term and phrase
 queries.
 
@@ -206,15 +213,6 @@ resolves here by Solr's own longest-literal rule.
 
 **No quick-fix.** The two repairs are to index the field or to name a different one; the first edits
 another file and forces a reindex, the second changes the query. Neither is a typo correction.
-
-> **Where the description page and the code do not agree.** The page — and the warning text — say the
-> field "is not indexed". The rule the code applies is wider than that word: it reports only where the
-> field has **neither an inverted index nor doc values**, because Solr turns an exact match on a
-> doc-values-only field into a range query over the doc values rather than refusing it. So an
-> `indexed="false"` field that has `docValues="true"` is searchable and is **not** reported, which the
-> page's opening sentence would lead a reader to expect otherwise. The code is the one that changed:
-> reading the rule as `indexed="false"` was a defect that warned about working configurations, and the
-> description page still carries the older phrasing.
 
 ### Faceting or sorting parameter names a field that cannot serve it — `SolrUnsupportedFieldOperation`
 
