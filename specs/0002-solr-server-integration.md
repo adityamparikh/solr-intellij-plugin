@@ -206,22 +206,60 @@ deliberately "what a *parser* produces," shaped so the same type serves both sou
 XML — with the same contract `SolrSchemaParser` already has: pure input to `SolrConfigsetFacts` output,
 testable with no IDE fixture. **`<collection>` is not something the reader works out** — it comes from
 the pairing [FR-12](#requirements) defines, and a configset with no pairing is not read at all.
-Concretely, against the Schema API's full-schema endpoint (`GET
-/<collection>/schema`, verified against the Reference Guide's Schema API page, wrapping the schema
-under a `"schema"` key with `fields`, `dynamicFields` *(via `/schema/dynamicfields`, not present on the
-full-schema response's top level per the same page — verify per [open question
-2](#open-questions))*, `fieldTypes`, `copyFields`, `uniqueKey` and a numeric `version`):
+
+**One request, not several.** `GET /<collection>/schema` wraps everything under a top-level `"schema"`
+key and is complete: `fields`, `dynamicFields`, `fieldTypes`, `copyFields`, `uniqueKey`, `name`, and a
+numeric `version`. [The verification pass](#verification-provenance) confirmed the counts returned by
+the full endpoint match the per-kind endpoints exactly on both supported lines (Solr 10.0.0:
+33 fields / 22 dynamic fields / 17 copy fields / 69 field types, identical from `/schema` and from
+`/schema/fields`, `/schema/dynamicfields`, `/schema/copyfields`, `/schema/fieldtypes`; Solr 9.10.1
+identical in shape). An earlier draft of this section guessed the opposite — that `dynamicFields`
+required a second request — and it is wrong. The reader issues one schema request per collection.
 
 | `SolrConfigsetFacts` property | Server source | Note |
 |---|---|---|
-| `fields` | `schema.fields[]` | `indexed`/`stored`/`docValues`/`multiValued` map directly; an absent key means *unset*, matching the repository parser's own null-means-unset convention (`SolrSchemaTypes.kt:76-77`) — not `false` |
+| `fields` | `schema.fields[]` | `indexed`/`stored`/`docValues`/`multiValued` map directly; an absent key means *unset*, matching the repository parser's own null-means-unset convention (`SolrSchemaTypes.kt:76-77`) — not `false`. **Verified: the server reports what the schema *declared*, not the type's effective defaults** — `<field name="price" type="pfloat" indexed="true" stored="true"/>` comes back as exactly those keys and no `multiValued`. That is what makes a field-by-field comparison against the repository parser meaningful at all; had the server materialized inherited defaults, every field would read as `DISAGREEING` on properties nobody wrote |
+| | | **Values arrive as JSON booleans, and `SolrField` stores each one twice.** The five named flags are `Boolean?` properties that a JSON boolean populates directly — easier than the XML side, which parses attribute text. But `SolrField.attributes` is `Map<String, String>` built as `attributesExcept("name", "type")` (`SolrSchemaParser.kt:68`), so it *also* holds `indexed`, `stored` and the rest, as the strings `"true"`/`"false"`. The JSON reader must populate both representations, stringifying on the way into the map, or two facts that agree will compare as different in the map while agreeing in the properties. The same applies to `SolrAnalyzerComponent.attributes`, which holds every factory argument as text |
 | `dynamicFields` | `schema.dynamicFields[]`, each `name` is the pattern | |
-| `fieldTypes` | `schema.fieldTypes[]` | `class` → `className`; the analyzer chain (`analyzer`/`indexAnalyzer`/`queryAnalyzer`) is present but its exact JSON shape is unverified — see [open question 3](#open-questions) |
-| `copyFields` | `schema.copyFields[]` | `source`/`dest` — **whether `dest` is ever an array bundling several destinations under one entry, requiring expansion into several `SolrCopyField` facts, is unverified** — see [open question 4](#open-questions) |
+| `fieldTypes` | `schema.fieldTypes[]` | `class` → `className`. The chain arrives under `analyzer`, `indexAnalyzer` or `queryAnalyzer` — all three keys observed — each an object with `tokenizer` (single) plus `filters` and `charFilters` (arrays); every other key on a component is one of its factory arguments |
+| | | **A component names its factory under `name` *or* `class`, and the server echoes back whichever spelling the schema used — it does not normalize.** Both supported lines returned `name` for all 236 components in the shipped techproducts configset and `class` for none; a field type added through the Schema API with `{"class": "solr.StandardTokenizerFactory"}` read back as `class` verbatim. The reader must accept both keys. **This is not symmetric with the repository parser today** — see the note below the table |
+| `copyFields` | `schema.copyFields[]` | `source`/`dest`, both plain strings. **Verified: `dest` is never an array.** Several destinations for one source arrive as several entries repeating the `source` (`author`, `manu` and `name` each appear twice in techproducts), which is already the repository parser's one-source-one-destination shape (`SolrSchemaTypes.kt:141-145`). No expansion step is needed |
 | `uniqueKey` | `schema.uniqueKey` | |
 | `schemaVersion` | **not populated by this parser** | The server reports one, and nothing would read it: `SolrFieldModel.of` takes `SolrSchemaVersion.of(repo.schemaVersion)` — the repository half, deliberately, because "the schema version is a property of the file the user is editing" (`SolrFieldModel.kt:207-209`). Populating it would create a value that looks consumed and is discarded on the next line, which is the mistake the element catalog's `valueType` column already made and paid for. If a future step wants to show a schema-version disagreement it must change `of` first, and that is a change to argue for rather than to arrive by accident. **Note also that `SolrConfigsetFacts.schemaVersion` is a `String?` "exactly as written" (`SolrConfigsetFacts.kt:26-28`), not a `Float`** — an earlier draft of this row claimed the opposite and inferred from it that no string round trip was needed |
 | `fieldReferences` | always empty | Already documented on the type: "always empty for a server, which reports its configuration rather than the file that produced it" (`SolrConfigsetFacts.kt:22-23`) |
 | `luceneMatchVersion` | **not populated by this parser** | See [FR-6](#requirements) — the server's own version is a different fact, carried differently |
+
+**The two spellings are not a server-side quirk to absorb quietly — the repository parser does not read
+one of them at all, and this pass found that by looking.** `SolrSchemaParser.readComponent` requires a
+`class` attribute and returns null without one (`SolrSchemaParser.kt:106-109`), so every
+`<tokenizer name="standard"/>` and `<filter name="lowercase"/>` in a configset is dropped on the floor.
+That spelling is not exotic: it is what Solr's own `_default` and `sample_techproducts_configs` use
+exclusively on both supported lines. Counted over the four copies this repository already vendors under
+`src/test/resources/shipped-configsets/`, every one carries between 247 and 263 `name`-spelled
+components and **zero** spelled `class`. The parser's own unit tests use `class` in all six of their
+fixtures and `name` in none, which is why the suite is green.
+
+The consequence runs downhill into match analysis: a chain whose components were all dropped has a null
+`tokenizer`, so `SolrMatchAnalysis.of` takes its no-tokenizer arm and returns
+`UNANALYZED.copy(granularity = TOKENS, confident = false)` (`SolrMatchAnalysis.kt:51-55`). **The plugin
+degrades to silence rather than to a false claim** — `confident = false` is doing exactly the job this
+project's "silence over a false positive" rule asks of it — but quick documentation renders an empty
+analyzer chain (`SolrFieldPresentation.kt:187-188`) and every match-capability surface goes dark on the
+configsets Solr itself ships. `SolrShippedConfigsetTest` asserts nothing is reported over those very
+files and passes partly for this reason; its own guard against a fixture that "passes just as well when
+it is looking at nothing" counts fields and field types, both of which parse fine, and never reaches
+inside a field type to the chain.
+
+**This is an Editor-track defect, not a Server-track one, and it is named here because this document is
+where the evidence landed rather than because Step 11 should fix it.** It bears on this specification in
+one specific way: [FR-9](#requirements)'s drift comparison must not treat `name` and `class` as
+disagreeing when they denote the same factory. Until the repository parser reads both, a drift view
+would compare a server chain against an empty repository chain and report every analyzed field as
+`DISAGREEING` — a false positive at scale, in the one view whose entire purpose is being believed.
+**Fixing the repository parser is a prerequisite for Step 14, and belongs in its own commit against the
+Editor track with a `name`-spelled parser fixture**, for the same reason FR-6's change is called out for
+one: `SolrSchemaParser` is read by every schema surface already shipped, and the existing suite can only
+tell you which change broke something while it is the only change.
 
 **FR-6 — The server's reported Solr version becomes a new, distinct fact, not a value for
 `luceneMatchVersion`.** `luceneMatchVersion` names a *Lucene* back-compat target the configset
@@ -230,10 +268,21 @@ translation needed at all — `fromLuceneMatchVersion` exists specifically becau
 *implies* a line, where a server *is* one. The parent specification's
 [factory catalog section](0002-solr-intellij-plugin.md#the-factory-catalog) is where the three-tier
 order is stated; an earlier draft of this sentence linked an anchor that does not exist in that
-document, which is the failure its own "a dead link is worse than no link" rule names. Verified
-against the Reference Guide's System Info Handler page: the endpoint (`/admin/info/system`, called out
-by that page's title even though the exact JSON key path was not confirmed by this investigation — see
-[open question 5](#open-questions)) reports a `lucene.solr-spec-version` field.
+document, which is the failure its own "a dead link is worse than no link" rule names.
+
+**The key path is `lucene.solr-spec-version`, confirmed against both supported lines** — a top-level
+`lucene` object on `GET /admin/info/system`, holding a bare version string (`"10.0.0"`, `"9.10.1"`) that
+needs no parsing beyond taking its major segment.
+
+**Its neighbour is a trap, and the trap is the whole reason this row was worth verifying rather than
+inferring.** That same object also carries `lucene-spec-version`, which is the *Lucene* version and a
+different number in both cases — Solr 10.0.0 reports Lucene 10.3.2, Solr 9.10.1 reports Lucene 9.12.3.
+The two keys sit adjacent, differ by one word, and both look like the answer. Reading the wrong one
+would hand `guideSegmentFor` a Lucene major that happens to match the Solr major on today's releases and
+silently stops matching the day the lines diverge — a value the plugin states confidently, sourced from
+the wrong place, which is the exact defect shape this document was written to prevent. The two
+`-impl-version` keys beside them carry a build hash and commit date appended to the version and are not
+what to read either.
 
 Concretely, this requires a new field — proposed as `SolrFieldModel.serverVersion: String?` populated
 only from the server half and consulted first — because `SolrConfigsetFacts` cannot carry it either:
@@ -269,15 +318,48 @@ the parent specification's "an unrecognized server version is reported rather th
 version string itself stays available for display beside the connection, which is where a reader
 looks to find out what they are actually talking to.
 
-**FR-7 — Collections, cores, shards, replicas and aliases read from the Collections API.** Verified
-against the Reference Guide's Cluster and Node Management page: `CLUSTERSTATUS`
-(`/admin/collections?action=CLUSTERSTATUS`, v1, or `GET /api/cluster`, v2) reports collections, shards,
-replicas, configset names and per-shard health in one response, and collection listing has its own
-narrower action, `LIST` (`/admin/collections?action=LIST`, v1, or `GET /api/collections`, v2). This
-document takes no position on v1 versus v2 beyond noting that v1's query-parameter form is the one this
-investigation could verify content for; the exact response shape for either should be pinned by the
-Testcontainers contract test in the same pull request that reads it, rather than assumed from the
-handler's name.
+**FR-7 — Collections, cores, shards, replicas and aliases read from the Collections API — which exists
+only in SolrCloud mode.** `CLUSTERSTATUS` (`/admin/collections?action=CLUSTERSTATUS`, v1, or
+`GET /api/cluster`, v2) reports collections, shards, replicas, configset names and per-shard health in
+one response, and collection listing has its own narrower action, `LIST`. Verified against a SolrCloud
+Solr 10.0.0: `cluster` carries `live_nodes`, `collections`, `properties` and `roles`; a collection
+carries `configName`, `replicationFactor`, `router`, `health`, the three replica-type counts and
+`shards`; a shard carries `range`, `state`, `health` and `replicas`; a replica carries `base_url`,
+`core`, `node_name`, `state`, `type` and `leader`.
+
+**A standalone Solr refuses the whole API, and this is the requirement's real content.** Both supported
+lines, started without `-c`, answer every `/admin/collections` action — `LIST` included — with HTTP 400
+and `error.msg` "Solr instance is not running in SolrCloud mode." The same is true of
+`/admin/configs`. A reader that assumes the Collections API therefore reports a hard failure against a
+perfectly healthy server, and a developer running a single-node Solr on their laptop is not an edge
+case worth failing on.
+
+Two consequences the implementing step must honour:
+
+- **Discriminate on `mode` from `/admin/info/system` before choosing an endpoint**, not by catching the
+  400. That field reads `"std"` on a standalone server and `"solrcloud"` on a cloud one, verified on
+  both lines, and it comes back from the same call [FR-6](#requirements) already makes for the version
+  — so it costs nothing. Branching on a caught error would also swallow the genuinely different 400 that
+  a malformed request produces.
+- **Standalone servers have cores, not collections**, read from `/admin/cores?action=STATUS` — verified
+  returning `status.<coreName>` with `responseHeader.status` 0 on the same server that refuses
+  `CLUSTERSTATUS`. Step 12's tree must render one vocabulary or the other rather than showing an empty
+  collections list to someone whose server is working. What a standalone server cannot do is upload a
+  configset or list configsets, so [FR-10](#requirements)'s re-fetch and Step 14's upload are
+  SolrCloud-only capabilities and should be offered as unavailable rather than as failing.
+
+**`aliases` is absent from the response when none are defined, not present and empty.** The reader must
+treat a missing key as "none" — the ordinary shape of this response, not an error.
+
+**`configName` on each collection is the server's own answer to which configset a collection uses**, and
+it is worth noting beside [FR-12](#requirements): it does not decide the pairing, because a name on the
+server tells you nothing about which directory on this developer's disk holds that configset, but it is
+exactly the right thing to *show* beside a pairing prompt so a human confirming one is choosing with the
+server's own vocabulary in front of them.
+
+This document takes no position on v1 versus v2 beyond noting that v1's query-parameter form is the one
+this investigation verified content for; the v2 response shape should be pinned by the Testcontainers
+contract test in the same pull request that reads it, rather than assumed to match.
 
 **FR-8 — Failures surface as Solr's own message, matching the parent specification's promise that
 "Solr's own error messages are shown rather than rewritten."** Verified pattern from a non-zero-status
@@ -287,9 +369,34 @@ with a value; a Solr-reported error, carrying `error.msg` verbatim for display; 
 (timeout, connection refused, TLS failure), described in terms of what happened rather than Solr's
 vocabulary, since Solr said nothing; and a response that parsed as JSON but not into the shape expected
 — reported as "unrecognized," per the parent specification's version-degradation rule, rather than
-thrown as an internal error. **Whether a request can ever receive HTTP 200 with a non-zero
-`responseHeader.status` is unverified** and affects whether status must be read from the body even on a
-successful-looking transport response — see [open question 6](#open-questions).
+thrown as an internal error.
+
+**Solr mirrors its error code into the HTTP status line, so checking the HTTP status is sufficient to
+detect failure** — verified across an unknown field in a query, a malformed Schema API request and an
+invalid Collections API action, each returning HTTP 400 with `responseHeader.status` 400 and
+`error.code` 400 in agreement, so the cheaper check is the correct one. Two findings from the same pass
+qualify it, and both are requirements rather than notes:
+
+- **An error response is not always JSON.** A request to a collection that does not exist returns HTTP
+  404 with an **HTML** body — Solr's servlet-container 404 page, not a Solr error document. A reader
+  that parses every response body as JSON throws a parse error on the single most likely mistake a user
+  makes: a typo'd or since-deleted collection name. The transport must key on the HTTP status first and
+  attempt a JSON parse only where the body claims to be JSON, falling back to the "unrecognized"
+  outcome above rather than surfacing a parser exception. This is also the case a test can easily miss,
+  because a fake HTTP layer returns whatever the test author wrote — the fake tier owed by
+  [the testing strategy](#testing-strategy) must include a non-JSON error body precisely because no
+  hand-written fixture would think to.
+- **A successful response can still be incomplete, and it says so without any status being non-zero.**
+  A query with `timeAllowed=1` returns HTTP 200 and `responseHeader.status` 0, alongside
+  `"partialResults": true` and a `partialResultsDetails` string naming the limit that was hit. Success
+  and completeness are therefore two different questions, and the result type owes a third state:
+  **complete, partial, or failed**. This matters beyond the query console. A drift comparison built on
+  a partial response would report fields as missing from the server when the server merely stopped
+  early — inventing disagreement out of a truncation, which is the precise failure
+  [FR-9](#requirements) exists to prevent. **Where a response is partial, the plugin says so and
+  compares nothing**, per the same "where the server cannot be asked, the plugin says nothing" rule this
+  document adopted from the solrconfig specification; a partial answer is a question that was not fully
+  asked.
 
 **FR-9 — Disagreement is rendered, not resolved.** The drift view (Step 14) reads
 `SolrFieldModel.disagreements` (`SolrFieldModel.kt:167-170`) and the per-fact `agreement` property
@@ -527,6 +634,9 @@ requires and was not itself named as a plan action.
 |---|---|---|
 | Pure JSON → `SolrConfigsetFacts` mapping | The parser is correct in isolation, against crafted response bodies for every row in [FR-5](#requirements)'s table | Plain JUnit 4, no platform import — same convention as `SolrSchemaParser`'s own tests |
 | Fake HTTP layer | Success, timeout, authentication failure, malformed response, and an unrecognized server version — the five states Step 11 names, none of which a real server produces reliably on demand. An embedded `com.sun.net.httpserver.HttpServer` needs no new dependency and can simulate all five | Plain JUnit 4 |
+| Fake HTTP layer, the two states verification added | **A 404 carrying an HTML body**, which is what a mistyped collection name actually produces, and **an HTTP 200 whose `responseHeader` sets `partialResults`**. Both are called out separately from the row above because neither is a state a fixture author invents unprompted — the first looks like it should be JSON and the second looks like success, and [FR-8](#requirements) now requires distinct handling for each | Plain JUnit 4 |
+| Analyzer component spelling | A field type whose chain names its factories under `name` and one that names them under `class` both produce the same `SolrAnalyzerComponent` list, on **both** sides — the JSON reader this document specifies and the XML parser it found wanting. The cross-spelling case is the assertion that matters: `name` on one side and `class` on the other, denoting the same factory, must not read as a disagreement | Plain JUnit 4 |
+| Standalone versus SolrCloud | A server reporting `mode: "std"` is asked for cores and never for collections, and one reporting `"solrcloud"` the reverse. Worth a Testcontainers case per mode rather than a fake, since the thing being tested is that a real standalone Solr's refusal never reaches the user as an error | Testcontainers |
 | Contract test per supported line | The reader parses what a real Solr of that line actually returns — the wire-format risk a fake cannot cover, per the parent specification's own reasoning for requiring this tier | Testcontainers, `solr:10.0.0` and `solr:9.10.1`, pinned by tag never `latest`; started and stopped by the test itself, satisfying the standing rule that no automated test needs a Solr a developer started by hand |
 | `SolrConnectionSettings` | Persistence and PasswordSafe round-trip | `SolrConfigsetTestCase`, per the existing rule for anything touching persistent connection or configset settings |
 | Pairing persistence | A pairing round-trips through the workspace state with its root path macro-collapsed; removing a connection removes its pairings; a configset with none produces no server read at all — the silence being the assertion worth having, per [FR-12](#requirements) | `SolrConfigsetTestCase`, since it touches the same persistent settings |
@@ -557,11 +667,23 @@ suite reaching straight for the interesting case never makes.
   descriptor gate in its own commit: the schema suite (here, the whole Editor track's existing test
   suite) is what can catch a mistake, and it can only do that while nothing else in the same commit
   could also be the cause.
-- **Open questions 2 through 6 are all response-shape details this investigation could not verify from
-  the Reference Guide's prose alone.** None of them block Step 11 from starting — the transport,
-  credential handling, and collections/cluster reading do not depend on any of them — but FR-5's field,
-  dynamic-field and copy-field mapping should not be considered final until a real response (ideally the
-  Testcontainers fixture, reached early rather than saved for last) has been read.
+- **The repository parser's `name`/`class` gap (recorded at [FR-5](#requirements)) is a prerequisite for
+  Step 14, not for Step 11, but it is the largest single risk this document carries.** It is an Editor
+  track defect in shipped code, it is invisible to the existing suite, and a drift view built before it
+  is fixed would report every analyzed field in every modern configset as disagreeing. The sequencing
+  that avoids this is to fix the parser — in its own commit, with a `name`-spelled fixture — at any point
+  before Step 14 begins, rather than discovering it from the drift view's first screenshot.
+- **Response shapes are now verified against real servers rather than inferred from Reference Guide
+  prose**, which removes the risk the original draft carried here. What remains unverified is narrower
+  and named in [Open Questions](#open-questions): the upload multipart format, and whether
+  `SolrConfigParser` shares the schema parser's naming assumption. Neither blocks Step 11.
+- **The verification used the `sample_techproducts_configs` and `_default` configsets, which are what
+  Solr ships rather than what users write.** Every shape claim in FR-5 held identically across two Solr
+  lines and two configsets, which is good evidence for the shape and no evidence at all about the
+  variety of real-world schemas — a configset using a factory this pass never exercised may still carry
+  a key the mapping table does not mention. The `attributes` map absorbing unrecognized keys is what
+  keeps that from being a correctness problem, and is a reason not to replace it with a fixed set of
+  named properties later.
 - **Cancellation (NFR-3) is asserted as a requirement before this investigation verified the JDK
   actually honours it end-to-end.** If `HttpClient`'s `CompletableFuture.cancel()` proves not to abort
   the socket exchange on the platform's bundled JDK, the requirement still holds and the mechanism
@@ -577,32 +699,43 @@ suite reaching straight for the interesting case never makes.
    better match for the "hand-written request and response handling" trade the parent specification
    already commits to. Settle in Step 11's first pull request, verified against a compiled build rather
    than assumed.
-2. **Whether the full-schema endpoint's response actually nests `dynamicFields` at the top level**, or
-   whether reading it requires the separate `/schema/dynamicfields` endpoint as a second request. The
-   Reference Guide's Schema API page documents both a full-schema endpoint and per-kind partial
-   endpoints; whether the full one is complete or a convenience summary was not resolved by this
-   investigation and changes whether the server reader is one request or several.
-3. **The exact JSON shape of an analyzer chain (`analyzer`/`indexAnalyzer`/`queryAnalyzer`) inside a
-   `fieldTypes` entry**, needed to populate `SolrFieldType.indexAnalyzer` / `queryAnalyzer`
-   (`SolrSchemaTypes.kt:57-62`) — specifically, whether tokenizer and filter factory class names arrive
-   under the same `class` key the schema XML uses, or under a differently-cased or differently-nested
-   key in the JSON representation.
-4. **Whether a `copyFields` entry's `dest` is ever a JSON array bundling multiple destinations under one
-   `source`**, which would require expanding one server-side entry into several `SolrCopyField` facts to
-   match the repository parser's one-source-one-destination shape (`SolrSchemaTypes.kt:141-145`).
-5. **The exact JSON path to the running Solr version inside the System Info Handler's response** — the
-   search evidence found points at a `lucene.solr-spec-version` field but this investigation did not
-   fetch and read the endpoint's actual documented response body to confirm the key's nesting, which
-   [FR-6](#requirements) depends on directly.
-6. **Whether Solr ever returns HTTP 200 with a non-zero `responseHeader.status`** — if so, [FR-8](#requirements)'s
-   result type must check the body's status on every response regardless of the HTTP status code; if
-   Solr always mirrors `error.code` into the HTTP status line, checking the HTTP status is sufficient
-   and cheaper.
-7. **Upload and reload's exact wire format** — the Config Sets API's upload action and the Collections
-   API's `RELOAD` action were not independently verified by this investigation beyond the general
-   `/admin/collections?action=X` and `/admin/configs?action=X` shape [FR-7](#requirements) confirms for
-   reading; the zip-upload multipart format in particular should be pinned by the Testcontainers
-   contract test before Step 14 is considered done, not assumed from the action name.
+2. **Upload and reload's exact wire format** — the Config Sets API's upload action and the Collections
+   API's `RELOAD` action were not independently verified beyond confirming that `/admin/configs?action=LIST`
+   answers on a SolrCloud server and returns a `configSets` array, and that the whole handler is
+   unavailable in standalone mode ([FR-7](#requirements)). The zip-upload multipart format in particular
+   should be pinned by the Testcontainers contract test before Step 14 is considered done, not assumed
+   from the action name.
+3. **Whether the repository parser's `name`/`class` gap has a counterpart in `SolrConfigParser`.** The
+   analyzer-component finding recorded under [FR-5](#requirements) came from reading
+   `SolrSchemaParser.readComponent`; whether `solrconfig.xml` parsing makes the same assumption about
+   how a class is named — and whether Solr accepts an SPI short name in the places that file names one —
+   was not examined by this pass and is worth one deliberate look while the finding is fresh.
+
+**Questions 2 through 6 of the original draft are closed** by [the verification pass](#verification-provenance),
+and their answers are recorded inline at [FR-5](#requirements), [FR-6](#requirements) and
+[FR-8](#requirements) rather than here. Three of the five came back other than this document guessed:
+the full-schema endpoint is complete rather than a summary, analyzer components name their factory under
+`name` at least as often as `class`, and a `copyFields` `dest` is never an array.
+
+## Verification provenance
+
+Every claim in this document marked *verified* against a response, rather than against the Reference
+Guide, comes from one pass run on 2026-08-19 against containers started for the purpose and torn down
+after. It is recorded because a wire-format claim is only as good as the thing it was read from, and a
+future reader deserves to know which Solr said so.
+
+| | |
+|---|---|
+| Images | `solr:10.0.0` and `solr:9.10.1` — the two lines `supportedSolrLines` declares (`build.gradle.kts:269-272`), pinned by tag |
+| Standalone | both images, `solr-precreate techproducts /opt/solr/server/solr/configsets/sample_techproducts_configs` — chosen over `_default` because it is the shipped configset with copy fields, dynamic fields and analyzer chains in it, which is what three of the closed questions were about |
+| SolrCloud | `solr:10.0.0` run as `solr -f -c`, with a two-shard `drift` collection created through `CREATE`, since the Collections and Config Sets APIs do not exist without it |
+| Read | `/admin/info/system`, `/<c>/schema`, the four `/schema/<kind>` endpoints, `/admin/collections` (`LIST`, `CLUSTERSTATUS`, and an invalid action), `/admin/cores?action=STATUS`, `/admin/configs?action=LIST`, and `/select` with an unknown field, with `timeAllowed=1`, and against a collection that does not exist |
+| Written | one `add-field-type` through the Schema API declaring its analyzer components with `class`, to establish whether Solr normalizes the spelling on read-back. It does not |
+
+Two things this pass could not establish, so that nobody reads the table above as broader than it is: it
+exercised **no authenticated server**, so [FR-4](#requirements)'s preemptive-Basic requirement remains
+Reference-Guide-sourced; and it exercised **no TLS**, so [NFR-7](#requirements)'s certificate reasoning
+is unchanged by it.
 
 ## References
 
