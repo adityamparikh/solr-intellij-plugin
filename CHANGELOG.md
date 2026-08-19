@@ -4,10 +4,25 @@
 
 ## [Unreleased]
 
-Pre-release. Nothing below has shipped to the JetBrains Marketplace yet; this section is the whole
-history of the configuration-files surface to date. See [the implementation
-plan](specs/plans/0002-solr-intellij-plugin-plan.md) for status by step and
-[the user guide](docs/user-guide.md) for what each capability below looks like in the editor.
+Nothing yet. The Server track — connecting to a live Solr, browsing collections, comparing a
+configset against what a server is actually running — is the next release rather than this one, and
+is specified in [`specs/0002-solr-server-integration.md`](specs/0002-solr-server-integration.md).
+
+## [0.1.0] - 2026-08-18
+
+**The first release, and it is the editor half of the plugin.** Everything below works against the
+files in your project with no Solr running and no connection configured — that is the whole design
+rather than a limitation of a first release: a configset is text, and the plugin reads it the way the
+IDE reads any other language.
+
+**What it does not do yet:** talk to a server. No collection browsing, no query console, no comparing
+your configset against a live one. That is the Server track, and it is 0.2.0.
+
+Supported IDEs and Solr lines are in [the compatibility matrix](docs/compatibility.md). See
+[the implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) for status by step,
+[the user guide](docs/user-guide.md) for what each capability looks like in the editor, and
+[the inspection catalog](docs/inspection-catalog.md) for what the plugin checks and what it
+deliberately stays silent about.
 
 ### Added
 

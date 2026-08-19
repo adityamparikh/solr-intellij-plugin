@@ -3,11 +3,46 @@
     <id>org.apache.solr.ide</id>
     <name>Apache Solr</name>
     <vendor>Apache Software Foundation</vendor>
+    <!-- Shown on the JetBrains Marketplace and in Settings → Plugins, so it is written for someone
+         deciding whether to install rather than for someone who already has. Kept honest about the
+         boundary: this release reads files and never opens a socket, and saying so is the feature. -->
     <description><![CDATA[
-        <p>IDE tooling for Apache Solr development. Phase 1 provides static-analysis language
-        intelligence for Solr configsets (managed-schema/schema.xml, solrconfig.xml): completion,
-        cross-file navigation, rename refactoring, inspections, and match-capability hints —
-        with no Solr connection required.</p>
+        <h2>Solr configsets, understood by the IDE</h2>
+
+        <p>Editing <code>managed-schema.xml</code> and <code>solrconfig.xml</code> is usually editing
+        XML with no help at all — the mistakes surface when a core fails to reload, or quietly, when a
+        query returns nothing and nobody can say why. This plugin reads a configset the way the IDE
+        reads any other language.</p>
+
+        <ul>
+          <li><b>Completion</b> that knows Solr's own vocabulary — field types and their classes,
+              analyzer factories and the attributes each one actually reads, the elements
+              <code>solrconfig.xml</code> accepts, request parameter names, and the field names a
+              handler's <code>qf</code> or <code>fl</code> may hold.</li>
+          <li><b>Inspections</b> for what is provably wrong: a dangling <code>copyField</code>, a
+              field naming a type nobody declared, a handler naming a field the schema does not have,
+              an analyzer chain whose filter can never run, an element Solr no longer accepts.</li>
+          <li><b>Navigation and rename</b> across the whole configset — Ctrl-click a type to its
+              declaration, Find Usages from a declaration, rename a field and have every reference
+              follow.</li>
+          <li><b>Quick documentation</b> on every position a caret can sit: a field's resolved
+              properties and where each value came from, a class's kind and attributes, an attribute's
+              meaning, a request parameter's purpose.</li>
+          <li><b>Match-capability hints</b> beside each field, stating what it can actually match —
+              derived from the real analyzer chain, not guessed from the type's name.</li>
+        </ul>
+
+        <p><b>Nothing here needs a running Solr.</b> No connection to configure, nothing sent
+        anywhere: every answer comes from the files in your project and from Solr's own jars, read at
+        build time. Talking to a live server — browsing collections, running queries, comparing a
+        configset against what a server is really running — is the next release.</p>
+
+        <p>Facts come from Solr or are not claimed. Where the plugin cannot be certain, it says
+        nothing rather than guessing, and every inspection is checked against the configsets Apache
+        Solr itself ships to make sure a correct file draws no warnings.</p>
+
+        <p><i>An independent open-source project. Not affiliated with or endorsed by the Apache
+        Software Foundation.</i></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

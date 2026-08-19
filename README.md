@@ -26,18 +26,22 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 
 ## Status
 
-**Pre-release. Not yet published to the JetBrains Marketplace, and not yet usable for its intended
-purpose.**
+**0.1.0 — the editor half, complete and released.** Configset detection, a parsed field model, and
+everything built on it: eleven inspections with quick-fixes, completion over Solr's own vocabulary,
+cross-file navigation and rename, quick documentation at every caret position, and inline hints
+saying what each field can actually match.
 
-The configuration-files surface is largely built: the plugin detects configsets, parses them into a
-field model, and uses it for inspections with quick-fixes, completion, cross-file navigation, quick
-documentation, and inline hints saying what each field can actually match. The server surface exists
-only as stored connection settings — nothing talks to a Solr server yet — and the Java/Kotlin code
+**It does not talk to a Solr server.** That is the design rather than a gap in a first release —
+every answer comes from the files in your project and from Solr's own jars, read at build time. The
+server surface exists so far as stored connection settings; browsing collections, running queries and
+comparing a configset against a live one are **0.2.0**, specified in
+[`specs/0002-solr-server-integration.md`](specs/0002-solr-server-integration.md). The Java/Kotlin code
 surface is unbuilt.
 
 **The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
 is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
-much of which is still ahead.
+much of which is still ahead. [The compatibility matrix](docs/compatibility.md) says which IDE and
+which Solr lines this release supports.
 
 ## What it looks like today
 
@@ -176,9 +180,11 @@ covers.
 ## Supported Solr versions
 
 The plugin supports the Solr release lines that Apache Solr has **not** declared end-of-life; when
-Solr declares a line EOL, the plugin drops it in its next release. The
-[specification](specs/0002-solr-intellij-plugin.md) names the current lines, and is the one place
-they are written down — a compatibility matrix ships with the first release.
+Solr declares a line EOL, the plugin drops it in its next release.
+
+**[The compatibility matrix](docs/compatibility.md)** names the exact releases, the IDE builds, and
+where each is declared in the build — it is written from `build.gradle.kts` rather than beside it,
+because a matrix promising something the build does not is worse than no matrix.
 
 ## Documentation
 
@@ -220,9 +226,15 @@ declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md]
 
 ## Installing
 
-Not yet available from the JetBrains Marketplace. To try the activation gate, build the plugin from
-source and install the ZIP from `build/distributions/` via
-<kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk…</kbd>.
+Build the plugin from source and install the ZIP from `build/distributions/` via
+<kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk…</kbd>:
+
+```bash
+./gradlew buildPlugin
+```
+
+Requires **IntelliJ IDEA 2026.2 or later** — see [the compatibility matrix](docs/compatibility.md) for
+why IDEA specifically, and which Solr lines the release understands.
 
 ## Contributing
 
