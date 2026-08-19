@@ -267,4 +267,54 @@ class SolrMatchAnalysisTest {
             analyze("PathHierarchyTokenizerFactory").summary,
         )
     }
+
+    // --- the other spelling ---------------------------------------------------------------------
+
+    /**
+     * A chain written with SPI names classifies exactly as the same chain written with class names.
+     *
+     * This is not a hypothetical spelling: it is the one Solr's own `_default` and techproducts
+     * configsets use, exclusively. Reading it as unrecognized left every match surface silent on the
+     * configsets a user is most likely to open.
+     */
+    @Test
+    fun `an SPI-spelled chain classifies as its class-spelled equivalent`() {
+        val spi = SolrMatchAnalysis.of(
+            SolrAnalyzerChain(
+                tokenizer = SolrAnalyzerComponent("standard"),
+                filters = listOf(SolrAnalyzerComponent("lowercase")),
+            ),
+        )
+        val classes = analyze("StandardTokenizerFactory", "LowerCaseFilterFactory")
+        assertEquals(classes.granularity, spi.granularity)
+        assertEquals(classes.caseSensitive, spi.caseSensitive)
+        assertEquals(classes.prefix, spi.prefix)
+        assertEquals(classes.confident, spi.confident)
+    }
+
+    /** The keyword tokenizer decides granularity, and it must decide it under either spelling. */
+    @Test
+    fun `an SPI-spelled keyword tokenizer still matches whole values`() {
+        val capability = SolrMatchAnalysis.of(
+            SolrAnalyzerChain(tokenizer = SolrAnalyzerComponent("keyword")),
+        )
+        assertEquals(SolrMatchGranularity.WHOLE_VALUE, capability.granularity)
+        assertTrue(capability.confident)
+    }
+
+    /** [SolrMatchAnalysis.foldsCase] is the ordering inspection's authority and needs the same answer. */
+    @Test
+    fun `case folding is recognized under either spelling`() {
+        assertTrue(SolrMatchAnalysis.foldsCase("solr.LowerCaseFilterFactory"))
+        assertTrue(SolrMatchAnalysis.foldsCase("lowercase"))
+    }
+
+    /** An unknown name stays unknown; resolution must not invent a factory that does not exist. */
+    @Test
+    fun `an unrecognized SPI name is still unrecognized`() {
+        val capability = SolrMatchAnalysis.of(
+            SolrAnalyzerChain(tokenizer = SolrAnalyzerComponent("noSuchTokenizer")),
+        )
+        assertFalse(capability.confident)
+    }
 }

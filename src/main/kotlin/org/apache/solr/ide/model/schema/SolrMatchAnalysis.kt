@@ -1,5 +1,7 @@
 package org.apache.solr.ide.model.schema
 
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
+
 /**
  * Derives what a field can match from its index-time analyzer chain.
  *
@@ -13,6 +15,15 @@ package org.apache.solr.ide.model.schema
  * semantics rather than enumerating what exists, and it has been stable across Solr majors while
  * the surrounding list has not. A catalog regenerated for a new Solr line must not silently change
  * what the plugin claims a field matches.
+ *
+ * **The catalog is consulted for one thing only: which spelling names which class.** A schema may
+ * write `<filter name="lowercase"/>` instead of `<filter class="solr.LowerCaseFilterFactory"/>`,
+ * and no rule turns one into the other — the mapping is a fact about Lucene's registrations, read
+ * from the `NAME` constant each factory declares. That is a different question from what a factory
+ * *does*, which is still answered only by the sets below. The distinction is what keeps the
+ * paragraph above true: a regenerated catalog can change whether a component is recognized, and a
+ * component that stops being recognized drops [SolrMatchCapability.confident] and is reported as
+ * nothing rather than as something new.
  *
  * **Only the index-time chain is analyzed.** What is in the index is what determines whether a term
  * can be found at all. A query-time chain that disagrees with it is a real defect, but a different
@@ -118,19 +129,29 @@ object SolrMatchAnalysis {
      * Tokenizers count as well as filters: `LowerCaseTokenizerFactory` folds as it splits, so a
      * chain using it has no case boundaries left even with no filter at all.
      *
-     * @param className the factory as written, `solr.X` or fully qualified
+     * @param className the factory as written — `solr.X`, fully qualified, or the SPI short name
      * @return true if a component of this class removes case distinctions
      */
     fun foldsCase(className: String): Boolean =
         simpleName(className).let { it in CASE_FOLDING_FILTERS || it in CASE_FOLDING_TOKENIZERS }
 
     /**
-     * A factory's simple name, whether it was written as `solr.X` or fully qualified.
+     * A factory's simple name, however the schema spelled it.
      *
-     * Configsets use the `solr.` shorthand almost universally, but the fully qualified form is
-     * legal and appears in configsets that predate the shorthand or use a custom factory.
+     * Three spellings reach here. `solr.X` and the fully qualified form both carry the class name
+     * and differ only in what precedes the last dot. The third carries no class name at all:
+     * `<tokenizer name="standard"/>` names the factory by the SPI name it registers under, and that
+     * is the spelling Solr's own `_default` and techproducts configsets use exclusively.
+     *
+     * The sets below are keyed by class name, so an SPI name is resolved through the catalog before
+     * it is looked up. A name that resolves to nothing is returned unchanged and therefore matches
+     * nothing, which is the correct outcome — an unrecognized component drops
+     * [SolrMatchCapability.confident] rather than being guessed at.
      */
-    private fun simpleName(className: String): String = className.substringAfterLast('.')
+    private fun simpleName(className: String): String {
+        if ('.' in className) return className.substringAfterLast('.')
+        return SolrClassCatalog.classForSpiName(className)?.substringAfterLast('.') ?: className
+    }
 
     /** The capability of a field with no index-time analysis at all. */
     private val UNANALYZED = SolrMatchCapability(
