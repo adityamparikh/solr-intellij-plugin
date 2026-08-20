@@ -8,6 +8,8 @@ behind a link. Read the relevant one before designing anything.
 | Document | Owns |
 |---|---|
 | [`docs/contributing.md`](docs/contributing.md) | Setup, first run, where work comes from, commit and PR mechanics, CI |
+| [`docs/installing.md`](docs/installing.md) | Getting the plugin into an IDE, and the two activation gates that explain silence |
+| [`docs/how-to/releasing.md`](docs/how-to/releasing.md) | Cutting a release, and the preflight a Marketplace publication still needs |
 | [`docs/code-organization.md`](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [`docs/how-to/add-an-editor-feature.md`](docs/how-to/add-an-editor-feature.md) | Adding an inspection, completion, reference, documentation or hint |
 | [`docs/inspection-catalog.md`](docs/inspection-catalog.md) | What each registered inspection reports, its registered severity, and what it stays silent about |
