@@ -29,6 +29,17 @@
       <!-- Nothing declares `body_t`. It resolves through the schema's `*_t` dynamic pattern, so
            the reference is correct and no inspection fires on it. -->
       <str name="pf">body_t</str>
+      <!-- A function query rather than a field, which is the whole difference between `bf` and the
+           `qf` above: this boost scales a value computed per document and added to the score, and
+           the relevance inspection stays silent here for that reason. Hovering the `^2.5` is where
+           the plugin says so.
+
+           Reads as "add 2.5 to any document that has a category". Deliberately not the textbook
+           `recip(rord(datefield),1,1000,1000)` recency boost, which Solr's own guide recommends and
+           which this demo cannot honestly show: the schema declares no date or numeric field, and
+           pointing that idiom at a string field boosts by alphabetical position, which is valid
+           syntax meaning nothing. -->
+      <str name="bf">if(exists(category),1,0)^2.5</str>
       <str name="rows">10</str>
     </lst>
   </requestHandler>

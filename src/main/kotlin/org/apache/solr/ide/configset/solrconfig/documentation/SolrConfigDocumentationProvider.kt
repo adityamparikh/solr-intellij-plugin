@@ -3,8 +3,10 @@ package org.apache.solr.ide.configset.solrconfig.documentation
 import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
 import com.intellij.psi.xml.XmlAttributeValue
@@ -16,6 +18,8 @@ import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.configset.solrconfig.SolrConfigParameters
 import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser
 import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.schema.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperations
 import org.apache.solr.ide.model.vocabulary.SolrParameterCatalog
 import org.apache.solr.ide.model.vocabulary.SolrParameterEntry
 
@@ -56,8 +60,22 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
         contextElement?.parentOfType<XmlAttributeValue>(withSelf = true)
             ?.takeIf { parameterAt(it) != null }
             ?.let { return it }
-        return contextElement?.parentOfType<XmlText>(withSelf = true)
-            ?.takeIf { parserNameAt(it) != null }
+        val text = contextElement?.parentOfType<XmlText>(withSelf = true) ?: return null
+        boostAt(text, targetOffset)?.let { return SolrBoostElement(text, it) }
+        return text.takeIf { parserNameAt(it) != null }
+    }
+
+    /**
+     * The boost at [offset] within [text], or null when the caret is not in one.
+     *
+     * The offset is why this needs an element of its own: a boost is a range inside a text node
+     * rather than a node, and `name^3 title^5` holds two of them, so the position cannot be
+     * recovered from the element alone the way a `defType` value can.
+     */
+    private fun boostAt(text: XmlText, offset: Int): SolrConfigParser.SolrBoostOccurrence? {
+        val parameterName = SolrConfigParameters.parameterNameOf(text.parentTag ?: return null) ?: return null
+        if (!SolrConfigParameters.enclosingIsParameterList(text.parentTag?.parentTag)) return null
+        return SolrConfigParser.boostAt(parameterName, text.text, offset - text.textRange.startOffset)
     }
 
     /**
@@ -72,9 +90,68 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
             val entry = parameterAt(value) ?: return null
             return SolrConfigPresentation.parameterDocumentation(entry)
         }
+        (element as? SolrBoostElement)?.let { boost ->
+            return SolrConfigPresentation.boostDocumentation(boost.occurrence, boostedField(boost))
+        }
         val text = element as? XmlText ?: return null
         val entry = parserNameAt(text) ?: return null
         return SolrConfigPresentation.parserNameDocumentation(entry)
+    }
+
+    /**
+     * What the configset resolves the boosted field to, or null when there is nothing to say.
+     *
+     * Null covers three cases that all end the same way: the boost follows something that is not a
+     * field name, the parameter's values are function queries, or the schema does not declare the
+     * name. The last is
+     * [org.apache.solr.ide.configset.solrconfig.inspection.SolrUnknownFieldReferenceInspection]'s to
+     * report, and repeating it in a popup would be a second voice on one mistake.
+     *
+     * Whether the field is searchable is asked of
+     * [org.apache.solr.ide.model.schema.SolrFieldOperations], the same disjunction over `indexed`
+     * and `docValues` the relevance inspection asks, so the popup and the warning cannot disagree.
+     */
+    private fun boostedField(boost: SolrBoostElement): SolrConfigPresentation.BoostedField? {
+        val fieldName = boost.occurrence.fieldName ?: return null
+        val model = SolrConfigsetReader.getInstance(boost.project)
+            .modelFor(boost.containingFile?.originalFile ?: return null) ?: return null
+        val field = model.resolve(fieldName) ?: return null
+        val fieldType = model.typeOf(field)
+        return SolrConfigPresentation.BoostedField(
+            name = fieldName,
+            searchable = SolrFieldOperations.supports(
+                SolrFieldOperation.SEARCH,
+                field,
+                fieldType,
+                model.schemaVersion,
+                model.traitsOf(fieldType),
+            ),
+        )
+    }
+
+    /**
+     * A boost, as something the platform can hold on to.
+     *
+     * A boost is a range inside a text node and not a node, so there is nothing real to return from
+     * [getCustomDocumentationElement] — and the offset that identifies which boost cannot be
+     * recovered later, because [generateDoc] is handed an element and no caret. This carries the
+     * answer computed while the offset was still in hand.
+     *
+     * **[getName] is not optional here, and its absence is not a compile error.** The hover path
+     * computes a presentation for the target alongside the documentation, and
+     * `targetPresentation` refuses an element it cannot name — so without this the popup threw with
+     * its HTML already built and correct. It shipped to a sandbox that way, because a test that
+     * asks only for the HTML asks for half of what a reader's hover does.
+     */
+    private class SolrBoostElement(
+        private val text: XmlText,
+        val occurrence: SolrConfigParser.SolrBoostOccurrence,
+    ) : FakePsiElement() {
+        override fun getParent(): PsiElement = text
+        override fun getTextRange(): TextRange = text.textRange
+
+        /** What the popup's header shows: the boost as it is written, marker and all. */
+        override fun getName(): String = "^${occurrence.boost}"
     }
 
     /**

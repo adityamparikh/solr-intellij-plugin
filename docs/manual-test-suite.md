@@ -571,6 +571,17 @@ corrected.
       scoped to the parameters known to hold field names.
 - [ ] **PRM-3** — With the caret immediately after the `^` in `name^3`, completion offers no
       field. A boost is not a field name, and completing there would produce `name^name`.
+- [ ] **PRM-10** — F1 at that same position — inside the `^3` — **does** answer: what the boost
+      scales, `name` and its searchability, and nothing in the Problems view. **PRM-3 and this are
+      one check in two halves**, and the pair is the point: completion's silence there is correct
+      and was mistaken for the position being settled, so documentation was never asked until
+      [Step 30](../specs/plans/0002-solr-intellij-plugin-plan.md#step-30-explaining-a-boost-done).
+      Two characters left, on `name` itself, PRM-5's popup must be unchanged.
+- [ ] **PRM-11** — F1 inside the `^2.5` of the `/select` handler's `bf` explains an *additive*
+      function-query boost and names **no** field, where the `qf` beside it names one. The same
+      `^n`, two different meanings — and `bf` is the parameter the relevance inspection deliberately
+      stays silent on, so this is also the check that explaining and reporting are separate
+      decisions.
 - [ ] **PRM-4** — In a `<str name="sort">`, completion offers fields at the start of a clause and
       nothing after `text ` — the second token of a sort clause is a direction, not a field.
 - [ ] **PRM-6** — the `name` of a `<str>` inside a `<lst name="defaults">` offers Solr's request

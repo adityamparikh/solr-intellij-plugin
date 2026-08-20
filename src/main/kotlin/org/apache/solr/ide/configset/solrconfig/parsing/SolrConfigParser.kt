@@ -134,6 +134,61 @@ object SolrConfigParser {
         return token
     }
 
+    /**
+     * A `^`-boost written in a parameter value, at the caret.
+     *
+     * @property parameterName the parameter holding it, which decides what the boost scales
+     * @property boost the text after the `^`, empty when nothing has been written yet. Not parsed as
+     *   a number here: Solr rejects a non-numeric boost and the popup says so, which it cannot do if
+     *   this discards the text
+     * @property fieldName the field the boost applies to, or null when there is not one — a token
+     *   that is not a plain field name, or a parameter whose values are function queries
+     */
+    internal data class SolrBoostOccurrence(
+        val parameterName: String,
+        val boost: String,
+        val fieldName: String?,
+    )
+
+    /**
+     * The boost under the caret, or null when the caret is not inside one.
+     *
+     * **The sibling of [fieldTokenAt] rather than a caller of it**, because the two want different
+     * halves of the same split. Completion wants the token *before* the caret, since that is what it
+     * replaces; documentation wants the whole token *under* it, so that a popup does not change as
+     * the caret moves through an unchanged `^3`. They share the separator rules, which is what keeps
+     * a boost's extent and a field name's extent the same decision.
+     *
+     * @param parameterName the parameter as `solrconfig.xml` spells it
+     * @param value the parameter's whole text
+     * @param caretOffset an offset within [value]
+     * @return the boost at that offset, or null when no boost is there
+     */
+    internal fun boostAt(parameterName: String, value: String, caretOffset: Int): SolrBoostOccurrence? {
+        if (parameterName !in BOOSTABLE_PARAMETERS) return null
+        val offset = caretOffset.coerceIn(0, value.length)
+
+        // A caret *on* a separator is between tokens, not in one. Without this the popup attaches to
+        // whichever token happens to be to the left, so hovering the gap in `name^3 title^5` claims
+        // the first one's boost.
+        if (offset < value.length && value[offset] in WHITESPACE_CHARACTERS) return null
+
+        val start = value.lastIndexOfAny(WHITESPACE_CHARACTERS, offset - 1) + 1
+        val end = value.indexOfAny(WHITESPACE_CHARACTERS, offset).let { if (it < 0) value.length else it }
+        val token = value.substring(start, end)
+
+        val caret = token.indexOf('^')
+        if (caret < 0) return null
+        // A caret before the `^` is in the name, which already answers; only at or after it is a boost.
+        if (offset < start + caret) return null
+
+        return SolrBoostOccurrence(
+            parameterName = parameterName,
+            boost = token.substring(caret + 1),
+            fieldName = if (parameterName in FIELD_BOOST_PARAMETERS) plainFieldName(token.substring(0, caret)) else null,
+        )
+    }
+
     internal fun holdsFieldNames(parameterName: String): Boolean =
         parameterName in BOOSTABLE_PARAMETERS ||
             parameterName in SORT_PARAMETERS ||
@@ -265,6 +320,15 @@ object SolrConfigParser {
 
     /** Parameters holding whitespace-separated field names, each optionally `^`-boosted. */
     private val BOOSTABLE_PARAMETERS = setOf("qf", "pf", "pf2", "pf3", "bf", "boost")
+
+    /**
+     * The boostable parameters whose boost follows a *field*.
+     *
+     * `bf` and `boost` are boostable and are not here, which is the same split the relevance
+     * inspection makes and for the same reason: their values are function queries, so what precedes
+     * the `^` is a function rather than a field name and must not be described as one.
+     */
+    private val FIELD_BOOST_PARAMETERS = setOf("qf", "pf", "pf2", "pf3")
 
     /** Parameters holding comma-separated `field direction` clauses. */
     private val SORT_PARAMETERS = setOf("sort", "group.sort")
