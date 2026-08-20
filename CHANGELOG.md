@@ -8,7 +8,7 @@ Nothing yet. The Server track — connecting to a live Solr, browsing collection
 configset against what a server is actually running — is the next release rather than this one, and
 is specified in [`specs/0002-solr-server-integration.md`](specs/0002-solr-server-integration.md).
 
-## [0.1.0] - 2026-08-18
+## [0.1.0] - 2026-08-20
 
 **The first release, and it is the editor half of the plugin.** Everything below works against the
 files in your project with no Solr running and no connection configured — that is the whole design
@@ -43,6 +43,14 @@ a class value's kind, attributes, and a Reference Guide link; the schema element
 own name; a factory attribute's owner, value type and default; a factory tag's complete effective
 configuration, unwritten attributes shown at their Solr default; and, in `solrconfig.xml`, a request
 parameter's purpose and a `defType` value's query parser.
+
+**Boost syntax explained**, which is the first thing the plugin says about a parameter's *value*
+grammar rather than its name. A caret on the `^3` of a `qf`'s `name^3` says what the boost scales,
+names the field it applies to and whether Solr can actually search it, and says when a boost changes
+nothing — `^1` is the default. Each parameter gets its own sentence, because the same `^n` means
+different things: `qf` scales a term match, `pf` a phrase, `pf2` and `pf3` bigram and trigram
+phrases, while `bf` and `boost` scale a function query whose value is added to or multiplied into the
+score, and name no field at all.
 
 **Completion** for the schema's own vocabulary (elements, attributes, and the boolean values Solr
 would use by default), for the classes and factory attributes the generated catalog knows (following
