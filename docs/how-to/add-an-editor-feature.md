@@ -24,6 +24,48 @@ We will follow `SolrUnknownFieldTypeInspection`, which reports a `field` whose `
 It is sixty-one lines of Kotlin and it reaches into seven other places. That fan-out is the thing
 worth learning; the Kotlin is the easy part.
 
+Here is the fan-out as one sequence, using `SolrDanglingCopyFieldInspection` — the same spine, and it
+carries a quickfix, so the whole round trip is visible.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant IDE as IntelliJ platform
+    participant Inspection as SolrDanglingCopyFieldInspection
+    participant Model as SolrConfigsetReader
+    participant Helpers as SolrInspections
+    actor Reader
+
+    IDE->>Inspection: buildVisitor(holder, isOnTheFly)
+    Inspection->>Model: modelFor(holder.file)
+
+    alt outside a configset
+        Model-->>Inspection: null
+        Inspection-->>IDE: PsiElementVisitor.EMPTY_VISITOR
+        Note over Inspection,IDE: silence is the designed outcome here,<br/>reached before a single tag is visited
+    else inside a configset
+        Model-->>Inspection: SolrFieldModel
+        loop once per XML tag
+            IDE->>Inspection: visitXmlTag(tag)
+            Inspection->>Helpers: isCheckableFieldName(name)
+            Note over Helpers: globs, function queries and transformers are not<br/>field names — an inspection must not fire on a correct file
+            Inspection->>Model: resolve(name)
+            Model-->>Inspection: null, so nothing declares it
+            Inspection->>Helpers: replacementFixes(name, candidates, family)
+            Helpers-->>Inspection: a SolrReplaceNameQuickFix per near miss
+            Inspection->>IDE: SolrInspections.reportOnValue(holder, value, message, fixes)
+        end
+    end
+
+    IDE-->>Reader: a warning on the value, fixes on Alt-Enter
+    Reader->>IDE: applies one
+    IDE->>Helpers: SolrReplaceNameQuickFix rewrites the attribute
+    Note over IDE,Helpers: the file is edited directly. This plugin never asks<br/>whether a write is allowed.
+```
+
+The two branches out of `modelFor` are the shape every feature in this guide repeats: a null model
+means return something inert, and it is checked once in `buildVisitor` rather than per tag.
+
 ### 1. The inspection class
 
 `src/main/kotlin/org/apache/solr/ide/configset/schema/inspection/SolrUnknownFieldTypeInspection.kt`
@@ -282,6 +324,40 @@ you offer `true`/`false`, mark the value Solr would use if the attribute were ab
 that default depends on the field type, in which case mark neither, because claiming one would assert
 something Solr does not.
 
+The `solrconfig` side shows the other thing completion has to get right — where the prefix comes
+from:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Reader
+    participant IDE as IntelliJ platform
+    participant Contributor as SolrConfigCompletionContributor
+    participant Provider as SolrParameterFieldCompletionProvider
+    participant Model as SolrConfigsetReader
+    participant Parser as SolrConfigParser
+
+    Reader->>IDE: types, or presses Ctrl-Space
+    Note over IDE,Contributor: isDumbAware() = true, so the list still appears<br/>while the project's indexes are building
+    IDE->>Contributor: fillCompletionVariants(parameters, result)
+    Contributor->>Provider: addCompletions — the registered pattern matched
+    Provider->>Model: modelFor(parameters.originalFile)
+    Model-->>Provider: SolrFieldModel, or null outside a configset
+    Provider->>Parser: fieldTokenAt(parameterName, text, caretInValue)
+    Parser-->>Provider: the token being typed, or null where no field may go
+
+    Note over Provider,Parser: the prefix comes from the token, not from the platform:<br/>its default matcher does not treat Solr's separators as boundaries
+
+    Provider->>Provider: fieldNames(parameterName, model)
+    Note over Provider: filtered by SolrFieldOperations, not annotated —<br/>a name that is offered is a name that resolves
+    Provider-->>IDE: result.withPrefixMatcher(prefix).addAllElements(...)
+    IDE-->>Reader: only names this configset will accept here
+```
+
+Steps 7 and 8 are the ones to copy. Leaving the prefix to the platform looks like it works and then
+filters a correctly built list down to nothing in `sort=id asc,`, because its default matcher reads
+an identifier back from the caret and does not know Solr's separators.
+
 No description HTML, no `shortName`.
 
 ### References and navigation
@@ -316,6 +392,46 @@ registered as `<lang.documentationProvider language="XML">`.
 Three methods matter. `getCustomDocumentationElement` decides *what* the caret is on — this is the
 one people forget, and getting it wrong means hovering an element returns something less useful than
 hovering one gesture away. `generateDoc` builds the HTML. `getUrlFor` supplies the external link.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Reader
+    participant IDE as IntelliJ platform
+    participant Provider as SolrConfigDocumentationProvider
+    participant Parser as SolrConfigParser
+    participant Model as SolrConfigsetReader
+    participant Html as SolrConfigPresentation
+
+    Reader->>IDE: hover, or Ctrl-Q, at an offset
+    IDE->>Provider: getCustomDocumentationElement(editor, file, contextElement, targetOffset)
+    Note over Provider: the activation gate first: SolrConfigsetFileKind,<br/>then SolrConfigsetDetector.isConfigsetFile
+    Provider->>Parser: what is written at this offset?
+    Parser-->>Provider: a parameter, a parser name, a boost — or null
+    Provider-->>IDE: the element that answers, or null
+
+    Note over IDE,Provider: null is the contract, not a failure: the caret falls<br/>through to whatever else would have answered
+
+    par the documentation
+        IDE->>Provider: generateDoc(element)
+        Provider->>Model: modelFor(file)
+        Model-->>Provider: SolrFieldModel, already cached
+        Provider->>Html: build the popup body
+        Html-->>IDE: HTML
+    and the presentation
+        IDE->>Provider: computePresentation, which needs a name
+        Provider-->>IDE: the popup header
+    end
+
+    Note over IDE: both halves run on one hover. A provider that answers<br/>only the first throws with correct HTML in hand.
+    IDE-->>Reader: quick documentation popup
+```
+
+**The `par` block is the trap.** One hover runs both halves, and only the first is what a test
+calling `generateDoc` exercises. If `getCustomDocumentationElement` returns something synthetic — a
+`FakePsiElement` standing in for a range inside a text node — it must supply a name, or the platform
+refuses to present the target and the popup dies with its HTML already built and correct. Test
+through `IdeDocumentationTargetProvider` so both halves run.
 
 Repository-specific: **link to the Reference Guide, never copy it**, at the version the configset
 declares. Links are page-level, because anchors drift between releases and field types have no

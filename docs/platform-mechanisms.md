@@ -89,6 +89,42 @@ wrong guess here produces code that looks correct forever. Overriding a method
 that does not exist at least fails the build, which is how the
 `PsiReferenceContributor` row above was established.
 
+What that buys, and what it does not, in one sequence — the last exchange is the
+rule this project learned by shipping the other version of it:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Reader
+    participant IDE as IntelliJ platform, indexes still building
+    participant Undeclared as a contribution that declared nothing
+    participant Solr as this plugin's contributions
+    participant Class as SolrClassReference
+
+    Reader->>IDE: opens a configset file while indexing runs
+
+    IDE--)Undeclared: skipped entirely
+    Note over Undeclared: silent. No log, no error, no feature —<br/>and it compiles perfectly well.
+
+    IDE->>Solr: still consulted
+    Note over Solr: isDumbAware() for inspections and completion,<br/>the DumbAware marker interface for documentation and hints
+    Solr-->>Reader: everything that reads only configset text answers
+
+    Reader->>Class: caret on a class attribute
+    Note over Class: this one declines the declaration — it reads the stub index.<br/>Declining is not enough: resolve() is still called directly<br/>by anything walking references at a caret.
+    Class->>Class: DumbService.isDumb(project)?
+
+    alt indexes still building
+        Class-->>Reader: null — no navigation, and nothing thrown
+    else indexes ready
+        Class->>IDE: JavaPsiFacade.findClass(qualified, allScope)
+        IDE-->>Class: the class, or null
+        Class-->>Reader: navigable
+    end
+
+    Note over Reader,Class: both, never either. An earlier revision of this rule said "or",<br/>and that is how a defect shipped: an unguarded resolve() threw<br/>during indexing and took the whole popup down with it.
+```
+
 ### The evidence
 
 `SolrSchemaVocabularyCompletionTest.testCompletionAnswersWhileTheProjectIsIndexing`
@@ -138,6 +174,38 @@ Both directions are expensive to get wrong, and they are not symmetrical.
 [`CachedValuesManager`](glossary.md#cachedvaluesmanager) — the platform's mechanism. You supply a
 computation and a list of **dependencies**; the platform owns storage, thread-safety, eviction under
 memory pressure, and recomputation when any dependency's modification count moves.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Feature as any editor feature
+    participant Reader as SolrConfigsetReader
+    participant Detector as SolrConfigsetDetector
+    participant Cache as CachedValuesManager
+    participant Parsers as SolrSchemaParser / SolrConfigParser
+
+    Feature->>Reader: modelFor(file)
+    Reader->>Detector: isConfigsetFile, then configsetFor
+    Detector-->>Reader: the owning configset, or null outside one
+    Reader->>Cache: getCachedValue(PsiDirectory of the configset root)
+
+    Note over Cache: the value hangs on the directory, never in a map:<br/>a map keyed by a path outlives the thing the path names
+
+    alt a declared dependency has moved
+        Cache->>Reader: recompute
+        Reader->>Reader: sourcesOf(directory) — the schema and solrconfig.xml, as PSI
+        Reader->>Parsers: parse(file.text)
+        Note over Parsers: pure functions over text, on the JDK's DOM.<br/>No PSI, so they test without an IDE.
+        Parsers-->>Reader: SolrConfigsetFacts
+        Reader->>Cache: Result.create(SolrFieldModel.of(facts), dependencies)
+        Note over Reader,Cache: dependencies = those source PsiFiles<br/>+ VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS
+    else nothing has moved
+        Cache-->>Reader: the stored model, unparsed
+    end
+
+    Reader-->>Feature: SolrFieldModel
+    Note over Feature,Reader: never wrap this in a second cache. A fact read from a file<br/>sourcesOf does not list goes stale on the first edit, silently.
+```
 
 > **In Java terms.** Reaching for a `ConcurrentHashMap` and a manual `invalidate()` call is the
 > ordinary Java instinct here, and it is the wrong one. `CachedValuesManager` inverts the
