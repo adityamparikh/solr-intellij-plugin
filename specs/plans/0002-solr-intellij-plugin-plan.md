@@ -139,8 +139,9 @@ whole, and the gutter action goes with the Server track.
   Listed here rather than only in its own body, which is the mistake
   [what an attribute means](#step-29-what-an-attribute-means-done) records: a step reachable from
   nowhere a reader scans for status stayed marked wrong for as long as it existed. Its
-  `SolrFieldReference.boost` had been parsed and carried since the parser was written and read by
-  nothing, so the step was mostly a consumer for a fact the model already held
+  it reuses the parser's existing rule for where a boost begins rather than building one. It does
+  **not** consume `SolrFieldReference.boost`, which stays parsed and unread — a reference carries no
+  text range and so cannot say which boost is at a caret
 
 ### Server track
 
@@ -1752,11 +1753,16 @@ returns null when the caret is inside a boost, which is right for completion —
 would write `name^name`, and the manual suite asserts that silence on purpose — but completion's
 correct silence was read as settling the position and documentation was never asked.
 
-**Half of it is already built and has been for months.** `SolrFieldReference.boost` is parsed,
-carried through the model and asserted in two test classes, and read by nothing in `src/main`: the
-parser had to find the `^` to know where the field name ended, so it kept what followed. This step
-gives that property its first consumer, which is why it is smaller than its position in the list
-suggests.
+**The splitting rule was already built, and the model's boost is not what this consumes.**
+`SolrConfigParser` has always had to find the `^` to know where a field name ended, so the rule for
+where a boost begins existed and the position function shares it. **What this step does *not* do is
+consume `SolrFieldReference.boost`** — that property is parsed, carried through the model, asserted
+in two test classes and read by nothing in `src/main`, and it stays that way. It cannot serve this:
+a reference carries no text range, so it cannot say which boost sits at a caret, and the position is
+the whole question. **An earlier revision of this entry claimed the step gave that property its
+first consumer, and that was wrong** — corrected here rather than left, because a plan that credits
+a step with a change it did not make is how a dead field survives the next audit that reads it.
+Whether the property earns a reader or should go is open, and belongs to whoever asks it.
 
 **Actions:**
 
@@ -1872,9 +1878,11 @@ and documentation was never asked. A reader who has just been told what `qf` is 
 value and gets nothing. This is a new capability rather than a fix, and it is the first thing the
 plugin would say about a parameter's *value* grammar rather than its name.
 
-**Placed as [Step 30](#step-30-explaining-a-boost-done).** What that step added to this entry is the
-finding that half of it is already built: `SolrFieldReference.boost` has been parsed and carried
-since the parser was written, and read by nothing.
+**Placed as [Step 30](#step-30-explaining-a-boost-done), and built.** What that step added to this
+entry is a second thing found by use rather than by reading: `SolrFieldReference.boost` has been
+parsed and carried since the parser was written and is read by nothing in `src/main` — and Step 30
+did not change that, though an earlier revision of both entries claimed it did. The popup needs to
+know *which* boost a caret is in, and a reference carries no text range.
 
 **A `<directoryFactory>` and a `<codecFactory>` were reported as explaining nothing** while
 `SolrConfigClassValueTest` asserted both were explained and was green. **Both were true, and the

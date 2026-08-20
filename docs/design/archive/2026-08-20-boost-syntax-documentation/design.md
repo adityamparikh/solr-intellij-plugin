@@ -26,7 +26,16 @@ same value and gets nothing.
 **Half the feature already exists.** `SolrFieldReference.boost` is parsed by `boostedFieldName`,
 carried through the model, and asserted in `SolrConfigParserTest` and `DemoConfigsetTest` — and read
 by nothing in `src/main`. The parser had to find the `^` to know where the field name ended, so it
-kept what followed. This design gives that property its first consumer.
+kept what followed.
+
+**It does not become this design's input, and saying so plainly matters.** An earlier revision of
+this record claimed the popup would be that property's first consumer. It is not: a
+`SolrFieldReference` carries no text range, so it cannot answer *which* boost sits at a given
+offset, and the popup's whole question is positional. The position function re-reads the token from
+the text instead. So the model half stays parsed, asserted in two test classes and read by nothing
+in `src/main` — this design leaves that exactly as it found it, and it remains a loose end for
+whoever wants one: either a reader appears (the drift view is the plausible one), or the property
+should go.
 
 This is the first thing the plugin would say about a parameter's *value* grammar rather than its
 name.
