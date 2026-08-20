@@ -1799,6 +1799,15 @@ documentation must not do there is name a field, since the boost follows a funct
 - [x] At least one test enters through `IdeDocumentationTargetProvider` rather than asking the
   provider — a test that calls `generateDoc` directly passes with the position test missing
   altogether, which is the defect most likely to ship here.
+- [x] **The target can be *presented*, not only documented.** This criterion is here because the one
+  above it was met and still let a crash reach a sandbox: the hover path computes a presentation
+  alongside the HTML, and `targetPresentation` refuses an element it cannot name, so
+  `SolrBoostElement` threw with its documentation already built and correct. Entering through the
+  platform's entry point is not the same as asking it for everything a reader's hover asks for —
+  `computeDocumentationBlocking` returns the HTML and never touches `computePresentation`. **The
+  amended lesson: starting where the user starts is necessary and not sufficient; the test has to
+  consume what the user's gesture consumes.** Found by running `runIde`, which is what the
+  [manual suite](../../docs/manual-test-suite.md) exists for.
 
 **Acceptance:** hovering the `^3` in the demo's `/select` handler `qf`
 (`demo/solr/conf/solrconfig.xml:28`), and the boost on the `bf` that action 4 adds beside it.

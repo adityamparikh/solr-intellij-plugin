@@ -2,6 +2,7 @@ package org.apache.solr.ide.configset.solrconfig.documentation
 
 import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
+import com.intellij.platform.backend.presentation.TargetPresentation
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -29,6 +30,20 @@ class SolrBoostDocumentationTest : SolrConfigsetTestCase() {
             .documentationTargets(myFixture.editor, myFixture.file, myFixture.caretOffset)
             .firstNotNullOfOrNull { computeDocumentationBlocking(it.createPointer())?.html }
 
+    /**
+     * The popup's *header*, which the hover path computes alongside the HTML.
+     *
+     * **Computing the documentation is only half of what the UI asks for**, and the half that
+     * worked. `PsiElementDocumentationTarget.computePresentation` runs on the same request and
+     * rejects an element it cannot name, so a boost popup whose HTML was perfect still threw in a
+     * real editor while every fixture here stayed green.
+     */
+    private fun presentationAtCaret(): TargetPresentation? =
+        IdeDocumentationTargetProvider.getInstance(project)
+            .documentationTargets(myFixture.editor, myFixture.file, myFixture.caretOffset)
+            .firstOrNull()
+            ?.computePresentation()
+
     private fun popupFor(body: String): String? {
         myFixture.addFileToProject("managed-schema.xml", schema)
         myFixture.configureByText(
@@ -44,6 +59,21 @@ class SolrBoostDocumentationTest : SolrConfigsetTestCase() {
         assertNotNull("nothing explained the boost", popup)
         assertTrue("expected the term-match sentence: $popup", popup!!.contains("term match"))
         assertTrue("expected the boosted field named: $popup", popup.contains("name"))
+    }
+
+    /**
+     * The half the HTML tests could not see, and the one that threw in a sandbox.
+     *
+     * A boost has no name of its own — it is a range inside a text node — so the element carrying it
+     * has to supply one anyway, or the platform refuses to present the target and the popup dies
+     * with the documentation already computed and correct.
+     */
+    fun testTheBoostTargetCanBePresented() {
+        popupFor("""<str name="qf">name^<caret>3 description</str>""")
+
+        val presentation = presentationAtCaret()
+        assertNotNull("the boost target could not be presented", presentation)
+        assertEquals("^3", presentation!!.presentableText)
     }
 
     /**

@@ -136,6 +136,12 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
      * [getCustomDocumentationElement] — and the offset that identifies which boost cannot be
      * recovered later, because [generateDoc] is handed an element and no caret. This carries the
      * answer computed while the offset was still in hand.
+     *
+     * **[getName] is not optional here, and its absence is not a compile error.** The hover path
+     * computes a presentation for the target alongside the documentation, and
+     * `targetPresentation` refuses an element it cannot name — so without this the popup threw with
+     * its HTML already built and correct. It shipped to a sandbox that way, because a test that
+     * asks only for the HTML asks for half of what a reader's hover does.
      */
     private class SolrBoostElement(
         private val text: XmlText,
@@ -143,6 +149,9 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
     ) : FakePsiElement() {
         override fun getParent(): PsiElement = text
         override fun getTextRange(): TextRange = text.textRange
+
+        /** What the popup's header shows: the boost as it is written, marker and all. */
+        override fun getName(): String = "^${occurrence.boost}"
     }
 
     /**
