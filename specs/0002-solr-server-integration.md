@@ -170,16 +170,52 @@ runtime** — the parent specification's own precedent for platform-API uncertai
 platform APIs... must be verified during implementation rather than assumed here," and the same
 caution applies to a JDK API used inside a plugin classloader for the first time.
 
-**FR-2 — JSON handling.** Solr's wire format is JSON, and the parent specification already commits to
-"hand-written request and response handling instead of typed objects" over embedding a client library.
-This document does not resolve which JSON *parser* backs that hand-written handling — whether a
-library already present on the IntelliJ Platform's runtime classpath (several plugins use
-`com.google.gson` without declaring it, because the platform itself depends on it) is safe to reference
-undeclared, or whether the shallow, uniformly-shaped responses this plugin actually reads (verified
-below) are cheap enough to walk with a small hand-written reader the way `SolrSchemaParser` hand-parses
-XML with the JDK's DOM rather than a binding library. **Recorded as [open question 1](#open-questions)
-rather than decided here**, because it is exactly the kind of platform-dependency assumption the
-solrconfig specification's own precedent says to verify before relying on.
+**FR-2 — JSON handling: Jackson 3's tree model, referenced from the platform and not declared.**
+Solr's wire format is JSON, and the parent specification already commits to "hand-written request and
+response handling instead of typed objects" over embedding a client library. That commitment says
+nothing about which parser does the reading, and an earlier revision of this section left it open on
+the grounds that a platform-classpath assumption should be verified before it is relied on. It has
+been; the decision is `tools.jackson.databind`, IDEA 2026.2's Jackson 3.
+
+**The verification is what makes this a decision rather than a preference.** A throwaway plugin
+reading a captured Solr schema response three ways — Jackson 3, Jackson 2 and `com.google.gson`, none
+of them declared as a dependency — compiles against all three, and `verifyPlugin` reports
+`Compatible` against `IU-262.8665.258` with no mention of any of them in its report: no unresolved
+reference, no internal-API warning, no experimental-API warning. Referencing any of the three
+undeclared is therefore safe as of this IDE target, which removes the concern that kept this open and
+leaves the choice to be made on the merits.
+
+Two merits decide it, and neither is "it is newest":
+
+- **`path()` cannot throw, and [FR-8](#requirements) needs exactly that.** Navigating
+  `readTree(body).path("schema").path("fieldTypes").path(0).path("indexAnalyzer")` yields a
+  `MissingNode` at the first absent link rather than a null or an exception, so a response that parses
+  as JSON but not into the shape expected falls out as *unrecognized* — which is what FR-8 requires —
+  instead of as a thrown internal error that has to be caught at every level. Gson's
+  `getAsJsonObject(...)` returns null or raises `IllegalStateException` on a type mismatch, so the same
+  discipline would be hand-written at each step, and the step somebody forgets is the defect.
+- **Arbitrary keys read directly.** `node.propertyNames()` gives the analyzer component's factory
+  arguments as the `Map<String, String>` [FR-5](#requirements)'s table requires, with no fixed schema
+  to declare. This is the requirement that rules out a typed binding entirely and is why the tree model
+  is the part of Jackson being used — the annotation and data-binding machinery is not.
+
+**Jackson 3 rather than Jackson 2, which is also present.** The platform ships both
+(`com.fasterxml.jackson` and `tools.jackson`), which reads as a migration in progress; a plugin
+targeting the destination outlives one targeting the origin. Note the renamed accessors —
+`asString()` for Jackson 2's `asText()`, `propertyNames()` for `fieldNames()` — confirmed by compiling
+rather than remembered.
+
+**The residual risk is real, and this project already gates it.** An undeclared platform library can
+be dropped by a future IDE without deprecation, and nothing in a normal build would say so. What
+catches it here is `verifyPlugin` running against every entry in `verifiedIdeBuilds` in CI: an IDE
+bump that stops shipping Jackson 3 fails the verifier in the pull request that raises the target,
+rather than in a user's editor. That gate is the condition under which this trade is acceptable — if
+it is ever removed, this decision has to be revisited rather than inherited.
+
+**What is still hand-written is the mapping, not the tokenizing.** Jackson reads bytes into a tree;
+turning that tree into `SolrConfigsetFacts` is this plugin's own code, per [FR-5](#requirements). The
+parent specification's objection was to typed objects generated from a client library's model of Solr,
+and a tree model is not that.
 
 **FR-3 — Connections feed the reader, not the other way around.** A server reader function takes a
 `SolrConnection` (`SolrConnectionSettings.kt:24-29`) and reads its credential through
@@ -366,6 +402,29 @@ This document takes no position on v1 versus v2 beyond noting that v1's query-pa
 this investigation verified content for; the v2 response shape should be pinned by the Testcontainers
 contract test in the same pull request that reads it, rather than assumed to match.
 
+**Solr's own Admin UI is a working reference for most of this, and worth reading before designing
+Step 12.** It is an AngularJS application served from the same node, and it reaches Solr the same way
+this plugin will — over the documented HTTP admin endpoints, with no privileged access. Each capability
+is one `$resource` declaration mapping a named operation onto a query parameter, so
+`js/angular/services.js` reads as a catalogue of which action serves which screen: `Collections`
+(`LIST`, `LISTALIASES`, `CLUSTERSTATUS`, `CREATE`, `DELETE`, `RENAME`, the alias and replica actions),
+`Cores` (`CREATE`, `UNLOAD`, `RENAME`, `SWAP`, `RELOAD`), and `ConfigSets`.
+
+Two things it does **not** do are as informative as what it does, because both are places where a
+reader might otherwise assume a precedent exists:
+
+- **It never uploads a configset.** `ConfigSets` is declared with `action: "LIST"` and nothing else —
+  enough to populate the configset dropdown when creating a collection. Its only file upload is for
+  *documents*, posting `FormData` to a core's update handler, which is Step 15's concern and not
+  Step 14's. The upload format in [FR-10](#requirements) had to be established by performing it
+  precisely because no client shipped with Solr demonstrates it.
+- **It reloads through the Cores API rather than the Collections API**, which is a UI aimed at a node
+  rather than at a collection. [FR-10](#requirements) explains why this plugin chooses the other form.
+
+The Admin UI also carries a `SchemaDesigner` service against `/api/schema-designer/`, a v2 API distinct
+from the Config Sets API. It publishes configsets by its own route and is not a precedent for
+[FR-10](#requirements)'s upload; it is worth knowing about only so that it is not mistaken for one.
+
 **FR-8 — Failures surface as Solr's own message, matching the parent specification's promise that
 "Solr's own error messages are shown rather than rewritten."** Verified pattern from a non-zero-status
 response: `responseHeader.status` is non-zero and `error.msg` carries the human-readable text, `error.code`
@@ -412,8 +471,30 @@ exists for single-source consumers that need one answer to display inline (an in
 to fill) and silently prefers the repository — using it in the one view whose entire purpose is
 showing that the two disagree would hide the disagreement in the exact place it is meant to be shown.
 
-**FR-10 — Upload and reload re-fetch rather than assume.** After a configset upload or a collection
-reload (Step 14, action 2), the drift view must invalidate its held server facts and issue a fresh read
+**FR-10 — Upload and reload re-fetch rather than assume.**
+
+**The wire format, verified by performing it** rather than inferred from the action's name. A configset
+upload is `POST /admin/configs?action=UPLOAD&name=<name>` with the zip as the request body under
+`Content-Type: application/octet-stream`. A `multipart/form-data` body works identically — Solr's
+request parsing unwraps multipart into a content stream before the handler sees it, and both forms were
+run against Solr 10.0.0 producing byte-identical results — so **the raw body is what this plugin
+sends**, because it is the one that needs no multipart encoder written to reach the same outcome.
+
+**Success was confirmed past the status code, which is the part worth insisting on.** Both uploads
+returned HTTP 200 with `responseHeader.status` 0, and both appeared in `action=LIST` — none of which
+proves the bytes arrived intact. Reading `/configs/<name>` back through `/admin/zookeeper` showed the
+correct file tree in both cases, and creating a collection against the uploaded configset produced a
+working collection whose schema read back with its full complement of field types. A write to a live
+server is exactly where "the request succeeded" is worth distrusting, which is the same instinct the
+rest of this requirement is built on.
+
+**Reload has two forms and both answer.** `GET /admin/cores?action=RELOAD&core=<core>` is what Solr's
+own Admin UI issues, and `GET /admin/collections?action=RELOAD&name=<collection>` is the SolrCloud
+form; both returned status 0 against the collection created above. The collection form is the one this
+plugin uses, because a pairing ([FR-12](#requirements)) names a collection and not a core, and reaching
+for the core underneath it would mean resolving replicas the plugin has no reason to know about.
+
+After either write, the drift view must invalidate its held server facts and issue a fresh read
 before reporting the comparison clean. **It must not clear the diff client-side on a successful HTTP
 response to the write**, because a write returning success is not proof the server now reflects it —
 reload timing, a multi-replica collection still propagating, or Solr accepting a request it cannot
@@ -680,10 +761,13 @@ suite reaching straight for the interesting case never makes.
   resolved factories rather than against the strings. The failure this now guards against is no longer
   discovering the gap from the drift view's first screenshot; it is reintroducing it one layer over, by
   comparing what the two sides happened to write.
-- **Response shapes are now verified against real servers rather than inferred from Reference Guide
-  prose**, which removes the risk the original draft carried here. What remains unverified is narrower
-  and named in [Open Questions](#open-questions): the upload multipart format, and whether
-  `SolrConfigParser` shares the schema parser's naming assumption. Neither blocks Step 11.
+- **Every response shape and both write formats are now verified against real servers rather than
+  inferred from Reference Guide prose**, which retires the risk the original draft carried here.
+- **The undeclared platform dependency on Jackson 3 ([FR-2](#requirements)) is a standing risk with a
+  standing gate.** A future IDE may stop shipping it, and no ordinary build would say so. What catches
+  it is `verifyPlugin` running against every entry in `verifiedIdeBuilds` in CI — the failure lands in
+  the pull request that raises the IDE target, not in a user's editor. If that gate is ever weakened,
+  this decision is to be revisited rather than inherited.
 - **The verification used the `sample_techproducts_configs` and `_default` configsets, which are what
   Solr ships rather than what users write.** Every shape claim in FR-5 held identically across two Solr
   lines and two configsets, which is good evidence for the shape and no evidence at all about the
@@ -700,36 +784,36 @@ suite reaching straight for the interesting case never makes.
 
 ## Open Questions
 
-1. **Which JSON parser.** Whether `com.google.gson` (or another library already on the IntelliJ
-   Platform's runtime classpath) is safe to reference without a declared dependency, or whether a small
-   hand-written reader over the shallow, uniformly-shaped responses this plugin actually needs is the
-   better match for the "hand-written request and response handling" trade the parent specification
-   already commits to. Settle in Step 11's first pull request, verified against a compiled build rather
-   than assumed.
-2. **Upload and reload's exact wire format** — the Config Sets API's upload action and the Collections
-   API's `RELOAD` action were not independently verified beyond confirming that `/admin/configs?action=LIST`
-   answers on a SolrCloud server and returns a `configSets` array, and that the whole handler is
-   unavailable in standalone mode ([FR-7](#requirements)). The zip-upload multipart format in particular
-   should be pinned by the Testcontainers contract test before Step 14 is considered done, not assumed
-   from the action name.
-3. **Whether the `name`/`class` gap fixed in `SolrSchemaParser` has a counterpart in `SolrConfigParser`.** The
-   analyzer-component finding recorded under [FR-5](#requirements) came from reading
-   `SolrSchemaParser.readComponent`; whether `solrconfig.xml` parsing makes the same assumption about
-   how a class is named — and whether Solr accepts an SPI short name in the places that file names one —
-   was not examined by this pass and is worth one deliberate look while the finding is fresh.
+**None.** All seven the first draft carried are closed, and their answers live where they are used
+rather than in a list that would have to be read alongside the requirement it qualifies.
 
-**Questions 2 through 6 of the original draft are closed** by [the verification pass](#verification-provenance),
-and their answers are recorded inline at [FR-5](#requirements), [FR-6](#requirements) and
-[FR-8](#requirements) rather than here. Three of the five came back other than this document guessed:
-the full-schema endpoint is complete rather than a summary, analyzer components name their factory under
-`name` at least as often as `class`, and a `copyFields` `dest` is never an array.
+| Question | Where the answer is | How it was settled |
+|---|---|---|
+| Which JSON parser | [FR-2](#requirements) | A throwaway plugin compiled against Jackson 3, Jackson 2 and Gson undeclared, then run through `verifyPlugin` |
+| Does the full-schema endpoint carry `dynamicFields` | [FR-5](#requirements) | Counts compared against the per-kind endpoints on both lines |
+| The analyzer chain's JSON shape | [FR-5](#requirements) | Read from real responses; the `name`/`class` fork found here became a defect fix in the Editor track |
+| Whether `copyFields` `dest` is ever an array | [FR-5](#requirements) | 17 entries inspected on both lines; repeated `source` is how several destinations arrive |
+| The path to the running Solr version | [FR-6](#requirements) | `lucene.solr-spec-version`, confirmed on both lines |
+| Whether HTTP 200 can carry a non-zero status | [FR-8](#requirements) | Error codes mirror; the states that *do* surprise are a non-JSON 404 body and `partialResults` on a 200 |
+| Upload and reload's wire format | [FR-10](#requirements) | Performed against a live SolrCloud and verified past the status code |
+
+**One question was opened and closed by the same pass, which is worth recording so nobody reopens it.**
+After the analyzer-spelling defect was found in `SolrSchemaParser`, the obvious follow-up was whether
+`SolrConfigParser` shares the assumption. It cannot. Solr resolves solrconfig.xml plugins through
+`AbstractPluginLoader`, which reads `node.attrRequired("class", type)` and instantiates by class name
+with no alternative spelling; `name` there is the registered name or request path — `name="/select"` —
+and never a factory. The SPI fork exists in exactly one place in `solr-core`,
+`FieldTypePluginLoader`, for the schema's char filters, tokenizers and filters, where it calls
+`CharFilterFactory.forName(name, params)` when a `name` is present. Every other `forName` in that
+module is `Class.forName` or `Charset.forName`. **There is no second copy of this defect to find.**
 
 ## Verification provenance
 
-Every claim in this document marked *verified* against a response, rather than against the Reference
-Guide, comes from one pass run on 2026-08-19 against containers started for the purpose and torn down
-after. It is recorded because a wire-format claim is only as good as the thing it was read from, and a
-future reader deserves to know which Solr said so.
+Every claim in this document marked *verified* comes from one of two passes, both against containers
+started for the purpose and torn down after. It is recorded because a wire-format claim is only as good
+as the thing it was read from, and a future reader deserves to know which Solr said so.
+
+### The wire-format pass, 2026-08-19
 
 | | |
 |---|---|
@@ -739,10 +823,23 @@ future reader deserves to know which Solr said so.
 | Read | `/admin/info/system`, `/<c>/schema`, the four `/schema/<kind>` endpoints, `/admin/collections` (`LIST`, `CLUSTERSTATUS`, and an invalid action), `/admin/cores?action=STATUS`, `/admin/configs?action=LIST`, and `/select` with an unknown field, with `timeAllowed=1`, and against a collection that does not exist |
 | Written | one `add-field-type` through the Schema API declaring its analyzer components with `class`, to establish whether Solr normalizes the spelling on read-back. It does not |
 
-Two things this pass could not establish, so that nobody reads the table above as broader than it is: it
-exercised **no authenticated server**, so [FR-4](#requirements)'s preemptive-Basic requirement remains
-Reference-Guide-sourced; and it exercised **no TLS**, so [NFR-7](#requirements)'s certificate reasoning
-is unchanged by it.
+### The write-and-classpath pass, 2026-08-20
+
+| | |
+|---|---|
+| Image | `solr:10.0.0`, started with `SOLR_MODE=solrcloud`, since the Config Sets API does not exist without it |
+| Written | a configset uploaded twice — once as a raw `application/octet-stream` body, once as `multipart/form-data` — then read back through `/admin/zookeeper`, used to create a collection, and that collection's schema fetched. Reload issued through both `/admin/cores?action=RELOAD` and `/admin/collections?action=RELOAD` |
+| Read | Solr's own Admin UI, from `/opt/solr/server/solr-webapp/webapp/js/angular/services.js` inside the image, for which admin actions a shipped client actually issues ([FR-7](#requirements)) |
+| Read | `solr-core` 10.0.0 sources, already resolved by this build for Javadoc extraction, for how solrconfig.xml plugins are instantiated versus schema analysis components ([Open Questions](#open-questions)) |
+| Compiled | a throwaway plugin referencing Jackson 3, Jackson 2 and `com.google.gson` with none of them declared, verified with `verifyPlugin` against `IU-262.8665.258` ([FR-2](#requirements)) |
+
+### What neither pass established
+
+Both exercised **no authenticated server**, so [FR-4](#requirements)'s preemptive-Basic requirement
+remains Reference-Guide-sourced; and **no TLS**, so [NFR-7](#requirements)'s certificate reasoning is
+unchanged by either. Both also ran against **Solr's own shipped configsets** rather than against
+anything a user wrote, which is good evidence about response shape and no evidence at all about the
+variety of real schemas — see the risk that says so.
 
 ## References
 
