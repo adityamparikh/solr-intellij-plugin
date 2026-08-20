@@ -134,11 +134,13 @@ whole, and the gutter action goes with the Server track.
   complete-configuration popup have all shipped. Action 3, dynamic field pattern awareness, turned out to be shipped
   across every surface that judges a field name and short in exactly one — a field type's usage sentence counted
   declared fields only — which is now fixed
-- [Step 30 — Explaining a boost](#step-30-explaining-a-boost) — **not started**; the only editor-track
-  step that is not, and the placement the parked findings below deliberately left open. Listed here
-  rather than only in its own body, which is the mistake
+- [Step 30 — Explaining a boost](#step-30-explaining-a-boost-done) — **done**; the placement the
+  parked findings below deliberately left open, and with it the editor track has no step outstanding.
+  Listed here rather than only in its own body, which is the mistake
   [what an attribute means](#step-29-what-an-attribute-means-done) records: a step reachable from
-  nowhere a reader scans for status stayed marked wrong for as long as it existed
+  nowhere a reader scans for status stayed marked wrong for as long as it existed. Its
+  `SolrFieldReference.boost` had been parsed and carried since the parser was written and read by
+  nothing, so the step was mostly a consumer for a fact the model already held
 
 ### Server track
 
@@ -1736,7 +1738,7 @@ and [70 — *quick documentation on a factory*](../../docs/demo/README.md#step-7
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
 [the factory catalog generator](#step-9-factory-catalog-generator-done)
 
-### Step 30: Explaining a boost
+### Step 30: Explaining a boost (done)
 
 Numbered last because it was added last. It is the placement decision
 [the parked findings](#found-by-use-on-2026-08-12-not-yet-placed) deliberately declined to make, and
@@ -1780,21 +1782,21 @@ documentation must not do there is name a field, since the boost follows a funct
 
 **Success criteria:**
 
-- [ ] A caret on the `^` and a caret in the number after it both answer, and answer the same thing.
-- [ ] `qf`, `pf`, `pf2`, `pf3`, `bf` and `boost` each say what *their* boost scales; the two function
+- [x] A caret on the `^` and a caret in the number after it both answer, and answer the same thing.
+- [x] `qf`, `pf`, `pf2`, `pf3`, `bf` and `boost` each say what *their* boost scales; the two function
   parameters name no field.
-- [ ] The field half states what the configset resolves, and drops entirely where
+- [x] The field half states what the configset resolves, and drops entirely where
   `SolrFieldOperations.supports` returns null — the same silence
   [Step 27](#step-27-saying-what-a-propertys-value-means-done) holds for an `UNDETERMINED` property.
-- [ ] A boost on a field the schema does not declare keeps the syntax half and drops the field half;
+- [x] A boost on a field the schema does not declare keeps the syntax half and drops the field half;
   the undeclared name stays the unknown-field inspection's to report, not this popup's to repeat.
-- [ ] `^1` is described as changing nothing, **as prose in the popup and nowhere else** — nothing in
+- [x] `^1` is described as changing nothing, **as prose in the popup and nowhere else** — nothing in
   the Problems view, no highlight, no warning colour. A popup may observe what an inspection may not
   report, because it answers a caret the reader placed; the moment this wants a colour it has become
   an inspection and needs a step that argues for one.
-- [ ] A caret on the field name keeps exactly the popup it has today.
-- [ ] Completion after a `^` stays silent, and its existing manual check still passes.
-- [ ] At least one test enters through `IdeDocumentationTargetProvider` rather than asking the
+- [x] A caret on the field name keeps exactly the popup it has today.
+- [x] Completion after a `^` stays silent, and its existing manual check still passes.
+- [x] At least one test enters through `IdeDocumentationTargetProvider` rather than asking the
   provider — a test that calls `generateDoc` directly passes with the position test missing
   altogether, which is the defect most likely to ship here.
 
@@ -1806,7 +1808,7 @@ for the provider and the parameter catalog, and
 [the repository reader and field model](#step-3-repository-reader-and-field-model-done) for the
 field the boost names.
 
-[The design record](../../docs/design/pending/2026-08-20-boost-syntax-documentation/design.md)
+[The design record](../../docs/design/archive/2026-08-20-boost-syntax-documentation/design.md)
 carries the per-parameter wording, the argument for why a popup may judge where an inspection may
 not, and a non-numeric-boost inspection recorded as a follow-up rather than folded in here.
 
@@ -1815,7 +1817,7 @@ not, and a non-numeric-boost inspection recorded as a follow-up rather than fold
 Three gaps found by opening the sandbox on the demo configset rather than by reading the code. They
 were recorded here rather than folded into a step because each needed a placement decision this entry
 deliberately did not make. **The first and third were defects in shipped behaviour and are fixed; the
-second was an absence and is now [Step 30](#step-30-explaining-a-boost), still to build.**
+second was an absence and is now [Step 30](#step-30-explaining-a-boost-done), built.**
 
 All three have their placement now, so this section is history rather than a queue. It stays because
 what each entry records is *how the gap was found* — by using the plugin rather than by reading it —
@@ -1861,7 +1863,7 @@ and documentation was never asked. A reader who has just been told what `qf` is 
 value and gets nothing. This is a new capability rather than a fix, and it is the first thing the
 plugin would say about a parameter's *value* grammar rather than its name.
 
-**Placed as [Step 30](#step-30-explaining-a-boost).** What that step added to this entry is the
+**Placed as [Step 30](#step-30-explaining-a-boost-done).** What that step added to this entry is the
 finding that half of it is already built: `SolrFieldReference.boost` has been parsed and carried
 since the parser was written, and read by nothing.
 
