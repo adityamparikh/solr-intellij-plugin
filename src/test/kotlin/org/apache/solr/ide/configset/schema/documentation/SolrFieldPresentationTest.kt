@@ -585,4 +585,40 @@ class SolrFieldPresentationTest {
         )
         assertFalse("The original value is" in html)
     }
+    /**
+     * The chain links to the guide under either spelling.
+     *
+     * `analyzerComponentPage` decides which guide page a component belongs on by the suffix of its
+     * class name, so a component spelled `name="lowercase"` matched none of them and rendered as
+     * bare text. That left one popup disagreeing with itself: the match line above the chain reads
+     * the same components and resolves them correctly, so the chain was the only part that looked
+     * unrecognized — on precisely the configsets Solr ships.
+     */
+    @Test
+    fun `an SPI-spelled chain links to the guide like a class-spelled one`() {
+        val spiType = SolrFieldType(
+            name = "text_general",
+            className = "solr.TextField",
+            indexAnalyzer = SolrAnalyzerChain(
+                tokenizer = SolrAnalyzerComponent("standard"),
+                filters = listOf(SolrAnalyzerComponent("lowercase")),
+            ),
+        )
+        val html = SolrFieldPresentation.fieldTypeDocumentation(spiType, SolrVersionSelection.DEFAULT)
+        assertTrue("the tokenizer should link to the tokenizers page", html.contains("tokenizers.html"))
+        assertTrue("the filter should link to the filters page", html.contains("filters.html"))
+    }
+
+    /** The name stays as the schema wrote it; only the link is resolved. */
+    @Test
+    fun `an SPI-spelled component is displayed as written`() {
+        val spiType = SolrFieldType(
+            name = "text_general",
+            className = "solr.TextField",
+            indexAnalyzer = SolrAnalyzerChain(tokenizer = SolrAnalyzerComponent("standard")),
+        )
+        val html = SolrFieldPresentation.fieldTypeDocumentation(spiType, SolrVersionSelection.DEFAULT)
+        assertTrue("expected the written spelling, got: $html", html.contains("<code>standard</code>"))
+        assertFalse(html.contains("StandardTokenizerFactory"))
+    }
 }
