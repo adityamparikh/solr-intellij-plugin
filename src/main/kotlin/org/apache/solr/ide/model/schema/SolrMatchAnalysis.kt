@@ -147,8 +147,14 @@ object SolrMatchAnalysis {
      * it is looked up. A name that resolves to nothing is returned unchanged and therefore matches
      * nothing, which is the correct outcome — an unrecognized component drops
      * [SolrMatchCapability.confident] rather than being guessed at.
+     *
+     * Public because the ordering inspection needs the same normalization for its own questions, and
+     * kept it as a private copy until this resolution step made the two answers differ.
+     *
+     * @param className the factory as written — `solr.X`, fully qualified, or the SPI short name
+     * @return the simple class name to look up, or [className] unchanged if it resolves to nothing
      */
-    private fun simpleName(className: String): String {
+    fun simpleName(className: String): String {
         if ('.' in className) return className.substringAfterLast('.')
         return SolrClassCatalog.classForSpiName(className)?.substringAfterLast('.') ?: className
     }

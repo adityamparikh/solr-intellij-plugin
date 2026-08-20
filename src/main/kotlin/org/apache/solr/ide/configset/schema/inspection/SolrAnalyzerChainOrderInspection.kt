@@ -143,8 +143,10 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
             below: List<XmlTag>,
         ) {
             val declaration = classValueOf(filter) ?: return
-            if (simpleName(declaration.value) != FLATTEN_GRAPH) return
-            if (tokenizer != null && simpleName(classOf(tokenizer)) in GRAPH_PRODUCING_TOKENIZERS) return
+            if (SolrMatchAnalysis.simpleName(declaration.value) != FLATTEN_GRAPH) return
+            if (tokenizer != null &&
+                SolrMatchAnalysis.simpleName(classOf(tokenizer)) in GRAPH_PRODUCING_TOKENIZERS
+            ) return
             if (above.any { producesGraph(it) }) return
             val producer = below.firstOrNull { producesGraph(it) } ?: return
             SolrInspections.reportOnValue(
@@ -168,7 +170,7 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
             tokenizer: XmlTag?,
             above: List<XmlTag>,
         ) {
-            if (simpleName(classOf(filter)) !in WORD_DELIMITERS) return
+            if (SolrMatchAnalysis.simpleName(classOf(filter)) !in WORD_DELIMITERS) return
             val request = filter.getAttribute(SPLIT_ON_CASE_CHANGE)?.valueElement ?: return
             if (!asksForCaseSplit(request.value)) return
             val folder = (listOfNotNull(tokenizer) + above)
@@ -182,16 +184,14 @@ class SolrAnalyzerChainOrderInspection : LocalInspectionTool() {
         }
 
         /** Whether [component] emits a token graph, which is the thing a flattener flattens. */
-        fun producesGraph(component: XmlTag): Boolean = simpleName(classOf(component)) in GRAPH_PRODUCERS
+        fun producesGraph(component: XmlTag): Boolean =
+            SolrMatchAnalysis.simpleName(classOf(component)) in GRAPH_PRODUCERS
 
         /** The `class` attribute's value element, the anchor a finding about the component sits on. */
         fun classValueOf(component: XmlTag): XmlAttributeValue? = component.getAttribute(CLASS)?.valueElement
 
         /** The class a component names, as written, which is also how a message should quote it. */
         fun classOf(component: XmlTag): String = component.getAttributeValue(CLASS).orEmpty()
-
-        /** A factory's simple name, whether it was written as `solr.X` or fully qualified. */
-        fun simpleName(className: String): String = className.substringAfterLast('.')
 
         /** The filter whose only purpose is to flatten what a graph filter above it produced. */
         const val FLATTEN_GRAPH = "FlattenGraphFilterFactory"

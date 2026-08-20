@@ -313,6 +313,13 @@ object SolrClassCatalog {
 
     private val guideSegmentByLine = HashMap<Int, String?>()
 
+    // SPI short name -> class, per line. Indexed rather than scanned because the caller is on an
+    // editor path: a configset written the way Solr's own are — `name="standard"` — sends every
+    // component through this lookup, once per component per field, on every inlay pass, completion
+    // and quick-documentation render. A linear scan is ~200 comparisons for a hit and the whole
+    // catalog for a miss; this is one hash lookup against a map built once.
+    private val spiIndexByLine = HashMap<Int, Map<String, String>>()
+
     /**
      * The Reference Guide path segment for [line], read from the catalog that answers for it.
      *
@@ -400,10 +407,19 @@ object SolrClassCatalog {
      * @param spiName the short name as a schema writes it, such as `standard` or `synonymGraph`
      * @return the fully qualified class, or null when no supported line registers that name
      */
-    fun classForSpiName(spiName: String): String? = SUPPORTED_LINES
-        .firstNotNullOfOrNull { line ->
-            load(line).firstOrNull { it.spiName == spiName }?.className
+    fun classForSpiName(spiName: String): String? {
+        // A component that named itself neither way reaches here as an empty string, from a caller
+        // reading an absent `class` attribute. Answering it costs a full sweep of every line's
+        // catalog for a guaranteed null, so it is refused before the sweep rather than during it.
+        if (spiName.isEmpty()) return null
+        return SUPPORTED_LINES.firstNotNullOfOrNull { spiIndexFor(it)[spiName] }
+    }
+
+    private fun spiIndexFor(line: Int): Map<String, String> = synchronized(spiIndexByLine) {
+        spiIndexByLine.getOrPut(line) {
+            load(line).mapNotNull { entry -> entry.spiName?.let { it to entry.className } }.toMap()
         }
+    }
 
     /**
      * The line whose catalog answers for [version].

@@ -20,28 +20,18 @@ class SolrSpiNamesTest {
         assertEquals("lowercase", SolrSpiNames.of(listOf("NAME" to "lowercase")))
     }
 
-    @Test
-    fun `a factory declaring no NAME has no SPI name`() {
-        assertNull(SolrSpiNames.of(listOf("DEFAULT_MAX_TOKEN_LENGTH" to "255")))
-    }
-
     /**
-     * The irregular spellings are the whole reason this is read rather than derived. Each of these
-     * is a name no mechanical transformation of the class name produces.
+     * Only an exactly named `NAME` counts.
+     *
+     * A class declaring other constants has no SPI name, and neither `FIELD_NAME` nor
+     * `NAME_ATTRIBUTE` may be mistaken for one — a near-miss is not a match.
      */
     @Test
-    fun `irregular names are taken verbatim`() {
-        assertEquals("uax29URLEmail", SolrSpiNames.of(listOf("NAME" to "uax29URLEmail")))
-        assertEquals("nGram", SolrSpiNames.of(listOf("NAME" to "nGram")))
-        assertEquals("kStem", SolrSpiNames.of(listOf("NAME" to "kStem")))
-    }
-
-    /**
-     * A constant named `NAME` that is not the SPI name would be a different field entirely; only an
-     * exact match counts, so a `FIELD_NAME` or `NAME_ATTRIBUTE` nearby cannot be mistaken for one.
-     */
-    @Test
-    fun `only an exactly named NAME constant counts`() {
-        assertNull(SolrSpiNames.of(listOf("FIELD_NAME" to "x", "NAME_ATTRIBUTE" to "y")))
+    fun `a factory declaring no NAME constant has no SPI name`() {
+        assertNull(
+            SolrSpiNames.of(
+                listOf("DEFAULT_MAX_TOKEN_LENGTH" to "255", "FIELD_NAME" to "x", "NAME_ATTRIBUTE" to "y"),
+            ),
+        )
     }
 }

@@ -285,11 +285,10 @@ class SolrMatchAnalysisTest {
                 filters = listOf(SolrAnalyzerComponent("lowercase")),
             ),
         )
-        val classes = analyze("StandardTokenizerFactory", "LowerCaseFilterFactory")
-        assertEquals(classes.granularity, spi.granularity)
-        assertEquals(classes.caseSensitive, spi.caseSensitive)
-        assertEquals(classes.prefix, spi.prefix)
-        assertEquals(classes.confident, spi.confident)
+        // Compared whole rather than property by property: `SolrMatchCapability` is a data class,
+        // and the resolution happens before the name is recorded, so the evidence must match too —
+        // which is the property a field-by-field comparison would have quietly let drift.
+        assertEquals(analyze("StandardTokenizerFactory", "LowerCaseFilterFactory"), spi)
     }
 
     /** The keyword tokenizer decides granularity, and it must decide it under either spelling. */
