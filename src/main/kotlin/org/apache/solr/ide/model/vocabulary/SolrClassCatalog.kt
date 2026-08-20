@@ -228,6 +228,10 @@ data class SolrClassAttribute(
  *   analysis factory, which has no defaults to decide. An empty set on a field type is a positive
  *   answer — the class carries no trait — and is what makes a default resolvable as `false` rather
  *   than left undetermined
+ * @property spiName the short name a schema may write instead of the class, as in
+ *   `<filter name="lowercase"/>`, or null for a class that registers none. Carried rather than
+ *   derived because no rule turns `LowerCaseFilterFactory` into `lowercase` without also turning
+ *   `UAX29URLEmailTokenizerFactory` into something other than `uax29URLEmail`
  */
 data class SolrClassEntry(
     val kind: SolrClassKind,
@@ -236,6 +240,7 @@ data class SolrClassEntry(
     val attributes: List<SolrClassAttribute> = emptyList(),
     val summary: String? = null,
     val traits: Set<SolrTypeTrait> = emptySet(),
+    val spiName: String? = null,
 ) {
 
     /** The attribute [name], or null when this class does not read one by that name. */
@@ -308,6 +313,13 @@ object SolrClassCatalog {
 
     private val guideSegmentByLine = HashMap<Int, String?>()
 
+    // SPI short name -> class, per line. Indexed rather than scanned because the caller is on an
+    // editor path: a configset written the way Solr's own are — `name="standard"` — sends every
+    // component through this lookup, once per component per field, on every inlay pass, completion
+    // and quick-documentation render. A linear scan is ~200 comparisons for a hit and the whole
+    // catalog for a miss; this is one hash lookup against a map built once.
+    private val spiIndexByLine = HashMap<Int, Map<String, String>>()
+
     /**
      * The Reference Guide path segment for [line], read from the catalog that answers for it.
      *
@@ -366,17 +378,48 @@ object SolrClassCatalog {
         entriesFor(version).filter { it.kind == kind }
 
     /**
-     * The entry for [name], matched against either spelling.
+     * The entry for [name], matched against any spelling a configset may use.
      *
      * A configset may write `solr.StrField` or the fully qualified name, and both are the same
      * class — so a lookup that only understood one would report a correct file as unrecognized.
+     * An analysis component adds a third: `<filter name="lowercase"/>` names the same factory as
+     * `<filter class="solr.LowerCaseFilterFactory"/>`, and it is the spelling Solr's own shipped
+     * configsets use throughout.
      *
-     * @param name the class name as written in the configset
+     * @param name the class or SPI name as written in the configset
      * @param version the Solr line this configset targets
      * @return the entry, or null when this line names no such class
      */
     fun find(name: String, version: SolrVersionSelection): SolrClassEntry? =
-        entriesFor(version).firstOrNull { it.shortName == name || it.className == name }
+        entriesFor(version).firstOrNull {
+            it.shortName == name || it.className == name || it.spiName == name
+        }
+
+    /**
+     * The class registered under the SPI short name [spiName], on any supported line.
+     *
+     * Deliberately version-free, and that is the one thing worth arguing about here. Every other
+     * catalog lookup is per-line because what a line *accepts* is the question being asked. This one
+     * asks what a factory *is* — the class behind `lowercase` is `LowerCaseFilterFactory` on every
+     * line that has it at all — so narrowing by version could only turn a resolvable name into an
+     * unresolvable one, and the caller reading it treats unresolved as "say nothing confidently".
+     *
+     * @param spiName the short name as a schema writes it, such as `standard` or `synonymGraph`
+     * @return the fully qualified class, or null when no supported line registers that name
+     */
+    fun classForSpiName(spiName: String): String? {
+        // A component that named itself neither way reaches here as an empty string, from a caller
+        // reading an absent `class` attribute. Answering it costs a full sweep of every line's
+        // catalog for a guaranteed null, so it is refused before the sweep rather than during it.
+        if (spiName.isEmpty()) return null
+        return SUPPORTED_LINES.firstNotNullOfOrNull { spiIndexFor(it)[spiName] }
+    }
+
+    private fun spiIndexFor(line: Int): Map<String, String> = synchronized(spiIndexByLine) {
+        spiIndexByLine.getOrPut(line) {
+            load(line).mapNotNull { entry -> entry.spiName?.let { it to entry.className } }.toMap()
+        }
+    }
 
     /**
      * The line whose catalog answers for [version].
@@ -474,7 +517,13 @@ object SolrClassCatalog {
             val traits = columns.getOrNull(5).orEmpty()
                 .split(',')
                 .mapNotNullTo(mutableSetOf()) { SolrTypeTrait.forToken(it.trim()) }
-            kinds[columns[0]]?.let { SolrClassEntry(it, columns[1], columns[2], attributes, summary, traits) }
+            // Absent on a catalog generated before this column existed, and blank for every class
+            // that registers no SPI name — a field type, a plugin, or a factory Lucene did not
+            // register. Both read as "this class has no other spelling".
+            val spiName = columns.getOrNull(6)?.takeIf { it.isNotBlank() }
+            kinds[columns[0]]?.let {
+                SolrClassEntry(it, columns[1], columns[2], attributes, summary, traits, spiName)
+            }
         }.toList()
     }
 }

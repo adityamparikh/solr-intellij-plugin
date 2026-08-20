@@ -91,6 +91,17 @@ class SolrShippedConfigsetTest : SolrConfigsetTestCase() {
             "expected solrconfig.xml to reference fields, got ${model.fieldReferences.size}",
             model.fieldReferences.size > 5,
         )
+        // The gap this guard had, and the defect that walked through it. Counting field types is not
+        // enough: a type parses, keeps its analyzer, and loses every component inside it, so all
+        // three counts above stayed right while the chains were empty. These configsets spell their
+        // components `name="standard"` rather than `class="solr.StandardTokenizerFactory"`, and the
+        // parser read only the second spelling — leaving every inspection correctly silent about a
+        // chain it could not see, which is what the four tests above were asserting.
+        val components = model.fieldTypes.values.sumOf {
+            val type = it.effective
+            (type?.indexAnalyzer?.components?.size ?: 0) + (type?.queryAnalyzer?.components?.size ?: 0)
+        }
+        assertTrue("expected analyzer components to be parsed, got $components", components > 50)
     }
 
     /**

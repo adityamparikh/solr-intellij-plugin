@@ -222,44 +222,49 @@ required a second request — and it is wrong. The reader issues one schema requ
 | | | **Values arrive as JSON booleans, and `SolrField` stores each one twice.** The five named flags are `Boolean?` properties that a JSON boolean populates directly — easier than the XML side, which parses attribute text. But `SolrField.attributes` is `Map<String, String>` built as `attributesExcept("name", "type")` (`SolrSchemaParser.kt:68`), so it *also* holds `indexed`, `stored` and the rest, as the strings `"true"`/`"false"`. The JSON reader must populate both representations, stringifying on the way into the map, or two facts that agree will compare as different in the map while agreeing in the properties. The same applies to `SolrAnalyzerComponent.attributes`, which holds every factory argument as text |
 | `dynamicFields` | `schema.dynamicFields[]`, each `name` is the pattern | |
 | `fieldTypes` | `schema.fieldTypes[]` | `class` → `className`. The chain arrives under `analyzer`, `indexAnalyzer` or `queryAnalyzer` — all three keys observed — each an object with `tokenizer` (single) plus `filters` and `charFilters` (arrays); every other key on a component is one of its factory arguments |
-| | | **A component names its factory under `name` *or* `class`, and the server echoes back whichever spelling the schema used — it does not normalize.** Both supported lines returned `name` for all 236 components in the shipped techproducts configset and `class` for none; a field type added through the Schema API with `{"class": "solr.StandardTokenizerFactory"}` read back as `class` verbatim. The reader must accept both keys. **This is not symmetric with the repository parser today** — see the note below the table |
+| | | **A component names its factory under `name` *or* `class`, and the server echoes back whichever spelling the schema used — it does not normalize.** Both supported lines returned `name` for all 236 components in the shipped techproducts configset and `class` for none; a field type added through the Schema API with `{"class": "solr.StandardTokenizerFactory"}` read back as `class` verbatim. The reader must accept both keys, and resolve them the way the repository side now does — through `SolrClassCatalog.classForSpiName` — rather than comparing the strings. See the note below the table for how that resolution came to exist |
 | `copyFields` | `schema.copyFields[]` | `source`/`dest`, both plain strings. **Verified: `dest` is never an array.** Several destinations for one source arrive as several entries repeating the `source` (`author`, `manu` and `name` each appear twice in techproducts), which is already the repository parser's one-source-one-destination shape (`SolrSchemaTypes.kt:141-145`). No expansion step is needed |
 | `uniqueKey` | `schema.uniqueKey` | |
 | `schemaVersion` | **not populated by this parser** | The server reports one, and nothing would read it: `SolrFieldModel.of` takes `SolrSchemaVersion.of(repo.schemaVersion)` — the repository half, deliberately, because "the schema version is a property of the file the user is editing" (`SolrFieldModel.kt:207-209`). Populating it would create a value that looks consumed and is discarded on the next line, which is the mistake the element catalog's `valueType` column already made and paid for. If a future step wants to show a schema-version disagreement it must change `of` first, and that is a change to argue for rather than to arrive by accident. **Note also that `SolrConfigsetFacts.schemaVersion` is a `String?` "exactly as written" (`SolrConfigsetFacts.kt:26-28`), not a `Float`** — an earlier draft of this row claimed the opposite and inferred from it that no string round trip was needed |
 | `fieldReferences` | always empty | Already documented on the type: "always empty for a server, which reports its configuration rather than the file that produced it" (`SolrConfigsetFacts.kt:22-23`) |
 | `luceneMatchVersion` | **not populated by this parser** | See [FR-6](#requirements) — the server's own version is a different fact, carried differently |
 
-**The two spellings are not a server-side quirk to absorb quietly — the repository parser does not read
-one of them at all, and this pass found that by looking.** `SolrSchemaParser.readComponent` requires a
-`class` attribute and returns null without one (`SolrSchemaParser.kt:106-109`), so every
-`<tokenizer name="standard"/>` and `<filter name="lowercase"/>` in a configset is dropped on the floor.
-That spelling is not exotic: it is what Solr's own `_default` and `sample_techproducts_configs` use
-exclusively on both supported lines. Counted over the four copies this repository already vendors under
+**The two spellings were not a server-side quirk to absorb quietly — the repository parser did not read
+one of them at all, and this pass found that by looking.** `SolrSchemaParser.readComponent` required a
+`class` attribute and returned null without one, so every `<tokenizer name="standard"/>` and
+`<filter name="lowercase"/>` was dropped on the floor while the chain around it still parsed. That
+spelling is not exotic: it is what Solr's own `_default` and `sample_techproducts_configs` use
+exclusively on both supported lines. Counted over the four copies this repository vendors under
 `src/test/resources/shipped-configsets/`, every one carries between 247 and 263 `name`-spelled
-components and **zero** spelled `class`. The parser's own unit tests use `class` in all six of their
-fixtures and `name` in none, which is why the suite is green.
+components and **zero** spelled `class`. Measured rather than reasoned about, the plugin parsed
+**zero** analyzer components from the whole techproducts configset.
 
-The consequence runs downhill into match analysis: a chain whose components were all dropped has a null
-`tokenizer`, so `SolrMatchAnalysis.of` takes its no-tokenizer arm and returns
-`UNANALYZED.copy(granularity = TOKENS, confident = false)` (`SolrMatchAnalysis.kt:51-55`). **The plugin
-degrades to silence rather than to a false claim** — `confident = false` is doing exactly the job this
-project's "silence over a false positive" rule asks of it — but quick documentation renders an empty
-analyzer chain (`SolrFieldPresentation.kt:187-188`) and every match-capability surface goes dark on the
-configsets Solr itself ships. `SolrShippedConfigsetTest` asserts nothing is reported over those very
-files and passes partly for this reason; its own guard against a fixture that "passes just as well when
-it is looking at nothing" counts fields and field types, both of which parse fine, and never reaches
-inside a field type to the chain.
+The consequence ran downhill into match analysis: a chain whose components were all dropped has a null
+`tokenizer`, so `SolrMatchAnalysis.of` took its no-tokenizer arm and returned
+`UNANALYZED.copy(granularity = TOKENS, confident = false)` (`SolrMatchAnalysis.kt:62-66`). **The plugin
+degraded to silence rather than to a false claim** — `confident = false` doing exactly the job this
+project's "silence over a false positive" rule asks of it — but quick documentation rendered an empty
+analyzer chain (`SolrFieldPresentation.kt:187-188`) and every match-capability surface went dark on the
+configsets Solr itself ships. The suite was green because the parser's own unit tests used `class` in
+all six of their fixtures and `name` in none, and because `SolrShippedConfigsetTest`, which asserts
+nothing is reported over those very files, guarded itself against a fixture that "passes just as well
+when it is looking at nothing" by counting fields and field types — both of which parse — without ever
+reaching inside a field type to the chain.
 
-**This is an Editor-track defect, not a Server-track one, and it is named here because this document is
-where the evidence landed rather than because Step 11 should fix it.** It bears on this specification in
-one specific way: [FR-9](#requirements)'s drift comparison must not treat `name` and `class` as
-disagreeing when they denote the same factory. Until the repository parser reads both, a drift view
-would compare a server chain against an empty repository chain and report every analyzed field as
-`DISAGREEING` — a false positive at scale, in the one view whose entire purpose is being believed.
-**Fixing the repository parser is a prerequisite for Step 14, and belongs in its own commit against the
-Editor track with a `name`-spelled parser fixture**, for the same reason FR-6's change is called out for
-one: `SolrSchemaParser` is read by every schema surface already shipped, and the existing suite can only
-tell you which change broke something while it is the only change.
+**This was an Editor-track defect rather than a Server-track one, and it is recorded here because this
+document is where the evidence landed.** It is fixed: the parser reads both spellings, the catalog
+carries each factory's SPI name read from the `NAME` constant it declares, and
+`SolrClassCatalog.classForSpiName` resolves one spelling to the other. `SolrShippedConfigsetTest` now
+counts analyzer components, which is the assertion that would have caught this originally — it fails
+with `got 0` against the old parser.
+
+**What it leaves behind for this specification is a standing requirement on
+[FR-9](#requirements): the drift comparison must not treat `name` and `class` as disagreeing when they
+denote the same factory.** That is now satisfiable rather than aspirational, because both sides can
+resolve a spelling to a class through the same catalog — but it has to be *done*, and the server reader
+is where the second half lands. A comparison that skipped it would report every analyzed field as
+`DISAGREEING` on any configset written the modern way: a false positive at scale, in the one view whose
+entire purpose is being believed.
 
 **FR-6 — The server's reported Solr version becomes a new, distinct fact, not a value for
 `luceneMatchVersion`.** `luceneMatchVersion` names a *Lucene* back-compat target the configset
@@ -635,7 +640,7 @@ requires and was not itself named as a plan action.
 | Pure JSON → `SolrConfigsetFacts` mapping | The parser is correct in isolation, against crafted response bodies for every row in [FR-5](#requirements)'s table | Plain JUnit 4, no platform import — same convention as `SolrSchemaParser`'s own tests |
 | Fake HTTP layer | Success, timeout, authentication failure, malformed response, and an unrecognized server version — the five states Step 11 names, none of which a real server produces reliably on demand. An embedded `com.sun.net.httpserver.HttpServer` needs no new dependency and can simulate all five | Plain JUnit 4 |
 | Fake HTTP layer, the two states verification added | **A 404 carrying an HTML body**, which is what a mistyped collection name actually produces, and **an HTTP 200 whose `responseHeader` sets `partialResults`**. Both are called out separately from the row above because neither is a state a fixture author invents unprompted — the first looks like it should be JSON and the second looks like success, and [FR-8](#requirements) now requires distinct handling for each | Plain JUnit 4 |
-| Analyzer component spelling | A field type whose chain names its factories under `name` and one that names them under `class` both produce the same `SolrAnalyzerComponent` list, on **both** sides — the JSON reader this document specifies and the XML parser it found wanting. The cross-spelling case is the assertion that matters: `name` on one side and `class` on the other, denoting the same factory, must not read as a disagreement | Plain JUnit 4 |
+| Analyzer component spelling | A field type whose chain names its factories under `name` and one that names them under `class` both produce the same `SolrAnalyzerComponent` list, on **both** sides — the JSON reader this document specifies and the XML parser, which reads both spellings since the finding below. The cross-spelling case is the assertion that matters: `name` on one side and `class` on the other, denoting the same factory, must not read as a disagreement | Plain JUnit 4 |
 | Standalone versus SolrCloud | A server reporting `mode: "std"` is asked for cores and never for collections, and one reporting `"solrcloud"` the reverse. Worth a Testcontainers case per mode rather than a fake, since the thing being tested is that a real standalone Solr's refusal never reaches the user as an error | Testcontainers |
 | Contract test per supported line | The reader parses what a real Solr of that line actually returns — the wire-format risk a fake cannot cover, per the parent specification's own reasoning for requiring this tier | Testcontainers, `solr:10.0.0` and `solr:9.10.1`, pinned by tag never `latest`; started and stopped by the test itself, satisfying the standing rule that no automated test needs a Solr a developer started by hand |
 | `SolrConnectionSettings` | Persistence and PasswordSafe round-trip | `SolrConfigsetTestCase`, per the existing rule for anything touching persistent connection or configset settings |
@@ -667,12 +672,14 @@ suite reaching straight for the interesting case never makes.
   descriptor gate in its own commit: the schema suite (here, the whole Editor track's existing test
   suite) is what can catch a mistake, and it can only do that while nothing else in the same commit
   could also be the cause.
-- **The repository parser's `name`/`class` gap (recorded at [FR-5](#requirements)) is a prerequisite for
-  Step 14, not for Step 11, but it is the largest single risk this document carries.** It is an Editor
-  track defect in shipped code, it is invisible to the existing suite, and a drift view built before it
-  is fixed would report every analyzed field in every modern configset as disagreeing. The sequencing
-  that avoids this is to fix the parser — in its own commit, with a `name`-spelled fixture — at any point
-  before Step 14 begins, rather than discovering it from the drift view's first screenshot.
+- **The repository parser's `name`/`class` gap (recorded at [FR-5](#requirements)) was the largest
+  single risk this document carried, and it is closed on the repository side only.** The parser reads
+  both spellings and the catalog resolves between them, so the half that was an Editor-track defect in
+  shipped code is fixed and guarded. What is not yet built is the server half: the reader must resolve
+  the spelling it receives through the same catalog, and Step 14's comparison must be written against
+  resolved factories rather than against the strings. The failure this now guards against is no longer
+  discovering the gap from the drift view's first screenshot; it is reintroducing it one layer over, by
+  comparing what the two sides happened to write.
 - **Response shapes are now verified against real servers rather than inferred from Reference Guide
   prose**, which removes the risk the original draft carried here. What remains unverified is narrower
   and named in [Open Questions](#open-questions): the upload multipart format, and whether
@@ -705,7 +712,7 @@ suite reaching straight for the interesting case never makes.
    unavailable in standalone mode ([FR-7](#requirements)). The zip-upload multipart format in particular
    should be pinned by the Testcontainers contract test before Step 14 is considered done, not assumed
    from the action name.
-3. **Whether the repository parser's `name`/`class` gap has a counterpart in `SolrConfigParser`.** The
+3. **Whether the `name`/`class` gap fixed in `SolrSchemaParser` has a counterpart in `SolrConfigParser`.** The
    analyzer-component finding recorded under [FR-5](#requirements) came from reading
    `SolrSchemaParser.readComponent`; whether `solrconfig.xml` parsing makes the same assumption about
    how a class is named — and whether Solr accepts an SPI short name in the places that file names one —

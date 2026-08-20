@@ -565,8 +565,13 @@ object SolrFieldPresentation {
             ""
         } else {
             "<p><b>$label:</b> " + components.joinToString(" &rarr; ") { className ->
+                // Shown as the schema wrote it, linked by what it resolves to. The guide page is
+                // chosen by the factory's class-name suffix, so a component spelled `lowercase`
+                // matches no page and renders unlinked unless it is resolved first — while the
+                // match line above this chain, reading the same components, resolves them and is
+                // right. One popup contradicting itself about whether it understood the chain.
                 val simpleName = escape(className.substringAfterLast('.'))
-                SolrReferenceGuide.analyzerComponentPage(className, version)
+                SolrReferenceGuide.analyzerComponentPage(SolrMatchAnalysis.simpleName(className), version)
                     ?.let { "<a href='$it'><code>$simpleName</code></a>" }
                     ?: "<code>$simpleName</code>"
             } + "</p>"

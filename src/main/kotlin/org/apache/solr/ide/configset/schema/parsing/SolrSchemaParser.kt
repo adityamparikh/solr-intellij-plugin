@@ -103,9 +103,23 @@ object SolrSchemaParser {
         className = element.attributeOrNull("class"),
     )
 
+    /**
+     * Reads both spellings of an analysis component.
+     *
+     * Solr accepts `class="solr.LowerCaseFilterFactory"` and `name="lowercase"`, and the second is
+     * what every configset Solr ships uses. Reading only `class` dropped each of those components
+     * while the chain around it still parsed, so a field type kept its analyzer and lost everything
+     * inside it — visible as an empty chain in quick documentation and as an unrecognized one to
+     * match analysis, and invisible to a suite whose own fixtures were all written the other way.
+     *
+     * The name is recorded as written. Resolving the two spellings to one factory is the catalog's
+     * job, which is the only thing that knows they name the same class.
+     */
     private fun readComponent(element: Element): SolrAnalyzerComponent? {
-        val className = element.attributeOrNull("class") ?: return null
-        return SolrAnalyzerComponent(className, element.attributesExcept("class"))
+        val className = element.attributeOrNull("class")
+            ?: element.attributeOrNull("name")
+            ?: return null
+        return SolrAnalyzerComponent(className, element.attributesExcept("class", "name"))
     }
 
     private fun readCopyField(element: Element): SolrCopyField? {

@@ -244,4 +244,66 @@ class SolrSchemaParserTest {
         assertTrue(SolrSchemaParser.parse("<schema name='empty'/>").isEmpty)
         assertNotNull(SolrSchemaParser.parse("<schema name='empty'/>"))
     }
+
+    // --- the spelling Solr's own configsets use --------------------------------------------------
+
+    /**
+     * `name` is the other way to spell an analysis component, and the only way Solr's shipped
+     * configsets spell it.
+     *
+     * Requiring `class` dropped every component in those files silently: the chain parsed, the
+     * components inside it did not, and nothing failed because the parser's own fixtures all used
+     * `class`.
+     */
+    private val spiSpelledSchema = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <schema name="modern" version="1.7">
+          <fieldType name="text_general" class="solr.TextField">
+            <analyzer type="index">
+              <charFilter name="htmlStrip"/>
+              <tokenizer name="standard"/>
+              <filter name="lowercase"/>
+              <filter name="stop" words="stopwords.txt" ignoreCase="true"/>
+            </analyzer>
+          </fieldType>
+          <field name="name" type="text_general" indexed="true"/>
+        </schema>
+    """.trimIndent()
+
+    @Test
+    fun `a component spelled with name is read`() {
+        val facts = SolrSchemaParser.parse(spiSpelledSchema)
+        val chain = facts.fieldTypes.single { it.name == "text_general" }.indexAnalyzer
+        assertNotNull(chain)
+        assertEquals("standard", chain?.tokenizer?.className)
+        assertEquals(listOf("lowercase", "stop"), chain?.filters?.map { it.className })
+        assertEquals(listOf("htmlStrip"), chain?.charFilters?.map { it.className })
+    }
+
+    /** The arguments beside the name are still read, which is what makes a resource navigable. */
+    @Test
+    fun `a name-spelled component keeps its other attributes`() {
+        val facts = SolrSchemaParser.parse(spiSpelledSchema)
+        val stop = facts.fieldTypes.single { it.name == "text_general" }
+            .indexAnalyzer?.filters?.single { it.className == "stop" }
+        assertEquals("stopwords.txt", stop?.attributes?.get("words"))
+        assertEquals("stopwords.txt", stop?.resourceAttribute)
+    }
+
+    /** A component naming itself neither way is still dropped, rather than recorded as blank. */
+    @Test
+    fun `a component with neither name nor class is dropped`() {
+        val facts = SolrSchemaParser.parse(
+            """
+            <schema name="broken" version="1.7">
+              <fieldType name="t" class="solr.TextField">
+                <analyzer><tokenizer/><filter/></analyzer>
+              </fieldType>
+            </schema>
+            """.trimIndent(),
+        )
+        val chain = facts.fieldTypes.single().indexAnalyzer
+        assertNull(chain?.tokenizer)
+        assertTrue(chain?.filters.orEmpty().isEmpty())
+    }
 }

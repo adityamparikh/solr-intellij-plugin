@@ -735,4 +735,28 @@ class SolrClassCatalogTest {
         assertNull(SolrClassKind.forTag("lst"))
         assertNull(SolrClassKind.forTag("query"))
     }
+
+    /**
+     * The other spelling a schema may use for an analysis component.
+     *
+     * `<filter name="lowercase"/>` and `<filter class="solr.LowerCaseFilterFactory"/>` name the same
+     * factory, and the first cannot be derived from the second — so the catalog carries it, read
+     * from the `NAME` constant the factory declares.
+     */
+    @Test
+    fun `an analysis factory carries the SPI name it declares`() {
+        val standard = SolrClassCatalog.find("solr.StandardTokenizerFactory", latest)
+        assertEquals("standard", standard?.spiName)
+        val lowercase = SolrClassCatalog.find("solr.LowerCaseFilterFactory", latest)
+        assertEquals("lowercase", lowercase?.spiName)
+    }
+
+    /** The lookup a configset written the modern way needs: the SPI name resolves to the class. */
+    @Test
+    fun `a class resolves by its SPI name too`() {
+        val bySpi = SolrClassCatalog.find("standard", latest)
+        val byClass = SolrClassCatalog.find("solr.StandardTokenizerFactory", latest)
+        assertNotNull(bySpi)
+        assertEquals(byClass, bySpi)
+    }
 }
