@@ -2057,6 +2057,39 @@ The document indexes into the local collection and is then findable.
 
 ### Step 16: Recognizer interface and SolrJ
 
+**Read through UAST, not Java PSI, and that decides what a second language costs.** PSI is
+language-specific: `PsiMethodCallExpression` and `PsiAnnotation` describe Java, `KtCallExpression` and
+`KtAnnotationEntry` describe Kotlin, and a recognizer written against one sees nothing of the other.
+UAST is a read-only view over PSI with one set of interfaces — `UCallExpression`, `UAnnotation`,
+`ULiteralExpression` — that each JVM language implements, so the recognizer is written once. The
+spec commits to both languages under "Working in Java and Kotlin", and [Apache Camel](#step-19-apache-camel)
+adds Kotlin routes, so a second language is committed rather than speculative; the choice is only
+whether it costs a dependency or a rewrite.
+
+UAST adds nothing to the build. It ships as `intellij.platform.uast.jar` inside `plugins/java`, which
+is the `bundledPlugin("com.intellij.java")` this project already declares, and Kotlin support is then a
+dependency on the bundled Kotlin plugin rather than a second recognizer.
+
+**Two properties of UAST shape the code around it.** It is read-only, so a quick fix drops back to PSI
+through `UElement.sourcePsi` — the finding is UAST's job and the edit is PSI's. And the platform
+registers against it directly, through `AbstractBaseUastLocalInspectionTool` and
+`UastReferenceContributor`, so this is a supported extension path rather than an adapter written here.
+
+**Groovy is not supported by this step, and the reason is recorded so it is not mistaken for an
+oversight.** IntelliJ IDEA 2026.2 bundles a Groovy UAST provider — `GroovyUastPlugin` — so "add Groovy"
+looks like one more dependency. It is not. Groovy's UAST implementation converts twelve node kinds:
+annotations, literals, classes, files, methods, parameters, named and reference expressions, and
+`GrUnknownUExpression` for everything else. **There is no call-expression conversion**, against
+Kotlin's 290 classes including `KotlinUFunctionCallExpression`.
+
+Measured against this plugin's own demo defects, that means `@Field("prce")` would be caught in Groovy
+and `q.addFilterQuery("categry:books")` would not — half the recognizer, with the missing half failing
+as silence rather than as an error. That is the failure mode this project has already paid for once, in
+a parser that read one spelling of an analyzer component and dropped the other. Supporting Groovy
+therefore needs a deliberate design — a per-language escape hatch dropping to `GrMethodCall` for the
+call half — and belongs in its own step if it is ever wanted, not in a dependency declaration bolted
+onto this one.
+
 **Actions:**
 
 1. Define the recognizer interface: reports endpoints and field references. Keep it
@@ -2069,9 +2102,12 @@ The document indexes into the local collection and is then findable.
    under "Recognizing Solr usage"; what matters here is the ordering. It belongs in the interface on the first day,
    because a recognizer written without it assumes it may inspect anything, and retrofitting the gate afterwards means
    revisiting every recognizer built on top.
-3. SolrJ recognizer: client construction supplies endpoints; `SolrQuery` builder calls, raw parameter strings,
-   `SolrInputDocument` field names and `@Field` annotations supply field references.
-4. Inspection flagging field references absent from the model, and completion for them.
+3. SolrJ recognizer, **written against UAST so Java and Kotlin are one implementation**: client construction supplies
+   endpoints; `SolrQuery` builder calls, raw parameter strings, `SolrInputDocument` field names and `@Field` annotations
+   supply field references.
+4. Inspection flagging field references absent from the model, and completion for them. The inspection joins
+   [the inspection catalog](../../docs/inspection-catalog.md) in the same change, which is where what it reports, its
+   severity and what it stays silent about are owned.
 5. **Silence where resolution fails.** Assert this in tests explicitly — precision matters more than recall.
 
 **The two-module fixture needs more than the light test project.** `BasePlatformTestCase`
@@ -2085,9 +2121,20 @@ that could disprove it is unwritable.
 **Success criteria:**
 
 - [ ] Field references resolve in builder calls, raw strings, document building and bean annotations.
+- [ ] **The same constructs resolve in a Kotlin fixture as in the Java one**, through the same recognizer — the
+  assertion that the UAST decision above bought what it was chosen for, rather than a second code path having quietly
+  grown.
 - [ ] Unresolvable constructs produce no warning.
 - [ ] A module with no Solr client on its classpath produces no findings at all, asserted on a fixture of two modules
   where only one depends on SolrJ.
+- [ ] **The module gate reads no index**, which is what makes it safe while the IDE is still indexing without a
+  contract to hold it there. Answering "does this module depend on SolrJ" by resolving
+  `org.apache.solr.client.solrj.SolrClient` through PSI would be exact and would put the widest index-reading path the
+  plugin has on every file the user opens — against the rule whose weaker form is how a defect shipped here once.
+  Reading library names off the project model answers the same question without that exposure, which is the choice
+  `SolrProjectDetector` already made for the project-level question and the reason a module-level one extends it rather
+  than reaching for a new mechanism. The cost is a known blind spot rather than an unknown one: a jar attached under a
+  name that does not carry its coordinates is not recognized, and degrades to silence.
 
 **Acceptance:** demo steps
 [41 to 44 — the field-name checks in Java](../../docs/demo/README.md#step-41-return-to-the-opening-bug), and [47 —
