@@ -155,7 +155,10 @@ whole, and the gutter action goes with the Server track.
 
 - [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
 - [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge)
-- [Step 18 — Framework configuration](#step-18-framework-configuration)
+- [Step 18 — Framework configuration: the shared half, and Spring Boot](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+- [Step 31 — Framework configuration: Quarkus](#step-31-framework-configuration-quarkus)
+- [Step 32 — Framework configuration: Micronaut](#step-32-framework-configuration-micronaut)
+- [Step 33 — Framework configuration: MicroProfile](#step-33-framework-configuration-microprofile)
 - [Step 19 — Apache Camel](#step-19-apache-camel)
 
 ### Cross-cutting — continuous, finished last
@@ -2057,7 +2060,7 @@ The document indexes into the local collection and is then findable.
 **Actions:**
 
 1. Define the recognizer interface: reports endpoints and field references. Keep it
-   minimal — [framework configuration](#step-18-framework-configuration) and
+   minimal — [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot) and
    [Apache Camel](#step-19-apache-camel) depend on it being right. An endpoint is a URL *and* the credential that goes
    with it, since framework configuration resolves both from the same profile; a reported endpoint that cannot carry a
    username forces that step to bolt one on afterwards.
@@ -2115,45 +2118,132 @@ and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-
 additionally needs [the query console](#step-13-query-console), which is the Code track's one dependency on the Server
 track. The language and navigation work does not.
 
-### Step 18: Framework configuration
+### Step 18: Framework configuration: the shared half, and Spring Boot
+
+**A plain Java application using SolrJ is supported before any framework is, and that is
+[Step 16](#step-16-recognizer-interface-and-solrj) rather than a promise made here.** The recognizer interface and the
+SolrJ recognizer come first because a framework recognizer resolves a URL that a SolrJ client then *uses* — the client
+construction site is what makes an endpoint worth reporting at all. A framework layer built before the plain case would
+have nothing underneath it to hand a resolved URL to.
+
+**One framework per step, and one framework per minor release.** This step carries the shared half — the platform API
+survey, the optional-dependency declaration, the candidate model that pairs a URL with a credential — and then supports
+exactly one framework, Spring Boot. Quarkus, Micronaut and MicroProfile are [Step 31](#step-31-framework-configuration-quarkus),
+[Step 32](#step-32-framework-configuration-micronaut) and [Step 33](#step-33-framework-configuration-microprofile),
+each with its own fixture project, its own success criteria and its own release.
+
+The reason is that a framework's support is either right or it is a source of wrong URLs, and those two states are not
+separable across four frameworks landing together: a profile-precedence bug in the Micronaut resolver looks exactly like
+a working plugin to everyone using Spring, and ships in the same version. Splitting them means a user can say which
+version added support for the framework they use, and a bug in one is a patch on one line of the changelog rather than a
+question about which of four resolvers regressed.
+[The release policy](../../docs/how-to/releasing.md#what-a-version-number-means) states this as a rule; this step is
+where it first binds.
 
 **Actions:**
 
 1. Verify which platform framework-configuration APIs are available to plugins and in which editions. Prefer the
-   platform's model over parsing configuration directly.
+   platform's model over parsing configuration directly. **Shared** — the later framework steps consume this answer
+   rather than repeating the survey.
 2. Declare optional dependencies so these features appear when the supporting functionality is present and the plugin
-   loads normally when it is not.
-3. Resolve a Solr URL **and its credentials** per profile with each framework's own precedence: Spring Boot profile
-   files, **Quarkus inline `%profile.` prefixes in a single file**, Micronaut environments, MicroProfile ordinals.
-4. Offer discovered endpoints as connection candidates. Never connect automatically.
-5. Carry the credential with the endpoint. A username found beside the URL in a profile belongs to that profile's
-   candidate, and on confirmation the secret is copied into PasswordSafe rather than re-read from the configuration file
-   on each use. The spec sets the rules under "Recognizing Solr usage"; the consequence here is that a candidate is a
-   URL *and* a credential, so the recognizer interface must be able to report both — which is
-   why [the recognizer interface](#step-16-recognizer-interface-and-solrj) has to know about it before this step starts.
-6. **Real project fixtures per framework**, not synthetic strings.
+   loads normally when it is not. **Shared**, and extended by each later step with its own optional dependency.
+3. Establish the candidate model: an endpoint is a URL **and** the credential that goes with it. A username found beside
+   the URL in a profile belongs to that profile's candidate, and on confirmation the secret is copied into PasswordSafe
+   rather than re-read from the configuration file on each use. The spec sets the rules under "Recognizing Solr usage";
+   the consequence here is that a candidate is a URL *and* a credential, so the recognizer interface must be able to
+   report both — which is why [the recognizer interface](#step-16-recognizer-interface-and-solrj) has to know about it
+   before this step starts. **Shared.**
+4. Offer discovered endpoints as connection candidates. Never connect automatically. **Shared.**
+5. Resolve a Solr URL and its credentials per profile with **Spring Boot's** precedence: profile files, and the property
+   indirection a bean definition may sit behind.
+6. **A real Spring Boot fixture project**, not synthetic strings.
 
 **Success criteria:**
 
-- [ ] Boot profile files and Quarkus inline prefixes both resolve correctly.
+- [ ] Spring Boot profile files resolve correctly, including a URL reached by following a property reference from a
+  client bean.
 - [ ] The plugin loads and functions with no framework support present.
 - [ ] Discovered endpoints are offered, never adopted silently.
 - [ ] Switching the active profile changes the offered username as well as the URL, asserted on the demo fixture, which
   carries a `dev` and a `staging` profile.
 - [ ] A secret from a configuration file reaches PasswordSafe only after the user confirms, and never reaches the shared
   project file.
+- [ ] No Quarkus, Micronaut or MicroProfile resolution ships in this step — a project using one of them behaves exactly
+  as a project with no framework support does, which is the assertion that keeps this step honest about what it
+  released.
 
-**Scope of the demo.** Only Spring gets a demo step. Each additional framework would need its own fixture project and
-its own runtime on stage to show what the Spring fixture already shows, and the recognizer is the same code either way.
-Quarkus, Micronaut and MicroProfile are accepted by fixture tests in this step instead. Quarkus is the one to get right,
-for the reason the spec gives under "Recognizing Solr usage".
+**Scope of the demo.** Only Spring gets a demo step, here and in the steps that follow. Each additional framework would
+need its own fixture project and its own runtime on stage to show what the Spring fixture already shows, and the
+recognizer plumbing is the same code either way. The later frameworks are accepted by fixture tests in their own steps
+instead. Quarkus is the one to get right, for the reason the spec gives under "Recognizing Solr usage".
 
 **Acceptance:**
 [demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server), Spring only. The URL is
 offered by following `${app.solr.url}` from the SolrJ client bean into the active profile, and is never connected to
-automatically. The other three frameworks are accepted by their fixture tests here.
+automatically.
 
 **Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+
+### Step 31: Framework configuration: Quarkus
+
+**Actions:**
+
+1. Resolve a Solr URL and its credentials with Quarkus's precedence: **inline `%profile.` prefixes within a single
+   `application.properties`**, rather than the one-file-per-profile layout Spring uses. This is the difference that
+   makes Quarkus worth its own step rather than a second case in a shared resolver — a resolver written against Spring's
+   shape and extended to Quarkus tends to look for files that do not exist and find nothing, silently.
+2. Declare the optional dependency for Quarkus support, on the pattern
+   [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot) establishes.
+3. **A real Quarkus fixture project**, carrying at least two profiles in one file.
+
+**Success criteria:**
+
+- [ ] An inline `%dev.` prefixed URL resolves, and switching the active profile changes both the URL and the username.
+- [ ] A Quarkus project with no Solr client on the module classpath offers nothing, per Step 16's gate.
+- [ ] Spring resolution is unchanged, asserted by Step 18's fixtures still passing untouched.
+
+**Acceptance:** fixture tests in this step. No demo step — see Step 18's scope note.
+
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+
+### Step 32: Framework configuration: Micronaut
+
+**Actions:**
+
+1. Resolve a Solr URL and its credentials with Micronaut's environment precedence.
+2. Declare the optional dependency for Micronaut support.
+3. **A real Micronaut fixture project**, carrying at least two environments.
+
+**Success criteria:**
+
+- [ ] An environment-specific URL resolves, and switching the active environment changes both the URL and the username.
+- [ ] A Micronaut project with no Solr client on the module classpath offers nothing.
+- [ ] Spring and Quarkus resolution are unchanged, asserted by their fixtures still passing untouched.
+
+**Acceptance:** fixture tests in this step.
+
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+
+### Step 33: Framework configuration: MicroProfile
+
+**Actions:**
+
+1. Resolve a Solr URL and its credentials with MicroProfile Config's **ordinal** precedence, which orders sources by a
+   declared number rather than by an active profile name — the one framework here whose winner is decided by arithmetic
+   rather than by which profile is selected.
+2. Declare the optional dependency for MicroProfile support.
+3. **A real MicroProfile fixture project**, carrying at least two config sources with competing ordinals.
+
+**Success criteria:**
+
+- [ ] The higher-ordinal source wins, asserted against a fixture where the lower-ordinal one would otherwise be found
+  first by file order.
+- [ ] A MicroProfile project with no Solr client on the module classpath offers nothing.
+- [ ] Spring, Quarkus and Micronaut resolution are unchanged, asserted by their fixtures still passing untouched.
+
+**Acceptance:** fixture tests in this step.
+
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
 
 ### Step 19: Apache Camel
 
@@ -2341,7 +2431,7 @@ Mitigations live in the steps; only the first entry states one, because it belon
 - **Code analysis produces false positives** —
   [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj).
 - **Framework configuration works only on the author's machine** —
-  [framework configuration](#step-18-framework-configuration).
+  [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot).
 - **A server version the plugin has never seen** —
   [the server reader](#step-11-http-client-connections-and-the-server-reader).
 - **Reference resolution edge cases cause dangling renames** —
