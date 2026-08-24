@@ -76,4 +76,55 @@ class SolrProjectDetectorTest : SolrConfigsetTestCase() {
 
         assertTrue("adding the dependency must invalidate the cached answer", detector.isSolrProject())
     }
+
+    // --- module scope, which is what a code recognizer asks -------------------------------------
+
+    /**
+     * The gate a code recognizer needs is about a module, not a project.
+     *
+     * The project-level answer is the plugin's activation gate: is there any point in this plugin
+     * being awake at all. A recognizer asks something narrower — could *this* module be talking to
+     * Solr — because the layout it will most often meet is a repository of many modules in which one
+     * does. Answering the project question there would offer completions in every module of a
+     * repository where a single unrelated one depends on SolrJ.
+     */
+    fun testAModuleWithSolrjIsASolrModule() {
+        assertTrue(detector.isSolrModule(module))
+    }
+
+    fun testAModuleWithNoLibrariesIsNotASolrModule() {
+        givenNoSolrOnTheClasspath()
+        assertFalse(detector.isSolrModule(module))
+    }
+
+    /** The same coordinates decide both questions; a second list is how the two would disagree. */
+    fun testAModuleMatchesEveryClientWrapperTheProjectDoes() {
+        for (library in listOf(
+            "Gradle: org.apache.camel:camel-solr:4.4.0",
+            "Gradle: io.quarkiverse.jnosql:quarkus-jnosql-document-solr:3.3.0",
+        )) {
+            givenNoSolrOnTheClasspath()
+            givenLibrary(library)
+            assertTrue("expected $library to be recognized at module scope", detector.isSolrModule(module))
+        }
+    }
+
+    /** An unrelated library merely mentioning Solr is not a client, at module scope either. */
+    fun testAModuleWithAnUnrelatedSolrNamedLibraryIsNotASolrModule() {
+        givenNoSolrOnTheClasspath()
+        givenLibrary("Gradle: com.example:solr-config-linter:1.0.0")
+        assertFalse(detector.isSolrModule(module))
+    }
+
+    /**
+     * The two answers agree on the fixture, which has one module.
+     *
+     * Worth pinning because it is the only place they can be compared cheaply, and because a module
+     * gate that had silently become a project gate would pass every other test in this file.
+     */
+    fun testProjectAndModuleAgreeOnASingleModuleFixture() {
+        assertEquals(detector.isSolrProject(), detector.isSolrModule(module))
+        givenNoSolrOnTheClasspath()
+        assertEquals(detector.isSolrProject(), detector.isSolrModule(module))
+    }
 }
