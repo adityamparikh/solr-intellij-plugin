@@ -1,6 +1,6 @@
 package org.apache.solr.ide.configset.solrconfig.documentation
 
-import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser.SolrBoostOccurrence
+import org.apache.solr.ide.model.query.SolrBoostOccurrence
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue

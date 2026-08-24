@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.solrconfig.documentation
 
+import org.apache.solr.ide.model.query.SolrBoostOccurrence
 import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbAware
@@ -72,7 +73,7 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
      * rather than a node, and `name^3 title^5` holds two of them, so the position cannot be
      * recovered from the element alone the way a `defType` value can.
      */
-    private fun boostAt(text: XmlText, offset: Int): SolrConfigParser.SolrBoostOccurrence? {
+    private fun boostAt(text: XmlText, offset: Int): SolrBoostOccurrence? {
         val parameterName = SolrConfigParameters.parameterNameOf(text.parentTag ?: return null) ?: return null
         if (!SolrConfigParameters.enclosingIsParameterList(text.parentTag?.parentTag)) return null
         return SolrConfigParser.boostAt(parameterName, text.text, offset - text.textRange.startOffset)
@@ -145,7 +146,7 @@ class SolrConfigDocumentationProvider : AbstractDocumentationProvider(), DumbAwa
      */
     private class SolrBoostElement(
         private val text: XmlText,
-        val occurrence: SolrConfigParser.SolrBoostOccurrence,
+        val occurrence: SolrBoostOccurrence,
     ) : FakePsiElement() {
         override fun getParent(): PsiElement = text
         override fun getTextRange(): TextRange = text.textRange

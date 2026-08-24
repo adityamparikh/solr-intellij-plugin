@@ -96,6 +96,22 @@ Distinct from `org.apache.solr.ide.model.schema` because a server never needs it
 These answers are about XML elements and attributes, and Solr's schema API returns
 JSON — so nothing here will ever have a server half.
 
+# Package org.apache.solr.ide.model.query
+
+The grammar of a Solr query parameter's value: which parameters name fields, and
+which names a given value contains.
+
+Separate from `org.apache.solr.ide.model.vocabulary` because these are not XML.
+`solrconfig.xml` writes these parameters inside `<lst name="defaults">`, a Java or
+Kotlin file writes the same strings into `SolrQuery.addFilterQuery`, and the query
+console will write them directly — three readers of one grammar, which is why the
+grammar is here rather than inside any one of their parsers.
+
+It lived in `SolrConfigParser` while that was the only reader. The KDoc on
+`SolrQueryFields.tokenAt` records what happened the one time a second copy of these
+rules existed: the copy disagreed about whether a comma splits a `qf`, and
+completion offered names at a position no reference would ever resolve.
+
 # Package org.apache.solr.ide.configset.activation
 
 Deciding whether the plugin runs at all, and against which configset.
