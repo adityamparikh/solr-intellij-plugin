@@ -334,3 +334,29 @@ A green suite is not the same as a working feature. A reference contributor can 
 and still do nothing in a real editor, because the platform registration is the part unit tests
 routinely miss. The [demo runbook](../demo/README.md) is the acceptance harness for that gap — its
 steps are written as things a user does, and they only pass when the whole path works.
+
+## A test failing with `NoSuchMethodError` after you moved a type
+
+The symptom is a test that cannot possibly be wrong — it calls a function whose
+signature you just changed, and the error names the *old* signature:
+
+```
+java.lang.NoSuchMethodError: 'org.apache.solr.ide...SolrConfigParser$SolrBoostOccurrence
+  org.apache.solr.ide...SolrConfigParser.boostAt$org_apache_solr_ide_solr_intellij_plugin(...)'
+```
+
+That is Gradle's **build cache** serving a stale `compileTestKotlin` output, not your
+change. It survives `./gradlew clean`, because `clean` empties `build/` and the cache
+lives outside it — so the next build restores the same stale classes into the tree you
+just emptied. Disassembling the freshly "rebuilt" test class shows it still referencing
+the type you moved.
+
+```bash
+./gradlew --no-build-cache --rerun-tasks compileTestKotlin   # confirms it
+./gradlew --no-build-cache check                             # green, and repopulates
+```
+
+After one clean run without the cache, ordinary `./gradlew check` is correct again.
+
+Worth knowing because the failure looks like a logic error in the refactor, and the
+natural response — reverting the move — makes it go away for the wrong reason.

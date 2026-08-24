@@ -3,6 +3,7 @@ package org.apache.solr.ide.configset.activation
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.roots.ProjectRootManager
@@ -24,10 +25,15 @@ import java.util.concurrent.atomic.AtomicReference
  * removed with the heuristics it used to back up.
  *
  * **Why library names rather than classes.** Resolving `org.apache.solr.client.solrj.SolrClient`
- * through PSI would be exact, but it requires the Java plugin, and the plugin deliberately does not
- * depend on it outside the code-recognizer work. Library *names* come from the project model, which
- * is available everywhere, and both Gradle and Maven put the Maven coordinates into the name they
- * generate.
+ * through PSI would be exact, and one of the two reasons this did not is now gone: the Java plugin is
+ * a hard dependency, so availability is no longer the argument. What remains is the argument that was
+ * always the stronger one — library *names* come from the project model, which needs no index, while
+ * resolving a class does. This gate runs on every file the user opens, including while the IDE is
+ * still indexing, and both Gradle and Maven put the Maven coordinates into the name they generate.
+ *
+ * The cost is a known blind spot rather than an unknown one: a jar attached under a name that does
+ * not carry its coordinates is not recognized. That degrades to silence, which is the failure mode
+ * this plugin chooses everywhere else.
  */
 @Service(Service.Level.PROJECT)
 class SolrProjectDetector(private val project: Project) {
@@ -49,6 +55,40 @@ class SolrProjectDetector(private val project: Project) {
         val value = hasSolrClientLibrary()
         cached.set(Answer(stamp, value))
         return value
+    }
+
+    /**
+     * Whether [module] depends on a Solr client.
+     *
+     * The narrower question [isSolrProject] cannot answer. That one is the plugin's activation gate —
+     * is there any point in this plugin being awake at all — and a code recognizer needs something
+     * else: could *this* module be talking to Solr. The layout that distinction exists for is a
+     * repository of many modules in which one does, where the project answer would offer completions
+     * and warnings in every module, including the ones whose authors have never heard of Solr.
+     *
+     * Matched against the same [SOLR_CLIENT_COORDINATES] as the project question, because two lists
+     * are how the two answers would come to disagree about what a Solr client is.
+     *
+     * **Uncached, unlike [isSolrProject], and that is a size difference rather than an oversight.**
+     * The project question enumerates every library of every module, which is why walking it on each
+     * file the user opens was worth avoiding. This one walks a single module's own entries — a
+     * handful — and a cache keyed per module is a second staleness problem to get right for a saving
+     * that has not been measured. If a profile ever says otherwise, the project answer's
+     * modification-stamp pattern is the one to copy.
+     *
+     * @param module the module a recognizer is considering running in
+     * @return true if this module's dependencies include a recognized Solr client library
+     */
+    fun isSolrModule(module: Module): Boolean = ReadAction.computeBlocking<Boolean, RuntimeException> {
+        var found = false
+        OrderEnumerator.orderEntries(module).librariesOnly().forEachLibrary { library ->
+            val name = library.name
+            if (name != null && SOLR_CLIENT_COORDINATES.any { it in name }) {
+                found = true
+            }
+            !found // stop enumerating once a match is found
+        }
+        found
     }
 
     /**

@@ -1,7 +1,7 @@
 package org.apache.solr.ide.configset.solrconfig.documentation
 
 import com.intellij.openapi.util.text.StringUtil
-import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser.SolrBoostOccurrence
+import org.apache.solr.ide.model.query.SolrBoostOccurrence
 import org.apache.solr.ide.model.vocabulary.SolrParameterEntry
 
 /**
