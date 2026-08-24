@@ -12,6 +12,39 @@ pushed, no release published, and nothing uploaded to the Marketplace. The
 still missing, and it is written from what the repository actually contains rather than from what a
 release usually needs.
 
+## What a version number means
+
+The mechanism below cuts whatever number you give it. This section is the part that decides which
+number that should be, and it exists because "0.2.0 or 0.1.1?" is answered differently by every person
+who is asked it in the moment.
+
+| Bump | When |
+|---|---|
+| **Major** | A configset the plugin used to read stops being read, a setting stops being honoured, or a supported Solr line is dropped. Nothing here is a major yet — the plugin is pre-1.0 and the first release has not been cut |
+| **Minor** | The plugin can do something it could not do before: a new inspection, a new editor surface, a new Solr line, **or support for one more framework** |
+| **Patch** | The same capabilities, behaving more correctly. A wrong URL resolved right, a false positive silenced, a link that pointed at the wrong guide |
+
+### One framework per minor release
+
+**Support for a framework's configuration is never bundled with another framework's.** Spring Boot,
+Quarkus, Micronaut and MicroProfile each land in their own minor version, in
+[their own plan steps](../../specs/plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot).
+
+Two reasons, and the second is the one that matters:
+
+- **A user can say which version understands their project.** "Quarkus support arrived in 0.4.0" is a
+  sentence someone can act on. "Framework support arrived in 0.3.0" is not, because it is only true for
+  whichever framework happened to work.
+- **A framework resolver is either right or it silently offers a wrong URL**, and four of them shipping
+  together makes that indistinguishable. A profile-precedence bug in the Micronaut resolver looks like
+  a perfectly working plugin to everyone using Spring — same version, same changelog line. Split, the
+  fix is a patch naming one framework, rather than a question about which of four resolvers regressed.
+
+**A plain Java application using SolrJ is supported before any framework is**, which is why
+[the recognizer interface and SolrJ](../../specs/plans/0002-solr-intellij-plugin-plan.md#step-16-recognizer-interface-and-solrj)
+is a step of its own and comes first. A framework recognizer resolves a URL that a SolrJ client then
+uses; without the plain case underneath it, there is nothing to hand the resolved URL to.
+
 ## The mechanism, which is two stages and one manual step
 
 Releases here follow the IntelliJ Platform Plugin Template's shape:
