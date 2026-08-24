@@ -472,7 +472,12 @@ code does, the second notices a `solrconfig.xml` that appears later. Neither hal
 the reflex choice of `PsiModificationTracker.MODIFICATION_COUNT` is a performance regression here: it
 advances on **any** PSI change in the whole project, not just this configset's two files, so a
 keystroke in an unrelated Java file would reparse both of them —
-[`platform-mechanisms.md`](platform-mechanisms.md) records the full account.
+[`platform-mechanisms.md`](platform-mechanisms.md) records the full account, and draws the same trip
+as a sequence: which calls happen on a cache hit, and which only on a miss.
+
+The diagram above is the static shape. For what one caret actually does with it — the order the
+platform calls a feature in, and where a null model turns into silence — see the sequences in
+[the editor-feature guide](how-to/add-an-editor-feature.md).
 
 `SolrConfigsetScanner` answers the question the per-file locator cannot: which configsets does this
 *project* contain. It walks content roots and prunes build output and dependency trees, so it is not
