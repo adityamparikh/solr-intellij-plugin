@@ -195,7 +195,9 @@ because a matrix promising something the build does not is worse than no matrix.
 | [Project orientation](docs/project-orientation.md) | A reader's map of where the project stands, pointing into the plan rather than restating it |
 | [User guide](docs/user-guide.md) | Every editor capability, organised by what you're trying to do, with the gesture and the outcome |
 | [Inspection catalog](docs/inspection-catalog.md) | Every registered inspection: what it reports, its severity, and what it deliberately stays silent about |
+| [Installing](docs/installing.md) | Getting it into your own IDE, and why it stays silent until your project depends on a Solr client |
 | [Contributing](docs/contributing.md) | Setup, first run, where work comes from, and how a change gets merged |
+| [Releasing](docs/how-to/releasing.md) | Cutting a version, and what has to exist before one can reach the Marketplace |
 | [Code organization](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
 | [How-to guides](docs/how-to/) | Adding an editor feature, extending the field model, testing against the gates |
 | [Demo runbook](docs/demo/README.md) | End-to-end acceptance criteria in user terms, doubling as a talk runbook |
@@ -227,15 +229,24 @@ declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md]
 
 ## Installing
 
-Build the plugin from source and install the ZIP from `build/distributions/` via
-<kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk…</kbd>:
+**Nothing has been released yet**, so building it yourself is the only route today — there is no
+Marketplace listing and no release ZIP. [`docs/installing.md`](docs/installing.md) has the full
+walkthrough; the short version:
 
 ```bash
 ./gradlew buildPlugin
 ```
 
+Then <kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk…</kbd>
+and pick the ZIP from `build/distributions/`.
+
 Requires **IntelliJ IDEA 2026.2 or later** — see [the compatibility matrix](docs/compatibility.md) for
 why IDEA specifically, and which Solr lines the release understands.
+
+> **If it installs and then does nothing, that is the expected first surprise.** The plugin stays
+> silent unless your project depends on a Solr client — a repository of bare configsets with no build
+> file never activates, and there is no button to override that yet.
+> [Why nothing is happening](docs/installing.md#why-nothing-is-happening) covers it.
 
 ## Contributing
 
