@@ -112,6 +112,21 @@ It lived in `SolrConfigParser` while that was the only reader. The KDoc on
 rules existed: the copy disagreed about whether a comma splits a `qf`, and
 completion offered names at a position no reference would ever resolve.
 
+# Package org.apache.solr.ide.server.transport
+
+One request to Solr, and what came back, classified into outcomes a caller cannot
+confuse.
+
+The plugin's own traffic — a schema fetch, a cluster status — rather than a query
+somebody typed, which the IDE's HTTP Client runs instead. Asynchronous and
+timeout-bounded, on the JDK's `HttpClient` with no proxy and no SSL context set, so
+the ones the IDE configured are what reach the wire.
+
+Nothing here completes exceptionally. A refused connection, a Solr error, a body
+that will not parse and a response that arrived incomplete are four different
+things a user needs told apart, and a caller that has to catch in order to find out
+which will eventually catch too much.
+
 # Package org.apache.solr.ide.server.reading
 
 Turning what a Solr server returns into the same facts a configset parser
