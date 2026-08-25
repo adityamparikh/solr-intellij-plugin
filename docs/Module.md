@@ -112,6 +112,17 @@ It lived in `SolrConfigParser` while that was the only reader. The KDoc on
 rules existed: the copy disagreed about whether a comma splits a `qf`, and
 completion offered names at a position no reference would ever resolve.
 
+# Package org.apache.solr.ide.server.reading
+
+Turning what a Solr server returns into the same facts a configset parser
+produces.
+
+The second parser, and deliberately under the same contract as the first: text in,
+`SolrConfigsetFacts` out, with nothing from IntelliJ in the signature. That is what
+lets it be tested against captured response bodies rather than a running server,
+and what lets `SolrFieldModel.of(repository, server)` merge two instances of one
+shape without privileging either.
+
 # Package org.apache.solr.ide.code.solrj
 
 What SolrJ's API means, as facts a recognizer can consult: which `SolrQuery`
