@@ -697,9 +697,25 @@ return wrong results, and nothing anywhere reports an error. A plugin offering t
 user a green checkmark on a corrupted index. Only a full reindex makes it true, and this plugin cannot
 do that and must not imply it can.
 
-**The absence has to be visible.** A drift row with no action and no explanation reads as a defect in
-the plugin. Where an apply is withheld, the row says why — that changing a type requires reindexing —
-so the asymmetry is information rather than an omission.
+**Every row shows the request it would send; only the additive ones offer to send it.** A disabled
+button with a tooltip is a weak answer to "why can this row not be applied," and Database Tools gives a
+better one: comparing two schemas there produces **reviewable DDL** rather than a silent mutation, so
+what the tool would do is a thing you read before deciding.
+
+The same shape here. Each drift row can show its Schema API payload —
+
+```json
+{ "add-field": { "name": "price", "type": "pfloat", "indexed": true, "stored": true } }
+```
+
+— and for an additive change, sending it is the next button along. A field type change shows the
+`replace-field` payload it *would* need, next to the reason it is not offered: Solr will accept exactly
+this and report success while every indexed document keeps its old encoding.
+
+That turns the asymmetry from an omission into information. The user sees precisely what the plugin
+declines to do, in the vocabulary Solr itself uses, and is left able to run it themselves against a
+collection they are prepared to reindex — which is their decision to make and not this plugin's to
+prevent.
 
 **FR-15 — What the index actually holds is a third view, not a fourth half of the model.** Step 12
 promises "the server's actual fields, which are not always the fields its schema declares," and that is
