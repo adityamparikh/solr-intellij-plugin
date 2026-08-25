@@ -112,6 +112,18 @@ It lived in `SolrConfigParser` while that was the only reader. The KDoc on
 rules existed: the copy disagreed about whether a comma splits a `qf`, and
 completion offered names at a position no reference would ever resolve.
 
+# Package org.apache.solr.ide.code.solrj
+
+What SolrJ's API means, as facts a recognizer can consult: which `SolrQuery`
+builder calls carry field names, which Solr request parameter each writes, and what
+shape its arguments are in.
+
+Plain functions from strings, with nothing from IntelliJ in them, so the knowledge
+is testable without a fixture and the type checking stays in the one place that has
+a `UCallExpression` to ask. Distinct from `org.apache.solr.ide.model.query`, which
+knows the grammar of a parameter's *value*: this package knows which method writes
+which parameter, and that one knows how to read it.
+
 # Package org.apache.solr.ide.configset.activation
 
 Deciding whether the plugin runs at all, and against which configset.
