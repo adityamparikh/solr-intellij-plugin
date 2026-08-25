@@ -63,12 +63,28 @@ are each one step's own work once the reader beneath them exists.
 ## Non-Goals
 
 - **The collections tree, query console editor, and document-authoring form.** Steps 12, 13 and 15 own
-  their own UI design; this document specifies what they read from, not how they render it.
-- **Discovering connection candidates from project code or framework configuration.** That is the Code
-  track's recognizer interface (Step 18), a different mechanism entirely — a recognizer *offers* a
-  candidate, this document is about what happens once one is confirmed into a real
+  how they render; this document specifies what they read from.
+
+  **With four exceptions, added deliberately after this was first written.** Where a decision is shared
+  by several steps *and* a plugin bundled with the same IDE has already shipped an answer, leaving it
+  to each step means four steps inventing four answers to a question JetBrains settled once. So the
+  pairing gesture ([FR-12](#requirements)), the compare-and-apply split ([FR-14](#requirements)), the
+  saved-query file split ([FR-16](#requirements)) and where a connection is created and bound
+  ([FR-17](#requirements)) are settled here. What each surface *looks like* is still its own step's
+  work. The precedents are recorded under
+  [the plugins that already solved these problems](#the-plugins-that-already-solved-these-problems-in-the-same-ide).
+- **Discovering connection candidates from project code or framework configuration**, which is
+  ultimately how most connections will arrive — a URL read from the code or configuration that already
+  names a server, resolved against the active profile. That is the Code track's recognizer interface
+  (Step 18), a different mechanism entirely — a recognizer *offers* a candidate, this document is about
+  what happens once one is confirmed into a real
   [`SolrConnection`](../src/main/kotlin/org/apache/solr/ide/server/connection/SolrConnectionSettings.kt#L24-L29).
   Demo step 35 exercises both together; this specification is responsible for the second half only.
+
+  **This is why a connection can also be typed in by hand, and why that path is built first.** Making
+  discovery the only way in would put the Server track behind Step 18 and leave a user with no way to
+  reach a server that nothing in their code names — a colleague's staging box, a container they just
+  started. Database Tools makes the same choice: detection offers, and the `+` always works.
 - **SolrCloud cluster administration** beyond what the plan names: browsing topology, uploading a
   configset, reloading a collection. Creating or deleting a collection, changing replication factor,
   and cluster-property management are out of scope until a step asks for them.
@@ -153,6 +169,34 @@ generalize directly to the server track and are adopted rather than rediscovered
   applies to the drift view exactly as it applied to inspections: the test that a repository and a
   server *agreeing* configset shows no drift is worth writing before the test that a real difference
   is caught.
+
+### The plugins that already solved these problems, in the same IDE
+
+Four of this document's decisions are not novel. They are problems JetBrains has shipped answers to in
+plugins bundled with the IDE this one targets, and the answers were read out of those plugins rather
+than reasoned about. A user who has used any of them arrives with expectations, and meeting them costs
+less than inventing something better.
+
+| Plugin | What it does | Read from |
+|---|---|---|
+| **Database Tools** | **DDL Mapping** — SQL files in a project describing a schema, explicitly mapped to a live database, with a matching action to clear it | `DatabaseView.CreateDdlMapping`, `DatabaseView.DdlMapping.Actions`, `DatabaseView.LinkedDataSource.ClearMapping` |
+| **Kubernetes** | Comparing against a cluster and applying to it are **two separate actions**, both explicit | `Kubernetes.CompareWithCluster` and `Kubernetes.Apply`, each with a floating-toolbar variant |
+| **HTTP Client** | Requests committed to the repository; the environment they run against kept beside them, split into a shared file and a private one | `http-client.env.json`, `http-client.private.env.json` |
+| **Kubernetes**, **Database Tools** | A global target selector *and* a per-surface binding, rather than one selection for everything | `Kubernetes.ContextSwitcherAction`, `Kubernetes.AttachContext` |
+| **Spring Boot** | Active profiles are modelled and queryable rather than parsed ad hoc | `SpringProfile`, `SpringProfileProvider`, `ActiveProfilesNode` |
+
+**The DDL Mapping precedent is the one worth dwelling on, because it is not an analogy.** It is the
+same problem this document calls a pairing: files on disk describing a schema, bound by a human to a
+live server that may or may not match them. That it exists, is user-invoked, and ships with a
+clear-mapping action beside it settles three questions at once.
+
+**The Kubernetes precedent is the one that changed an answer.** "Offer to apply where the change maps
+onto the Schema API" reads as one feature; two actions is what shipped, deliberately, so that looking
+never implies writing. [FR-14](#requirements) follows it.
+
+Precedent is not proof, and two of these plugins are commercial code whose reasoning is not published.
+What is claimed here is only what the action ids and file names show: that these shapes exist and that
+users of this IDE have met them.
 
 ## Requirements
 
@@ -511,6 +555,14 @@ indexed document is stated explicitly in that confirmation per Step 15's own act
 silently, because an uncommitted document that "isn't findable yet" is indistinguishable from a failed
 index to a user who was not told which one to expect.
 
+**The default is `commitWithin`, shown rather than assumed.** "Not defaulted silently" is not the same
+as having no default, and a confirmation offering three equal options to someone indexing one test
+document is a quiz. A hard commit on a shared server is somebody else's latency spike and is the wrong
+thing to make easiest; `commitWithin` makes the document findable shortly without that cost. The
+control is visible in the confirmation and changeable there, on the pattern Database Tools uses for
+transaction mode — a per-connection default with a per-invocation override in front of the user, not a
+preference buried in settings.
+
 **FR-12 — A configset is compared against a collection only where a human has said which, and that
 pairing is stored.** Every read in [FR-5](#requirements) is addressed to `<baseUrl>/<collection>/…`,
 and `SolrConnection` carries no collection: `baseUrl` is documented as "the server root, such as
@@ -548,10 +600,26 @@ collection is absent from the server is reported when it is used and left in pla
 be down, renamed back, or not yet created, and deleting the user's stated intent because a server was
 temporarily unreachable is the plugin discarding information it did not author.
 
-**What this does not settle** is where the chooser lives — a dialog from the drift view, a field on the
-connection, an action on the configset root in the project tree. That is Step 12's or Step 14's UI
-question, per this document's non-goals. The triple, its persistence, and the prohibition on inferring
-it are what four steps need agreed before any of them starts.
+**The gesture is a named action, from either end, and there is a second action that undoes it.** An
+earlier revision left this to Step 12 or Step 14 as a UI question. It is settled here instead, because
+Database Tools has shipped the same decision and the shape is worth inheriting rather than
+rediscovering: *DDL Mapping* binds SQL files describing a schema to a live database through
+`DatabaseView.CreateDdlMapping`, and clears it through `DatabaseView.LinkedDataSource.ClearMapping`.
+Files on disk, a live server, a human saying which — the same problem under a different name.
+
+So: **"Compare with configset…"** on a collection in the collections tool window, and the reverse from
+a configset root, both reaching the same chooser. **A clear action ships in the same change as the
+create action**, not after it, because a pairing pointing at the wrong collection is worse than none
+and a user who cannot undo it has been given a defect rather than a feature.
+
+**The pairing is per-user state, not shared project configuration.** It names a path in this
+developer's checkout and a connection that lives in their own settings, and neither survives a
+colleague cloning the repository. This is the same three-way split Database Tools makes and the same
+one `SolrConnectionSettings` already makes for a connection's password.
+
+An unpaired configset stays inert and says so where the affordance lives, rather than silently doing
+nothing — the same way a SQL file with no data source attached is visibly unbound rather than merely
+unhelpful.
 
 **FR-13 — The editor's model never carries a server half. The two-source model is built where it is
 asked for.** `SolrConfigsetReader.modelFor` — the entry point all twenty-five editor-path callers
@@ -591,6 +659,78 @@ the drift comparison, which needs the two halves separately rather than the merg
 **So Step 11's second success criterion — "the server half of the field model populates" — is satisfied
 by `of` being called with a real server half on the drift path, and not by `modelFor` changing.** The
 seam was built to be fed from somewhere; this says where, and just as importantly where not.
+
+**FR-14 — Comparing against a server and applying to it are two actions, and only additive changes get
+the second one.** Step 14's third action reads as one feature — "where a change maps onto the Schema
+API, offer to apply it" — and Kubernetes shipped it as two: `CompareWithCluster` and `Apply`, each
+invoked by name. That separation is the requirement here, for the reason it presumably was there:
+looking at what differs must never be the same gesture as changing it.
+
+**Only additive changes are offered.** `add-field`, `add-dynamic-field` and `add-copy-field` are safe
+in the sense that matters — an existing document simply lacks the new thing, and nothing already
+indexed becomes wrong.
+
+**A field type change is shown as drift and offered no action at all.** This is the requirement that
+protects a user's index, and it protects them from Solr rather than from the plugin: the Schema API
+*accepts* a `replace-field` changing a type, and reports success, while every document already indexed
+keeps the encoding it was written with. The field is then declared one way and stored another, queries
+return wrong results, and nothing anywhere reports an error. A plugin offering that button hands the
+user a green checkmark on a corrupted index. Only a full reindex makes it true, and this plugin cannot
+do that and must not imply it can.
+
+**The absence has to be visible.** A drift row with no action and no explanation reads as a defect in
+the plugin. Where an apply is withheld, the row says why — that changing a type requires reindexing —
+so the asymmetry is information rather than an omission.
+
+**FR-15 — What the index actually holds is a third view, not a fourth half of the model.** Step 12
+promises "the server's actual fields, which are not always the fields its schema declares," and that is
+the Luke handler rather than the Schema API: fields a dynamic pattern created, what is genuinely
+indexed, term counts. It is a real requirement and it does not belong in `SolrConfigsetFacts`.
+
+The reason is [FR-5](#requirements)'s own: that type is deliberately symmetric because "the same shape
+serves both sources," and a configset can declare every one of its fields. It cannot declare a field
+that exists only because `*_s` matched something at index time. Merging Luke's answer into it would
+make the symmetry false, and the first thing to break would be drift — a dynamic field's instances
+would read as server-only fields the repository forgot to declare, on a configset that declared the
+pattern correctly.
+
+So the drift comparison stays schema against schema, and what the index holds is shown beside it in the
+collections tree as its own thing. Two questions, two answers, neither pretending to be the other.
+
+**FR-16 — A saved query is a file in the repository; where it runs is not.** Step 13 wants queries
+"saveable into the project so they are version-controllable," which means a committed file, and a
+committed file naming a connection is a file that does not work on a colleague's machine — the
+connection lives in their per-user settings and their server is not this one.
+
+The HTTP Client answers this in the same IDE and its answer is adopted: the request is one committed
+file, and the environment it runs against is a second file beside it, split into a shared half and a
+private half — `http-client.env.json` and `http-client.private.env.json`. The names differ here; the
+split does not.
+
+- The query file holds the query and its parameters, and is committed.
+- An environment file holds named environments — a collection, and which connection each maps to — and
+  is committed.
+- Its private sibling holds anything that must not be, and is git-ignored.
+- The environment is chosen in the surface that runs the query, not written into the query.
+
+This also settles how a discovered profile reaches a query. A Spring or Quarkus profile resolved by
+[Step 18](../plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot)
+becomes an environment rather than a separate mechanism, which is the point of environments existing.
+
+**FR-17 — Connections are created by the user, and each surface binds its own.** Nothing creates a
+`SolrConnection` today; the type has persisted them since before this document existed. They are
+created from a `+` in the collections tool window and from a Settings page, both reaching one editor.
+
+**There is a selected connection and it is not the only one.** Kubernetes ships both a
+`ContextSwitcherAction` and an `AttachContext`, and Database Tools binds each console to its own data
+source rather than to a global choice. The same holds here for a good reason rather than by imitation:
+a drift view is about the collection a configset is paired with, while a query console may
+legitimately be pointed at staging while the drift view looks at dev. A single global selection makes
+that impossible; a global default with a per-surface override makes it ordinary.
+
+Storage follows the split `SolrConnectionSettings` already makes and Database Tools makes too:
+shareable fields in workspace state, secrets in `PasswordSafe`, and anything naming a local path — a
+pairing, per [FR-12](#requirements) — per-user rather than shared.
 
 ### Non-functional
 
@@ -710,6 +850,18 @@ would be missed, and specified an internal API to avoid it. The conclusion was w
 was wrong is the argument for measuring: everything about the API's shape suggested otherwise, and
 `proxy()` returning `Optional.empty` would have confirmed it to anyone who checked the getter instead
 of the behaviour.
+
+**NFR-8 — Progress is visible and failure is inline; neither is a modal.** Step 12 already forbids a
+popup for an unreachable server and requires Solr's own message inline, once. That rule is extended to
+every surface that touches a server rather than left to the tree, because a user who learns that a
+failed fetch appears in the tree and then meets a modal dialog from the drift view has learned nothing
+transferable.
+
+Concretely, and following what Database Tools does while introspecting: work runs in the background
+with progress in the status bar, the node or view being loaded shows it is loading, and a failure
+becomes an inline error carrying [FR-8](#requirements)'s verbatim Solr message. A dialog is reserved
+for the one thing that genuinely needs one — a confirmation before a write, per
+[FR-11](#requirements) — so that a dialog appearing means something is about to change.
 
 ## Testing Strategy
 
