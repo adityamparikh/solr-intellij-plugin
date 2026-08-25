@@ -182,6 +182,18 @@ object SolrQueryFields {
     }
 
     /**
+     * A bare field name, or null if [token] is something else wearing a field's clothes.
+     *
+     * Public because a single-field argument in code — `addField("*")` — needs the same exclusions a
+     * field list applies to each of its elements, and a second copy of them is how the two would come
+     * to disagree about whether a glob is a field.
+     *
+     * @param token one token, already separated from whatever surrounded it
+     * @return the field name, or null where the token is syntax rather than a name
+     */
+    fun fieldNameOrNull(token: String): String? = plainFieldName(token)
+
+    /**
      * A bare field name, or null if the token is something else wearing a field's clothes.
      *
      * Glob, function-query, alias and parameter-reference syntax all appear in these parameters and

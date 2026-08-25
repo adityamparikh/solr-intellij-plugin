@@ -114,13 +114,15 @@ completion offered names at a position no reference would ever resolve.
 
 # Package org.apache.solr.ide.code.solrj
 
-What SolrJ's API means, as facts a recognizer can consult: which `SolrQuery`
+Reading Solr usage out of Java and Kotlin, and the facts about SolrJ's API that
+reading it needs: which `SolrQuery`
 builder calls carry field names, which Solr request parameter each writes, and what
 shape its arguments are in.
 
-Plain functions from strings, with nothing from IntelliJ in them, so the knowledge
-is testable without a fixture and the type checking stays in the one place that has
-a `UCallExpression` to ask. Distinct from `org.apache.solr.ide.model.query`, which
+`SolrJQueryMethods` is plain functions from strings, testable without a fixture.
+`SolrJRecognizer` is the half that needs PSI: it reads through UAST, so Java and
+Kotlin are one implementation, and confirms a call's receiver really is SolrJ's
+`SolrQuery` before reading anything. Distinct from `org.apache.solr.ide.model.query`, which
 knows the grammar of a parameter's *value*: this package knows which method writes
 which parameter, and that one knows how to read it.
 
