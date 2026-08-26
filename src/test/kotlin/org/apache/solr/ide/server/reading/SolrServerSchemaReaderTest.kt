@@ -4,6 +4,7 @@ import org.apache.solr.ide.configset.schema.parsing.SolrSchemaParser
 import org.apache.solr.ide.model.SolrAgreement
 import org.apache.solr.ide.model.SolrFieldModel
 import org.junit.Assert.assertEquals
+import tools.jackson.databind.json.JsonMapper
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -208,5 +209,59 @@ class SolrServerSchemaReaderTest {
         assertEquals(SolrAgreement.AGREEING, model.fields["id"]?.agreement)
         assertEquals(SolrAgreement.REPOSITORY_ONLY, model.fields["onlyInRepository"]?.agreement)
         assertEquals(SolrAgreement.SERVER_ONLY, model.fields["price"]?.agreement)
+    }
+    // --- what the transport hands over ---------------------------------------------------------------
+
+    /**
+     * The reader takes the tree the transport already parsed, not the text again.
+     *
+     * The transport parses a body to classify it — a Solr error is found by reading `error.msg` out
+     * of the same JSON. Handing the reader the string would parse it twice, and worse, would let the
+     * two disagree about whether a body was readable at all.
+     */
+    @Test
+    fun `the reader accepts an already-parsed tree`() {
+        val tree = JsonMapper.builder().build().readTree(body)
+
+        assertEquals(SolrServerSchemaReader.read(body).fields, SolrServerSchemaReader.read(tree).fields)
+    }
+
+    /** A tree that is not a schema response is empty, exactly as the text form is. */
+    @Test
+    fun `an already-parsed tree with no schema is empty`() {
+        val tree = JsonMapper.builder().build().readTree("""{"responseHeader":{"status":0}}""")
+
+        assertTrue(SolrServerSchemaReader.read(tree).fields.isEmpty())
+    }
+
+    /** The version a server reports comes from the system-info response, not the schema. */
+    @Test
+    fun `the reported solr version is read from a system info response`() {
+        val body = """
+            {"responseHeader":{"status":0},"mode":"solrcloud",
+             "lucene":{"solr-spec-version":"10.0.0","lucene-spec-version":"10.3.2"}}
+        """.trimIndent()
+
+        assertEquals("10.0.0", SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree(body)))
+    }
+
+    /**
+     * The neighbouring key is the Lucene version and must not be read as Solr's.
+     *
+     * They differ by one word, sit next to each other, and both look like the answer — Solr 10.0.0
+     * reports Lucene 10.3.2. Reading the wrong one produces a major that happens to match today and
+     * stops matching the day the lines diverge.
+     */
+    @Test
+    fun `the lucene version beside it is not mistaken for solr's`() {
+        val body = """{"lucene":{"solr-spec-version":"9.10.1","lucene-spec-version":"9.12.3"}}"""
+
+        assertEquals("9.10.1", SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree(body)))
+    }
+
+    /** A response without the key yields null rather than a guess. */
+    @Test
+    fun `a response naming no version reports none`() {
+        assertNull(SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree("""{"mode":"std"}""")))
     }
 }

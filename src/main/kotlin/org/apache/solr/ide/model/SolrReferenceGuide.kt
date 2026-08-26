@@ -179,6 +179,33 @@ data class SolrVersionSelection(
         val DEFAULT: SolrVersionSelection = SolrVersionSelection("latest", SolrVersionSource.DEFAULT)
 
         /**
+         * The line a connected server reported.
+         *
+         * **No Lucene translation, unlike [fromLuceneMatchVersion], and that is the whole difference
+         * between them.** A configset declares a *Lucene* back-compat target and only ever *implies*
+         * a Solr line — Solr 10.0 pairs with Lucene 10.3. A server states its own Solr version
+         * outright, so the two must not share a path: reading a server's `10.0.0` through the
+         * configset arm would be translating something that was never encoded.
+         *
+         * **A line this build ships no catalog for keeps [SolrVersionSource.SERVER] and names the
+         * newest guide**, where [fromLuceneMatchVersion] falls back to [DEFAULT] entirely. The two
+         * alternatives are both worse: falling back would discard the fact that a server answered at
+         * all, and constructing a segment would invent a guide URL for a release that may not be
+         * published. The version string itself stays on the model for display, which is where a
+         * reader looks to find out what they actually reached.
+         *
+         * @param serverVersion the version a server reported, such as `10.0.0`
+         * @return the selection, always sourced to the server
+         */
+        fun fromServerVersion(serverVersion: String): SolrVersionSelection {
+            val major = serverVersion.trim().substringBefore('.').toIntOrNull()
+            val segment = major
+                ?.takeIf { it >= MINIMUM_GUIDE_MAJOR }
+                ?.let { SolrClassCatalog.guideSegmentFor(it) }
+            return SolrVersionSelection(segment ?: DEFAULT.guidePathSegment, SolrVersionSource.SERVER)
+        }
+
+        /**
          * The line a `<luceneMatchVersion>` implies.
          *
          * `luceneMatchVersion` names a *Lucene* version, not a Solr one — Solr 10.0 pairs with
@@ -195,6 +222,9 @@ data class SolrVersionSelection(
          * [SolrClassCatalog.guideSegmentFor][org.apache.solr.ide.model.vocabulary.SolrClassCatalog.guideSegmentFor]
          * reads the release out of the catalog header, so the link and the facts cannot disagree
          * and no supported release is named outside the build.
+         *
+         * Compare [fromServerVersion], which translates nothing because a server states its own
+         * Solr version rather than implying one.
          *
          * A major this build ships no catalog for falls back to [DEFAULT] rather than to a
          * constructed segment. Solr 11 has no guide at `11_0` until it is released, and `latest` is

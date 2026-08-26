@@ -36,11 +36,26 @@ object SolrServerSchemaReader {
      * @return the schema it describes; empty where the text is not JSON, or is JSON without a schema
      */
     fun read(body: String): SolrConfigsetFacts {
+        val tree = runCatching { MAPPER.readTree(body) }.getOrNull() ?: return SolrConfigsetFacts()
+        return read(tree)
+    }
+
+    /**
+     * The facts in an already-parsed [response].
+     *
+     * The form the transport uses. It parses a body to classify the outcome — a Solr error is found
+     * by reading `error.msg` out of the same JSON — so handing the text back to be parsed a second
+     * time would be wasteful and, worse, would let the two disagree about whether a body was readable
+     * at all.
+     *
+     * @param response a parsed response from `GET /<collection>/schema`
+     * @return the schema it describes; empty where the response carries no schema
+     */
+    fun read(response: JsonNode): SolrConfigsetFacts {
         // `path` returns a missing node rather than throwing, which is why every step below can be
-        // written without a guard: a body that is not a schema response walks to an empty array and
-        // yields empty facts. Reading a 404's HTML page is the case that makes this worth stating —
-        // Solr answers a mistyped collection with a servlet error page, not with JSON.
-        val schema = runCatching { MAPPER.readTree(body) }.getOrNull()?.path("schema") ?: return SolrConfigsetFacts()
+        // written without a guard: a response carrying no schema walks to an empty array and yields
+        // empty facts rather than failing.
+        val schema = response.path("schema")
         return SolrConfigsetFacts(
             fields = schema.path("fields").items().map { readField(it) },
             dynamicFields = schema.path("dynamicFields").items().map { SolrDynamicField(it.path("name").asString(""), readField(it)) },
@@ -56,6 +71,22 @@ object SolrServerSchemaReader {
             // schemaVersion and luceneMatchVersion are deliberately absent; see the class comment.
         )
     }
+
+    /**
+     * The Solr version a system-info response reports, or null where it names none.
+     *
+     * **`solr-spec-version`, and its neighbour is a trap.** The same object carries
+     * `lucene-spec-version`, which differs by one word and is a different number — Solr 10.0.0
+     * reports Lucene 10.3.2. Reading the wrong one yields a major that happens to match today and
+     * stops matching the day the lines diverge, which is a value the plugin would state confidently
+     * and sourced from the wrong place. The two `-impl-version` keys beside them carry a build hash
+     * and are not it either.
+     *
+     * @param response a parsed response from `GET /admin/info/system`
+     * @return the running Solr version as reported, or null
+     */
+    fun solrVersionIn(response: JsonNode): String? =
+        response.path("lucene").path("solr-spec-version").asString("").takeIf { it.isNotEmpty() }
 
     private fun readField(node: JsonNode): SolrField = SolrField(
         name = node.path("name").asString(""),

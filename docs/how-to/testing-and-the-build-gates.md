@@ -358,5 +358,26 @@ the type you moved.
 
 After one clean run without the cache, ordinary `./gradlew check` is correct again.
 
+**`--no-build-cache` alone is sometimes not enough**, and the second cause looks
+identical. Kotlin's *incremental* compiler tracks which test classes need rebuilding
+when a main class changes, and adding a defaulted parameter to a function changes a
+synthetic signature — `of$default` gains an argument — that its dependency tracking
+can miss. The failure is again `NoSuchMethodError`, this time naming `…$default`
+with the old parameter list.
+
+`--rerun-tasks` is what clears that one, since it forces the task to run rather than
+merely refusing a cached result:
+
+```bash
+./gradlew --rerun-tasks --no-build-cache compileTestKotlin
+```
+
+The way to tell the two apart is not to guess: disassemble the freshly built test
+class and read what it actually references.
+
+```bash
+javap -c -p build/classes/kotlin/test/<path>/YourTest.class | grep 'of\$default'
+```
+
 Worth knowing because the failure looks like a logic error in the refactor, and the
 natural response — reverting the move — makes it go away for the wrong reason.
