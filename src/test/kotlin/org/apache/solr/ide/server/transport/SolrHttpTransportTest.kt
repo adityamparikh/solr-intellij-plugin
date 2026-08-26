@@ -1,11 +1,14 @@
 package org.apache.solr.ide.server.transport
 
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.Service
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,9 +50,9 @@ class SolrHttpTransportTest {
         server?.stop(0)
     }
 
-    private fun get(baseUrl: String, username: String? = null, password: String? = null) =
+    private fun get(baseUrl: String, credential: SolrCredential = SolrCredential.None) =
         SolrHttpTransport(timeout = Duration.ofMillis(500))
-            .get(baseUrl, "/solr/products/schema", username, password)
+            .get(baseUrl, "/solr/products/schema", credential)
             .join()
 
     // --- the states a real server will not produce on demand ---------------------------------------
@@ -153,6 +156,43 @@ class SolrHttpTransportTest {
         assertEquals("Limits exceeded!", (result as SolrResponse.Partial).detail)
     }
 
+    // --- one client per project, released with it ---------------------------------------------------
+
+    /**
+     * The transport is a project service, so the platform owns exactly one and disposes it.
+     *
+     * An `HttpClient` owns a selector thread, a worker pool and a connection pool. Built per
+     * request it would leak threads into a long-running IDE and defeat keep-alive; never closed, its
+     * threads hold the plugin's classloader and the plugin cannot be unloaded. Both are the
+     * platform's problem once this is a service, which is what this asserts rather than assumes.
+     */
+    @Test
+    fun `the transport is one disposable service per project`() {
+        assertTrue(
+            "SolrHttpTransport must be a project-level service",
+            SolrHttpTransport::class.java.getAnnotation(Service::class.java)
+                ?.value?.contains(Service.Level.PROJECT) == true,
+        )
+        assertTrue(
+            "a transport owning an HttpClient must be Disposable",
+            Disposable::class.java.isAssignableFrom(SolrHttpTransport::class.java),
+        )
+    }
+
+    /** Disposing releases the client rather than leaving its threads behind. */
+    @Test
+    fun `disposing the transport closes its client`() {
+        val transport = SolrHttpTransport(timeout = Duration.ofMillis(500))
+        val url = given { respond(it, 200, """{"responseHeader":{"status":0}}""") }
+        transport.get(url, "/solr/products/schema").join()
+
+        transport.dispose()
+
+        // A closed client refuses further work rather than silently continuing to hold its pool.
+        val afterClose = transport.get(url, "/solr/products/schema").join()
+        assertTrue(afterClose.toString(), afterClose is SolrResponse.TransportFailure)
+    }
+
     // --- what the request carries ------------------------------------------------------------------
 
     /**
@@ -164,7 +204,7 @@ class SolrHttpTransportTest {
      */
     @Test
     fun `a credential is sent preemptively on the first request`() {
-        val seen = authorizationSentFor(username = "solr", password = "SolrRocks")
+        val seen = authorizationSentFor(SolrCredential.Resolved("solr", "SolrRocks"))
 
         assertTrue("expected a Basic header on the first request, got $seen", seen?.startsWith("Basic ") == true)
     }
@@ -172,17 +212,43 @@ class SolrHttpTransportTest {
     /** No credential configured, no header — rather than an empty one. */
     @Test
     fun `no credential means no authorization header`() {
-        assertNull(authorizationSentFor(username = null, password = null))
+        assertNull(authorizationSentFor(SolrCredential.None))
+    }
+
+    /**
+     * A connection naming a user with no stored password is reported, not sent.
+     *
+     * The case two nullable strings could not express. Sending `user:` would be rejected by most
+     * Solr Basic Auth configurations as a *wrong* credential rather than *no* credential, turning a
+     * cleared PasswordSafe entry into a spurious authentication failure against a server that was
+     * never asked properly. Nothing reaches the wire, and the failure names the user so the
+     * incomplete connection is identifiable.
+     */
+    @Test
+    fun `a credential with no stored password never reaches the wire`() {
+        var reached = false
+        val url = given { exchange ->
+            reached = true
+            respond(exchange, 200, """{"responseHeader":{"status":0}}""")
+        }
+        val result = get(url, SolrCredential.Missing("solr"))
+
+        assertFalse("no request may be sent for an incomplete credential", reached)
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertTrue(
+            "the failure should name the user, got: ${(result as SolrResponse.TransportFailure).description}",
+            result.description.contains("solr"),
+        )
     }
 
     /** The header the server saw on the one request this makes. */
-    private fun authorizationSentFor(username: String?, password: String?): String? {
+    private fun authorizationSentFor(credential: SolrCredential): String? {
         var seen: String? = null
         val url = given { exchange ->
             seen = exchange.requestHeaders.getFirst("Authorization")
             respond(exchange, 200, """{"responseHeader":{"status":0}}""")
         }
-        get(url, username, password)
+        get(url, credential)
         return seen
     }
 }

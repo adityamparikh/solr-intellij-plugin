@@ -1,12 +1,14 @@
 package org.apache.solr.ide.server.transport
 
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.nio.charset.StandardCharsets
 import java.time.Duration
-import java.util.Base64
 import java.util.concurrent.CompletableFuture
 import org.apache.solr.ide.server.reading.SolrJsonDocuments
 import tools.jackson.databind.JsonNode
@@ -34,9 +36,21 @@ import tools.jackson.databind.JsonNode
  * fails outright against one that answers 401 without a `WWW-Authenticate` header. The header is
  * built here and put on the request.
  *
+ * **One client per project, released when the project is.** An `HttpClient` owns a selector thread,
+ * a worker pool and a connection pool, so building one per request would both leak threads into a
+ * long-running IDE and defeat keep-alive against a server being polled. It is also `AutoCloseable`
+ * on the JDK this build targets, and the threads it owns inherit the plugin's classloader — so a
+ * transport that is never closed is a plugin that cannot be unloaded. Being a project service makes
+ * the platform responsible for both: one instance, disposed with the project.
+ *
  * @property timeout how long one request may take before it becomes a [SolrResponse.TransportFailure]
  */
-class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) {
+@Service(Service.Level.PROJECT)
+class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) : Disposable {
+
+    /** The platform's constructor for a project service; the timeout is the default. */
+    @Suppress("unused")
+    constructor(project: Project) : this()
 
     private val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(timeout)
@@ -44,13 +58,17 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         // decision, which is why it is written down rather than left looking like an omission.
         .build()
 
+    /** Releases the client's threads and pooled connections when the project closes. */
+    override fun dispose() {
+        client.close()
+    }
+
     /**
      * Fetches [path] from [baseUrl] and classifies the answer.
      *
      * @param baseUrl the server's base URL, as a connection records it
      * @param path the path to request, beginning with a slash
-     * @param username the user to authenticate as, or null for an unauthenticated server
-     * @param password that user's password, or null
+     * @param credential what to authenticate as
      * @return the outcome, which never completes exceptionally — every failure is a
      *   [SolrResponse] case, because a caller that must catch to find out what happened will
      *   eventually catch too much
@@ -58,10 +76,9 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
     fun get(
         baseUrl: String,
         path: String,
-        username: String? = null,
-        password: String? = null,
+        credential: SolrCredential = SolrCredential.None,
     ): CompletableFuture<SolrResponse<JsonNode>> {
-        return send(baseUrl, path, username, password) { it.GET() }
+        return send(baseUrl, path, credential) { it.GET() }
     }
 
     /**
@@ -81,15 +98,25 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
     private fun send(
         baseUrl: String,
         path: String,
-        username: String?,
-        password: String?,
+        credential: SolrCredential,
         method: (HttpRequest.Builder) -> HttpRequest.Builder,
     ): CompletableFuture<SolrResponse<JsonNode>> {
+        // An incomplete credential is refused before anything is sent. Solr would reject `user:` as
+        // a *wrong* password rather than a missing one, so asking would turn a cleared PasswordSafe
+        // entry into an authentication failure against a server that was never properly asked.
+        if (credential is SolrCredential.Missing) {
+            return CompletableFuture.completedFuture(
+                SolrResponse.TransportFailure(
+                    "the connection authenticates as ${credential.username} and no password is stored for it",
+                ),
+            )
+        }
+
         val request = runCatching {
             val builder = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl.trimEnd('/') + path))
                 .timeout(timeout)
-            authorization(username, password)?.let { builder.header("Authorization", it) }
+            credential.authorizationHeader()?.let { builder.header("Authorization", it) }
             method(builder).build()
         }.getOrElse {
             return CompletableFuture.completedFuture(
@@ -157,16 +184,4 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
     private fun solrMessage(body: JsonNode?): String? =
         body?.path("error")?.path("msg")?.asString("")?.takeIf { it.isNotEmpty() }
 
-    /**
-     * The `Authorization` header value, or null where there is no credential to send.
-     *
-     * Built here rather than by an `Authenticator` so it goes out on the first request. The value is
-     * returned rather than logged or stored, and the only place it exists is the request it is put
-     * on.
-     */
-    private fun authorization(username: String?, password: String?): String? {
-        if (username.isNullOrEmpty()) return null
-        val token = "$username:${password.orEmpty()}"
-        return "Basic " + Base64.getEncoder().encodeToString(token.toByteArray(StandardCharsets.UTF_8))
-    }
 }
