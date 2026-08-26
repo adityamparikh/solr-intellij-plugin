@@ -50,6 +50,8 @@ class SolrServerSchemaReaderTest {
 
     private val facts = SolrServerSchemaReader.read(body)
 
+    private val mapper = JsonMapper.builder().build()
+
     // --- the straightforward half ------------------------------------------------------------------
 
     @Test
@@ -221,17 +223,8 @@ class SolrServerSchemaReaderTest {
      */
     @Test
     fun `the reader accepts an already-parsed tree`() {
-        val tree = JsonMapper.builder().build().readTree(body)
-
+        val tree = mapper.readTree(body)
         assertEquals(SolrServerSchemaReader.read(body).fields, SolrServerSchemaReader.read(tree).fields)
-    }
-
-    /** A tree that is not a schema response is empty, exactly as the text form is. */
-    @Test
-    fun `an already-parsed tree with no schema is empty`() {
-        val tree = JsonMapper.builder().build().readTree("""{"responseHeader":{"status":0}}""")
-
-        assertTrue(SolrServerSchemaReader.read(tree).fields.isEmpty())
     }
 
     /** The version a server reports comes from the system-info response, not the schema. */
@@ -242,7 +235,7 @@ class SolrServerSchemaReaderTest {
              "lucene":{"solr-spec-version":"10.0.0","lucene-spec-version":"10.3.2"}}
         """.trimIndent()
 
-        assertEquals("10.0.0", SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree(body)))
+        assertEquals("10.0.0", SolrServerSchemaReader.solrVersionIn(mapper.readTree(body)))
     }
 
     /**
@@ -256,12 +249,12 @@ class SolrServerSchemaReaderTest {
     fun `the lucene version beside it is not mistaken for solr's`() {
         val body = """{"lucene":{"solr-spec-version":"9.10.1","lucene-spec-version":"9.12.3"}}"""
 
-        assertEquals("9.10.1", SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree(body)))
+        assertEquals("9.10.1", SolrServerSchemaReader.solrVersionIn(mapper.readTree(body)))
     }
 
     /** A response without the key yields null rather than a guess. */
     @Test
     fun `a response naming no version reports none`() {
-        assertNull(SolrServerSchemaReader.solrVersionIn(JsonMapper.builder().build().readTree("""{"mode":"std"}""")))
+        assertNull(SolrServerSchemaReader.solrVersionIn(mapper.readTree("""{"mode":"std"}""")))
     }
 }

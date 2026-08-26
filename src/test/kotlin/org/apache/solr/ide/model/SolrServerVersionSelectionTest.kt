@@ -2,6 +2,8 @@ package org.apache.solr.ide.model
 
 import org.apache.solr.ide.model.schema.SolrField
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -40,11 +42,7 @@ class SolrServerVersionSelectionTest {
         val nine = SolrVersionSelection.fromServerVersion("9.10.1")
 
         assertEquals(SolrVersionSource.SERVER, nine.source)
-        assertEquals(
-            "the two lines must not resolve to one guide",
-            false,
-            ten.guidePathSegment == nine.guidePathSegment,
-        )
+        assertNotEquals("the two lines must not resolve to one guide", ten.guidePathSegment, nine.guidePathSegment)
     }
 
     /**
@@ -68,7 +66,7 @@ class SolrServerVersionSelectionTest {
     fun `the segment is a catalog lookup rather than the version itself`() {
         val selection = SolrVersionSelection.fromServerVersion("10.0.0")
 
-        assertEquals(false, selection.guidePathSegment.contains("10.0.0"))
+        assertFalse(selection.guidePathSegment.contains("10.0.0"))
     }
 
     /** Text that is not a version is not guessed at. */

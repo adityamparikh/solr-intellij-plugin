@@ -8,7 +8,6 @@ import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldType
 import tools.jackson.databind.JsonNode
-import tools.jackson.databind.json.JsonMapper
 
 /**
  * Reads a Solr Schema API response into the same facts a configset parser produces.
@@ -36,7 +35,7 @@ object SolrServerSchemaReader {
      * @return the schema it describes; empty where the text is not JSON, or is JSON without a schema
      */
     fun read(body: String): SolrConfigsetFacts {
-        val tree = runCatching { MAPPER.readTree(body) }.getOrNull() ?: return SolrConfigsetFacts()
+        val tree = SolrJsonDocuments.treeOf(body) ?: return SolrConfigsetFacts()
         return read(tree)
     }
 
@@ -67,7 +66,7 @@ object SolrServerSchemaReader {
                     it.path("maxChars").takeIf { node -> node.isNumber }?.asInt(),
                 )
             },
-            uniqueKey = schema.path("uniqueKey").asString("").takeIf { it.isNotEmpty() },
+            uniqueKey = schema.stringOrNull("uniqueKey"),
             // schemaVersion and luceneMatchVersion are deliberately absent; see the class comment.
         )
     }
@@ -86,7 +85,7 @@ object SolrServerSchemaReader {
      * @return the running Solr version as reported, or null
      */
     fun solrVersionIn(response: JsonNode): String? =
-        response.path("lucene").path("solr-spec-version").asString("").takeIf { it.isNotEmpty() }
+        response.path("lucene").stringOrNull("solr-spec-version")
 
     private fun readField(node: JsonNode): SolrField = SolrField(
         name = node.path("name").asString(""),
@@ -96,7 +95,7 @@ object SolrServerSchemaReader {
         docValues = node.booleanOrNull("docValues"),
         multiValued = node.booleanOrNull("multiValued"),
         required = node.booleanOrNull("required"),
-        defaultValue = node.path("default").takeIf { !it.isMissingNode }?.asString(),
+        defaultValue = node.child("default")?.asString(),
         // Everything except the two the repository parser also excludes. The five flags above appear
         // here as well as in their typed properties, because `SolrSchemaParser` fills this map from
         // raw attribute text and a fact populated only one of the two ways would agree in its
@@ -114,12 +113,12 @@ object SolrServerSchemaReader {
     )
 
     private fun readAnalyzer(type: JsonNode, key: String): SolrAnalyzerChain? {
-        val node = type.path(key).takeIf { !it.isMissingNode } ?: type.path("analyzer").takeIf { !it.isMissingNode } ?: return null
+        val node = type.child(key) ?: type.child("analyzer") ?: return null
         return SolrAnalyzerChain(
             charFilters = node.path("charFilters").items().map { readComponent(it) },
-            tokenizer = node.path("tokenizer").takeIf { !it.isMissingNode }?.let { readComponent(it) },
+            tokenizer = node.child("tokenizer")?.let { readComponent(it) },
             filters = node.path("filters").items().map { readComponent(it) },
-            className = node.path("class").takeIf { !it.isMissingNode }?.asString(),
+            className = node.child("class")?.asString(),
         )
     }
 
@@ -131,24 +130,25 @@ object SolrServerSchemaReader {
      * shipped with until it was found by reading responses from a live server.
      */
     private fun readComponent(node: JsonNode): SolrAnalyzerComponent = SolrAnalyzerComponent(
-        className = node.path("class").takeIf { !it.isMissingNode }?.asString() ?: node.path("name").asString(""),
+        className = node.child("class")?.asString() ?: node.path("name").asString(""),
         attributes = node.attributesExcept("class", "name"),
     )
 
     /**
      * The elements of an array node, or nothing.
      *
-     * Spelled out rather than using `map` directly on the node: Jackson 3's `JsonNode` carries a
-     * `map` of its own that shadows the standard-library one on `Iterable`, and the result is a
-     * single value where a list was meant. It compiles differently rather than failing at runtime,
-     * which is the better direction, but only because the types happened to disagree.
+     * `toList` rather than `map` on the node itself: Jackson 3's `JsonNode` declares a `map` of its
+     * own that shadows the standard library's on `Iterable`, so `node.map { ... }` yields a single
+     * value where a list was meant. It declares no `toList`, so this reaches the one that iterates.
      */
-    private fun JsonNode.items(): List<JsonNode> {
-        if (!isArray) return emptyList()
-        val out = mutableListOf<JsonNode>()
-        for (child in this) out.add(child)
-        return out
-    }
+    private fun JsonNode.items(): List<JsonNode> = if (isArray) toList() else emptyList()
+
+    /** The child at [field], or null where the node does not have one. */
+    private fun JsonNode.child(field: String): JsonNode? = path(field).takeIf { !it.isMissingNode }
+
+    /** The text at [field], or null where it is absent or empty. */
+    private fun JsonNode.stringOrNull(field: String): String? =
+        path(field).asString("").takeIf { it.isNotEmpty() }
 
     /** A JSON boolean, or null where the key is absent — absent meaning unset, never false. */
     private fun JsonNode.booleanOrNull(field: String): Boolean? =
@@ -165,6 +165,4 @@ object SolrServerSchemaReader {
         properties()
             .filter { (name, value) -> name !in excluded && value.isValueNode }
             .associate { (name, value) -> name to value.asString() }
-
-    private val MAPPER = JsonMapper.builder().build()
 }

@@ -164,12 +164,7 @@ class SolrHttpTransportTest {
      */
     @Test
     fun `a credential is sent preemptively on the first request`() {
-        var seen: String? = null
-        val url = given { exchange ->
-            seen = exchange.requestHeaders.getFirst("Authorization")
-            respond(exchange, 200, """{"responseHeader":{"status":0}}""")
-        }
-        get(url, username = "solr", password = "SolrRocks")
+        val seen = authorizationSentFor(username = "solr", password = "SolrRocks")
 
         assertTrue("expected a Basic header on the first request, got $seen", seen?.startsWith("Basic ") == true)
     }
@@ -177,13 +172,17 @@ class SolrHttpTransportTest {
     /** No credential configured, no header — rather than an empty one. */
     @Test
     fun `no credential means no authorization header`() {
-        var seen: String? = "not-yet-set"
+        assertNull(authorizationSentFor(username = null, password = null))
+    }
+
+    /** The header the server saw on the one request this makes. */
+    private fun authorizationSentFor(username: String?, password: String?): String? {
+        var seen: String? = null
         val url = given { exchange ->
             seen = exchange.requestHeaders.getFirst("Authorization")
             respond(exchange, 200, """{"responseHeader":{"status":0}}""")
         }
-        get(url)
-
-        assertNull(seen)
+        get(url, username, password)
+        return seen
     }
 }

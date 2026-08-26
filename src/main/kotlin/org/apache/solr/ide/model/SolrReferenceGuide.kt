@@ -197,13 +197,11 @@ data class SolrVersionSelection(
          * @param serverVersion the version a server reported, such as `10.0.0`
          * @return the selection, always sourced to the server
          */
-        fun fromServerVersion(serverVersion: String): SolrVersionSelection {
-            val major = serverVersion.trim().substringBefore('.').toIntOrNull()
-            val segment = major
-                ?.takeIf { it >= MINIMUM_GUIDE_MAJOR }
-                ?.let { SolrClassCatalog.guideSegmentFor(it) }
-            return SolrVersionSelection(segment ?: DEFAULT.guidePathSegment, SolrVersionSource.SERVER)
-        }
+        fun fromServerVersion(serverVersion: String): SolrVersionSelection =
+            SolrVersionSelection(
+                guideSegmentIn(serverVersion) ?: DEFAULT.guidePathSegment,
+                SolrVersionSource.SERVER,
+            )
 
         /**
          * The line a `<luceneMatchVersion>` implies.
@@ -233,12 +231,23 @@ data class SolrVersionSelection(
          * @param luceneMatchVersion the declared value, such as `9.12.0`
          * @return the selection, or [DEFAULT] when the value names no line this build ships
          */
-        fun fromLuceneMatchVersion(luceneMatchVersion: String): SolrVersionSelection {
-            val major = luceneMatchVersion.trim().substringBefore('.').toIntOrNull() ?: return DEFAULT
-            if (major < MINIMUM_GUIDE_MAJOR) return DEFAULT
-            val segment = SolrClassCatalog.guideSegmentFor(major) ?: return DEFAULT
-            return SolrVersionSelection(segment, SolrVersionSource.CONFIGSET)
-        }
+        fun fromLuceneMatchVersion(luceneMatchVersion: String): SolrVersionSelection =
+            guideSegmentIn(luceneMatchVersion)
+                ?.let { SolrVersionSelection(it, SolrVersionSource.CONFIGSET) }
+                ?: DEFAULT
+
+        /**
+         * The guide segment for whatever line [version]'s major names, or null where this build
+         * ships no catalog for it.
+         *
+         * Shared by the two arms above so that only their genuine difference — the fallback, and the
+         * source they record — is written twice. The derivation is not: it is where the `${'$'}{major}_0`
+         * defect the KDoc above records was fixed, and one copy is one place to fix it again.
+         */
+        private fun guideSegmentIn(version: String): String? =
+            version.trim().substringBefore('.').toIntOrNull()
+                ?.takeIf { it >= MINIMUM_GUIDE_MAJOR }
+                ?.let { SolrClassCatalog.guideSegmentFor(it) }
 
         /**
          * The oldest major with a Reference Guide at the modern `guide/solr/<line>` path.

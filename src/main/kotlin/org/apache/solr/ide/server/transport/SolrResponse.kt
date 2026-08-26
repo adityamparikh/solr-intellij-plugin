@@ -1,7 +1,5 @@
 package org.apache.solr.ide.server.transport
 
-import tools.jackson.databind.JsonNode
-
 /**
  * What came back from a request to Solr, classified so a caller cannot mistake one outcome for
  * another.
@@ -65,11 +63,3 @@ sealed interface SolrResponse<out T> {
      */
     data class Unrecognized(val description: String) : SolrResponse<Nothing>
 }
-
-/** The value where one arrived, complete or not, and null for every failing outcome. */
-val SolrResponse<JsonNode>.valueOrNull: JsonNode?
-    get() = when (this) {
-        is SolrResponse.Success -> value
-        is SolrResponse.Partial -> value
-        else -> null
-    }
