@@ -3,6 +3,12 @@ package org.apache.solr.ide.server.transport
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.sun.net.httpserver.HttpExchange
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlin.system.measureTimeMillis
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.time.Duration
@@ -50,10 +56,10 @@ class SolrHttpTransportTest {
         server?.stop(0)
     }
 
-    private fun get(baseUrl: String, credential: SolrCredential = SolrCredential.None) =
+    private fun get(baseUrl: String, credential: SolrCredential = SolrCredential.None) = runBlocking {
         SolrHttpTransport(timeout = Duration.ofMillis(500))
             .get(baseUrl, "/solr/products/schema", credential)
-            .join()
+    }
 
     // --- the states a real server will not produce on demand ---------------------------------------
 
@@ -156,6 +162,42 @@ class SolrHttpTransportTest {
         assertEquals("Limits exceeded!", (result as SolrResponse.Partial).detail)
     }
 
+    /**
+     * A caller that goes away takes its request with it.
+     *
+     * The assertion a `CompletableFuture` could not support, and the reason this is a suspending
+     * function: cancelling the scope interrupts the blocking send rather than detaching a caller from
+     * a request that carries on running. A request nobody is waiting for is a leak even when nothing
+     * notices it.
+     */
+    @Test
+    fun `cancelling the caller cancels the request`() {
+        val url = given { Thread.sleep(30_000) }
+        var completed = false
+
+        val elapsed = measureTimeMillis {
+            runBlocking {
+                val job = launch(Dispatchers.IO) {
+                    SolrHttpTransport(timeout = Duration.ofSeconds(30)).get(url, "/solr/products/schema")
+                    completed = true
+                }
+                // Long enough for the request to be in flight, far short of the server's sleep.
+                delay(300)
+                job.cancelAndJoin()
+            }
+        }
+
+        assertFalse("the request should have been cancelled, not completed", completed)
+        // **The assertion that makes this test mean anything.** Without it the test passes on a
+        // transport that lets the blocking send run to completion and only then notices it was
+        // cancelled — which is what a plain `withContext` does, and which took the full thirty
+        // seconds. Cancellation that arrives after the work finishes is not cancellation.
+        assertTrue(
+            "cancelling must interrupt the request, not wait for it; took ${elapsed}ms",
+            elapsed < 5_000,
+        )
+    }
+
     // --- one client per project, released with it ---------------------------------------------------
 
     /**
@@ -184,12 +226,12 @@ class SolrHttpTransportTest {
     fun `disposing the transport closes its client`() {
         val transport = SolrHttpTransport(timeout = Duration.ofMillis(500))
         val url = given { respond(it, 200, """{"responseHeader":{"status":0}}""") }
-        transport.get(url, "/solr/products/schema").join()
+        runBlocking { transport.get(url, "/solr/products/schema") }
 
         transport.dispose()
 
         // A closed client refuses further work rather than silently continuing to hold its pool.
-        val afterClose = transport.get(url, "/solr/products/schema").join()
+        val afterClose = runBlocking { transport.get(url, "/solr/products/schema") }
         assertTrue(afterClose.toString(), afterClose is SolrResponse.TransportFailure)
     }
 

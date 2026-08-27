@@ -9,7 +9,9 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
-import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import org.apache.solr.ide.server.reading.SolrJsonDocuments
 import tools.jackson.databind.JsonNode
 
@@ -18,8 +20,14 @@ import tools.jackson.databind.JsonNode
  *
  * **`java.net.http.HttpClient`, and nothing wrapped around it.** The specification's parent argues
  * for plain HTTP over embedding a client library, and this is where that lands: the JDK's client,
- * asynchronous so nothing here blocks the UI thread, with a per-request timeout so a server that
- * never answers becomes an outcome rather than a hang.
+ * with a per-request timeout so a server that never answers becomes an outcome rather than a hang.
+ *
+ * **Suspending rather than returning a future, which is what makes it cancellable.** A
+ * `CompletableFuture` cannot be stopped by anything the IDE uses to stop work — not a progress
+ * indicator, not a closing tool window — and its only consumers, `get` and `join`, block the caller.
+ * An API whose natural use from the EDT is the freeze it exists to prevent is the wrong API. The
+ * blocking `send` runs on [Dispatchers.IO] instead, so a caller that goes away takes its request with
+ * it rather than detaching from one that carries on running.
  *
  * **This carries the plugin's own traffic, not the user's.** Fetching a schema or a cluster status is
  * nobody's authored request — it is a tool window calling out on its own initiative, which is why
@@ -73,11 +81,11 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
      *   [SolrResponse] case, because a caller that must catch to find out what happened will
      *   eventually catch too much
      */
-    fun get(
+    suspend fun get(
         baseUrl: String,
         path: String,
         credential: SolrCredential = SolrCredential.None,
-    ): CompletableFuture<SolrResponse<JsonNode>> {
+    ): SolrResponse<JsonNode> {
         return send(baseUrl, path, credential) { it.GET() }
     }
 
@@ -95,20 +103,18 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
      *
      * @param method applies the verb, and the body where there is one
      */
-    private fun send(
+    private suspend fun send(
         baseUrl: String,
         path: String,
         credential: SolrCredential,
         method: (HttpRequest.Builder) -> HttpRequest.Builder,
-    ): CompletableFuture<SolrResponse<JsonNode>> {
+    ): SolrResponse<JsonNode> {
         // An incomplete credential is refused before anything is sent. Solr would reject `user:` as
         // a *wrong* password rather than a missing one, so asking would turn a cleared PasswordSafe
         // entry into an authentication failure against a server that was never properly asked.
         if (credential is SolrCredential.Missing) {
-            return CompletableFuture.completedFuture(
-                SolrResponse.TransportFailure(
-                    "the connection authenticates as ${credential.username} and no password is stored for it",
-                ),
+            return SolrResponse.TransportFailure(
+                "the connection authenticates as ${credential.username} and no password is stored for it",
             )
         }
 
@@ -119,22 +125,26 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
             credential.authorizationHeader()?.let { builder.header("Authorization", it) }
             method(builder).build()
         }.getOrElse {
-            return CompletableFuture.completedFuture(
-                SolrResponse.TransportFailure(it.message ?: "the address could not be understood"),
-            )
+            return SolrResponse.TransportFailure(it.message ?: "the address could not be understood")
         }
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .handle { response, failure ->
-                if (failure != null) {
-                    // Described rather than rethrown. The cause is unwrapped because a
-                    // `CompletionException` names itself and not what went wrong.
+        // `runInterruptible` rather than a bare `withContext`, and the difference is the whole
+        // requirement. Coroutine cancellation is cooperative: a blocking `send` inside a plain
+        // `withContext` runs to completion and the caller only learns it was cancelled afterwards,
+        // which is a request nobody is waiting for still holding a connection. `runInterruptible`
+        // interrupts the thread, and `HttpClient.send` answers an interrupt by throwing.
+        return runInterruptible(Dispatchers.IO) {
+            runCatching { classify(client.send(request, HttpResponse.BodyHandlers.ofString())) }
+                .getOrElse { failure ->
+                    // A cancelled caller must cancel the request rather than be told it failed, so
+                    // the exception that carries cancellation is rethrown rather than described.
+                    if (failure is InterruptedException || failure is CancellationException) throw failure
+                    // Otherwise described rather than rethrown, in the plugin's words: Solr never
+                    // spoke, so it has no words to quote here.
                     val cause = generateSequence(failure) { it.cause }.last()
                     SolrResponse.TransportFailure(cause.message ?: cause::class.java.simpleName)
-                } else {
-                    classify(response)
                 }
-            }
+        }
     }
 
     /**

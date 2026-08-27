@@ -839,24 +839,54 @@ self-evident and starts being something a future change could cross by accident 
 reaching for "just check the live server" to resolve an edge case the repository alone cannot answer,
 which is precisely the shortcut this rule exists to close off before it is taken once.
 
-**NFR-2 — Nothing here blocks the UI thread; every call is asynchronous.** `HttpClient.sendAsync`
-already returns a `CompletableFuture` rather than blocking the calling thread; the requirement is that
-nothing in the reader or its consumers calls `.get()` or `.join()` on that future from an
-EDT-dispatched code path. Whether the surrounding coroutine or callback plumbing uses
-`kotlinx.coroutines` (already present on the IntelliJ Platform's own runtime classpath, used
-extensively by platform services) or the platform's own background-task APIs is an implementation
-choice to verify during Step 11 rather than one this document fixes — the requirement is the outcome
-(async, off the EDT), not the mechanism.
+**NFR-2 — Nothing here blocks the UI thread, and the reader is a suspending function.** This document
+originally left the mechanism open — "the requirement is the outcome (async, off the EDT), not the
+mechanism" — and named `HttpClient.sendAsync` returning a `CompletableFuture` as the likely shape.
+Step 11 built that, and then replaced it. What follows is the decision and why it changed, because the
+first shape was not wrong so much as foreign.
+
+**A `CompletableFuture` is not cancellable by anything the IDE uses to cancel work.** A progress
+indicator cannot stop one, a closing tool window cannot stop one, and a caller who has lost interest
+has no way to say so — the only ways to consume it are `.get()` and `.join()`, both of which block,
+and both of which freeze the UI when a caller reaches for the obvious thing from an EDT-dispatched
+path. An API whose natural use is the bug it exists to prevent is the wrong API.
+
+So the reader is a `suspend fun` returning its result directly, running the *blocking*
+`HttpClient.send` on `Dispatchers.IO`. `kotlinx.coroutines` ships on the platform's own runtime
+classpath and platform services use it throughout, so this is the idiom a reader of this codebase will
+already know. The signature loses a wrapper — a caller writes `val result = transport.get(...)` — and
+gains the thing the wrapper never had, which is [NFR-3](#requirements)'s cancellation.
 
 **NFR-3 — Every request is timeout-bounded and cancellable.** A per-request timeout (proposed default:
 ten seconds, overridable per call for the console's potentially slower queries) is set on every
 `HttpRequest`. A view that no longer needs a pending request — the user closed the tool window,
 navigated away, or issued a newer query that supersedes an older one — must be able to cancel it rather
-than let it complete and be discarded; `CompletableFuture.cancel()` is the mechanism `sendAsync`
-exposes, and whether cancellation actually aborts the underlying socket exchange on the JDK version this
-plugin targets, rather than merely detaching the caller, needs verifying against a real slow-response
-fixture before this requirement is considered closed — a future that keeps running invisibly is a leak
-even when nothing is waiting on it.
+than let it complete and be discarded.
+
+**`runInterruptible(Dispatchers.IO)` is the mechanism, and the distinction it draws is the whole
+requirement.** An earlier revision named `CompletableFuture.cancel()` and flagged that whether it
+aborts the underlying socket exchange — rather than merely detaching the caller — needed verifying.
+The question was right and it applies to coroutines too, which is worth stating because "it is
+suspending, therefore it is cancellable" is false and was believed here for one commit.
+
+**Coroutine cancellation is cooperative, and a blocking JDK call does not cooperate.** A blocking
+`HttpClient.send` inside a plain `withContext(Dispatchers.IO)` runs to completion; the caller learns
+it was cancelled only afterwards, having held a connection for the full duration. Measured against a
+server that sleeps thirty seconds and a caller that cancels after three hundred milliseconds:
+`withContext` returns in **30,203ms**, and `runInterruptible` in under **5,000ms**. The first is not
+cancellation, it is bookkeeping.
+
+`runInterruptible` interrupts the thread, and `HttpClient.send` answers an interrupt by throwing — so
+a caller that goes away takes its request with it. The leak the old wording feared, "a future that
+keeps running invisibly is a leak even when nothing is waiting on it", is a failure mode the wrong
+coroutine shape has as readily as a future does.
+
+**The test asserts the elapsed time, not merely the outcome.** A cancellation test that checks only
+"the caller did not complete" passes against the slow shape, because the caller does not complete
+either way — it simply finds out thirty seconds late.
+
+The per-request timeout stays on the `HttpRequest` regardless, since a server that accepts a
+connection and then says nothing is not cancellation's problem to solve.
 
 **NFR-4 — Server data refreshes on request and on connection change, never on a timer, and stale data
 says so.** This restates the parent specification's own rule rather than adding one: "Server data
