@@ -21,32 +21,17 @@ import org.junit.Test
  */
 class SolrServerSchemaReaderTest {
 
-    private val body = """
-        {"responseHeader":{"status":0,"QTime":3},
-         "schema":{
-           "name":"example",
-           "version":1.7,
-           "uniqueKey":"id",
-           "fieldTypes":[
-             {"name":"string","class":"solr.StrField","sortMissingLast":true,"docValues":true},
-             {"name":"text_general","class":"solr.TextField","positionIncrementGap":"100",
-              "indexAnalyzer":{
-                "tokenizer":{"name":"standard"},
-                "filters":[{"name":"stop","ignoreCase":"true","words":"stopwords.txt"},
-                           {"name":"lowercase"}]},
-              "queryAnalyzer":{
-                "tokenizer":{"class":"solr.StandardTokenizerFactory"},
-                "filters":[{"class":"solr.LowerCaseFilterFactory"}]}}],
-           "fields":[
-             {"name":"id","type":"string","multiValued":false,"indexed":true,"required":true,"stored":true},
-             {"name":"name","type":"text_general","uninvertible":true,"indexed":true,"stored":true},
-             {"name":"price","type":"pfloat","indexed":true,"stored":true}],
-           "dynamicFields":[
-             {"name":"*_s","type":"string","indexed":true,"stored":true}],
-           "copyFields":[
-             {"source":"name","dest":"text"},
-             {"source":"name","dest":"suggest"}]}}
-    """.trimIndent()
+    /**
+     * A response Solr 10.0.0 actually returned, captured rather than composed.
+     *
+     * `GET /techproducts/schema` against the `sample_techproducts_configs` Solr ships, saved to a
+     * resource so it can be read and diffed like any other file. A body pasted into a test is a body
+     * somebody trimmed, and what gets trimmed is what nobody thought mattered — which is precisely
+     * where the surprises in this response were.
+     */
+    private val body: String = checkNotNull(
+        javaClass.getResourceAsStream("/server-responses/schema-10.json"),
+    ) { "the captured schema response is missing" }.bufferedReader().use { it.readText() }
 
     private val facts = SolrServerSchemaReader.read(body)
 
@@ -81,9 +66,11 @@ class SolrServerSchemaReaderTest {
 
     @Test
     fun `a dynamic field carries its pattern`() {
-        val dynamic = facts.dynamicFields.single()
+        val dynamic = facts.dynamicFields.single { it.pattern == "*_s" }
+
         assertEquals("*_s", dynamic.pattern)
         assertEquals("string", dynamic.field.type)
+        assertEquals("this configset declares many patterns", 22, facts.dynamicFields.size)
     }
 
     /**
@@ -96,7 +83,8 @@ class SolrServerSchemaReaderTest {
     @Test
     fun `a source with two destinations is two copy fields`() {
         val fromName = facts.copyFields.filter { it.source == "name" }
-        assertEquals(listOf("text", "suggest"), fromName.map { it.destination })
+
+        assertEquals(listOf("name_exact", "text"), fromName.map { it.destination })
     }
 
     // --- the parts the wire-format pass corrected ---------------------------------------------------
@@ -109,11 +97,33 @@ class SolrServerSchemaReaderTest {
      * taught it both. A reader that handled one would be half-blind in exactly the same way.
      */
     @Test
-    fun `an analyzer component is read under either spelling`() {
+    fun `a component naming its factory under name is read`() {
         val type = facts.fieldTypes.single { it.name == "text_general" }
+
         assertEquals("standard", type.indexAnalyzer?.tokenizer?.className)
         assertEquals(listOf("stop", "lowercase"), type.indexAnalyzer?.filters?.map { it.className })
-        assertEquals("solr.StandardTokenizerFactory", type.queryAnalyzer?.tokenizer?.className)
+    }
+
+    /**
+     * And so is one naming it under `class`, which the captured response cannot show.
+     *
+     * Every component in every configset Solr ships is spelled `name` — 236 of them in this very
+     * file, and not one `class`. So the other half of the rule needs a body of its own: composed
+     * here deliberately, and kept small enough to read, because its whole purpose is the spelling.
+     */
+    @Test
+    fun `a component naming its factory under class is read too`() {
+        val classSpelled = SolrServerSchemaReader.read(
+            """
+            {"schema":{"fieldTypes":[{"name":"legacy","class":"solr.TextField",
+              "analyzer":{"tokenizer":{"class":"solr.StandardTokenizerFactory"},
+                          "filters":[{"class":"solr.LowerCaseFilterFactory"}]}}]}}
+            """.trimIndent(),
+        )
+        val chain = classSpelled.fieldTypes.single().indexAnalyzer
+
+        assertEquals("solr.StandardTokenizerFactory", chain?.tokenizer?.className)
+        assertEquals(listOf("solr.LowerCaseFilterFactory"), chain?.filters?.map { it.className })
     }
 
     /** A component's other keys are its factory arguments, and they travel with it. */
@@ -142,8 +152,9 @@ class SolrServerSchemaReaderTest {
     @Test
     fun `a field type carries its class and its other attributes`() {
         val string = facts.fieldTypes.single { it.name == "string" }
+
         assertEquals("solr.StrField", string.className)
-        assertEquals("true", string.attributes["docValues"])
+        assertEquals("true", string.attributes["sortMissingLast"])
     }
 
     // --- what this parser deliberately does not populate --------------------------------------------
@@ -230,12 +241,11 @@ class SolrServerSchemaReaderTest {
     /** The version a server reports comes from the system-info response, not the schema. */
     @Test
     fun `the reported solr version is read from a system info response`() {
-        val body = """
-            {"responseHeader":{"status":0},"mode":"solrcloud",
-             "lucene":{"solr-spec-version":"10.0.0","lucene-spec-version":"10.3.2"}}
-        """.trimIndent()
+        val systemInfo = checkNotNull(
+            javaClass.getResourceAsStream("/server-responses/system-info-10.json"),
+        ) { "the captured system-info response is missing" }.bufferedReader().use { it.readText() }
 
-        assertEquals("10.0.0", SolrServerSchemaReader.solrVersionIn(mapper.readTree(body)))
+        assertEquals("10.0.0", SolrServerSchemaReader.solrVersionIn(mapper.readTree(systemInfo)))
     }
 
     /**

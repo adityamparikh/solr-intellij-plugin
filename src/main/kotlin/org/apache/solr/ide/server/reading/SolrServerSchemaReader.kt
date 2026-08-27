@@ -54,19 +54,19 @@ object SolrServerSchemaReader {
         // `path` returns a missing node rather than throwing, which is why every step below can be
         // written without a guard: a response carrying no schema walks to an empty array and yields
         // empty facts rather than failing.
-        val schema = response.path("schema")
+        val schema = response.path(SolrSchemaJson.SCHEMA)
         return SolrConfigsetFacts(
-            fields = schema.path("fields").items().map { readField(it) },
-            dynamicFields = schema.path("dynamicFields").items().map { SolrDynamicField(it.path("name").asString(""), readField(it)) },
-            fieldTypes = schema.path("fieldTypes").items().map { readFieldType(it) },
-            copyFields = schema.path("copyFields").items().map {
+            fields = schema.path(SolrSchemaJson.FIELDS).items().map { readField(it) },
+            dynamicFields = schema.path(SolrSchemaJson.DYNAMIC_FIELDS).items().map { SolrDynamicField(it.path(SolrSchemaJson.NAME).asString(""), readField(it)) },
+            fieldTypes = schema.path(SolrSchemaJson.FIELD_TYPES).items().map { readFieldType(it) },
+            copyFields = schema.path(SolrSchemaJson.COPY_FIELDS).items().map {
                 SolrCopyField(
-                    it.path("source").asString(""),
-                    it.path("dest").asString(""),
-                    it.path("maxChars").takeIf { node -> node.isNumber }?.asInt(),
+                    it.path(SolrSchemaJson.SOURCE).asString(""),
+                    it.path(SolrSchemaJson.DESTINATION).asString(""),
+                    it.path(SolrSchemaJson.MAX_CHARS).takeIf { node -> node.isNumber }?.asInt(),
                 )
             },
-            uniqueKey = schema.stringOrNull("uniqueKey"),
+            uniqueKey = schema.stringOrNull(SolrSchemaJson.UNIQUE_KEY),
             // schemaVersion and luceneMatchVersion are deliberately absent; see the class comment.
         )
     }
@@ -85,40 +85,40 @@ object SolrServerSchemaReader {
      * @return the running Solr version as reported, or null
      */
     fun solrVersionIn(response: JsonNode): String? =
-        response.path("lucene").stringOrNull("solr-spec-version")
+        response.path(SolrSchemaJson.LUCENE).stringOrNull(SolrSchemaJson.SOLR_SPEC_VERSION)
 
     private fun readField(node: JsonNode): SolrField = SolrField(
-        name = node.path("name").asString(""),
-        type = node.path("type").asString(""),
+        name = node.path(SolrSchemaJson.NAME).asString(""),
+        type = node.path(SolrSchemaJson.TYPE).asString(""),
         indexed = node.booleanOrNull("indexed"),
         stored = node.booleanOrNull("stored"),
         docValues = node.booleanOrNull("docValues"),
         multiValued = node.booleanOrNull("multiValued"),
         required = node.booleanOrNull("required"),
-        defaultValue = node.child("default")?.asString(),
+        defaultValue = node.child(SolrSchemaJson.DEFAULT_VALUE)?.asString(),
         // Everything except the two the repository parser also excludes. The five flags above appear
         // here as well as in their typed properties, because `SolrSchemaParser` fills this map from
         // raw attribute text and a fact populated only one of the two ways would agree in its
         // properties and differ in its map.
-        attributes = node.attributesExcept("name", "type"),
+        attributes = node.attributesExcept(SolrSchemaJson.NAME, SolrSchemaJson.TYPE),
     )
 
     private fun readFieldType(node: JsonNode): SolrFieldType = SolrFieldType(
-        name = node.path("name").asString(""),
-        className = node.path("class").asString(""),
-        attributes = node.attributesExcept("name", "class", "indexAnalyzer", "queryAnalyzer", "analyzer"),
+        name = node.path(SolrSchemaJson.NAME).asString(""),
+        className = node.path(SolrSchemaJson.CLASS).asString(""),
+        attributes = node.attributesExcept(SolrSchemaJson.NAME, SolrSchemaJson.CLASS, SolrSchemaJson.INDEX_ANALYZER, SolrSchemaJson.QUERY_ANALYZER, SolrSchemaJson.ANALYZER),
         // An untyped `analyzer` applies to both phases, exactly as it does in the XML.
-        indexAnalyzer = readAnalyzer(node, "indexAnalyzer"),
-        queryAnalyzer = readAnalyzer(node, "queryAnalyzer"),
+        indexAnalyzer = readAnalyzer(node, SolrSchemaJson.INDEX_ANALYZER),
+        queryAnalyzer = readAnalyzer(node, SolrSchemaJson.QUERY_ANALYZER),
     )
 
     private fun readAnalyzer(type: JsonNode, key: String): SolrAnalyzerChain? {
-        val node = type.child(key) ?: type.child("analyzer") ?: return null
+        val node = type.child(key) ?: type.child(SolrSchemaJson.ANALYZER) ?: return null
         return SolrAnalyzerChain(
-            charFilters = node.path("charFilters").items().map { readComponent(it) },
-            tokenizer = node.child("tokenizer")?.let { readComponent(it) },
-            filters = node.path("filters").items().map { readComponent(it) },
-            className = node.child("class")?.asString(),
+            charFilters = node.path(SolrSchemaJson.CHAR_FILTERS).items().map { readComponent(it) },
+            tokenizer = node.child(SolrSchemaJson.TOKENIZER)?.let { readComponent(it) },
+            filters = node.path(SolrSchemaJson.FILTERS).items().map { readComponent(it) },
+            className = node.child(SolrSchemaJson.CLASS)?.asString(),
         )
     }
 
@@ -130,8 +130,8 @@ object SolrServerSchemaReader {
      * shipped with until it was found by reading responses from a live server.
      */
     private fun readComponent(node: JsonNode): SolrAnalyzerComponent = SolrAnalyzerComponent(
-        className = node.child("class")?.asString() ?: node.path("name").asString(""),
-        attributes = node.attributesExcept("class", "name"),
+        className = node.child(SolrSchemaJson.CLASS)?.asString() ?: node.path(SolrSchemaJson.NAME).asString(""),
+        attributes = node.attributesExcept(SolrSchemaJson.CLASS, SolrSchemaJson.NAME),
     )
 
     /**
