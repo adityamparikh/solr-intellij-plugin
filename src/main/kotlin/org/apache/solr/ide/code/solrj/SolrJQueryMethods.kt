@@ -1,5 +1,7 @@
 package org.apache.solr.ide.code.solrj
 
+import org.apache.solr.ide.model.query.SolrParameters
+
 /**
  * What kind of text a `SolrQuery` argument holds.
  *
@@ -65,6 +67,16 @@ object SolrJQueryMethods {
     fun isSolrQueryClass(qualifiedName: String): Boolean = qualifiedName in SOLR_QUERY_CLASSES
 
     /**
+     * Every Solr parameter this map can produce.
+     *
+     * Exposed so a test can hold the code track and the grammar to the same vocabulary — a parameter
+     * produced here and unknown there resolves to no operation, which reads as "this field is fine".
+     *
+     * @return the parameter names, once each
+     */
+    fun allParameters(): Set<String> = METHODS.values.mapTo(mutableSetOf()) { it.parameter }
+
+    /**
      * Every package `SolrQuery` has shipped in across the supported lines.
      *
      * **Two entries because the class moved, and a recognizer holding one is silent on the other.**
@@ -92,27 +104,27 @@ object SolrJQueryMethods {
     private val METHODS = mapOf(
         // The query itself, and filters. Both hold Solr query syntax, where a field name appears
         // only as the part before a colon.
-        "setQuery" to SolrJQueryMethod("q", SolrJArgumentShape.QUERY_EXPRESSION),
-        "addFilterQuery" to SolrJQueryMethod("fq", SolrJArgumentShape.QUERY_EXPRESSION),
-        "setFilterQueries" to SolrJQueryMethod("fq", SolrJArgumentShape.QUERY_EXPRESSION),
+        "setQuery" to SolrJQueryMethod(SolrParameters.QUERY, SolrJArgumentShape.QUERY_EXPRESSION),
+        "addFilterQuery" to SolrJQueryMethod(SolrParameters.FILTER_QUERY, SolrJArgumentShape.QUERY_EXPRESSION),
+        "setFilterQueries" to SolrJQueryMethod(SolrParameters.FILTER_QUERY, SolrJArgumentShape.QUERY_EXPRESSION),
 
         // The field list. `setFields` writes the whole `fl`; `addField` appends one name to it.
-        "setFields" to SolrJQueryMethod("fl", SolrJArgumentShape.FIELD_LIST),
-        "addField" to SolrJQueryMethod("fl", SolrJArgumentShape.FIELD_NAME),
+        "setFields" to SolrJQueryMethod(SolrParameters.FIELD_LIST, SolrJArgumentShape.FIELD_LIST),
+        "addField" to SolrJQueryMethod(SolrParameters.FIELD_LIST, SolrJArgumentShape.FIELD_NAME),
 
         // Faceting. Each argument is one field, so a comma inside one is part of the name.
-        "addFacetField" to SolrJQueryMethod("facet.field", SolrJArgumentShape.FIELD_NAME),
-        "addFacetPivotField" to SolrJQueryMethod("facet.pivot", SolrJArgumentShape.FIELD_NAME),
+        "addFacetField" to SolrJQueryMethod(SolrParameters.FACET_FIELD, SolrJArgumentShape.FIELD_NAME),
+        "addFacetPivotField" to SolrJQueryMethod(SolrParameters.FACET_PIVOT, SolrJArgumentShape.FIELD_NAME),
 
         // Highlighting, terms and more-like-this, each under its own parameter so the operation the
         // field is asked to support is the right one.
-        "addHighlightField" to SolrJQueryMethod("hl.fl", SolrJArgumentShape.FIELD_NAME),
-        "addTermsField" to SolrJQueryMethod("terms.fl", SolrJArgumentShape.FIELD_NAME),
-        "setMoreLikeThisFields" to SolrJQueryMethod("mlt.fl", SolrJArgumentShape.FIELD_NAME),
+        "addHighlightField" to SolrJQueryMethod(SolrParameters.HIGHLIGHT_FIELDS, SolrJArgumentShape.FIELD_NAME),
+        "addTermsField" to SolrJQueryMethod(SolrParameters.TERMS_FIELDS, SolrJArgumentShape.FIELD_NAME),
+        "setMoreLikeThisFields" to SolrJQueryMethod(SolrParameters.MORE_LIKE_THIS_FIELDS, SolrJArgumentShape.FIELD_NAME),
 
         // Sorting, the one family whose field is a separate argument rather than part of a clause:
         // `setSort(String field, ORDER order)`. Reading every argument would read the enum as a name.
-        "setSort" to SolrJQueryMethod("sort", SolrJArgumentShape.FIELD_NAME, readsOnlyFirstArgument = true),
-        "addSort" to SolrJQueryMethod("sort", SolrJArgumentShape.FIELD_NAME, readsOnlyFirstArgument = true),
+        "setSort" to SolrJQueryMethod(SolrParameters.SORT, SolrJArgumentShape.FIELD_NAME, readsOnlyFirstArgument = true),
+        "addSort" to SolrJQueryMethod(SolrParameters.SORT, SolrJArgumentShape.FIELD_NAME, readsOnlyFirstArgument = true),
     )
 }
