@@ -8,7 +8,6 @@ import com.intellij.psi.xml.XmlTag
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.editing.SolrInspections
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
-import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.model.schema.SolrValueType
 import org.apache.solr.ide.model.vocabulary.SolrAttributeVocabulary
 
@@ -46,8 +45,7 @@ class SolrInvalidAttributeValueInspection : LocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
             ?: return PsiElementVisitor.EMPTY_VISITOR
-        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
+        val version = model.solrVersion
         return object : XmlElementVisitor() {
             override fun visitXmlTag(tag: XmlTag) {
                 val className = tag.getAttributeValue("class")

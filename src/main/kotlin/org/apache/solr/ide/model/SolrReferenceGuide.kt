@@ -179,6 +179,31 @@ data class SolrVersionSelection(
         val DEFAULT: SolrVersionSelection = SolrVersionSelection("latest", SolrVersionSource.DEFAULT)
 
         /**
+         * The line a connected server reported.
+         *
+         * **No Lucene translation, unlike [fromLuceneMatchVersion], and that is the whole difference
+         * between them.** A configset declares a *Lucene* back-compat target and only ever *implies*
+         * a Solr line — Solr 10.0 pairs with Lucene 10.3. A server states its own Solr version
+         * outright, so the two must not share a path: reading a server's `10.0.0` through the
+         * configset arm would be translating something that was never encoded.
+         *
+         * **A line this build ships no catalog for keeps [SolrVersionSource.SERVER] and names the
+         * newest guide**, where [fromLuceneMatchVersion] falls back to [DEFAULT] entirely. The two
+         * alternatives are both worse: falling back would discard the fact that a server answered at
+         * all, and constructing a segment would invent a guide URL for a release that may not be
+         * published. The version string itself stays on the model for display, which is where a
+         * reader looks to find out what they actually reached.
+         *
+         * @param serverVersion the version a server reported, such as `10.0.0`
+         * @return the selection, always sourced to the server
+         */
+        fun fromServerVersion(serverVersion: String): SolrVersionSelection =
+            SolrVersionSelection(
+                guideSegmentIn(serverVersion) ?: DEFAULT.guidePathSegment,
+                SolrVersionSource.SERVER,
+            )
+
+        /**
          * The line a `<luceneMatchVersion>` implies.
          *
          * `luceneMatchVersion` names a *Lucene* version, not a Solr one — Solr 10.0 pairs with
@@ -196,6 +221,9 @@ data class SolrVersionSelection(
          * reads the release out of the catalog header, so the link and the facts cannot disagree
          * and no supported release is named outside the build.
          *
+         * Compare [fromServerVersion], which translates nothing because a server states its own
+         * Solr version rather than implying one.
+         *
          * A major this build ships no catalog for falls back to [DEFAULT] rather than to a
          * constructed segment. Solr 11 has no guide at `11_0` until it is released, and `latest` is
          * the honest answer for a configset from the future.
@@ -203,12 +231,23 @@ data class SolrVersionSelection(
          * @param luceneMatchVersion the declared value, such as `9.12.0`
          * @return the selection, or [DEFAULT] when the value names no line this build ships
          */
-        fun fromLuceneMatchVersion(luceneMatchVersion: String): SolrVersionSelection {
-            val major = luceneMatchVersion.trim().substringBefore('.').toIntOrNull() ?: return DEFAULT
-            if (major < MINIMUM_GUIDE_MAJOR) return DEFAULT
-            val segment = SolrClassCatalog.guideSegmentFor(major) ?: return DEFAULT
-            return SolrVersionSelection(segment, SolrVersionSource.CONFIGSET)
-        }
+        fun fromLuceneMatchVersion(luceneMatchVersion: String): SolrVersionSelection =
+            guideSegmentIn(luceneMatchVersion)
+                ?.let { SolrVersionSelection(it, SolrVersionSource.CONFIGSET) }
+                ?: DEFAULT
+
+        /**
+         * The guide segment for whatever line [version]'s major names, or null where this build
+         * ships no catalog for it.
+         *
+         * Shared by the two arms above so that only their genuine difference — the fallback, and the
+         * source they record — is written twice. The derivation is not: it is where the `${'$'}{major}_0`
+         * defect the KDoc above records was fixed, and one copy is one place to fix it again.
+         */
+        private fun guideSegmentIn(version: String): String? =
+            version.trim().substringBefore('.').toIntOrNull()
+                ?.takeIf { it >= MINIMUM_GUIDE_MAJOR }
+                ?.let { SolrClassCatalog.guideSegmentFor(it) }
 
         /**
          * The oldest major with a Reference Guide at the modern `guide/solr/<line>` path.

@@ -1,0 +1,108 @@
+{
+    "responseHeader": {
+        "status": 0,
+        "QTime": 26
+    },
+    "mode": "std",
+    "solr_home": "/var/solr/data",
+    "core_root": "/var/solr/data",
+    "lucene": {
+        "solr-spec-version": "10.0.0",
+        "solr-impl-version": "10.0.0 6c6c48a6f78486130682ea9c1f7a2723af5a87be - anshum - 2026-02-12 16:07:59",
+        "lucene-spec-version": "10.3.2",
+        "lucene-impl-version": "10.3.2 dadfd90b4401947f4d0387669dc94999fbb2c830 - 2025-11-13 10:41:29"
+    },
+    "jvm": {
+        "version": "25.0.3 25.0.3+9-LTS",
+        "name": "Eclipse Adoptium OpenJDK 64-Bit Server VM",
+        "spec": {
+            "vendor": "Oracle Corporation",
+            "name": "Java Platform API Specification",
+            "version": "25"
+        },
+        "jre": {
+            "vendor": "Eclipse Adoptium",
+            "version": "25.0.3"
+        },
+        "vm": {
+            "vendor": "Eclipse Adoptium",
+            "name": "OpenJDK 64-Bit Server VM",
+            "version": "25.0.3+9-LTS"
+        },
+        "processors": 12,
+        "memory": {
+            "free": "337.1 MB",
+            "total": "512 MB",
+            "max": "512 MB",
+            "used": "174.9 MB (%34.2)",
+            "raw": {
+                "free": 353498328,
+                "total": 536870912,
+                "max": 536870912,
+                "used": 183372584,
+                "used%": 34.15580540895462
+            }
+        },
+        "jmx": {
+            "classpath": "start.jar",
+            "commandLineArgs": [
+                "-Xms512m",
+                "-Xmx512m",
+                "-XX:+UseG1GC",
+                "-XX:+PerfDisableSharedMem",
+                "-XX:+ParallelRefProcEnabled",
+                "-XX:MaxGCPauseMillis=250",
+                "-XX:+UseLargePages",
+                "-XX:+AlwaysPreTouch",
+                "-XX:+ExplicitGCInvokesConcurrent",
+                "-Xlog:gc*:file=/var/solr/logs/solr_gc.log:time,uptime:filecount=9,filesize=20M",
+                "-Dsolr.jetty.inetaccess.includes=",
+                "-Dsolr.jetty.inetaccess.excludes=",
+                "-Dsolr.logs.dir=/var/solr/logs",
+                "-Dsolr.port.listen=8983",
+                "-DSTOP.PORT=7983",
+                "-DSTOP.KEY=solrrocks",
+                "-Djava.io.tmpdir=/tmp",
+                "-Duser.timezone=UTC",
+                "-XX:-OmitStackTraceInFastThrow",
+                "-XX:+CrashOnOutOfMemoryError",
+                "-XX:ErrorFile=/var/solr/logs/jvm_crash_%p.log",
+                "-Djetty.home=/opt/solr-10.0.0/server",
+                "-Dsolr.solr.home=/var/solr/data",
+                "-Dsolr.install.dir=/opt/solr-10.0.0",
+                "-Dsolr.install.symDir=/opt/solr",
+                "-Dlog4j.configurationFile=/var/solr/log4j2.xml",
+                "-Dsolr.host.bind=0.0.0.0",
+                "-Xss256k",
+                "--add-modules=jdk.incubator.vector",
+                "--enable-native-access=ALL-UNNAMED"
+            ],
+            "startTime": "2026-08-27T22:58:15.647Z",
+            "upTimeMS": 18365
+        }
+    },
+    "security": {},
+    "system": {
+        "name": "Linux",
+        "arch": "aarch64",
+        "availableProcessors": 12,
+        "systemLoadAverage": 1.0615234375,
+        "version": "6.12.76-linuxkit",
+        "committedVirtualMemorySize": 6027464704,
+        "cpuLoad": 0.0,
+        "freeMemorySize": 134787072,
+        "freePhysicalMemorySize": 134787072,
+        "freeSwapSpaceSize": 33796096,
+        "processCpuLoad": 0.0,
+        "processCpuTime": 14770000000,
+        "systemCpuLoad": 0.0,
+        "totalMemorySize": 17011273728,
+        "totalPhysicalMemorySize": 17011273728,
+        "totalSwapSpaceSize": 1073737728,
+        "maxFileDescriptorCount": 1048576,
+        "openFileDescriptorCount": 192
+    },
+    "gpu": {
+        "available": false
+    }
+}

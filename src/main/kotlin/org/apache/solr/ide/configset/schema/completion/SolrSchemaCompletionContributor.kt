@@ -19,7 +19,6 @@ import org.apache.solr.ide.configset.activation.SolrSchemaTags
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.configset.schema.documentation.SolrSchemaElements
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.model.schema.SolrFieldProperties
 import org.apache.solr.ide.model.schema.SolrMatchAnalysis
 import org.apache.solr.ide.model.schema.SolrSchemaVersion
@@ -150,8 +149,7 @@ private class SolrAttributeValueCompletionProvider : CompletionProvider<Completi
      */
     private fun classNames(tagName: String, model: SolrFieldModel): List<LookupElement> {
         val kind = SolrClassKind.forTag(tagName) ?: return emptyList()
-        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
+        val version = model.solrVersion
         return SolrClassCatalog.of(kind, version).map { entry ->
             LookupElementBuilder.create(entry.shortName).withTypeText(entry.className)
         }
@@ -335,8 +333,7 @@ private class SolrSchemaVocabularyCompletionProvider : CompletionProvider<Comple
         val kind = SolrClassKind.forTag(tag.name)?.takeIf { it != SolrClassKind.FIELD_TYPE }
             ?: return null
         val className = tag.getAttributeValue("class") ?: return emptyList()
-        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
+        val version = model.solrVersion
         val entry = SolrClassCatalog.find(className, version)?.takeIf { it.kind == kind } ?: return emptyList()
         return entry.attributes
             .filter { it.name !in already }

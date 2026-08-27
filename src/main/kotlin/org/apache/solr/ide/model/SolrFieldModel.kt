@@ -83,6 +83,9 @@ data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
  * @property copyFields copy-field directives, keyed by source and destination together
  * @property uniqueKey the `uniqueKey` declaration, or null if the configset declares none
  * @property fieldReferences field names referenced from `solrconfig.xml`
+ * @property serverVersion the Solr version a connected server reported, or null where none has been
+ *   asked. Kept as reported rather than as a resolved selection, because it is also what a user reads
+ *   to know which server they reached
  * @property luceneMatchVersion the version the configset declares it targets, or null
  * @property schemaVersion the schema's declared `version`, resolved through Solr's own fallback, so
  *   a schema declaring none reports [SolrSchemaVersion.ASSUMED] rather than null
@@ -95,6 +98,7 @@ class SolrFieldModel(
     val uniqueKey: SolrFact<String>? = null,
     val fieldReferences: List<SolrFieldReference> = emptyList(),
     val luceneMatchVersion: String? = null,
+    val serverVersion: String? = null,
     val schemaVersion: SolrSchemaVersion = SolrSchemaVersion.ASSUMED,
 ) {
 
@@ -116,7 +120,8 @@ class SolrFieldModel(
      * the default. A connected server would outrank both, and will once the server reader lands.
      */
     val solrVersion: SolrVersionSelection
-        get() = luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
+        get() = serverVersion?.let { SolrVersionSelection.fromServerVersion(it) }
+            ?: luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
             ?: SolrVersionSelection.DEFAULT
 
     /**
@@ -183,7 +188,11 @@ class SolrFieldModel(
          * @param server facts read from a live collection, or null when there is no connection
          * @return the merged model
          */
-        fun of(repository: SolrConfigsetFacts?, server: SolrConfigsetFacts? = null): SolrFieldModel {
+        fun of(
+            repository: SolrConfigsetFacts?,
+            server: SolrConfigsetFacts? = null,
+            serverVersion: String? = null,
+        ): SolrFieldModel {
             val empty = SolrConfigsetFacts()
             val repo = repository ?: empty
             val srv = server ?: empty
@@ -205,6 +214,10 @@ class SolrFieldModel(
                 },
                 fieldReferences = repo.fieldReferences,
                 luceneMatchVersion = repo.luceneMatchVersion,
+                // The one fact neither half of `SolrConfigsetFacts` can carry. That type stays
+                // symmetric between a configset and a server, and a configset has no server version
+                // to report — so this arrives as its own argument rather than as a field on a half.
+                serverVersion = serverVersion,
                 // The repository half decides: the schema version is a property of the file the
                 // user is editing, and a server reports its resolved configuration rather than the
                 // declaration that produced it.

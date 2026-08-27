@@ -17,7 +17,6 @@ import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 import org.apache.solr.ide.model.vocabulary.SolrClassKind
 import org.apache.solr.ide.model.schema.SolrFieldProperties
-import org.apache.solr.ide.model.SolrVersionSelection
 
 /**
  * Owns the element descriptors for the schema files of a configset.
@@ -154,8 +153,7 @@ internal class SolrSchemaTagDescriptor(private val tag: XmlTag) : XmlElementDesc
         val className = tag.getAttributeValue("class") ?: return listOf("class")
         val file = tag.containingFile?.originalFile ?: return listOf("class")
         val model = SolrConfigsetReader.getInstance(file.project).modelFor(file) ?: return listOf("class")
-        val version = model.luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
+        val version = model.solrVersion
         val kind = when (tag.name) {
             SolrSchemaTags.TOKENIZER -> SolrClassKind.TOKENIZER
             SolrSchemaTags.FILTER -> SolrClassKind.TOKEN_FILTER
