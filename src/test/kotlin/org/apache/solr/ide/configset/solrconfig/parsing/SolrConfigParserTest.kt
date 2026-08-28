@@ -235,4 +235,56 @@ class SolrConfigParserTest {
             assertTrue(parameter, SolrConfigParser.holdsFieldNames(parameter))
         }
     }
+
+    /**
+     * The terms and more-like-this field lists name fields, and are read as such.
+     *
+     * Both were absent from the grammar until now, which meant a `terms.fl` in a handler's defaults
+     * produced no field reference at all — so a typo in one was not merely unexplained, it was
+     * invisible. The code track had been producing these parameter names since the SolrJ map was
+     * written; nothing on this side had ever heard of them.
+     */
+    @Test
+    fun `the terms and more-like-this field lists are read`() {
+        val facts = SolrConfigParser.parse(
+            """
+            <config>
+              <requestHandler name="/terms" class="solr.SearchHandler">
+                <lst name="defaults">
+                  <str name="terms.fl">cat</str>
+                  <str name="mlt.fl">name,features</str>
+                </lst>
+              </requestHandler>
+            </config>
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            listOf("cat", "name", "features"),
+            facts.fieldReferences.map { it.fieldName },
+        )
+    }
+
+    /** Each is split the way a field list is, so several names in one value are several references. */
+    @Test
+    fun `a more-like-this list splits into one reference per field`() {
+        assertTrue(SolrConfigParser.holdsFieldNames("terms.fl"))
+        assertTrue(SolrConfigParser.holdsFieldNames("mlt.fl"))
+    }
+
+    /**
+     * Neither carries an operation yet, and that is a decision rather than an oversight.
+     *
+     * The terms component reads the term dictionary directly — `indexReader.terms(field)` in Solr's
+     * own `TermsComponent` — so it needs the field genuinely indexed, and `SEARCH`'s rule, which
+     * accepts doc values as an alternative, would call a doc-values-only field enumerable when it is
+     * not. More-like-this is subtler still. Both want an operation of their own, decided against
+     * Solr's behaviour rather than by picking the nearest existing case, and that is a change of its
+     * own with its own fixtures.
+     */
+    @Test
+    fun `neither carries an operation yet`() {
+        assertNull(SolrConfigParser.operationFor("terms.fl"))
+        assertNull(SolrConfigParser.operationFor("mlt.fl"))
+    }
 }

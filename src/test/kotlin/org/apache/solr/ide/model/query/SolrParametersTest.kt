@@ -37,26 +37,23 @@ class SolrParametersTest {
     }
 
     /**
-     * Two parameters name fields that the grammar cannot yet read, and this pins exactly which.
+     * Every parameter naming fields is one the grammar can read a value of.
      *
-     * **A known gap, asserted rather than left to be discovered.** The code track reports a field
-     * written into `addTermsField` or `setMoreLikeThisFields`, and `SolrQueryFields` has never heard
-     * of either parameter — so `operationFor` returns null and the unsupported-operation inspection
-     * has no opinion, which reads exactly like "this field is fine". Naming them here is not the fix;
-     * it is what makes the fix provable, since closing the gap is deleting this list and watching the
-     * assertion still pass.
-     *
-     * Extracting the shared vocabulary is what surfaced this. Neither list was wrong on its own.
+     * This previously pinned two known exceptions — `terms.fl` and `mlt.fl`, produced by the code
+     * track and unheard of by the grammar. They are read now, so the list is empty and this is the
+     * assertion it was always standing in for: a parameter that names fields on one side and cannot
+     * be split on the other is a gap, and there are none.
      */
     @Test
-    fun `the field-naming parameters without a grammar are the two known ones`() {
+    fun `every field-naming parameter has a grammar`() {
         val unreadable = SolrJQueryMethods.allParameters()
             .filter { it != SolrParameters.QUERY && it != SolrParameters.FILTER_QUERY }
             .filterNot { SolrQueryFields.holdsFieldNames(it) }
             .sorted()
 
         assertEquals(
-            listOf(SolrParameters.MORE_LIKE_THIS_FIELDS, SolrParameters.TERMS_FIELDS).sorted(),
+            "these name fields and the grammar cannot split their values: $unreadable",
+            emptyList<String>(),
             unreadable,
         )
     }

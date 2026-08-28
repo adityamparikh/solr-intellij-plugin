@@ -172,11 +172,16 @@ in a Solr configuration. A `qf` naming a field that was renamed in the schema is
 Solr — the parameter is just a string. Queries return fewer results, or none, and nothing reports
 anything.
 
-**Reads sixteen parameters and no others**: `qf`, `pf`, `pf2`, `pf3`, `bf`, `boost`, `sort`,
-`group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field` and
-`uniqueKey`. Solr has hundreds, and guessing which hold field names from their values would produce
-false references — worse than missing ones, because a false reference becomes a false "no such field"
-warning on a parameter that was never a field name at all.
+**Reads eighteen parameters and no others**: `qf`, `pf`, `pf2`, `pf3`, `bf`, `boost`, `sort`,
+`group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field`,
+`uniqueKey`, `terms.fl` and `mlt.fl`. Solr has hundreds, and guessing which hold field names from
+their values would produce false references — worse than missing ones, because a false reference
+becomes a false "no such field" warning on a parameter that was never a field name at all.
+
+The last two joined late, and their absence had been invisible rather than visibly wrong: the code
+track had produced both parameter names since the SolrJ recognizer was written, while nothing on this
+side had heard of either, so a `terms.fl` in a handler's defaults yielded no field reference at all.
+Neither list was incorrect on its own — they were incorrect about each other.
 
 **Silent on** everything in those parameters that is not a bare name: function queries, globs, field
 aliases, parameter references, numeric constants such as the `1.5` a flat `boost` is written as, and

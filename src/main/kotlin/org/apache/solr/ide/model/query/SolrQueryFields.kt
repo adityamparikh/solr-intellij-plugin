@@ -263,6 +263,14 @@ object SolrQueryFields {
      * `bf` and `boost` ask for something real — a per-document value — but write it as a function
      * query rather than a field list, so a rule applied to a whole token there would be applied to
      * the wrong thing.
+     *
+     * **`terms.fl` and `mlt.fl` are absent for a third reason: no case here fits them yet.** The
+     * terms component reads the term dictionary directly — `indexReader.terms(field)` in Solr's own
+     * `TermsComponent` — so it wants the field genuinely indexed, while [SolrFieldOperation.SEARCH]
+     * accepts doc values as an alternative and would call a doc-values-only field enumerable when it
+     * is not. Picking the nearest existing case would be a rule that is wrong in one direction, which
+     * is worse here than having none: silence says nothing, and a wrong operation says something
+     * false confidently. They want operations of their own, decided against Solr's behaviour.
      */
     private val OPERATIONS = mapOf(
         // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family: the
@@ -295,8 +303,25 @@ object SolrQueryFields {
     /** Parameters holding comma-separated `field direction` clauses. */
     private val SORT_PARAMETERS = setOf(SolrParameters.SORT, SolrParameters.GROUP_SORT)
 
-    /** Parameters holding plain field names, one or several. */
+    /**
+     * Parameters holding plain field names, one or several.
+     *
+     * **`terms.fl` and `mlt.fl` joined this late, and their absence was invisible rather than
+     * wrong.** The SolrJ map has produced both since it was written, and nothing here had heard of
+     * either — so a `terms.fl` in a handler's defaults yielded no field reference at all, and a typo
+     * in one was not merely unexplained but unseen. Neither list was incorrect on its own; they were
+     * incorrect about each other, which is what naming the parameters in one place surfaced.
+     */
     private val PLAIN_PARAMETERS = setOf(
-        SolrParameters.DEFAULT_FIELD, SolrParameters.FIELD_LIST, SolrParameters.FACET_FIELD, SolrParameters.GROUP_FIELD, SolrParameters.HIGHLIGHT_FIELDS, SolrParameters.UNIQUE_KEY, SolrParameters.FACET_PIVOT, SolrParameters.STATS_FIELD,
+        SolrParameters.DEFAULT_FIELD,
+        SolrParameters.FIELD_LIST,
+        SolrParameters.FACET_FIELD,
+        SolrParameters.GROUP_FIELD,
+        SolrParameters.HIGHLIGHT_FIELDS,
+        SolrParameters.UNIQUE_KEY,
+        SolrParameters.FACET_PIVOT,
+        SolrParameters.STATS_FIELD,
+        SolrParameters.TERMS_FIELDS,
+        SolrParameters.MORE_LIKE_THIS_FIELDS,
     )
 }

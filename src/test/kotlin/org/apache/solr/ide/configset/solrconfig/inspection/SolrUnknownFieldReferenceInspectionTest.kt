@@ -193,4 +193,36 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
         myFixture.configureByText("managed-schema.xml", schema(""))
         myFixture.checkHighlighting(true, false, false)
     }
+
+    // --- the terms and more-like-this field lists --------------------------------------------------
+
+    /**
+     * The clean case, written before the flagged one.
+     *
+     * These two parameters became field references in the same change as this test. Solr's own
+     * shipped configsets use neither, so the suite's existing clean-fixture check — which reads those
+     * configsets and asserts nothing is reported — would have passed whatever this change did. A
+     * fixture that cannot fail is not a gate, and this is the one that can.
+     */
+    fun testTermsAndMoreLikeThisFieldListsNamingRealFieldsAreClean() {
+        checkConfig(handler("""<str name="terms.fl">name</str>""", """<str name="mlt.fl">name,text</str>"""))
+    }
+
+    /** A dynamic pattern supplies these names as it supplies any other. */
+    fun testATermsFieldMatchingADynamicPatternIsClean() {
+        checkConfig(handler("""<str name="terms.fl">colour_s</str>"""))
+    }
+
+    /** And now the typo is visible, which it was not before: the parameter was read by nobody. */
+    fun testATermsFieldNamingAnUndeclaredFieldIsFlagged() {
+        checkConfig(
+            handler("""<str name="terms.fl"><warning descr="Solr: no field named 'nmae' is declared in the schema">nmae</warning></str>"""),
+        )
+    }
+
+    fun testAMoreLikeThisFieldNamingAnUndeclaredFieldIsFlagged() {
+        checkConfig(
+            handler("""<str name="mlt.fl">name,<warning descr="Solr: no field named 'txet' is declared in the schema">txet</warning></str>"""),
+        )
+    }
 }
