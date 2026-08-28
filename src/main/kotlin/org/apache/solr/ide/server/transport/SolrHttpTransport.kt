@@ -185,6 +185,18 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         return SolrResponse.Success(body)
     }
 
+    /** Service lookup. */
+    companion object {
+
+        /**
+         * The transport for [project].
+         *
+         * @param project the project whose client and lifetime it shares
+         * @return the project-level service
+         */
+        fun getInstance(project: Project): SolrHttpTransport = project.service()
+    }
+
     /**
      * Solr's own message, or null where it gave none.
      *

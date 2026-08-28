@@ -130,7 +130,12 @@ which will eventually catch too much.
 # Package org.apache.solr.ide.server.reading
 
 Turning what a Solr server returns into the same facts a configset parser
-produces.
+produces, and asking a connection for them.
+
+`SolrServerReader` is where the pieces compose: it resolves a connection's stored
+secret at the point of use, asks the transport, and maps the answer into facts. It
+is the only place a credential is read, which is what keeps that discipline in one
+place rather than in every caller.
 
 The second parser, and deliberately under the same contract as the first: text in,
 `SolrConfigsetFacts` out, with nothing from IntelliJ in the signature. That is what
