@@ -149,24 +149,32 @@ class SolrServerContractTest {
         private val containers = mutableListOf<Pair<String, SolrContainer>>()
 
         /**
-         * Skipped rather than failed where there is no Docker.
+         * Skipped where a developer has no Docker, and *failed* where CI has none.
          *
-         * These are the only tests here that need something outside the JVM, and `check` is what a
-         * contributor runs before every commit. Failing that build on a machine with no Docker would
-         * teach people to skip the gate rather than to install one — so the tier that cannot run
-         * announces itself and stands down, and CI, which has Docker, is where it always runs.
+         * `check` is what a contributor runs before every commit, and failing it on a machine with no
+         * Docker teaches people to skip the gate rather than install one. So locally this tier stands
+         * down — through `Assume`, so a skipped test is reported as skipped rather than passing
+         * quietly.
          *
-         * `Assume` rather than a silent return: a skipped test is reported as skipped, and a test
-         * that quietly passes without doing anything is the failure mode this whole tier exists to
-         * close.
+         * **In CI it must not stand down, and that asymmetry is the point.** A tier that skips
+         * everywhere is a tier that runs nowhere, and its green tick would mean only that nobody
+         * looked. Nothing downstream can tell those apart: the test report is uploaded on failure
+         * only, so a passing build says the same thing either way. The distinction is therefore made
+         * here, where it can still be enforced — `CI` is set by GitHub Actions, and where it is set a
+         * missing Docker is a failure that names itself.
          */
         @BeforeClass
         @JvmStatic
         fun startContainers() {
-            Assume.assumeTrue(
-                "no Docker environment, so the contract tests cannot run",
-                DockerClientFactory.instance().isDockerAvailable,
-            )
+            val dockerAvailable = DockerClientFactory.instance().isDockerAvailable
+            if (System.getenv("CI") != null) {
+                assertTrue(
+                    "CI must run the contract tests, and found no Docker environment to run them in",
+                    dockerAvailable,
+                )
+            } else {
+                Assume.assumeTrue("no Docker environment, so the contract tests cannot run", dockerAvailable)
+            }
             for ((line, tag) in listOf("10" to "10.0.0", "9" to "9.10.1")) {
                 val container = SolrContainer(DockerImageName.parse("solr:$tag"))
                     .withCollection(COLLECTION)
