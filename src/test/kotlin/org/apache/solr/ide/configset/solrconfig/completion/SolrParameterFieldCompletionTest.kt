@@ -154,4 +154,41 @@ class SolrParameterFieldCompletionTest : SolrConfigsetTestCase() {
         val offered = completionsFor(handler("""<str name="qf"><caret></str>"""))
         assertFalse("no Solr on the classpath: $offered", "title" in offered)
     }
+
+    // --- more-like-this, which asks for content rather than an index -------------------------------
+
+    /**
+     * A stored field is offered for comparison even though nothing indexes it.
+     *
+     * `body` is `indexed="false" stored="true"` — unsearchable, and the test above asserts it is
+     * withheld from a `qf` for exactly that reason. More-like-this asks a different question: Lucene
+     * re-analyses the stored value where a field has no term vector, so content is what it needs and
+     * `body` has it. The same field, offered by one parameter and withheld by another, is the operation
+     * model doing the only thing it is for.
+     */
+    fun testAStoredButUnsearchableFieldIsOfferedForMoreLikeThis() {
+        val offered = completionsFor(handler("""<str name="mlt.fl"><caret></str>"""))
+
+        assertTrue("body is stored and so is comparable: $offered", "body" in offered)
+        assertFalse("body is unsearchable and must stay out of a query field", "body" in completionsFor(handler("""<str name="qf"><caret></str>""")))
+    }
+
+    /**
+     * A field with neither a term vector nor a stored value is not offered.
+     *
+     * `id` is `docValues="true"` and nothing else: findable, sortable, facetable, and holding no copy
+     * of what the document said. Offering it would suggest a comparison Lucene has nothing to perform.
+     */
+    fun testAFieldWithNoContentIsNotOfferedForMoreLikeThis() {
+        val schemaWithUnstored = schema.replace(
+            """<field name="id" type="string" docValues="true"/>""",
+            """<field name="id" type="string" docValues="true" stored="false"/>""",
+        )
+        myFixture.addFileToProject("managed-schema.xml", schemaWithUnstored)
+        schemaAdded = true
+
+        val offered = completionsFor(handler("""<str name="mlt.fl"><caret></str>"""))
+
+        assertFalse("id holds no content to compare: $offered", "id" in offered)
+    }
 }

@@ -223,9 +223,22 @@ class SolrConfigParserTest {
      */
     @Test
     fun `parameters asking nothing checkable map to null`() {
-        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl", "terms.fl", "mlt.fl")) {
+        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl", "terms.fl")) {
             assertNull(parameter, SolrConfigParser.operationFor(parameter))
         }
+    }
+
+    /**
+     * More-like-this asks for content rather than an index, which no other parameter here does.
+     *
+     * `terms.fl` beside it still has none: its rule needs to know whether a field's type is a point
+     * type, and the generated catalog carries no such trait — so both approximations available are
+     * wrong in a direction, and it waits rather than shipping either.
+     */
+    @Test
+    fun `more-like-this asks for similarity and terms still asks nothing`() {
+        assertEquals(SolrFieldOperation.SIMILARITY, SolrConfigParser.operationFor("mlt.fl"))
+        assertNull(SolrConfigParser.operationFor("terms.fl"))
     }
 
     /** Every parameter with an operation must be one the parser reads field names out of. */

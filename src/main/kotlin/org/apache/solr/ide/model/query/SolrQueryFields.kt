@@ -282,13 +282,18 @@ object SolrQueryFields {
      * query rather than a field list, so a rule applied to a whole token there would be applied to
      * the wrong thing.
      *
-     * **`terms.fl` and `mlt.fl` are absent for a third reason: no case here fits them yet.** The
-     * terms component reads the term dictionary directly — `indexReader.terms(field)` in Solr's own
-     * `TermsComponent` — so it wants the field genuinely indexed, while [SolrFieldOperation.SEARCH]
-     * accepts doc values as an alternative and would call a doc-values-only field enumerable when it
-     * is not. Picking the nearest existing case would be a rule that is wrong in one direction, which
-     * is worse here than having none: silence says nothing, and a wrong operation says something
-     * false confidently. They want operations of their own, decided against Solr's behaviour.
+     * **`terms.fl` is absent for a third reason: the rule cannot be written with what the model
+     * knows.** `TermsComponent` reads the term dictionary — `indexReader.terms(field)` — and where
+     * that returns nothing it checks whether the field is a *point* type and, if so, reads its doc
+     * values through `PointMerger` instead. So the requirement is `indexed`, or doc values on a point
+     * field, and nothing here can answer the second half: the generated catalog carries no
+     * point-field trait.
+     *
+     * Both approximations are wrong in a direction. Requiring `indexed` alone would warn about a
+     * doc-values-only numeric field, which works — a false positive, the outcome this plugin refuses
+     * above all. Accepting doc values generally, as [SolrFieldOperation.SEARCH] does, would call a
+     * doc-values-only *string* field enumerable when it is not — a false negative, which is silence
+     * and is merely unhelpful. So the operation waits for the trait rather than shipping either.
      */
     private val OPERATIONS = mapOf(
         // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family: the
@@ -304,6 +309,9 @@ object SolrQueryFields {
         SolrParameters.SORT to SolrFieldOperation.SORT,
         SolrParameters.GROUP_SORT to SolrFieldOperation.SORT,
         SolrParameters.GROUP_FIELD to SolrFieldOperation.SORT,
+        // More-like-this reads the document's content rather than the index, so its requirement is
+        // a term vector or a stored value — see [SolrFieldOperation.SIMILARITY].
+        SolrParameters.MORE_LIKE_THIS_FIELDS to SolrFieldOperation.SIMILARITY,
     )
 
     /** Parameters whose values may carry a `^`-boost. */

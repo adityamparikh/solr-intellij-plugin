@@ -191,4 +191,65 @@ class SolrFieldOperationsTest {
             ),
         )
     }
+
+    // --- similarity, which reads content rather than an index -------------------------------------
+
+    /**
+     * More-like-this reads the field's content, and term vectors are the fast way to have it.
+     *
+     * Verified against Lucene's own `MoreLikeThis.retrieveTerms`: it asks for a term vector, and
+     * where the field has none it falls back to the stored value and re-analyses it. So the
+     * requirement is a disjunction over the two ways content can be present — unlike every other
+     * operation here, which is about how the field is *indexed*.
+     */
+    @Test
+    fun `term vectors alone make a field comparable`() {
+        assertEquals(true, supports(SolrFieldOperation.SIMILARITY, mapOf("termVectors" to "true", "stored" to "false")))
+    }
+
+    /** The fallback path: no vectors, but the value is there to be re-analysed. */
+    @Test
+    fun `a stored field alone is comparable`() {
+        assertEquals(true, supports(SolrFieldOperation.SIMILARITY, mapOf("stored" to "true")))
+    }
+
+    /**
+     * Indexed is not enough, which is the whole reason this is not [SolrFieldOperation.SEARCH].
+     *
+     * A field can be thoroughly searchable and have nothing more-like-this can read: an index holds
+     * terms, not the document's value, and neither a vector nor a stored copy exists to extract from.
+     */
+    @Test
+    fun `an indexed field with no content to read is not comparable`() {
+        assertEquals(
+            false,
+            supports(SolrFieldOperation.SIMILARITY, mapOf("indexed" to "true", "stored" to "false", "termVectors" to "false")),
+        )
+    }
+
+    /** Neither, and the answer is a definite no rather than a shrug. */
+    @Test
+    fun `a field with neither vectors nor storage is not comparable`() {
+        assertEquals(
+            false,
+            supports(SolrFieldOperation.SIMILARITY, mapOf("stored" to "false", "termVectors" to "false")),
+        )
+    }
+
+    /**
+     * Undetermined stays undetermined, as it does for every other operation.
+     *
+     * `stored` defaults true and `termVectors` false, so a field declaring neither is decided by the
+     * defaults rather than left open — this is the case where a type or a version makes `stored`
+     * unresolvable, and a warning would be a claim the model cannot support.
+     */
+    @Test
+    fun `an unresolvable stored flag leaves similarity undetermined`() {
+        assertNull(
+            supports(
+                SolrFieldOperation.SIMILARITY,
+                mapOf("stored" to "maybe", "termVectors" to "false"),
+            ),
+        )
+    }
 }
