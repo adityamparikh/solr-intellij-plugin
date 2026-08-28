@@ -62,4 +62,26 @@ sealed interface SolrResponse<out T> {
      * @property description what could not be read
      */
     data class Unrecognized(val description: String) : SolrResponse<Nothing>
+
+    /**
+     * The same outcome carrying [transform] of its value, where it has one.
+     *
+     * **Added with its first caller rather than before it.** Converting a parsed body into facts is
+     * what every consumer of this type does, and without this each would write its own five-branch
+     * `when` — or reach for the value and discard the classification, which is the one thing the five
+     * cases exist to prevent.
+     *
+     * A failure passes through untouched: there is nothing to transform, and its message is the part
+     * a caller must not lose.
+     *
+     * @param transform what to do with a value that arrived
+     * @return the same case, over the transformed value
+     */
+    fun <R> map(transform: (T) -> R): SolrResponse<R> = when (this) {
+        is Success -> Success(transform(value))
+        is Partial -> Partial(transform(value), detail)
+        is SolrError -> this
+        is TransportFailure -> this
+        is Unrecognized -> this
+    }
 }
