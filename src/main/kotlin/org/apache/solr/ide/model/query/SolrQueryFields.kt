@@ -267,21 +267,21 @@ object SolrQueryFields {
     private val OPERATIONS = mapOf(
         // DisMax's query fields and edismax's inheritance of them, plus the phrase-field family: the
         // parameters whose values become term and phrase queries.
-        "qf" to SolrFieldOperation.SEARCH,
-        "pf" to SolrFieldOperation.SEARCH,
-        "pf2" to SolrFieldOperation.SEARCH,
-        "pf3" to SolrFieldOperation.SEARCH,
+        SolrParameters.QUERY_FIELDS to SolrFieldOperation.SEARCH,
+        SolrParameters.PHRASE_FIELDS to SolrFieldOperation.SEARCH,
+        SolrParameters.PHRASE_FIELDS_BIGRAM to SolrFieldOperation.SEARCH,
+        SolrParameters.PHRASE_FIELDS_TRIGRAM to SolrFieldOperation.SEARCH,
         // Every name in a pivot is faceted on, so a pivot is as much a facet as `facet.field`.
-        "facet.field" to SolrFieldOperation.FACET,
-        "facet.pivot" to SolrFieldOperation.FACET,
+        SolrParameters.FACET_FIELD to SolrFieldOperation.FACET,
+        SolrParameters.FACET_PIVOT to SolrFieldOperation.FACET,
         // Grouping orders documents by the field's value and fails the way sorting does.
-        "sort" to SolrFieldOperation.SORT,
-        "group.sort" to SolrFieldOperation.SORT,
-        "group.field" to SolrFieldOperation.SORT,
+        SolrParameters.SORT to SolrFieldOperation.SORT,
+        SolrParameters.GROUP_SORT to SolrFieldOperation.SORT,
+        SolrParameters.GROUP_FIELD to SolrFieldOperation.SORT,
     )
 
     /** Parameters whose values may carry a `^`-boost. */
-    private val BOOSTABLE_PARAMETERS = setOf("qf", "pf", "pf2", "pf3", "bf", "boost")
+    private val BOOSTABLE_PARAMETERS = setOf(SolrParameters.QUERY_FIELDS, SolrParameters.PHRASE_FIELDS, SolrParameters.PHRASE_FIELDS_BIGRAM, SolrParameters.PHRASE_FIELDS_TRIGRAM, SolrParameters.BOOST_FUNCTION, SolrParameters.BOOST)
 
     /**
      * The boostable parameters whose boost follows a *field*.
@@ -290,13 +290,13 @@ object SolrQueryFields {
      * inspection makes and for the same reason: their values are function queries, so what precedes
      * the `^` is a function rather than a field name and must not be described as one.
      */
-    private val FIELD_BOOST_PARAMETERS = setOf("qf", "pf", "pf2", "pf3")
+    private val FIELD_BOOST_PARAMETERS = setOf(SolrParameters.QUERY_FIELDS, SolrParameters.PHRASE_FIELDS, SolrParameters.PHRASE_FIELDS_BIGRAM, SolrParameters.PHRASE_FIELDS_TRIGRAM)
 
     /** Parameters holding comma-separated `field direction` clauses. */
-    private val SORT_PARAMETERS = setOf("sort", "group.sort")
+    private val SORT_PARAMETERS = setOf(SolrParameters.SORT, SolrParameters.GROUP_SORT)
 
     /** Parameters holding plain field names, one or several. */
     private val PLAIN_PARAMETERS = setOf(
-        "df", "fl", "facet.field", "group.field", "hl.fl", "uniqueKey", "facet.pivot", "stats.field",
+        SolrParameters.DEFAULT_FIELD, SolrParameters.FIELD_LIST, SolrParameters.FACET_FIELD, SolrParameters.GROUP_FIELD, SolrParameters.HIGHLIGHT_FIELDS, SolrParameters.UNIQUE_KEY, SolrParameters.FACET_PIVOT, SolrParameters.STATS_FIELD,
     )
 }
