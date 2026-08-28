@@ -16,11 +16,20 @@ changelog = "2.5.0"
 kover = "0.9.9"
 sonarqube = "7.4.0.8496"
 dokka = "2.2.0"
+testcontainers = "1.21.3"
 
 [libraries]
 # Consumed by buildSrc: reads Solr class files to generate the shipped class catalog.
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 junit = { module = "junit:junit", version.ref = "junit" }
+
+# The contract tests, which are the only tier that can notice Solr changing a response shape.
+# `testcontainers-solr` is the project's own module rather than a `GenericContainer` assembled here:
+# it already knows the wait strategy, and `withZookeeper` is what lets one fixture answer the
+# standalone-versus-SolrCloud question the server specification turns on. Its default image tag is
+# ignored — every container here names a supported line explicitly.
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-solr = { module = "org.testcontainers:solr", version.ref = "testcontainers" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
