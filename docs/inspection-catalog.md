@@ -172,11 +172,16 @@ in a Solr configuration. A `qf` naming a field that was renamed in the schema is
 Solr — the parameter is just a string. Queries return fewer results, or none, and nothing reports
 anything.
 
-**Reads sixteen parameters and no others**: `qf`, `pf`, `pf2`, `pf3`, `bf`, `boost`, `sort`,
-`group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field` and
-`uniqueKey`. Solr has hundreds, and guessing which hold field names from their values would produce
-false references — worse than missing ones, because a false reference becomes a false "no such field"
-warning on a parameter that was never a field name at all.
+**Reads eighteen parameters and no others**: `qf`, `pf`, `pf2`, `pf3`, `bf`, `boost`, `sort`,
+`group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field`,
+`uniqueKey`, `terms.fl` and `mlt.fl`. Solr has hundreds, and guessing which hold field names from
+their values would produce false references — worse than missing ones, because a false reference
+becomes a false "no such field" warning on a parameter that was never a field name at all.
+
+**Each is split the way Solr splits it, which is not one rule.** `fl` and its kin accept commas or any
+whitespace; `mlt.fl` accepts a comma or a single space; and `terms.fl` is not split at all — Solr reads
+every *occurrence* of that parameter and looks up each value whole, so a comma in one is part of the
+field name. Reading them all alike would report two healthy fields where Solr sees one missing one.
 
 **Silent on** everything in those parameters that is not a bare name: function queries, globs, field
 aliases, parameter references, numeric constants such as the `1.5` a flat `boost` is written as, and

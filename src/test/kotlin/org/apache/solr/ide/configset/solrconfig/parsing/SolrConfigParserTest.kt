@@ -223,7 +223,7 @@ class SolrConfigParserTest {
      */
     @Test
     fun `parameters asking nothing checkable map to null`() {
-        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl")) {
+        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl", "terms.fl", "mlt.fl")) {
             assertNull(parameter, SolrConfigParser.operationFor(parameter))
         }
     }
@@ -235,4 +235,72 @@ class SolrConfigParserTest {
             assertTrue(parameter, SolrConfigParser.holdsFieldNames(parameter))
         }
     }
+
+    private fun handlerWith(parameters: String) = SolrConfigParser.parse(
+        """
+        <config>
+          <requestHandler name="/h" class="solr.SearchHandler">
+            <lst name="defaults">$parameters</lst>
+          </requestHandler>
+        </config>
+        """.trimIndent(),
+    ).fieldReferences.map { it.fieldName }
+
+    /**
+     * Both parameters name fields, and each is split the way Solr splits it.
+     *
+     * Neither was in the grammar until now, so a `terms.fl` produced no field reference at all and a
+     * typo in one was invisible rather than merely unexplained.
+     */
+    @Test
+    fun `the terms and more-like-this parameters are read`() {
+        assertEquals(listOf("cat"), handlerWith("""<str name="terms.fl">cat</str>"""))
+        assertEquals(listOf("name", "features"), handlerWith("""<str name="mlt.fl">name,features</str>"""))
+    }
+
+    /**
+     * `terms.fl` is repeated, not delimited, and a comma in it is part of the name.
+     *
+     * `TermsComponent` reads every *occurrence* of the parameter — `params.getParams(TERMS_FIELD)` —
+     * and hands each value straight to `indexReader.terms(field)` without splitting. So
+     * `terms.fl` of `name,cat` is a broken configuration, and a plugin that split it would resolve
+     * both halves and endorse the defect. Several fields are several occurrences, which is what an
+     * `arr` writes.
+     */
+    @Test
+    fun `a terms field list is one name however it is punctuated`() {
+        assertEquals(listOf("name,cat"), handlerWith("""<str name="terms.fl">name,cat</str>"""))
+        assertEquals(
+            listOf("name", "cat"),
+            handlerWith("""<arr name="terms.fl"><str>name</str><str>cat</str></arr>"""),
+        )
+    }
+
+    /**
+     * More-like-this splits on a comma or a space, matching `Pattern.compile(",| ")` in
+     * `MoreLikeThisHandler` rather than the any-whitespace rule `fl` gets.
+     */
+    @Test
+    fun `a more-like-this list splits on a comma or a space`() {
+        assertEquals(listOf("name", "features"), handlerWith("""<str name="mlt.fl">name features</str>"""))
+    }
+
+    /**
+     * A value written across lines still resolves both names here, and Solr would match neither.
+     *
+     * Solr adds each token verbatim — `list.add(string)` with no trim — so a `mlt.fl` split over
+     * lines asks for a field whose name begins with a newline. This parser trims every token, as it
+     * must for the parameters where trimming is right, so it reads two healthy field names.
+     *
+     * **Recorded rather than fixed, because the divergence does not make this inspection wrong.**
+     * It answers whether a name is declared, and `name` and `features` genuinely are. What goes
+     * unreported is a differently-shaped defect — a parameter value Solr cannot parse — which wants
+     * an inspection of its own rather than a distortion of this one. Pinning it here is what stops
+     * the next reader assuming the newline case was considered and handled.
+     */
+    @Test
+    fun `a more-like-this value split across lines is read more generously than Solr reads it`() {
+        assertEquals(listOf("name", "features"), handlerWith("<str name=\"mlt.fl\">name,\n  features</str>"))
+    }
+
 }

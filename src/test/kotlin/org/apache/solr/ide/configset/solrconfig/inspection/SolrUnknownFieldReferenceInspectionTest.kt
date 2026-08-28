@@ -193,4 +193,31 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
         myFixture.configureByText("managed-schema.xml", schema(""))
         myFixture.checkHighlighting(true, false, false)
     }
+
+    // --- the terms and more-like-this field lists --------------------------------------------------
+
+    /**
+     * The clean case, written before the flagged one.
+     *
+     * These two parameters became field references in the same change as this test. Solr's own
+     * shipped configsets use neither, so the suite's existing clean-fixture check — which reads those
+     * configsets and asserts nothing is reported — would have passed whatever this change did. A
+     * fixture that cannot fail is not a gate, and this is the one that can.
+     *
+     * The `terms.fl` value is deliberately one name: Solr reads that parameter whole rather than
+     * splitting it, so a comma in a value is part of the name it looks up.
+     */
+    fun testTermsAndMoreLikeThisFieldListsNamingRealFieldsAreClean() {
+        checkConfig(handler("""<str name="terms.fl">name</str>""", """<str name="mlt.fl">name,text</str>"""))
+    }
+
+    /** And now a typo is visible in either, which it was not before: nobody read these parameters. */
+    fun testATypoInEitherParameterIsFlagged() {
+        checkConfig(
+            handler(
+                """<str name="terms.fl"><warning descr="Solr: no field named 'nmae' is declared in the schema">nmae</warning></str>""",
+                """<str name="mlt.fl">name,<warning descr="Solr: no field named 'txet' is declared in the schema">txet</warning></str>""",
+            ),
+        )
+    }
 }
