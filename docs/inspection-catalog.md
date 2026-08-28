@@ -178,10 +178,10 @@ anything.
 their values would produce false references — worse than missing ones, because a false reference
 becomes a false "no such field" warning on a parameter that was never a field name at all.
 
-The last two joined late, and their absence had been invisible rather than visibly wrong: the code
-track had produced both parameter names since the SolrJ recognizer was written, while nothing on this
-side had heard of either, so a `terms.fl` in a handler's defaults yielded no field reference at all.
-Neither list was incorrect on its own — they were incorrect about each other.
+**Each is split the way Solr splits it, which is not one rule.** `fl` and its kin accept commas or any
+whitespace; `mlt.fl` accepts a comma or a single space; and `terms.fl` is not split at all — Solr reads
+every *occurrence* of that parameter and looks up each value whole, so a comma in one is part of the
+field name. Reading them all alike would report two healthy fields where Solr sees one missing one.
 
 **Silent on** everything in those parameters that is not a bare name: function queries, globs, field
 aliases, parameter references, numeric constants such as the `1.5` a flat `boost` is written as, and

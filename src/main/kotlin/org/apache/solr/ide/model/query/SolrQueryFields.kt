@@ -61,7 +61,9 @@ object SolrQueryFields {
     fun holdsFieldNames(parameterName: String): Boolean =
         parameterName in BOOSTABLE_PARAMETERS ||
             parameterName in SORT_PARAMETERS ||
-            parameterName in PLAIN_PARAMETERS
+            parameterName in PLAIN_PARAMETERS ||
+            parameterName in SINGLE_FIELD_PARAMETERS ||
+            parameterName in MORE_LIKE_THIS_PARAMETERS
 
     /**
      * What [parameterName] asks of the fields it names, where the plugin can say.
@@ -86,6 +88,11 @@ object SolrQueryFields {
                 ?.let { SolrQueryFieldName(it, null) }
         }
         in PLAIN_PARAMETERS -> value.trim().split(PLAIN_SEPARATORS)
+            .mapNotNull { plainFieldName(it) }
+            .map { SolrQueryFieldName(it, null) }
+        // The whole value, unsplit: a comma in it is part of the name Solr will look up.
+        in SINGLE_FIELD_PARAMETERS -> listOfNotNull(plainFieldName(value)).map { SolrQueryFieldName(it, null) }
+        in MORE_LIKE_THIS_PARAMETERS -> value.trim().split(MORE_LIKE_THIS_SEPARATORS)
             .mapNotNull { plainFieldName(it) }
             .map { SolrQueryFieldName(it, null) }
         else -> emptyList()
@@ -117,8 +124,16 @@ object SolrQueryFields {
 
         // The same splits [namesIn] performs, so the boundaries agree by construction rather than by
         // two people remembering the same thing.
+        // The same boundaries [namesIn] splits on, so completion cannot offer a name at a position
+        // no reference would resolve — the invariant this whole grammar exists to keep.
         val boostable = parameterName in BOOSTABLE_PARAMETERS
-        val separators = if (boostable) WHITESPACE_CHARACTERS else WHITESPACE_CHARACTERS + ','
+        val separators = when {
+            // Nothing separates anything: the value is one name, so the token is all of it.
+            parameterName in SINGLE_FIELD_PARAMETERS -> charArrayOf()
+            boostable -> WHITESPACE_CHARACTERS
+            parameterName in MORE_LIKE_THIS_PARAMETERS -> charArrayOf(' ', ',')
+            else -> WHITESPACE_CHARACTERS + ','
+        }
         val token = before.takeLastWhile { it !in separators }
 
         // A `^` puts the caret inside a boost rather than in the name it boosts.
@@ -241,6 +256,9 @@ object SolrQueryFields {
      */
     private val PLAIN_SEPARATORS = Regex("[,\\s]+")
 
+    /** What more-like-this splits on, which is a comma or a space and deliberately not a newline. */
+    private val MORE_LIKE_THIS_SEPARATORS = Regex("[, ]+")
+
     /** The characters [WHITESPACE] matches, for the caller that needs them one at a time. */
     private val WHITESPACE_CHARACTERS = charArrayOf(' ', '\t', '\n', '\r')
 
@@ -303,15 +321,7 @@ object SolrQueryFields {
     /** Parameters holding comma-separated `field direction` clauses. */
     private val SORT_PARAMETERS = setOf(SolrParameters.SORT, SolrParameters.GROUP_SORT)
 
-    /**
-     * Parameters holding plain field names, one or several.
-     *
-     * **`terms.fl` and `mlt.fl` joined this late, and their absence was invisible rather than
-     * wrong.** The SolrJ map has produced both since it was written, and nothing here had heard of
-     * either — so a `terms.fl` in a handler's defaults yielded no field reference at all, and a typo
-     * in one was not merely unexplained but unseen. Neither list was incorrect on its own; they were
-     * incorrect about each other, which is what naming the parameters in one place surfaced.
-     */
+    /** Parameters holding plain field names, one or several, separated by commas or whitespace. */
     private val PLAIN_PARAMETERS = setOf(
         SolrParameters.DEFAULT_FIELD,
         SolrParameters.FIELD_LIST,
@@ -321,7 +331,36 @@ object SolrQueryFields {
         SolrParameters.UNIQUE_KEY,
         SolrParameters.FACET_PIVOT,
         SolrParameters.STATS_FIELD,
-        SolrParameters.TERMS_FIELDS,
-        SolrParameters.MORE_LIKE_THIS_FIELDS,
     )
+
+    /**
+     * Parameters whose whole value is one field name, however it is punctuated.
+     *
+     * **`terms.fl` is repeated rather than delimited, and Solr's own code is what says so.**
+     * `TermsComponent` reads `params.getParams(TERMS_FIELD)` — every *occurrence* of the parameter —
+     * and hands each value straight to `indexReader.terms(field)` with no splitting anywhere. Several
+     * fields are written as several occurrences, which the configset parser already handles by
+     * reading each `<str>` in an `<arr>`.
+     *
+     * Splitting it would be worse than not reading it. `<str name="terms.fl">name,cat</str>` is a
+     * broken configuration — Solr looks up a field literally called `name,cat` and finds nothing —
+     * and a plugin that split the value would resolve both halves, report nothing, and endorse the
+     * defect it exists to surface. Completion would compound it by offering a name after the comma
+     * that no reference could ever resolve.
+     */
+    private val SINGLE_FIELD_PARAMETERS = setOf(SolrParameters.TERMS_FIELDS)
+
+    /**
+     * Parameters splitting on a comma or a single space, and on nothing else.
+     *
+     * **More-like-this does not split on whitespace the way a field list does.**
+     * `MoreLikeThisHandler` compiles its separator as `Pattern.compile(",| ")` — a comma or a literal
+     * space, no tab and no newline — where `fl` goes through `SolrReturnFields` and accepts any
+     * whitespace. [PLAIN_SEPARATORS]'s own note that these parameters are "routinely written one name
+     * per line, which Solr accepts" is true of `fl` and false of this one.
+     *
+     * So a `mlt.fl` written across lines is broken, and reading it with the looser rule would report
+     * two healthy fields where Solr sees two tokens beginning with a newline and matches neither.
+     */
+    private val MORE_LIKE_THIS_PARAMETERS = setOf(SolrParameters.MORE_LIKE_THIS_FIELDS)
 }

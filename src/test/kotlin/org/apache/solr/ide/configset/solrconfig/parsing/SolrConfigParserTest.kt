@@ -223,7 +223,7 @@ class SolrConfigParserTest {
      */
     @Test
     fun `parameters asking nothing checkable map to null`() {
-        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl")) {
+        for (parameter in listOf("fl", "df", "bf", "boost", "rows", "hl.fl", "terms.fl", "mlt.fl")) {
             assertNull(parameter, SolrConfigParser.operationFor(parameter))
         }
     }
@@ -236,55 +236,71 @@ class SolrConfigParserTest {
         }
     }
 
+    private fun handlerWith(parameters: String) = SolrConfigParser.parse(
+        """
+        <config>
+          <requestHandler name="/h" class="solr.SearchHandler">
+            <lst name="defaults">$parameters</lst>
+          </requestHandler>
+        </config>
+        """.trimIndent(),
+    ).fieldReferences.map { it.fieldName }
+
     /**
-     * The terms and more-like-this field lists name fields, and are read as such.
+     * Both parameters name fields, and each is split the way Solr splits it.
      *
-     * Both were absent from the grammar until now, which meant a `terms.fl` in a handler's defaults
-     * produced no field reference at all — so a typo in one was not merely unexplained, it was
-     * invisible. The code track had been producing these parameter names since the SolrJ map was
-     * written; nothing on this side had ever heard of them.
+     * Neither was in the grammar until now, so a `terms.fl` produced no field reference at all and a
+     * typo in one was invisible rather than merely unexplained.
      */
     @Test
-    fun `the terms and more-like-this field lists are read`() {
-        val facts = SolrConfigParser.parse(
-            """
-            <config>
-              <requestHandler name="/terms" class="solr.SearchHandler">
-                <lst name="defaults">
-                  <str name="terms.fl">cat</str>
-                  <str name="mlt.fl">name,features</str>
-                </lst>
-              </requestHandler>
-            </config>
-            """.trimIndent(),
-        )
+    fun `the terms and more-like-this parameters are read`() {
+        assertEquals(listOf("cat"), handlerWith("""<str name="terms.fl">cat</str>"""))
+        assertEquals(listOf("name", "features"), handlerWith("""<str name="mlt.fl">name,features</str>"""))
+    }
 
+    /**
+     * `terms.fl` is repeated, not delimited, and a comma in it is part of the name.
+     *
+     * `TermsComponent` reads every *occurrence* of the parameter — `params.getParams(TERMS_FIELD)` —
+     * and hands each value straight to `indexReader.terms(field)` without splitting. So
+     * `terms.fl` of `name,cat` is a broken configuration, and a plugin that split it would resolve
+     * both halves and endorse the defect. Several fields are several occurrences, which is what an
+     * `arr` writes.
+     */
+    @Test
+    fun `a terms field list is one name however it is punctuated`() {
+        assertEquals(listOf("name,cat"), handlerWith("""<str name="terms.fl">name,cat</str>"""))
         assertEquals(
-            listOf("cat", "name", "features"),
-            facts.fieldReferences.map { it.fieldName },
+            listOf("name", "cat"),
+            handlerWith("""<arr name="terms.fl"><str>name</str><str>cat</str></arr>"""),
         )
     }
 
-    /** Each is split the way a field list is, so several names in one value are several references. */
+    /**
+     * More-like-this splits on a comma or a space, matching `Pattern.compile(",| ")` in
+     * `MoreLikeThisHandler` rather than the any-whitespace rule `fl` gets.
+     */
     @Test
-    fun `a more-like-this list splits into one reference per field`() {
-        assertTrue(SolrConfigParser.holdsFieldNames("terms.fl"))
-        assertTrue(SolrConfigParser.holdsFieldNames("mlt.fl"))
+    fun `a more-like-this list splits on a comma or a space`() {
+        assertEquals(listOf("name", "features"), handlerWith("""<str name="mlt.fl">name features</str>"""))
     }
 
     /**
-     * Neither carries an operation yet, and that is a decision rather than an oversight.
+     * A value written across lines still resolves both names here, and Solr would match neither.
      *
-     * The terms component reads the term dictionary directly — `indexReader.terms(field)` in Solr's
-     * own `TermsComponent` — so it needs the field genuinely indexed, and `SEARCH`'s rule, which
-     * accepts doc values as an alternative, would call a doc-values-only field enumerable when it is
-     * not. More-like-this is subtler still. Both want an operation of their own, decided against
-     * Solr's behaviour rather than by picking the nearest existing case, and that is a change of its
-     * own with its own fixtures.
+     * Solr adds each token verbatim — `list.add(string)` with no trim — so a `mlt.fl` split over
+     * lines asks for a field whose name begins with a newline. This parser trims every token, as it
+     * must for the parameters where trimming is right, so it reads two healthy field names.
+     *
+     * **Recorded rather than fixed, because the divergence does not make this inspection wrong.**
+     * It answers whether a name is declared, and `name` and `features` genuinely are. What goes
+     * unreported is a differently-shaped defect — a parameter value Solr cannot parse — which wants
+     * an inspection of its own rather than a distortion of this one. Pinning it here is what stops
+     * the next reader assuming the newline case was considered and handled.
      */
     @Test
-    fun `neither carries an operation yet`() {
-        assertNull(SolrConfigParser.operationFor("terms.fl"))
-        assertNull(SolrConfigParser.operationFor("mlt.fl"))
+    fun `a more-like-this value split across lines is read more generously than Solr reads it`() {
+        assertEquals(listOf("name", "features"), handlerWith("<str name=\"mlt.fl\">name,\n  features</str>"))
     }
+
 }

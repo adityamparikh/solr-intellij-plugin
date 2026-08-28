@@ -203,26 +203,21 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
      * shipped configsets use neither, so the suite's existing clean-fixture check — which reads those
      * configsets and asserts nothing is reported — would have passed whatever this change did. A
      * fixture that cannot fail is not a gate, and this is the one that can.
+     *
+     * The `terms.fl` value is deliberately one name: Solr reads that parameter whole rather than
+     * splitting it, so a comma in a value is part of the name it looks up.
      */
     fun testTermsAndMoreLikeThisFieldListsNamingRealFieldsAreClean() {
         checkConfig(handler("""<str name="terms.fl">name</str>""", """<str name="mlt.fl">name,text</str>"""))
     }
 
-    /** A dynamic pattern supplies these names as it supplies any other. */
-    fun testATermsFieldMatchingADynamicPatternIsClean() {
-        checkConfig(handler("""<str name="terms.fl">colour_s</str>"""))
-    }
-
-    /** And now the typo is visible, which it was not before: the parameter was read by nobody. */
-    fun testATermsFieldNamingAnUndeclaredFieldIsFlagged() {
+    /** And now a typo is visible in either, which it was not before: nobody read these parameters. */
+    fun testATypoInEitherParameterIsFlagged() {
         checkConfig(
-            handler("""<str name="terms.fl"><warning descr="Solr: no field named 'nmae' is declared in the schema">nmae</warning></str>"""),
-        )
-    }
-
-    fun testAMoreLikeThisFieldNamingAnUndeclaredFieldIsFlagged() {
-        checkConfig(
-            handler("""<str name="mlt.fl">name,<warning descr="Solr: no field named 'txet' is declared in the schema">txet</warning></str>"""),
+            handler(
+                """<str name="terms.fl"><warning descr="Solr: no field named 'nmae' is declared in the schema">nmae</warning></str>""",
+                """<str name="mlt.fl">name,<warning descr="Solr: no field named 'txet' is declared in the schema">txet</warning></str>""",
+            ),
         )
     }
 }
