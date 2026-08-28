@@ -33,6 +33,17 @@ enum class SolrFieldOperation {
 
     /** Ordering results, as `sort` does. */
     SORT,
+
+    /**
+     * Comparing one document's content against others, as `mlt.fl` does.
+     *
+     * **The one operation here that asks for content rather than for an index.** Lucene's
+     * `MoreLikeThis.retrieveTerms` asks each field for a term vector and, where there is none, falls
+     * back to the stored value and re-analyses it — so what it needs is a copy of what the document
+     * said, by either route. A field can be thoroughly searchable and have nothing it can read: an
+     * index holds terms, not values.
+     */
+    SIMILARITY,
 }
 
 /**
@@ -127,6 +138,12 @@ object SolrFieldOperations {
             // a selector — `sort=field(prices,min) asc` — which is a different expression rather than a
             // bare field name, and not what a bare name in a `sort` is asking for.
             SolrFieldOperation.SORT -> both(perDocument, resolved(MULTI_VALUED)?.not())
+
+            // Content, by either route Lucene will look: a term vector, or the stored value it
+            // re-analyses when there is none. Deliberately says nothing about `indexed` — a field
+            // with content and no index is a configuration this cannot call wrong from here, and the
+            // operation it would then fail is `SEARCH`, which is reported separately.
+            SolrFieldOperation.SIMILARITY -> either(resolved(TERM_VECTORS), resolved(STORED))
         }
     }
 
@@ -138,6 +155,8 @@ object SolrFieldOperations {
      * silence — the one failure a table-driven rule can have and never show.
      */
     private val INDEXED = property("indexed")
+    private val STORED = property("stored")
+    private val TERM_VECTORS = property("termVectors")
     private val DOC_VALUES = property("docValues")
     private val UNINVERTIBLE = property("uninvertible")
     private val MULTI_VALUED = property("multiValued")
