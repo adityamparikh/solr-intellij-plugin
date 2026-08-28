@@ -30,6 +30,31 @@ kotlin {
 
 dependencies {
     testImplementation(libs.junit)
+    // **Three of Testcontainers' transitive dependencies are also the platform's, in older
+    // versions, and the platform loses.** Its whole tree is six artifacts, so this list is bounded
+    // and readable rather than open-ended — but each exclusion is here because leaving it out broke
+    // tests that have nothing to do with containers, in ways whose messages named no cause:
+    //
+    //  - **JNA**: the platform's native calls fail with "JNA library is not available", taking out
+    //    every fixture test that touches the UI.
+    //  - **jackson-annotations**: Testcontainers pins 2.10.3, which predates `JsonProperty.namespace()`,
+    //    so the platform's databind fails resolving a method that exists in the version it expects.
+    //  - **slf4j-api**: Testcontainers pins 1.7.x against the platform's 2.x, and the 1.x binder
+    //    lookup cannot see the platform's provider.
+    //
+    // The cost is that Testcontainers' own diagnostics go unlogged, which matters exactly once —
+    // when a container will not start. `DOCKER_API_VERSION` below is the answer to the one cause
+    // this project has actually met.
+    testImplementation(libs.testcontainers) {
+        exclude(group = "net.java.dev.jna")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+        exclude(group = "org.slf4j", module = "slf4j-api")
+    }
+    testImplementation(libs.testcontainers.solr) {
+        exclude(group = "net.java.dev.jna")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+        exclude(group = "org.slf4j", module = "slf4j-api")
+    }
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
@@ -331,6 +356,16 @@ sourceSets.named("main") { resources.srcDir(generateSolrCatalog) }
 // restated, so the test is checking this wiring rather than a second copy of it — an `outputDirectory`
 // moved out from under the build directory fails the test instead of quietly ending the regeneration.
 tasks.test {
+    // **Why the Docker API version is pinned, and why it is a floor rather than a preference.**
+    // Testcontainers' bundled docker-java negotiates an API version with the daemon, and a recent
+    // Docker Engine answers its `/info` call with HTTP 400 and an empty body — so every strategy
+    // fails and the only message a developer sees is "Could not find a valid Docker environment",
+    // which names neither the cause nor the fix. Measured against Docker Engine 29.7.2, API 1.55.
+    //
+    // 1.44 is old enough for every engine this plugin's tests need and new enough for everything
+    // they ask of one. Remove it when Testcontainers ships a docker-java that negotiates correctly;
+    // the contract tests failing to find Docker is how you will know it was removed too early.
+    systemProperty("api.version", providers.environmentVariable("DOCKER_API_VERSION").orElse("1.44").get())
     systemProperty(
         "solr.catalog.generated.dir",
         generateSolrCatalog.get().outputDirectory.get().asFile.absolutePath,

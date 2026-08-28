@@ -381,3 +381,41 @@ javap -c -p build/classes/kotlin/test/<path>/YourTest.class | grep 'of\$default'
 
 Worth knowing because the failure looks like a logic error in the refactor, and the
 natural response — reverting the move — makes it go away for the wrong reason.
+
+## The contract tests, and what they need
+
+`SolrServerContractTest` starts a real Solr per supported line and reads it. It is the only tier that
+can notice Solr changing a response shape — the specification's own wire-format pass found three of
+its five guesses wrong, so the gap between "parses what Solr said once" and "parses what Solr says"
+is not theoretical.
+
+**It skips itself where there is no Docker**, so `./gradlew check` stays runnable on a machine without
+one. A skipped test is reported as skipped rather than passing quietly, and CI has Docker, so the tier
+always runs somewhere.
+
+### If containers will not start
+
+The failure you will see is `Could not find a valid Docker environment`, which names neither the cause
+nor the fix, and Testcontainers' own explanation is unlogged here on purpose — see the exclusions in
+`build.gradle.kts`.
+
+The cause this project has actually met is an API-version mismatch: Testcontainers' bundled
+docker-java negotiates a version that a recent Docker Engine answers with **HTTP 400 and an empty
+body**, so every detection strategy fails. Measured against Docker Engine 29.7.2, API 1.55. The build
+pins `api.version` to 1.44 for the test JVM, overridable:
+
+```bash
+DOCKER_API_VERSION=1.47 ./gradlew test --tests "*SolrServerContractTest*"
+```
+
+To see what Testcontainers is actually complaining about, run its detection outside Gradle rather than
+adding an SLF4J binding to the test classpath — the platform ships its own provider and a second one
+breaks unrelated fixture tests.
+
+### Why three dependencies are excluded
+
+Testcontainers' transitive tree is six artifacts and three of them are also the platform's, in older
+versions that win on the test classpath. Each exclusion in `build.gradle.kts` is there because leaving
+it out broke tests with nothing to do with containers: JNA (`JNA library is not available`, taking out
+every UI fixture test), jackson-annotations 2.10.3 (predates `JsonProperty.namespace()`, so the
+platform's databind fails on a method it expects), and slf4j-api 1.7 against the platform's 2.x.
