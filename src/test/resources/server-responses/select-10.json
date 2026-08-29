@@ -1,0 +1,39 @@
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":32,
+    "params":{
+      "q":"title:dune",
+      "rows":"10"
+    }
+  },
+  "response":{
+    "numFound":2,
+    "start":0,
+    "numFoundExact":true,
+    "docs":[
+      {
+        "id":"1",
+        "title":["Dune"],
+        "author_s":"Frank Herbert",
+        "price_f":9.99,
+        "year_i":1965,
+        "tags_ss":[
+          "scifi",
+          "classic"
+        ],
+        "_version_":1874876165337907200,
+        "_root_":"1"
+      },
+      {
+        "id":"2",
+        "title":["Dune Messiah"],
+        "author_s":"Frank Herbert",
+        "price_f":8.25,
+        "year_i":1969,
+        "tags_ss":["scifi"],
+        "_version_":1874876165379850240,
+        "_root_":"2"
+      }]
+    }
+  }

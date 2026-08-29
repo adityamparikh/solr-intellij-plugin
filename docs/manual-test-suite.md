@@ -744,6 +744,17 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       from the environment chooser, and run the request. Results render in the HTTP Client's own
       response viewer. **The point of the check is that the committed file names no host** — the
       environment does, which is what lets a colleague clone the repository and use their own server.
+- [ ] **SRV-13** — Run *Query a Solr collection* against a collection holding documents. Above the
+      raw JSON the response shows how many matched, how long it took, and a table of the returned
+      documents with columns lined up. `_version_` is **not** a column, and the line above the table
+      says which internal fields were left out.
+- [ ] **SRV-14** — Run *Explain why documents scored*. Under the table, each document's scoring
+      explanation appears with Solr's own indentation intact — the nesting is the information, so a
+      flattened list of numbers is a failure even though it contains the same figures.
+- [ ] **SRV-15** — In the same `.http` file add a request to something that is **not** Solr
+      (`GET https://api.github.com/repos/apache/solr` is enough) and run it. **Nothing this plugin
+      wrote may appear.** The presentation is called for every response the HTTP Client shows, so
+      printing over another service's output is the failure worth checking by hand.
 
 ## Not yet in the suite
 

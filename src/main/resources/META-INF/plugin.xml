@@ -88,6 +88,15 @@
              undocumented and may change between releases, and `verifyPlugin` against every entry in
              `verifiedIdeBuilds` is what makes such a change fail a pull request raising the target
              rather than a user's editor. -->
+        <!-- A readable summary above a Solr query's raw JSON. Registered with no applicability
+             attribute because the extension point has none: it is called for every response the
+             HTTP Client shows, including other plugins', and decides for itself. Declining is
+             therefore the common case, and `SolrQueryResultReader` decides from the response body
+             rather than from the URL — Solr behind a reverse proxy is addressed at any path, and a
+             non-Solr service may expose one called `/select`. -->
+        <httpClient.responseCustomPresentation
+                implementation="org.apache.solr.ide.server.query.SolrQueryResponsePresentation"/>
+
         <httpClient.addRequestTemplateProvider
                 implementation="org.apache.solr.ide.server.query.SolrRequestTemplateProvider"/>
 
