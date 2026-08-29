@@ -132,6 +132,12 @@ which will eventually catch too much.
 Turning what a Solr server returns into the same facts a configset parser
 produces, and asking a connection for them.
 
+`SolrTopologyReader` answers what a server holds, in whichever vocabulary it uses:
+collections and shards on SolrCloud, cores on a standalone server. Which endpoint is
+asked is decided from the mode the server reports rather than by trying one and
+catching the refusal — a standalone Solr answers the whole Collections API with a
+400, so guessing costs a spurious failure against a healthy server.
+
 `SolrServerReader` is where the pieces compose: it resolves a connection's stored
 secret at the point of use, asks the transport, and maps the answer into facts. It
 is the only place a credential is read, which is what keeps that discipline in one

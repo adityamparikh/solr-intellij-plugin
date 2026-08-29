@@ -13,7 +13,9 @@ import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Test
 import org.testcontainers.DockerClientFactory
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.SolrContainer
+import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
 
 /**
@@ -34,6 +36,47 @@ import org.testcontainers.utility.DockerImageName
 class SolrServerContractTest {
 
     private val transport = SolrHttpTransport(timeout = Duration.ofSeconds(30))
+
+    private fun get(container: SolrContainer, path: String) = get(container.host, container.solrPort, path)
+
+    private fun get(container: GenericContainer<*>, path: String) =
+        get(container.host, container.getMappedPort(SOLR_PORT), path)
+
+    private fun get(host: String, port: Int, path: String) = runBlocking {
+        transport.get("http://$host:$port", path)
+    }
+
+    private fun bodyOf(container: SolrContainer, path: String) = bodyOf(get(container, path), path)
+
+    private fun bodyOf(container: GenericContainer<*>, path: String) = bodyOf(get(container, path), path)
+
+    private fun bodyOf(response: SolrResponse<tools.jackson.databind.JsonNode>, path: String): tools.jackson.databind.JsonNode {
+        assertTrue("$path: $response", response is SolrResponse.Success)
+        return (response as SolrResponse.Success).value
+    }
+
+    /**
+     * The topology a server reports, read the way the composition reads it.
+     *
+     * The mode decides the endpoint here exactly as it does in `SolrServerReader`, which is what
+     * makes this a test of the shapes rather than a second implementation: composition is tested
+     * against an embedded server, and only a real Solr can say what these responses look like.
+     */
+    private fun topologyOf(container: SolrContainer): SolrTopology =
+        topologyOf { path -> bodyOf(container, path) }
+
+    private fun topologyOf(container: GenericContainer<*>): SolrTopology =
+        topologyOf { path -> bodyOf(container, path) }
+
+    /** The mode decides the endpoint here exactly as it does in the composition under test. */
+    private fun topologyOf(body: (String) -> tools.jackson.databind.JsonNode): SolrTopology =
+        when (val mode = SolrTopologyReader.modeIn(body("/solr/admin/info/system"))) {
+            SolrServerMode.SOLR_CLOUD ->
+                SolrTopologyReader.cloudTopologyIn(body("/solr/admin/collections?action=CLUSTERSTATUS"))
+            SolrServerMode.STANDALONE ->
+                SolrTopologyReader.standaloneTopologyIn(body("/solr/admin/cores?action=STATUS"))
+            SolrServerMode.UNKNOWN -> throw AssertionError("the server reported mode $mode")
+        }
 
     private fun schemaOf(container: SolrContainer, collection: String) = runBlocking {
         transport.get("http://${container.host}:${container.solrPort}", "/solr/$collection/schema")
@@ -134,10 +177,73 @@ class SolrServerContractTest {
         assertTrue("expected Solr's own words, got: ${response.message}", response.message?.isNotEmpty() == true)
     }
 
+    // --- the two shapes a server runs in ------------------------------------------------------------
+
+    /**
+     * A SolrCloud server reports collections, and the reader reads them.
+     *
+     * `withZookeeper` is what makes this a fixture rather than an argument: the same image, started
+     * the other way, and the whole vocabulary changes.
+     */
+    @Test
+    fun `a solrcloud server reports its collections`() {
+        val topology = topologyOf(cloud)
+
+        assertEquals(SolrServerMode.SOLR_CLOUD, topology.mode)
+        assertTrue("expected a collection, got ${topology.collections.map { it.name }}",
+            topology.collections.any { it.name == COLLECTION })
+        assertTrue("expected live nodes, got ${topology.liveNodes}", topology.liveNodes.isNotEmpty())
+        assertTrue("a collection should have shards", topology.collections.first().shards.isNotEmpty())
+    }
+
+    /** A shard names its replicas, and one of them leads. */
+    @Test
+    fun `a shard reports replicas and which one leads`() {
+        val shard = topologyOf(cloud).collections.single { it.name == COLLECTION }.shards.first()
+
+        assertTrue("expected replicas", shard.replicas.isNotEmpty())
+        assertTrue("no replica reported itself leader: ${shard.replicas}", shard.replicas.any { it.leader })
+        assertTrue("a replica should name its core", shard.replicas.all { it.core.isNotEmpty() })
+    }
+
+    /**
+     * A standalone server reports cores, and is never asked for collections.
+     *
+     * The requirement's real content: this same request against a standalone Solr's Collections API
+     * answers HTTP 400, so a reader that assumed one vocabulary would report a hard failure against a
+     * server that is working perfectly.
+     */
+    @Test
+    fun `a standalone server reports cores rather than collections`() {
+        val topology = topologyOf(standalone)
+
+        assertEquals(SolrServerMode.STANDALONE, topology.mode)
+        assertTrue(
+            "expected a core, got ${topology.cores.map { it.name }}",
+            topology.cores.any { it.name == "standalone_core" },
+        )
+        assertTrue("a standalone server has no collections", topology.collections.isEmpty())
+    }
+
+    /** And the Collections API really does refuse it, which is why the mode is read first. */
+    @Test
+    fun `a standalone server refuses the collections api`() {
+        val response = get(standalone, "/solr/admin/collections?action=LIST")
+
+        assertTrue(response.toString(), response is SolrResponse.SolrError)
+        assertTrue(
+            "expected Solr to say why, got: ${(response as SolrResponse.SolrError).message}",
+            response.message?.contains("SolrCloud") == true,
+        )
+    }
+
     private companion object {
 
         /** The collection every container is created with. */
         const val COLLECTION = "contract"
+
+        /** Solr's port inside the image, which a plain container has to be told about. */
+        const val SOLR_PORT = 8983
 
         /**
          * One container per supported line, started once for the class.
@@ -147,6 +253,23 @@ class SolrServerContractTest {
          * depending on another's leftovers.
          */
         private val containers = mutableListOf<Pair<String, SolrContainer>>()
+
+        /** One SolrCloud server, for the half of the requirement standalone cannot show. */
+        private lateinit var cloud: SolrContainer
+
+        /**
+         * One standalone server, which `SolrContainer` cannot provide.
+         *
+         * **The module always starts SolrCloud** — `withZookeeper(false)` does not change the mode
+         * the server reports, and it creates a `dummy` collection regardless, which is a cloud
+         * concept. Measured: a container built every way the module allows reports `mode: solrcloud`.
+         *
+         * So the other shape comes from a plain `GenericContainer` running the image's own
+         * `solr-precreate`, which is how a standalone Solr is started by hand. That is the one place
+         * this file assembles a container itself, and it is because the module's abstraction does not
+         * reach the distinction the requirement is about.
+         */
+        private lateinit var standalone: GenericContainer<*>
 
         /**
          * Skipped where a developer has no Docker, and *failed* where CI has none.
@@ -181,6 +304,16 @@ class SolrServerContractTest {
                 container.start()
                 containers += line to container
             }
+            cloud = SolrContainer(DockerImageName.parse("solr:10.0.0"))
+                .withZookeeper(true)
+                .withCollection(COLLECTION)
+            cloud.start()
+
+            standalone = GenericContainer(DockerImageName.parse("solr:10.0.0"))
+                .withExposedPorts(SOLR_PORT)
+                .withCommand("solr-precreate", "standalone_core")
+                .waitingFor(Wait.forHttp("/solr/admin/info/system").forPort(SOLR_PORT).forStatusCode(200))
+            standalone.start()
         }
 
         @AfterClass
@@ -188,6 +321,8 @@ class SolrServerContractTest {
         fun stopContainers() {
             containers.forEach { (_, container) -> container.stop() }
             containers.clear()
+            if (::cloud.isInitialized) cloud.stop()
+            if (::standalone.isInitialized) standalone.stop()
         }
     }
 }
