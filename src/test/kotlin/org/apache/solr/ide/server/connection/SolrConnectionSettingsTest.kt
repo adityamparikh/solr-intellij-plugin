@@ -82,6 +82,32 @@ class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * Saving a connection again to change a non-secret field leaves its credential alone.
+     *
+     * The password argument once defaulted to null and was written unconditionally, which made "save
+     * this connection" and "forget this connection's password" the same call. Every caller at the
+     * time was a test that either passed a password or worked on a connection that had none, so
+     * nothing could tell the two apart. The first caller that saves an *existing* connection — a
+     * settings page writing an edited display name — is where it would have shown up, as every
+     * credential the user did not retype silently disappearing.
+     */
+    fun testSavingAConnectionAgainLeavesItsPasswordAlone() {
+        connectionSettings.addConnection(local, "s3cret".toCharArray())
+        connectionSettings.addConnection(local.copy(displayName = "Renamed"))
+        assertEquals("s3cret", connectionSettings.getPassword(local.id))
+    }
+
+    /**
+     * Passing null explicitly still forgets it: the argument's *presence* is what decides whether
+     * the secret is touched, and its value decides what to do with it.
+     */
+    fun testSavingWithAnExplicitNullPasswordForgetsTheStoredOne() {
+        connectionSettings.addConnection(local, "s3cret".toCharArray())
+        connectionSettings.addConnection(local, null)
+        assertNull(connectionSettings.getPassword(local.id))
+    }
+
+    /**
      * Connections and configset roots are separate surfaces with different storage. Adding one must
      * not touch the other — a connection leaking into the shared `solr.xml` is the failure this
      * split exists to prevent.

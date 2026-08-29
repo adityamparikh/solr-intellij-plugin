@@ -91,16 +91,18 @@ class SolrConnectionSettings :
         }
 
     /**
-     * Adds [connection], replacing any existing one with the same [SolrConnection.id].
+     * Adds [connection], replacing any existing one with the same [SolrConnection.id], and leaves
+     * any stored secret untouched.
      *
-     * The password is passed separately rather than as a field of [SolrConnection] so that it cannot
-     * be persisted by accident — a secret that is never in the serialized object cannot leak into
-     * the serialized file.
+     * **The password argument's presence is what decides whether the secret is written**, which is
+     * why this overload exists rather than one defaulting the password to null. Defaulted, "save
+     * this connection" and "forget this connection's password" were the same call, and a caller
+     * saving an edited display name silently dropped the credential. Overloading moves that decision
+     * into the call's shape, where it cannot be made by omission.
      *
      * @param connection the non-secret half of the connection
-     * @param password the secret, stored in [PasswordSafe]; null clears any stored secret
      */
-    fun addConnection(connection: SolrConnection, password: CharArray? = null) {
+    fun addConnection(connection: SolrConnection) {
         state.connections.removeAll { it.id == connection.id }
         state.connections.add(
             ConnectionState().apply {
@@ -110,6 +112,22 @@ class SolrConnectionSettings :
                 username = connection.username
             },
         )
+    }
+
+    /**
+     * Adds [connection] and stores [password] as its secret.
+     *
+     * The password is passed separately rather than as a field of [SolrConnection] so that it cannot
+     * be persisted by accident — a secret that is never in the serialized object cannot leak into
+     * the serialized file.
+     *
+     * @param connection the non-secret half of the connection
+     * @param password the secret, stored in [PasswordSafe]; null forgets any stored secret
+     */
+    fun addConnection(connection: SolrConnection, password: CharArray?) {
+        // Saved first, because `setPassword` files the secret under the username it reads back from
+        // the saved connection — writing the secret first would file it under the old username.
+        addConnection(connection)
         setPassword(connection.id, password)
     }
 

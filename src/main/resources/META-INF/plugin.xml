@@ -67,6 +67,21 @@
              XML file type so configsets are parsed as XML for later PSI-based features. -->
         <fileType name="XML" fileNames="managed-schema;managed-schema.xml"/>
 
+        <!-- Where a Solr server gets configured. A `projectConfigurable` rather than an
+             `applicationConfigurable` because connections persist to the workspace file: the URL may
+             be a personal port-forward and the credential is personal by definition, so they are a
+             fact about one developer's checkout rather than about the team. Offering them globally
+             would be offering to edit something the storage does not hold.
+
+             Under the Tools group, which is where the other server-backed tools in the IDE put
+             theirs, and not under Languages & Frameworks — nothing here affects how a file is read. -->
+        <projectConfigurable
+                parentId="tools"
+                id="solr.connections"
+                bundle="messages.SolrBundle"
+                key="settings.connections.displayName"
+                instance="org.apache.solr.ide.server.connection.SolrConnectionsConfigurable"/>
+
         <!-- What each field can actually match, shown inline beside its declaration. An inlay
              rather than a tooltip on purpose: a user who does not already suspect their field
              cannot match a prefix will never hover over it to find out. -->
