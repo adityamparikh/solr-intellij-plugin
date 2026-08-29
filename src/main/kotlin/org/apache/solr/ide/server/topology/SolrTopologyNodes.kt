@@ -1,6 +1,8 @@
 package org.apache.solr.ide.server.topology
 
 import org.apache.solr.ide.server.reading.SolrCollection
+import org.apache.solr.ide.server.reading.SolrIndexContents
+import org.apache.solr.ide.server.reading.SolrIndexField
 import org.apache.solr.ide.server.reading.SolrCore
 import org.apache.solr.ide.server.reading.SolrReplica
 import org.apache.solr.ide.server.reading.SolrServerMode
@@ -35,6 +37,18 @@ enum class SolrTopologyNodeKind {
 
     /** One node currently in the cluster. */
     NODE,
+
+    /**
+     * The heading under which a collection's indexed fields appear, before they are fetched.
+     *
+     * Distinct from [GROUP] because it is the one row that stands for a request not yet made:
+     * expanding it is what asks the server, and the tree needs to tell it from a heading whose
+     * children it already has.
+     */
+    FIELDS,
+
+    /** One field as the index actually holds it. */
+    FIELD,
 }
 
 /**
@@ -48,12 +62,17 @@ enum class SolrTopologyNodeKind {
  *   null rather than an empty string, so a row with no detail cannot render as a stray separator
  * @property kind what the row stands for
  * @property children its rows, in the order the server reported them
+ * @property collection which collection or core a request from this row would be addressed to, or
+ *   null where the row stands for no request. Carried rather than read back out of [label], because
+ *   a label is what the row *says* and is free to change — a fetch keyed on display text breaks the
+ *   moment someone rewords a heading
  */
 data class SolrTopologyNode(
     val label: String,
     val detail: String? = null,
     val kind: SolrTopologyNodeKind,
     val children: List<SolrTopologyNode> = emptyList(),
+    val collection: String? = null,
 )
 
 /**
@@ -99,6 +118,52 @@ object SolrTopologyNodes {
         SolrServerMode.UNKNOWN -> emptyList()
     }
 
+    /**
+     * The rows for what an index actually holds.
+     *
+     * **Dynamic instances are called out rather than merely listed**, because they are the reason
+     * this view exists: a field the schema declares can be read from the configset without a server,
+     * while `author_s` exists only because `*_s` matched something at index time and appears in no
+     * configset anywhere. The group's own detail says how many there are, so the answer is visible
+     * before anything is expanded.
+     *
+     * @param contents what the Luke handler reported
+     * @return one group holding a row per field
+     */
+    fun fieldNodesOf(contents: SolrIndexContents): List<SolrTopologyNode> {
+        val dynamic = contents.fields.count { it.isDynamicInstance }
+        return contents.fields.map(::fieldNode).let { fields ->
+            listOf(
+                SolrTopologyNode(
+                    label = FIELDS_LABEL,
+                    detail = detailOf(
+                        "${contents.fields.size} fields",
+                        "$dynamic from dynamic patterns".takeIf { dynamic > 0 },
+                        contents.summary.numDocs?.let { "$it documents" },
+                    ),
+                    kind = SolrTopologyNodeKind.GROUP,
+                    children = fields,
+                ),
+            )
+        }
+    }
+
+    private fun fieldNode(field: SolrIndexField) = SolrTopologyNode(
+        label = field.name,
+        detail = detailOf(
+            field.type,
+            // The pattern is written as an arrow because "created by" is the relationship, and a
+            // bare `*_s` beside a type reads as another type.
+            field.dynamicBase?.let { "← $it" },
+            // Omitted rather than shown as zero where Solr gave no count: a point field reports none
+            // even holding documents, and "0 documents" would be false about exactly the field types
+            // Solr recommends.
+            field.docs?.let { "$it docs" },
+            field.indexNote,
+        ),
+        kind = SolrTopologyNodeKind.FIELD,
+    )
+
     private fun group(label: String, children: List<SolrTopologyNode>) =
         SolrTopologyNode(label, kind = SolrTopologyNodeKind.GROUP, children = children)
 
@@ -106,8 +171,25 @@ object SolrTopologyNodes {
         label = collection.name,
         detail = detailOf(collection.health, collection.configName),
         kind = SolrTopologyNodeKind.COLLECTION,
-        children = collection.shards.map(::shardNode),
+        // The fields row comes first because it is what most questions are about, and it is a
+        // promise rather than an answer — the request behind it is made when it is expanded.
+        children = listOf(fieldsPlaceholder(collection.name)) + collection.shards.map(::shardNode),
     )
+
+    /**
+     * The unexpanded row standing for a collection's indexed fields.
+     *
+     * **Empty on purpose.** Reading an index costs a request per collection, and a server holding
+     * thirty of them would turn opening the tool window into thirty requests — which is both slow
+     * and a quiet violation of the rule that server data moves only when someone asks. Expanding
+     * this row is the asking.
+     *
+     * @param collection the collection or core whose fields it stands for, which is what the fetch
+     *   is addressed to
+     * @return the placeholder row
+     */
+    fun fieldsPlaceholder(collection: String) =
+        SolrTopologyNode(label = FIELDS_LABEL, kind = SolrTopologyNodeKind.FIELDS, collection = collection)
 
     private fun shardNode(shard: SolrShard) = SolrTopologyNode(
         label = shard.name,
@@ -129,8 +211,13 @@ object SolrTopologyNodes {
         kind = SolrTopologyNodeKind.REPLICA,
     )
 
-    private fun coreNode(core: SolrCore) =
-        SolrTopologyNode(core.name, core.configSet, SolrTopologyNodeKind.CORE)
+    private fun coreNode(core: SolrCore) = SolrTopologyNode(
+        label = core.name,
+        detail = core.configSet,
+        kind = SolrTopologyNodeKind.CORE,
+        // A core has an index exactly as a collection does, and the question asked of it is the same.
+        children = listOf(fieldsPlaceholder(core.name)),
+    )
 
     // Absent parts drop out rather than rendering as a gap or the word "null" — Solr omits health on
     // an older line, a range on an implicitly routed shard, and a configset on a core it did not
@@ -139,4 +226,7 @@ object SolrTopologyNodes {
         parts.filter { !it.isNullOrBlank() }.joinToString(SEPARATOR).takeIf { it.isNotEmpty() }
 
     private const val SEPARATOR = " · "
+
+    /** What the indexed-fields row is called, in one place so the placeholder and the filled row agree. */
+    private const val FIELDS_LABEL = "Fields"
 }

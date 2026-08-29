@@ -1,0 +1,99 @@
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":6
+  },
+  "index":{
+    "numDocs":3,
+    "maxDoc":3,
+    "deletedDocs":0,
+    "version":6,
+    "segmentCount":1,
+    "current":true,
+    "hasDeletions":false,
+    "directory":"NRTCachingDirectory(MMapDirectory@/var/solr/data/books/data/index lockFactory=org.apache.lucene.store.NativeFSLockFactory@60bf644c; maxCacheMB=48.0 maxMergeSizeMB=4.0)",
+    "segmentsFile":"segments_2",
+    "segmentsFileSizeInBytes":221,
+    "userData":{
+      "commitTimeMSec":"1788018097116",
+      "commitCommandVer":"1874872864201506816"
+    },
+    "lastModified":"2026-08-29T15:41:37.116Z"
+  },
+  "fields":{
+    "_root_":{
+      "type":"string",
+      "schema":"I--D------OF-----l",
+      "index":"(unstored field)",
+      "docs":3
+    },
+    "_version_":{
+      "type":"plong",
+      "schema":"---D--------------"
+    },
+    "author_s":{
+      "type":"string",
+      "schema":"I-SD------OF-----l",
+      "dynamicBase":"*_s",
+      "index":"ITS-------OF------",
+      "docs":3
+    },
+    "id":{
+      "type":"string",
+      "schema":"I-SD------OF-----l",
+      "index":"ITS-------OF------",
+      "docs":3
+    },
+    "price_f":{
+      "type":"pfloat",
+      "schema":"I-SD------OF------",
+      "dynamicBase":"*_f"
+    },
+    "tags_ss":{
+      "type":"strings",
+      "schema":"I-SD-M----OF-----l",
+      "dynamicBase":"*_ss",
+      "index":"ITS-------OF------",
+      "docs":3
+    },
+    "title":{
+      "type":"text_general",
+      "schema":"ITS--M------------",
+      "index":"ITS---------------",
+      "docs":3
+    },
+    "title_str":{
+      "type":"strings",
+      "schema":"---D-M-----------l",
+      "dynamicBase":"*_str"
+    },
+    "year_i":{
+      "type":"pint",
+      "schema":"I-SD------OF------",
+      "dynamicBase":"*_i"
+    }
+  },
+  "info":{
+    "key":{
+      "I":"Indexed",
+      "T":"Tokenized",
+      "S":"Stored",
+      "D":"DocValues",
+      "U":"UnInvertible",
+      "M":"Multivalued",
+      "V":"TermVector Stored",
+      "o":"Store Offset With TermVector",
+      "p":"Store Position With TermVector",
+      "y":"Store Payloads With TermVector",
+      "O":"Omit Norms",
+      "F":"Omit Term Frequencies & Positions",
+      "P":"Omit Positions",
+      "H":"Store Offsets with Positions",
+      "L":"Lazy",
+      "B":"Binary",
+      "f":"Sort Missing First",
+      "l":"Sort Missing Last"
+    },
+    "NOTE":"Document Frequency (df) is not updated when a document is marked for deletion.  df values include deleted documents."
+  }
+}

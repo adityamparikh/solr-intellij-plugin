@@ -117,6 +117,31 @@ class SolrServerReader(private val project: Project) {
     }
 
     /**
+     * What [collection] actually holds on [connection], as the Luke handler reports it.
+     *
+     * **A third question, asked separately and never folded into the other two.** The schema — from
+     * a configset or from the Schema API — says what fields are *declared*; this says what the index
+     * *has*, which includes every field a dynamic pattern created at index time and no configset can
+     * name. Merging the answers would make the drift comparison report those instances as fields the
+     * repository forgot to declare.
+     *
+     * **Term counts are not asked for**, though Luke can give them. They arrive only when the
+     * request names specific fields, which makes them one request per field — and server data moves
+     * on request and on connection change, so fetching a field list must not quietly become fetching
+     * fifty things.
+     *
+     * @param connection the server to ask
+     * @param collection the collection whose index to inspect
+     * @return what its index holds, or the failure that prevented reading it
+     */
+    suspend fun indexContents(connection: SolrConnection, collection: String): SolrResponse<SolrIndexContents> {
+        val credential = credentialFor(connection)
+        return SolrHttpTransport.getInstance(project)
+            .get(connection.baseUrl, "/solr/$collection/admin/luke", credential)
+            .map { SolrLukeReader.read(it) }
+    }
+
+    /**
      * The version the server reports, or null where it did not answer.
      *
      * Every failure is null here rather than an outcome, which is the whole reason it is a separate

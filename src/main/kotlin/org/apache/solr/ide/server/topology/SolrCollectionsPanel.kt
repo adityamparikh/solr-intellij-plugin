@@ -35,7 +35,9 @@ import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionDialog
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
+import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.reading.SolrServerReader
+import org.apache.solr.ide.server.transport.SolrResponse
 
 /**
  * The coroutine scope the collections tool window fetches on.
@@ -82,6 +84,15 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
         tree.showsRootHandles = true
         tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
         tree.cellRenderer = SolrTopologyNodeRenderer()
+        tree.addTreeWillExpandListener(
+            object : javax.swing.event.TreeWillExpandListener {
+                override fun treeWillExpand(event: javax.swing.event.TreeExpansionEvent) {
+                    (event.path.lastPathComponent as? DefaultMutableTreeNode)?.let { fieldsRequested(it) }
+                }
+
+                override fun treeWillCollapse(event: javax.swing.event.TreeExpansionEvent) = Unit
+            },
+        )
 
         banner.isVisible = false
         banner.border = JBUI.Borders.empty(4, 8)
@@ -185,6 +196,59 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     }
 
     /**
+     * Reads a collection's indexed fields, if [node] is the row that stands for them and they have
+     * not been read already.
+     *
+     * **Expanding is the asking.** Reading an index costs one request per collection, so a server
+     * holding thirty of them would turn opening this tool window into thirty requests — which is
+     * slow, and a quiet breach of the rule that server data moves only when someone asks for it.
+     * Fetched once and kept: re-expanding a row already filled asks nothing, because nothing
+     * changed by the row being collapsed. Refresh is what asks again.
+     *
+     * @param node the row about to expand
+     */
+    internal fun fieldsRequested(node: DefaultMutableTreeNode) {
+        val row = node.userObject as? SolrTopologyNode ?: return
+        if (row.kind != SolrTopologyNodeKind.FIELDS || node.childCount > 0) return
+        val collection = row.collection ?: return
+        val connection = settings.selectedConnection ?: return
+
+        project.service<SolrCollectionsScope>().scope.launch {
+            val response = SolrServerReader.getInstance(project).indexContents(connection, collection)
+            withContext(Dispatchers.EDT) { fillFields(node, response) }
+        }
+    }
+
+    /**
+     * Puts what came back under [node], or says why nothing did.
+     *
+     * A failure here is reported in the banner like any other and leaves the row empty, rather than
+     * filling it with an apology that would read as a field called "could not be read".
+     *
+     * @param node the fields row being filled
+     * @param response what the server said its index holds
+     */
+    internal fun fillFields(node: DefaultMutableTreeNode, response: SolrResponse<SolrIndexContents>) {
+        failureMessageFor(response)?.let { return showBanner(it) }
+
+        // The reader's own group heading is discarded and its rows adopted, because the row being
+        // expanded is already that heading — nesting a second one would make the user open "Fields"
+        // to find "Fields". Its detail moves up onto the row, which is where the field counts belong.
+        val group = SolrTopologyNodes.fieldNodesOf(valueIn(response) ?: SolrIndexContents()).single()
+        node.removeAllChildren()
+        group.children.forEach { node.add(nodeFor(it)) }
+        (node.userObject as? SolrTopologyNode)?.let { node.userObject = it.copy(detail = group.detail) }
+        treeModel.nodeStructureChanged(node)
+        warningFor(response)?.let { showBanner(it) }
+    }
+
+    private fun showBanner(message: String) {
+        banner.text = message
+        banner.isVisible = true
+        banner.foreground = UIUtil.getErrorForeground()
+    }
+
+    /**
      * Shows [view], and nothing about how it was arrived at.
      *
      * Reachable rather than private because it is the whole of what the panel does with a result,
@@ -228,6 +292,9 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
 
     /** What the banner is saying, or null where it is hidden. */
     internal val bannerMessage: String? get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
+
+    /** The tree's invisible root, so a test can walk to the row it means to exercise. */
+    internal val treeRoot: DefaultMutableTreeNode get() = root
 
     /** Releases the panel; the fetch scope belongs to the project and is cancelled with it. */
     override fun dispose() = Unit
