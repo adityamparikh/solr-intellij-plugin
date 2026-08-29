@@ -70,6 +70,17 @@ dependencies {
         // evaluated. This is the dependency the comment above used to defer to Phase 3, which needs
         // it unconditionally in any case.
         bundledPlugin("com.intellij.java")
+
+        // The IDE's own HTTP Client, which is where saved Solr queries live and run. The argument
+        // for depending on it is the one made for Java PSI directly above: it ships in the same
+        // unified distribution this plugin already targets, and it carries no `<product-descriptor>`,
+        // so it is not separately licensed. Matched by a hard `<depends>` in `plugin.xml`.
+        //
+        // This is another plugin's API rather than platform API, and its extension points may be
+        // undocumented and may change between releases. `verifyPlugin` against every entry in
+        // `verifiedIdeBuilds` is the gate that makes such a change fail a pull request raising the
+        // target rather than a user's editor. If that gate is weakened, this dependency is revisited.
+        bundledPlugin("com.jetbrains.restClient")
         testFramework(TestFrameworkType.Platform)
 
         // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this
