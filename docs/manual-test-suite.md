@@ -724,6 +724,16 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       data moves on request and on connection change, and on nothing else.
 - [ ] **SRV-7** — With two connections configured, switching the selector re-reads the other server
       and the selection survives closing and reopening the project.
+- [ ] **SRV-8** — Index a document with an undeclared field that a dynamic pattern matches —
+      `curl 'http://localhost:8983/solr/books/update?commit=true' -H 'Content-Type: application/json'
+      -d '[{"id":"1","author_s":"Frank Herbert","price_f":9.99}]'`. Expand the collection's
+      **Fields** row: `author_s` appears, marked `← *_s`. **This is the check the whole view exists
+      for** — that field is in no configset and the schema view cannot show it.
+- [ ] **SRV-9** — In the same list, `price_f` shows its type and **no document count**, while
+      `author_s` shows one. A point field has no inverted index to count from, and "0 docs" there
+      would be false. `_root_` shows `(unstored field)` rather than decoded flags.
+- [ ] **SRV-10** — Collapsing and re-expanding a **Fields** row does not re-read the server; only
+      Refresh does. Watch Solr's request log to confirm rather than inferring it from the screen.
 
 ## Not yet in the suite
 
