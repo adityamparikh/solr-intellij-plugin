@@ -442,7 +442,7 @@ flowchart LR
     SchemaParser --> Facts["SolrConfigsetFacts<br/>fields, dynamicFields, fieldTypes,<br/>copyFields, uniqueKey,<br/>fieldReferences, luceneMatchVersion"]
     ConfigParser --> Facts
     Facts --> Merge["SolrFieldModel.of(repository, server)"]
-    ServerReader["server reader<br/><i>not yet built</i>"] -.-> Merge
+    ServerReader["server reader"] --> Merge
     Merge --> Model["SolrFieldModel<br/>maps of SolrFact&lt;T&gt;"]
     Model --> Reader["SolrConfigsetReader<br/>CachedValuesManager, hung on<br/>the configset directory"]
     Reader --> Ask["modelFor(PsiFile)"]

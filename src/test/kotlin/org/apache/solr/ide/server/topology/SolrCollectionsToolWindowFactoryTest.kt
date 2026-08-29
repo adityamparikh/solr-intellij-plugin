@@ -2,6 +2,7 @@ package org.apache.solr.ide.server.topology
 
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
+import org.apache.solr.ide.server.drift.SolrDriftPanel
 
 /**
  * The tool window fills itself.
@@ -20,14 +21,32 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrCollectionsToolWindowFactoryTest : SolrConfigsetTestCase() {
 
-    fun testTheFactoryAddsATabHoldingThePanel() {
+    fun testTheFactoryAddsATabForEachSurface() {
         val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
 
         SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
 
         val contents = toolWindow.contentManager.contents
-        assertEquals(1, contents.size)
-        assertTrue(contents.single().component.toString(), contents.single().component is SolrCollectionsPanel)
+        assertEquals(2, contents.size)
+        assertTrue(contents[0].component.toString(), contents[0].component is SolrCollectionsPanel)
+        assertTrue(contents[1].component.toString(), contents[1].component is SolrDriftPanel)
+    }
+
+    /**
+     * Both tabs are named.
+     *
+     * A tab with no title renders as a blank strip, which reads as a rendering fault rather than as
+     * a tab — and the second tab is the one nobody will look for unless it is labelled.
+     */
+    fun testBothTabsAreNamed() {
+        val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+
+        SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
+
+        assertEquals(
+            listOf("Collections", "Drift"),
+            toolWindow.contentManager.contents.map { it.displayName },
+        )
     }
 
     /**
@@ -40,8 +59,8 @@ class SolrCollectionsToolWindowFactoryTest : SolrConfigsetTestCase() {
         val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
         SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
 
-        val content = toolWindow.contentManager.contents.single()
-
-        assertNotNull("the tab must dispose what it holds", content.disposer)
+        toolWindow.contentManager.contents.forEach { content ->
+            assertNotNull("every tab must dispose what it holds: ${content.displayName}", content.disposer)
+        }
     }
 }

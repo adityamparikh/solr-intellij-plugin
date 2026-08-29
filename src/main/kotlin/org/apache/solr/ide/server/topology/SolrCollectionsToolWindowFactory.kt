@@ -5,6 +5,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
+import org.apache.solr.ide.SolrBundle
+import org.apache.solr.ide.server.drift.SolrDriftPanel
 
 /**
  * Registers the collections tool window.
@@ -23,11 +25,23 @@ class SolrCollectionsToolWindowFactory : ToolWindowFactory, DumbAware {
      * @param toolWindow the tool window to fill
      */
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val panel = SolrCollectionsPanel(project)
-        val content = ContentFactory.getInstance().createContent(panel, null, false)
-        // Tied to the content rather than the project: the panel's lifetime is the tab's, and the
-        // scope it fetches on is a project service that outlives both deliberately.
-        content.setDisposer(panel)
-        toolWindow.contentManager.addContent(content)
+        val factory = ContentFactory.getInstance()
+
+        val collections = SolrCollectionsPanel(project)
+        // Tied to the content rather than the project: a panel's lifetime is its tab's, and the
+        // scope both fetch on is a project service that outlives them deliberately.
+        toolWindow.contentManager.addContent(
+            factory.createContent(collections, SolrBundle.message("collections.tab.title"), false)
+                .apply { setDisposer(collections) },
+        )
+
+        // A second tab rather than a second tool window: drift is about the same server the first
+        // tab is browsing, and splitting them would make a user hunt for the answer to a question
+        // the collections list just prompted.
+        val drift = SolrDriftPanel(project)
+        toolWindow.contentManager.addContent(
+            factory.createContent(drift, SolrBundle.message("drift.tab.title"), false)
+                .apply { setDisposer(drift) },
+        )
     }
 }
