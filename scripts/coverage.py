@@ -11,12 +11,14 @@ to do -- overstates the number the gate will apply, and did: three pull requests
 in a row were reported locally in the high eighties and arrived at the gate in
 the low eighties or below.
 
-Usage:
-    python3 scripts/coverage.py [path-prefix ...]
+There is a second trap under the first. The gate measures **new code** -- the
+lines this change touched -- not whole classes. A class sitting at 85% overall
+can have its changed lines far below that, so `--diff` is the mode to trust
+before pushing; the prefix mode answers a different and looser question.
 
-With no arguments, reports the whole project. With prefixes, reports only
-classes whose package path contains one of them, which is how to ask "what will
-the gate say about the code this change touches".
+Usage:
+    python3 scripts/coverage.py --diff [base]   # what the gate will say (default origin/main)
+    python3 scripts/coverage.py [path-prefix ...]  # whole classes, for orientation
 """
 
 import sys
@@ -87,5 +89,69 @@ def main(prefixes):
     return 0 if combined >= 80 else 1
 
 
+def changed_lines(base):
+    """The lines this branch adds or edits under src/main/kotlin, by file."""
+    import collections
+    import subprocess
+
+    lines = collections.defaultdict(set)
+    diff = subprocess.run(
+        ["git", "diff", "-U0", f"{base}...HEAD", "--", "src/main/kotlin"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    path = None
+    for line in diff.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[6:]
+        elif line.startswith("@@") and path:
+            span = line.split("+")[1].split("@@")[0].strip()
+            start = int(span.split(",")[0])
+            count = int(span.split(",")[1]) if "," in span else 1
+            lines[path].update(range(start, start + count))
+    return lines
+
+
+def diff_mode(base):
+    """Coverage of the changed lines alone, which is what the gate scores."""
+    changed = changed_lines(base)
+    if not changed:
+        print(f"no changed Kotlin sources against {base}")
+        return 0
+    tree = ET.parse(REPORT)
+    covered_lines = total_lines = covered_branches = total_branches = 0
+    uncovered = []
+    for package in tree.getroot().iter("package"):
+        for source in package.iter("sourcefile"):
+            path = f"src/main/kotlin/{package.get('name', '')}/{source.get('name')}"
+            if path not in changed:
+                continue
+            for line in source.findall("line"):
+                number = int(line.get("nr"))
+                if number not in changed[path]:
+                    continue
+                instructions = int(line.get("ci", 0))
+                missed, taken = int(line.get("mb", 0)), int(line.get("cb", 0))
+                total_lines += 1
+                if instructions > 0:
+                    covered_lines += 1
+                total_branches += missed + taken
+                covered_branches += taken
+                if instructions == 0 or missed > 0:
+                    why = "uncovered" if instructions == 0 else f"{missed} branches missed"
+                    uncovered.append((path, number, why))
+
+    for path, number, why in uncovered:
+        print(f"{path}:{number}  {why}")
+    combined = (covered_lines + covered_branches) / max(total_lines + total_branches, 1) * 100
+    print("-" * 92)
+    print(
+        f"CHANGED LINES: {combined:.1f}%   "
+        f"(lines {covered_lines}/{total_lines}, branches {covered_branches}/{total_branches})   gate is 80%"
+    )
+    return 0 if combined >= 80 else 1
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--diff"]:
+        sys.exit(diff_mode(sys.argv[2] if len(sys.argv) > 2 else "origin/main"))
     sys.exit(main(sys.argv[1:]))

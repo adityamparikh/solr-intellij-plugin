@@ -273,4 +273,21 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
         assertTrue(result.toString(), result is SolrResponse.TransportFailure)
         assertFalse("$requested", requested.any { it.contains("action=RELOAD") })
     }
+
+    /**
+     * A topology that arrived incomplete still says which mode the server is in.
+     *
+     * A partial answer is an answer: the mode came back, and refusing to read it would decline a
+     * write over a truncation that has nothing to do with the question asked.
+     */
+    fun testAPartialTopologyStillReportsTheMode() {
+        val url = givenServer(
+            systemInfo = """{"responseHeader":{"status":0},"mode":"std","partialResults":true}""",
+        )
+
+        val result = upload(url)
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertEquals(SolrConfigsetWriter.NOT_SOLR_CLOUD, (result as SolrResponse.TransportFailure).description)
+    }
 }

@@ -24,6 +24,7 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.table.DefaultTableModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.solr.ide.SolrBundle
@@ -85,6 +86,16 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         render(SolrDriftView.NotCompared)
     }
 
+    /**
+     * The toolbar's actions, so a test can ask each one whether it would be enabled.
+     *
+     * Enablement is the only thing telling a user why a button does nothing — every guard inside
+     * these actions returns quietly — so it is worth asserting through the action rather than
+     * through the predicate it happens to call.
+     */
+    internal lateinit var toolbarActions: DefaultActionGroup
+        private set
+
     private fun buildToolbar(): JComponent {
         val actions = DefaultActionGroup(
             object : DumbAwareAction(
@@ -92,7 +103,9 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
                 SolrBundle.message("drift.action.compare.description"),
                 com.intellij.icons.AllIcons.Actions.Diff,
             ) {
-                override fun actionPerformed(event: AnActionEvent) = compare()
+                override fun actionPerformed(event: AnActionEvent) {
+                    compare()
+                }
                 override fun update(event: AnActionEvent) {
                     event.presentation.isEnabled = canCompare()
                 }
@@ -103,13 +116,16 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
                 SolrBundle.message("drift.action.upload.description"),
                 com.intellij.icons.AllIcons.Actions.Upload,
             ) {
-                override fun actionPerformed(event: AnActionEvent) = uploadAndReload()
+                override fun actionPerformed(event: AnActionEvent) {
+                    uploadAndReload()
+                }
                 override fun update(event: AnActionEvent) {
                     event.presentation.isEnabled = canCompare()
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.EDT
             },
         )
+        toolbarActions = actions
         val bar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actions, true)
         bar.targetComponent = this
         return JPanel(FlowLayout(FlowLayout.LEFT, 4, 2)).apply {
@@ -139,14 +155,17 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      * The only thing that issues a request, so "on request and never otherwise" is a property of who
      * calls this rather than a rule spread through the panel.
      */
-    internal fun compare() {
-        val configset = configsetCombo.selectedItem as? SolrConfigset ?: return
-        val collection = collectionField.text.trim().ifEmpty { return }
-        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return
+    internal fun compare(): Job? {
+        val configset = configsetCombo.selectedItem as? SolrConfigset ?: return null
+        val collection = collectionField.text.trim().ifEmpty { return null }
+        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return null
 
         val repository = SolrConfigsetReader.getInstance(project).factsFor(configset)
         render(SolrDriftView.Comparing)
-        project.service<SolrCollectionsScope>().scope.launch {
+        // The job is returned so a caller that needs to know when the read finished can wait for it.
+        // Nothing in the UI does; a test does, and without it the only alternative is sleeping and
+        // hoping, which is how a suite acquires failures that depend on the machine it runs on.
+        return project.service<SolrCollectionsScope>().scope.launch {
             val response = SolrServerReader.getInstance(project).read(connection, collection)
             withContext(Dispatchers.EDT) {
                 render(driftViewFor(configset.name, collection, repository, response))
@@ -166,16 +185,16 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      * A reload follows the upload because a collection already running keeps the configset it
      * started with until told otherwise, so an upload alone changes nothing the drift view can see.
      */
-    internal fun uploadAndReload() {
-        val configset = configsetCombo.selectedItem as? SolrConfigset ?: return
-        val collection = collectionField.text.trim().ifEmpty { return }
-        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return
-        if (!confirmed(configset.name, collection, connection.displayName)) return
+    internal fun uploadAndReload(): Job? {
+        val configset = configsetCombo.selectedItem as? SolrConfigset ?: return null
+        val collection = collectionField.text.trim().ifEmpty { return null }
+        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return null
+        if (!confirmed(configset.name, collection, connection.displayName)) return null
 
         val archive = SolrConfigsetArchive.of(configset.root)
         val repository = SolrConfigsetReader.getInstance(project).factsFor(configset)
         render(SolrDriftView.Writing)
-        project.service<SolrCollectionsScope>().scope.launch {
+        return project.service<SolrCollectionsScope>().scope.launch {
             val view = writeThenCompare(connection, configset.name, collection, archive, repository)
             withContext(Dispatchers.EDT) { render(view) }
         }

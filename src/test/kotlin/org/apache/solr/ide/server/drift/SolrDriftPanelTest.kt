@@ -1,6 +1,8 @@
 package org.apache.solr.ide.server.drift
 
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.schema.SolrField
@@ -15,6 +17,14 @@ import org.apache.solr.ide.server.transport.SolrResponse
  * answers to the question a user opens this view to ask.
  */
 class SolrDriftPanelTest : SolrConfigsetTestCase() {
+
+    override fun tearDown() {
+        try {
+            TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+        } finally {
+            super.tearDown()
+        }
+    }
 
     private fun panel(): SolrDriftPanel {
         val created = SolrDriftPanel(project)
@@ -322,5 +332,129 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         assertFalse(renderer.text, renderer.text.contains("null"))
         assertTrue(renderer.text.isNotEmpty())
+    }
+
+    // --- each guard, one at a time -----------------------------------------------------------------
+
+    private fun givenConfigset(name: String = "books") {
+        myFixture.addFileToProject("$name/conf/managed-schema.xml", "<schema name=\"$name\"/>")
+        myFixture.addFileToProject("$name/conf/solrconfig.xml", "<config/>")
+    }
+
+    private fun givenConnection() {
+        connectionSettings.addConnection(
+            org.apache.solr.ide.server.connection.SolrConnection("c1", "local", "http://127.0.0.1:1/solr"),
+        )
+    }
+
+    /**
+     * Each action stops at the first thing it is missing, and each of the three is checked.
+     *
+     * These are separate branches, and an untested one is a guard that could check the wrong thing —
+     * or not check at all, and reach a request built from a null. They are also the only paths where
+     * doing nothing is the whole of the correct behaviour, which is precisely what nobody notices is
+     * broken.
+     */
+    fun testBothActionsStopWithNoConfigset() {
+        givenConnection()
+        val page = panel()
+        page.setCollection("books_prod")
+
+        page.compare()
+        page.uploadAndReload()
+
+        assertEmpty(page.rowNames)
+        assertNull(page.bannerMessage)
+    }
+
+    fun testBothActionsStopWithNoCollection() {
+        givenConnection()
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("")
+
+        page.compare()
+        page.uploadAndReload()
+
+        assertEmpty(page.rowNames)
+        assertNull(page.bannerMessage)
+    }
+
+    fun testBothActionsStopWithNoConnection() {
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+
+        page.compare()
+        page.uploadAndReload()
+
+        assertEmpty(page.rowNames)
+        assertNull(page.bannerMessage)
+    }
+
+    // --- what the toolbar says it will do ----------------------------------------------------------
+
+    private fun enablementOf(page: SolrDriftPanel): Map<String, Boolean> =
+        page.toolbarActions.childActionsOrStubs.associate { action ->
+            val event = com.intellij.testFramework.TestActionEvent.createTestEvent(action)
+            action.update(event)
+            (action.templatePresentation.text ?: "?") to event.presentation.isEnabled
+        }
+
+    /**
+     * Every button is disabled until there is something for it to do.
+     *
+     * An enabled button whose action returns quietly is the failure here: each guards on a missing
+     * connection, configset or collection, and enablement is the only thing telling a user which.
+     */
+    fun testEveryActionIsDisabledWithNothingChosen() {
+        val page = panel()
+
+        val enabled = enablementOf(page)
+
+        assertFalse(enabled.toString(), enabled.values.any { it })
+    }
+
+    fun testEveryActionIsEnabledOnceEverythingIsChosen() {
+        givenConnection()
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+
+        val enabled = enablementOf(page)
+
+        assertTrue(enabled.toString(), enabled.values.all { it })
+    }
+
+    // --- the whole path, past every guard ----------------------------------------------------------
+    //
+    // The coroutine these actions launch cannot be joined from here. This test case runs on the EDT,
+    // and the job completes by dispatching *to* the EDT to render — so awaiting it from a test
+    // deadlocks, reliably and immediately. What the job does is covered by testing `writeThenCompare`
+    // directly, which is why that function is reachable; what is left uncovered is the `launch`
+    // wrapper, and restructuring production code to reach it would be shaping the design around a
+    // coverage number.
+
+    /**
+     * Upload asks before writing, and a refusal writes nothing.
+     *
+     * The confirmation is the last thing standing between a keystroke and a live server, so a test
+     * that stubbed it away would be testing the path that matters least.
+     */
+    fun testCancellingTheConfirmationWritesNothing() {
+        givenConnection()
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+        TestDialogManager.setTestDialog(TestDialog.NO)
+
+        val job = page.uploadAndReload()
+
+        assertNull("a cancelled confirmation starts no work", job)
+        assertNull(page.bannerMessage)
     }
 }

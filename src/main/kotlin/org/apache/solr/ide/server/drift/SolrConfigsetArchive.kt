@@ -31,9 +31,8 @@ object SolrConfigsetArchive {
         val bytes = ByteArrayOutputStream()
         ZipOutputStream(bytes).use { zip ->
             filesUnder(root).forEach { file ->
-                val path = pathOf(root, file) ?: return@forEach
                 val content = runCatching { file.contentsToByteArray() }.getOrNull() ?: return@forEach
-                zip.putNextEntry(ZipEntry(path))
+                zip.putNextEntry(ZipEntry(pathOf(root, file)))
                 zip.write(content)
                 zip.closeEntry()
             }
@@ -53,8 +52,9 @@ object SolrConfigsetArchive {
             if (child.isDirectory) filesUnder(child) else listOf(child)
         }
 
-    private fun pathOf(root: VirtualFile, file: VirtualFile): String? {
-        val rootPath = root.path.trimEnd('/') + "/"
-        return file.path.removePrefix(rootPath).takeIf { it != file.path && it.isNotEmpty() }
-    }
+    // No guard against a file outside the root: `filesUnder` walks down from it and yields nothing
+    // else, so a check here would be one no input can fail — a branch that can only ever be half
+    // covered, and a reader's invitation to wonder what case it is for.
+    private fun pathOf(root: VirtualFile, file: VirtualFile): String =
+        file.path.removePrefix(root.path.trimEnd('/') + "/")
 }
