@@ -235,4 +235,92 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         assertEquals(listOf("still_missing"), page.rowNames)
         assertContainsElements(page.rowStates, "Not deployed")
     }
+
+    // --- the guards, which are where "nothing happens" is the correct behaviour --------------------
+
+    /**
+     * Pressing Compare with no connection configured does nothing at all.
+     *
+     * Each of these guards is a branch, and an untested guard is one that could `return` on the
+     * wrong condition — or not return at all, and reach a request with a null it never checked.
+     */
+    fun testComparingWithNoConnectionDoesNothing() {
+        val page = panel()
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("a")), emptyList())))
+
+        page.compare()
+
+        assertEquals("the previous comparison is left alone", listOf("a"), page.rowNames)
+    }
+
+    fun testUploadingWithNoConnectionDoesNothing() {
+        val page = panel()
+
+        page.uploadAndReload()
+
+        assertNull(page.bannerMessage)
+        assertEmpty(page.rowNames)
+    }
+
+    /** With no configset in the project there is nothing to compare, and no request is built. */
+    fun testComparingWithNoConfigsetDoesNothing() {
+        val page = panel()
+        page.reloadConfigsets()
+
+        page.compare()
+
+        assertEmpty(page.rowNames)
+    }
+
+    // --- small contracts that are user-visible when broken -----------------------------------------
+
+    /**
+     * The table is read-only.
+     *
+     * It shows what two servers say; typing into it would edit neither, and a cell that accepts a
+     * keystroke and discards it is worse than one that refuses.
+     */
+    fun testTheTableIsNotEditable() {
+        val page = panel()
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("a")), emptyList())))
+
+        assertFalse(page.isCellEditable(0, 0))
+        assertFalse(page.isCellEditable(0, 3))
+    }
+
+    /**
+     * Both actions are disabled until there is something to act on.
+     *
+     * An enabled button that silently does nothing is the failure here — every guard inside these
+     * actions returns quietly, so enablement is the only thing telling a user why.
+     */
+    fun testTheActionsAreDisabledWithNoConnection() {
+        val page = panel()
+
+        assertFalse("compare needs a connection", page.canAct())
+    }
+
+    fun testTheActionsAreEnabledOnceEverythingIsChosen() {
+        connectionSettings.addConnection(
+            org.apache.solr.ide.server.connection.SolrConnection("c1", "local", "http://127.0.0.1:1/solr"),
+        )
+        myFixture.addFileToProject("books/conf/managed-schema.xml", "<schema name=\"books\"/>")
+        myFixture.addFileToProject("books/conf/solrconfig.xml", "<config/>")
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+
+        assertTrue("everything is chosen: a connection, a configset and a collection", page.canAct())
+    }
+
+    /** A configset row is named as the user thinks of it, and a null renders as text, not "null". */
+    fun testTheConfigsetChooserNamesItsEntries() {
+        val renderer = SolrConfigsetComboRenderer()
+        val list = com.intellij.ui.components.JBList(com.intellij.ui.CollectionListModel<org.apache.solr.ide.configset.activation.SolrConfigset>())
+
+        renderer.getListCellRendererComponent(list, null, -1, false, false)
+
+        assertFalse(renderer.text, renderer.text.contains("null"))
+        assertTrue(renderer.text.isNotEmpty())
+    }
 }

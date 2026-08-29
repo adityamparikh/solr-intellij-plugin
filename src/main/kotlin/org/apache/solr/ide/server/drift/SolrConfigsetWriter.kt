@@ -50,6 +50,12 @@ class SolrConfigsetWriter(private val project: Project) {
         val mode = SolrServerReader.getInstance(project).topology(connection).let {
             (it as? SolrResponse.Success)?.value?.mode ?: (it as? SolrResponse.Partial)?.value?.mode
         }
+        // A mode that was read and is not SolrCloud refuses — including `UNKNOWN`, which means the
+        // server answered and would not say. Both supported lines always report one, so a server
+        // that does not is one this plugin has not identified, and guessing is worse for a write
+        // than for a read. A *null* mode is the other case entirely: nothing answered, so there is
+        // nothing to go on, and the upload's own failure will describe what actually happened
+        // rather than blaming a mode nobody could read.
         if (mode != null && mode != SolrServerMode.SOLR_CLOUD) {
             return SolrResponse.TransportFailure(NOT_SOLR_CLOUD)
         }

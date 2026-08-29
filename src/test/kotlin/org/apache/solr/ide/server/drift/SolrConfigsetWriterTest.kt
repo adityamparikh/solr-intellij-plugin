@@ -26,6 +26,7 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
     private val requested = mutableListOf<String>()
     private val bodies = mutableMapOf<String, ByteArray>()
     private var contentTypes = mutableListOf<String?>()
+    private var authorization: String? = null
 
     private val cloudSystemInfo = """{"responseHeader":{"status":0},"mode":"solrcloud"}"""
     private val standaloneSystemInfo = """{"responseHeader":{"status":0},"mode":"std"}"""
@@ -41,6 +42,7 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
             val path = exchange.requestURI.path
             requested += exchange.requestURI.toString()
             contentTypes += exchange.requestHeaders.getFirst("Content-Type")
+            authorization = authorization ?: exchange.requestHeaders.getFirst("Authorization")
             bodies[path] = exchange.requestBody.readBytes()
             when {
                 path.endsWith("/admin/info/system") -> respond(exchange, 200, systemInfo)
@@ -187,5 +189,88 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
         reload(givenServer())
 
         assertFalse("a reload needs no mode check: $requested", requested.any { it.contains("/admin/info/system") })
+    }
+
+    // --- the credential, and the branches around it ------------------------------------------------
+
+    /** A connection naming no user sends no authorization at all. */
+    fun testAnAnonymousConnectionSendsNoCredential() {
+        val url = givenServer()
+
+        upload(url)
+
+        assertNull(authorization)
+    }
+
+    /**
+     * A connection naming a user with nothing stored is refused before anything is sent.
+     *
+     * Solr reads `user:` as a *wrong* password rather than a missing one, so asking would turn a
+     * cleared PasswordSafe entry into an authentication failure against a server never properly
+     * asked. For a write that matters more than for a read.
+     */
+    fun testAConnectionWithNoStoredPasswordWritesNothing() {
+        val url = givenServer()
+        val authenticated = SolrConnection(id = "c1", displayName = "local", baseUrl = url, username = "solr")
+
+        val result = runBlocking { writer().upload(authenticated, "books", "zip".toByteArray()) }
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertFalse("nothing may be uploaded: $requested", requested.any { it.contains("action=UPLOAD") })
+    }
+
+    /** A stored password is sent, and the write proceeds. */
+    fun testAStoredPasswordIsSentWithTheWrite() {
+        val url = givenServer()
+        val authenticated = SolrConnection(id = "c1", displayName = "local", baseUrl = url, username = "solr")
+        connectionSettings.addConnection(authenticated)
+        connectionSettings.setPassword("c1", "SolrRocks".toCharArray())
+
+        runBlocking { writer().upload(authenticated, "books", "zip".toByteArray()) }
+
+        assertTrue("expected a Basic header, got $authorization", authorization?.startsWith("Basic ") == true)
+    }
+
+    /**
+     * A server that will not say which mode it is in is not written to.
+     *
+     * Both supported Solr lines always report a mode, so a server that does not is one this plugin
+     * has not identified — and refusing to guess is the same rule the topology reader follows, with
+     * more at stake. Reading the wrong thing shows a wrong list; writing to a server whose shape is
+     * unknown is a write nobody can predict the effect of.
+     */
+    fun testAServerOfUnknownModeIsNotWrittenTo() {
+        val url = givenServer(systemInfo = """{"responseHeader":{"status":0}}""")
+
+        val result = upload(url)
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertFalse("nothing may be uploaded: $requested", requested.any { it.contains("action=UPLOAD") })
+    }
+
+    /**
+     * A server that could not be reached at all is attempted anyway.
+     *
+     * The mode is unknown for a different reason there — nothing answered — and the upload's own
+     * failure will say so in terms of what actually happened, which is better than a refusal
+     * blaming a mode nobody could read.
+     */
+    fun testAServerThatCouldNotBeReachedIsStillAttempted() {
+        val url = givenServer(systemInfo = """<html>gateway timeout</html>""")
+
+        upload(url)
+
+        assertTrue("the upload must still be attempted: $requested", requested.any { it.contains("action=UPLOAD") })
+    }
+
+    /** A reload also resolves its credential, and an incomplete one stops it. */
+    fun testAReloadWithNoStoredPasswordSendsNothing() {
+        val url = givenServer()
+        val authenticated = SolrConnection(id = "c1", displayName = "local", baseUrl = url, username = "solr")
+
+        val result = runBlocking { writer().reload(authenticated, "books") }
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertFalse("$requested", requested.any { it.contains("action=RELOAD") })
     }
 }

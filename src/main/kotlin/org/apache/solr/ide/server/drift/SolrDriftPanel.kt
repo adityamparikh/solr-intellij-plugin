@@ -315,6 +315,17 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     internal val rowNames: List<String>
         get() = (0 until tableModel.rowCount).map { tableModel.getValueAt(it, 2) as String }
 
+    /** Whether a cell may be typed into; it may not, and a test says so. */
+    internal fun isCellEditable(row: Int, column: Int): Boolean = tableModel.isCellEditable(row, column)
+
+    /** Whether the toolbar's actions have everything they need — a connection, a configset, a collection. */
+    internal fun canAct(): Boolean = canCompare()
+
+    /** Sets the collection field, so a test can choose one without typing. */
+    internal fun setCollection(collection: String) {
+        collectionField.text = collection
+    }
+
     /** What the banner is saying, or null where it is hidden. */
     internal val bannerMessage: String? get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
 
