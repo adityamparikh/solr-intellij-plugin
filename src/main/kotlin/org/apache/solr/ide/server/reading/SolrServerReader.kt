@@ -77,6 +77,46 @@ class SolrServerReader(private val project: Project) {
     }
 
     /**
+     * What [connection] holds, in whichever vocabulary the server uses.
+     *
+     * **The mode is read before an endpoint is chosen, never by trying one and catching the
+     * refusal.** A standalone Solr answers every `/admin/collections` action with HTTP 400, so a
+     * reader that assumed the Collections API would report a hard failure against a healthy server —
+     * and catching that 400 would also swallow the genuinely different one a malformed request
+     * produces. The mode comes back from the same system-info call the version does, so asking costs
+     * nothing.
+     *
+     * A server that will not say which mode it is in is asked for neither, and the caller is told
+     * that rather than shown an empty list it cannot interpret.
+     *
+     * @param connection the server to ask
+     * @return its collections or its cores, or the failure that prevented reading either
+     */
+    suspend fun topology(connection: SolrConnection): SolrResponse<SolrTopology> {
+        val credential = credentialFor(connection)
+        val transport = SolrHttpTransport.getInstance(project)
+
+        val systemInfo = transport.get(connection.baseUrl, "/solr/admin/info/system", credential)
+        val mode = when (systemInfo) {
+            is SolrResponse.Success -> SolrTopologyReader.modeIn(systemInfo.value)
+            is SolrResponse.Partial -> SolrTopologyReader.modeIn(systemInfo.value)
+            else -> return systemInfo.map { SolrTopology(SolrServerMode.UNKNOWN) }
+        }
+
+        return when (mode) {
+            SolrServerMode.SOLR_CLOUD ->
+                transport.get(connection.baseUrl, "/solr/admin/collections?action=CLUSTERSTATUS", credential)
+                    .map { SolrTopologyReader.cloudTopologyIn(it) }
+            SolrServerMode.STANDALONE ->
+                transport.get(connection.baseUrl, "/solr/admin/cores?action=STATUS", credential)
+                    .map { SolrTopologyReader.standaloneTopologyIn(it) }
+            // Neither endpoint is asked, because one of them would fail and the other would answer
+            // in a vocabulary nothing has established the server uses.
+            SolrServerMode.UNKNOWN -> SolrResponse.Success(SolrTopology(SolrServerMode.UNKNOWN))
+        }
+    }
+
+    /**
      * The version the server reports, or null where it did not answer.
      *
      * Every failure is null here rather than an outcome, which is the whole reason it is a separate
