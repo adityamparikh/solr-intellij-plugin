@@ -60,6 +60,14 @@
          Phase 3 (SolrJ in Java/Kotlin) needs this unconditionally in any case. -->
     <depends>com.intellij.modules.java</depends>
 
+    <!-- The IDE's own HTTP Client, which is where saved Solr queries live and run. Hard rather
+         than optional, on the same grounds as the Java dependency above: `restClient` ships in the
+         same unified distribution this plugin targets and carries no `<product-descriptor>`, so it
+         is not separately licensed, and the condition is true in every IDE that would ever run this.
+         Written down because an unstated dependency is how a feature disappears on somebody's
+         machine for reasons nobody can reconstruct. -->
+    <depends>com.jetbrains.restClient</depends>
+
     <resource-bundle>messages.SolrBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -75,6 +83,14 @@
 
              Under the Tools group, which is where the other server-backed tools in the IDE put
              theirs, and not under Languages & Frameworks — nothing here affects how a file is read. -->
+        <!-- Starting requests for querying Solr, offered in the HTTP Client's Add Request menu.
+             This is another plugin's extension point rather than platform API: it may be
+             undocumented and may change between releases, and `verifyPlugin` against every entry in
+             `verifiedIdeBuilds` is what makes such a change fail a pull request raising the target
+             rather than a user's editor. -->
+        <httpClient.addRequestTemplateProvider
+                implementation="org.apache.solr.ide.server.query.SolrRequestTemplateProvider"/>
+
         <!-- What the selected server actually holds. Under `toolWindow` rather than a dialog because
              browsing a topology is something a developer does alongside editing a configset, not
              instead of it. `anchor="right"` keeps it out of the way of the Project view, which is

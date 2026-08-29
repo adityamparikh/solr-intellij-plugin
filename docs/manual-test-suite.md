@@ -734,6 +734,16 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       would be false. `_root_` shows `(unstored field)` rather than decoded flags.
 - [ ] **SRV-10** — Collapsing and re-expanding a **Fields** row does not re-read the server; only
       Refresh does. Watch Solr's request log to confirm rather than inferring it from the screen.
+- [ ] **SRV-11** — Create a file called `queries.http` in the project. Press **Add Request** (the `+`
+      in the gutter, or Alt-Insert): a **Solr** group offers five starting requests. Insert *Query a
+      Solr collection*. **The menu labels must read as labels** — a whole request body appearing
+      where a label belongs is what a swapped `TemplateDescriptor` argument looks like, and it
+      compiles and ships perfectly.
+- [ ] **SRV-12** — Beside it create `http-client.env.json` holding
+      `{"local": {"solrUrl": "http://localhost:8983/solr", "collection": "books"}}`, pick **local**
+      from the environment chooser, and run the request. Results render in the HTTP Client's own
+      response viewer. **The point of the check is that the committed file names no host** — the
+      environment does, which is what lets a colleague clone the repository and use their own server.
 
 ## Not yet in the suite
 

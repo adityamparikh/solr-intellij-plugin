@@ -803,10 +803,28 @@ Client's editor rather than reimplementing it:
 
 **These are another plugin's extension points, not platform API.** They are declared by a JetBrains
 plugin whose reasoning is not published, they may be undocumented, and they may change between
-releases. That is the same exposure [FR-2](#requirements) accepts for Jackson 3, and it is accepted for
-the same reason and under the same gate: `verifyPlugin` runs against every entry in `verifiedIdeBuilds`
-in CI, so an IDE that removed or changed one fails the pull request raising the target rather than a
-user's editor. If that gate is weakened, this decision is revisited rather than inherited.
+releases. That is the same exposure [FR-2](#requirements) accepts for Jackson 3.
+
+**The gate this requirement originally named does not close it, and that was checked rather than
+assumed.** An earlier revision said the exposure was accepted "under the same gate: `verifyPlugin`
+runs against every entry in `verifiedIdeBuilds` in CI, so an IDE that removed or changed one fails the
+pull request raising the target." It does not. With `httpClient.addRequestTemplateProvider` renamed in
+`plugin.xml` to `httpClient.thisExtensionPointDoesNotExist`, the Plugin Verifier's verdict is
+**`Compatible`** and the task succeeds: it verifies API compatibility of *classes*, not that a
+descriptor's extension point names resolve. This is the same gap `SolrPluginDescriptorTest` was
+written to close for class names — a registration names its target as a string, so a wrong one
+compiles, ships, and contributes nothing.
+
+The failure that gap admits is the quiet kind. The plugin loads, nothing errors, and a menu entry
+simply never appears — in a menu belonging to another plugin, which nobody checks after a change they
+did not make to it.
+
+**So the gate is `SolrHttpClientContractTest`**, which walks `plugin.xml` for every `httpClient.*`
+registration, asserts the IDE actually declares each point, and asserts this plugin's contribution is
+present in the point's extension list. Discovered by walking rather than listed, for the reason
+[NFR-1](#requirements) gives about allowlists. `verifyPlugin` remains valuable for what it does check
+and is not the answer to this. If *that* test is weakened, this decision is revisited rather than
+inherited.
 
 **What is not delegated is the reader.** [FR-1](#requirements) keeps the plugin's own traffic on
 `java.net.http.HttpClient`, because a schema fetch is not a request anybody authored and the HTTP
