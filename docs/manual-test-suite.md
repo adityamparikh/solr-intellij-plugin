@@ -790,6 +790,16 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       upload succeeds and the table must still show drift**, because the view reports what the
       re-read found rather than what the write returned. A cleared table here is the defect this
       whole path is built to prevent.
+- [ ] **SRV-25** — Produce a **Differs** row and select it. The pane below shows **the reason first**
+      and the `replace-field` request under it, and **Apply Additive Changes** is disabled. A reader
+      who meets the JSON before the warning may copy it, so the order is part of the check.
+- [ ] **SRV-26** — Produce a **Not deployed** row, select it to see its `add-field` payload, and
+      press **Apply Additive Changes**. Confirm names the count, the collection and the server. After
+      applying, the row is gone and the summary says the two agree **and how many declarations
+      agreed** — that count is what distinguishes a comparison that ran from one that did not.
+- [ ] **SRV-27** — Make the only difference a **Differs** row. **Apply Additive Changes is disabled**
+      — a comparison with nothing additive in it offers no button at all, which is the honest reading
+      of "only additive changes get the second action".
 
 ## Not yet in the suite
 

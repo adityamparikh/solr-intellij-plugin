@@ -52,7 +52,7 @@ class SolrDriftWriteTest : SolrConfigsetTestCase() {
      *
      * @param uploadStatus what the upload answers with
      */
-    private fun givenServer(schemaAfterWrite: String, uploadStatus: Int = 200): String {
+    private fun givenServer(schemaAfterWrite: String, uploadStatus: Int = 200, schemaWriteStatus: Int = 200): String {
         val started = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         started.createContext("/") { exchange ->
             val uri = exchange.requestURI
@@ -66,6 +66,10 @@ class SolrDriftWriteTest : SolrConfigsetTestCase() {
                 uri.path.endsWith("/admin/configs") ->
                     if (uploadStatus == 200) respond(exchange, 200, """{"responseHeader":{"status":0}}""")
                     else respond(exchange, uploadStatus, """{"error":{"msg":"Configset upload refused"}}""")
+                // A POST to /schema is a Schema API write; a GET is the read that follows it.
+                uri.path.endsWith("/schema") && exchange.requestMethod == "POST" ->
+                    if (schemaWriteStatus == 200) respond(exchange, 200, """{"responseHeader":{"status":0}}""")
+                    else respond(exchange, schemaWriteStatus, """{"error":{"msg":"Field type 'nope' not found."}}""")
                 uri.path.endsWith("/schema") -> respond(exchange, 200, schemaAfterWrite)
                 else -> respond(exchange, 200, """{"responseHeader":{"status":0}}""")
             }
@@ -169,5 +173,56 @@ class SolrDriftWriteTest : SolrConfigsetTestCase() {
         writeThenCompare(url, repositoryDeclaring("id"))
 
         assertFalse("the reload must not run: $requested", requested.any { it.contains("action=RELOAD") })
+    }
+
+    // --- applying additive changes through the Schema API ------------------------------------------
+
+    private fun applyThenCompare(url: String, request: String, repository: SolrConfigsetFacts) = runBlocking {
+        panel().applyThenCompare(
+            connection(url),
+            configsetName = "books",
+            collection = "books_prod",
+            request = request,
+            repository = repository,
+        )
+    }
+
+    /**
+     * The change is posted to the collection's Schema API, and the result comes from a fresh read.
+     *
+     * Same discipline as the upload path: Solr answering a write is not proof it now agrees.
+     */
+    fun testAnAppliedChangeIsPostedAndThenReadBack() {
+        val url = givenServer(schemaAfterWrite = schemaWith("id", "title"))
+
+        val view = applyThenCompare(url, """{"add-field":[{"name":"title","type":"string"}]}""", repositoryDeclaring("id", "title"))
+
+        assertTrue(view.toString(), view is SolrDriftView.Compared)
+        assertTrue((view as SolrDriftView.Compared).drift.isClean)
+        assertTrue("expected a schema read after the write: $requested", requested.count { it.endsWith("/schema") } >= 2)
+    }
+
+    /**
+     * A change Solr accepted that did not take still shows as drift.
+     *
+     * The server answers the write with success and then serves a schema that has not changed.
+     */
+    fun testAnAcceptedChangeThatDidNotTakeStillShowsDrift() {
+        val url = givenServer(schemaAfterWrite = schemaWith("id"))
+
+        val view = applyThenCompare(url, """{"add-field":[{"name":"title","type":"string"}]}""", repositoryDeclaring("id", "title"))
+
+        assertTrue(view.toString(), view is SolrDriftView.Compared)
+        assertEquals(listOf("title"), (view as SolrDriftView.Compared).drift.entries.map { it.name })
+    }
+
+    /** A refused change is reported in Solr's words and nothing is compared. */
+    fun testARefusedSchemaChangeIsReported() {
+        val url = givenServer(schemaAfterWrite = schemaWith("id"), schemaWriteStatus = 400)
+
+        val view = applyThenCompare(url, """{"add-field":[{"name":"title","type":"nope"}]}""", repositoryDeclaring("id"))
+
+        assertTrue(view.toString(), view is SolrDriftView.Failed)
+        assertTrue((view as SolrDriftView.Failed).message, view.message.contains("Field type"))
     }
 }

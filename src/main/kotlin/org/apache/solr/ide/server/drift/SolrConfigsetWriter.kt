@@ -62,7 +62,7 @@ class SolrConfigsetWriter(private val project: Project) {
 
         val path = "/solr/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
         return SolrHttpTransport.getInstance(project)
-            .post(connection.baseUrl, path, archive, credentialFor(connection))
+            .post(connection.baseUrl, path, archive, SolrHttpTransport.OCTET_STREAM, credentialFor(connection))
             .map { }
     }
 
@@ -83,6 +83,37 @@ class SolrConfigsetWriter(private val project: Project) {
             .get(
                 connection.baseUrl,
                 "/solr/admin/collections?action=RELOAD&name=${encode(collection)}",
+                credentialFor(connection),
+            )
+            .map { }
+
+    /**
+     * Posts [request] to [collection]'s Schema API.
+     *
+     * **What it sends is whatever it is handed**, and the decision about what may be sent lives in
+     * [SolrSchemaApi] rather than here. That separation matters: the rule protecting the index is
+     * about which commands are safe, and a writer that also decided would be a second place for that
+     * judgement to live and a second place for it to be got wrong.
+     *
+     * Works against a standalone server as well as SolrCloud — the Schema API belongs to a core or a
+     * collection, unlike the ConfigSets API, so there is no mode to check.
+     *
+     * @param connection the server to write to
+     * @param collection the collection whose schema to change
+     * @param request the Schema API request body, as [SolrSchemaApi.requestFor] builds it
+     * @return what Solr answered, which is not on its own proof the server now agrees
+     */
+    suspend fun applySchemaChanges(
+        connection: SolrConnection,
+        collection: String,
+        request: String,
+    ): SolrResponse<Unit> =
+        SolrHttpTransport.getInstance(project)
+            .post(
+                connection.baseUrl,
+                "/solr/${encode(collection)}/schema",
+                request.toByteArray(),
+                SolrHttpTransport.JSON,
                 credentialFor(connection),
             )
             .map { }

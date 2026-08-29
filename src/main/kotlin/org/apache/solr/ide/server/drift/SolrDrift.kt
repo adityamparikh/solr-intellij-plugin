@@ -39,6 +39,10 @@ enum class SolrDriftKind {
  * @property agreement how the two sources relate
  * @property repository the configset's version rendered for display, or null where it declares none
  * @property server the server's version rendered for display, or null where it has none
+ * @property change the Schema API request that would close this difference, or null where the API
+ *   has nothing to say about it. Present on rows this plugin declines to apply as well as on the
+ *   ones it will — reading what *would* be sent is the point, and a refusal that showed nothing
+ *   would be the disabled button with a tooltip this design rejects
  */
 data class SolrDriftEntry(
     val kind: SolrDriftKind,
@@ -46,6 +50,7 @@ data class SolrDriftEntry(
     val agreement: SolrAgreement,
     val repository: String? = null,
     val server: String? = null,
+    val change: SolrSchemaApiChange? = null,
 )
 
 /**
@@ -127,6 +132,7 @@ data class SolrDrift(
             agreement = fact.agreement,
             repository = fact.repository?.let(describe),
             server = fact.server?.let(describe),
+            change = SolrSchemaApi.changeFor(fact.agreement, fact.repository, fact.server),
         )
 
         private fun describeField(field: SolrField): String = buildList {

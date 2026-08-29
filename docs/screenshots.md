@@ -529,6 +529,65 @@ discipline.
 
 ---
 
+### 19. The drift view — three kinds of difference — `19-drift-three-states.png`
+
+**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-19.
+
+**Shows** the whole claim of the drift view in one frame: a configset compared against a collection,
+with all three states visible at once — a row reading *Not deployed*, one reading *Only on server*,
+and one reading *Differs* whose **In the configset** and **On the server** columns hold different
+text. The summary line above must name both sides and the counts.
+
+**A frame showing only one state proves much less than it appears to.** The reason both columns exist
+is that a `DISAGREEING` fact must never be resolved to one side, and only a *Differs* row with two
+populated cells shows that it was not.
+
+**Capture** add a field to `demo/books/conf/managed-schema.xml` and do not deploy it; add a second
+field to the collection through the Schema API and not to the configset; change a third field's
+`stored` in the configset only. Compare, and frame the table with the summary line above it.
+
+**Redo when** the state labels change, or a column is added or removed.
+
+**Verifies** [SRV-19](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 20. A refused change, and why — `20-drift-refused-payload.png`
+
+**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-25.
+
+**Shows** a *Differs* row selected, with the payload pane below it holding the refusal reason **first**
+and the `replace-field` request underneath. The ordering is the point: a reader who meets the JSON
+before the warning may copy it.
+
+**This is the image that documents a deliberate omission**, which is the hardest kind of behaviour to
+show. The absence of an enabled Apply button proves nothing on its own — a viewer cannot tell a
+refusal from a bug. The reason text is what makes the refusal legible as a decision.
+
+**Capture** produce a *Differs* row as in entry 19, select it, and frame the table row together with
+the payload pane. Include the toolbar so the disabled state of **Apply Additive Changes** is visible.
+
+**Redo when** the refusal wording changes, or the payload pane moves.
+
+**Verifies** [SRV-25](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 21. An addition, applied — `21-drift-apply-before.png` / `21-drift-apply-after.png`
+
+**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-26.
+
+**Shows** a pair. Before: a *Not deployed* row selected, its `add-field` payload in the pane, **Apply
+Additive Changes** enabled. After: the same comparison re-run, with that row gone and the summary
+saying the two agree.
+
+**The pair is the evidence, not either half.** The after frame alone cannot distinguish a comparison
+that succeeded from one that was never run — which is exactly the ambiguity the summary's agreeing
+count exists to resolve, so that count must be legible in the second frame.
+
+**Capture** add a field to the configset, compare, select the row, capture; apply, and capture the
+result without touching the choosers.
+
+**Redo when** the summary wording changes, or the apply flow gains a step.
+
+**Verifies** [SRV-26](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
 ## Not yet capturable
 
 These have no gesture that does anything yet, or shipped but has not been captured. An entry moves up

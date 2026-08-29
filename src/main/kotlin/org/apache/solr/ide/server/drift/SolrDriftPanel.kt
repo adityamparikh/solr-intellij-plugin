@@ -68,6 +68,15 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     private val table = JBTable(tableModel)
     private val banner = JBLabel()
     private val configsetCombo = JComboBox<SolrConfigset>()
+
+    // The rows behind the table, so a selected row can be asked what request it would send. The
+    // table model holds rendered text; the entries hold the change.
+    private val shownEntries = mutableListOf<SolrDriftEntry>()
+    private val payloadArea = com.intellij.ui.components.JBTextArea().apply {
+        isEditable = false
+        lineWrap = false
+        emptyText.text = SolrBundle.message("drift.payload.none")
+    }
     private val collectionField = com.intellij.ui.components.JBTextField(20)
 
     init {
@@ -76,10 +85,20 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         configsetCombo.renderer = SolrConfigsetComboRenderer()
 
         toolbar = buildToolbar()
+        // Selecting a row shows the request that would close it. Reading what a tool would do
+        // before deciding is the whole reason a refused row still carries a payload.
+        table.selectionModel.addListSelectionListener { if (!it.valueIsAdjusting) showPayloadForSelection() }
+
         setContent(
             JPanel(BorderLayout()).apply {
                 add(banner, BorderLayout.NORTH)
-                add(JBScrollPane(table), BorderLayout.CENTER)
+                add(
+                    com.intellij.ui.JBSplitter(true, 0.6f).apply {
+                        firstComponent = JBScrollPane(table)
+                        secondComponent = JBScrollPane(payloadArea)
+                    },
+                    BorderLayout.CENTER,
+                )
             },
         )
         reloadConfigsets()
@@ -121,6 +140,20 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
                 }
                 override fun update(event: AnActionEvent) {
                     event.presentation.isEnabled = canCompare()
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.EDT
+            },
+            object : DumbAwareAction(
+                SolrBundle.message("drift.action.apply"),
+                SolrBundle.message("drift.action.apply.description"),
+                com.intellij.icons.AllIcons.Actions.Commit,
+            ) {
+                override fun actionPerformed(event: AnActionEvent) = applyAdditive()
+                override fun update(event: AnActionEvent) {
+                    // Enabled only where there is something this plugin will actually send. A
+                    // comparison of nothing but type changes offers no button, which is the honest
+                    // reading of "only additive changes get the second action".
+                    event.presentation.isEnabled = canCompare() && applicableChanges().isNotEmpty()
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.EDT
             },
@@ -239,6 +272,84 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         )
     }
 
+    /** The changes the current comparison offers to send. */
+    internal fun applicableChanges(): List<SolrSchemaApiChange> =
+        shownEntries.mapNotNull { it.change }.filter { it.applicable }
+
+    /**
+     * Sends the additive changes the comparison found, then compares again.
+     *
+     * **Only what the rows say is applicable is sent**, and the request is the one shown. A
+     * `replace-field` is never in it however the comparison arrived — Solr would accept it and
+     * report success while every indexed document kept its old encoding.
+     *
+     * The comparison that follows comes from a fresh read, for the reason the upload path already
+     * obeys: an accepted request is not proof the server agrees.
+     */
+    internal fun applyAdditive() {
+        val configset = configsetCombo.selectedItem as? SolrConfigset ?: return
+        val collection = collectionField.text.trim().ifEmpty { return }
+        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return
+        val request = SolrSchemaApi.requestFor(applicableChanges()) ?: return
+        if (!confirmedApply(applicableChanges().size, collection, connection.displayName)) return
+
+        val repository = SolrConfigsetReader.getInstance(project).factsFor(configset)
+        render(SolrDriftView.Writing)
+        project.service<SolrCollectionsScope>().scope.launch {
+            val view = applyThenCompare(connection, configset.name, collection, request, repository)
+            withContext(Dispatchers.EDT) { render(view) }
+        }
+    }
+
+    /**
+     * Posts [request] to the collection's Schema API, then reads the collection back and compares.
+     *
+     * Reachable for the same reason `writeThenCompare` is: the sequence is what is worth testing and
+     * none of it needs a screen.
+     *
+     * @param connection the server to write to
+     * @param configsetName the configset being compared, for attributing the result
+     * @param collection the collection whose schema to change
+     * @param request the Schema API request body
+     * @param repository the facts the configset declares
+     * @return the failure that stopped the write, or the comparison that followed it
+     */
+    internal suspend fun applyThenCompare(
+        connection: SolrConnection,
+        configsetName: String,
+        collection: String,
+        request: String,
+        repository: SolrConfigsetFacts,
+    ): SolrDriftView {
+        val written = SolrConfigsetWriter.getInstance(project).applySchemaChanges(connection, collection, request)
+        failureMessageFor(written)?.let { return SolrDriftView.Failed(it) }
+        return driftViewFor(
+            configsetName,
+            collection,
+            repository,
+            SolrServerReader.getInstance(project).read(connection, collection),
+        )
+    }
+
+    private fun confirmedApply(count: Int, collection: String, server: String): Boolean =
+        MessageDialogBuilder.yesNo(
+            SolrBundle.message("drift.confirmApply.title"),
+            SolrBundle.message("drift.confirmApply.message", count, collection, server),
+        ).ask(project)
+
+    /** Shows the request the selected row would send, and why it is not offered where it is not. */
+    private fun showPayloadForSelection() {
+        val entry = shownEntries.getOrNull(table.selectedRow)
+        val change = entry?.change
+        payloadArea.text = when {
+            change == null -> ""
+            change.applicable -> change.payload
+            // The reason comes first: a reader who sees the JSON before the warning may act on it.
+            else -> SolrBundle.message("drift.payload.declined", change.declined.orEmpty()) + "\n\n" + change.payload
+        }
+        payloadArea.caretPosition = 0
+    }
+
     /**
      * Asks before writing, naming what will be written and where.
      *
@@ -259,6 +370,8 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      */
     internal fun render(view: SolrDriftView) {
         tableModel.rowCount = 0
+        shownEntries.clear()
+        payloadArea.text = ""
         when (view) {
             SolrDriftView.NotCompared -> show(SolrBundle.message("drift.empty.notCompared"), null)
             SolrDriftView.Comparing -> show(SolrBundle.message("drift.empty.comparing"), null)
@@ -267,6 +380,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
             // banner, which would read as the failure being partial when nothing was compared.
             is SolrDriftView.Failed -> show(SolrBundle.message("drift.empty.failed"), view.message, failed = true)
             is SolrDriftView.Compared -> {
+                shownEntries += view.drift.entries
                 view.drift.entries.forEach { entry ->
                     tableModel.addRow(
                         arrayOf(
@@ -343,6 +457,14 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     /** Sets the collection field, so a test can choose one without typing. */
     internal fun setCollection(collection: String) {
         collectionField.text = collection
+    }
+
+    /** What the payload pane is showing for the selected row. */
+    internal val payloadText: String get() = payloadArea.text
+
+    /** Selects the row at [index], as clicking it would. */
+    internal fun selectRow(index: Int) {
+        table.selectionModel.setSelectionInterval(index, index)
     }
 
     /** What the banner is saying, or null where it is hidden. */
