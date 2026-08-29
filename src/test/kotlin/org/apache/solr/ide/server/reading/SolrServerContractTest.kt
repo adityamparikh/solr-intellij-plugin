@@ -220,7 +220,7 @@ class SolrServerContractTest {
         assertEquals(SolrServerMode.STANDALONE, topology.mode)
         assertTrue(
             "expected a core, got ${topology.cores.map { it.name }}",
-            topology.cores.any { it.name == "standalone_core" },
+            topology.cores.any { it.name == STANDALONE_CORE },
         )
         assertTrue("a standalone server has no collections", topology.collections.isEmpty())
     }
@@ -243,6 +243,9 @@ class SolrServerContractTest {
         const val COLLECTION = "contract"
 
         /** Solr's port inside the image, which a plain container has to be told about. */
+        /** The core the standalone container precreates, named once so the wait and the test agree. */
+        private const val STANDALONE_CORE: String = "standalone_core"
+
         const val SOLR_PORT = 8983
 
         /**
@@ -311,8 +314,16 @@ class SolrServerContractTest {
 
             standalone = GenericContainer(DockerImageName.parse("solr:10.0.0"))
                 .withExposedPorts(SOLR_PORT)
-                .withCommand("solr-precreate", "standalone_core")
-                .waitingFor(Wait.forHttp("/solr/admin/info/system").forPort(SOLR_PORT).forStatusCode(200))
+                .withCommand("solr-precreate", STANDALONE_CORE)
+                // **Waits for the core, not for Solr.** `/admin/info/system` answers 200 as soon as
+                // Jetty is up, which is before `solr-precreate` has finished creating the core — so
+                // a container reported ready on that signal can still fail a test that asks what
+                // cores exist, and did: one CI run saw the mode read correctly and the core list
+                // come back empty. A core's own ping handler answers only once the core is loaded,
+                // which is the condition these tests actually depend on.
+                .waitingFor(
+                    Wait.forHttp("/solr/$STANDALONE_CORE/admin/ping").forPort(SOLR_PORT).forStatusCode(200),
+                )
             standalone.start()
         }
 

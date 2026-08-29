@@ -24,6 +24,14 @@ sealed interface SolrDriftView {
     data object Comparing : SolrDriftView
 
     /**
+     * A write is in flight, to be followed by a fresh comparison.
+     *
+     * Distinct from [Comparing] because the two say different things about what the server is
+     * doing, and a user watching a write wants to know a write is what they are watching.
+     */
+    data object Writing : SolrDriftView
+
+    /**
      * A comparison ran, and this is what it found.
      *
      * @property configset the configset compared, named so the answer can be attributed
