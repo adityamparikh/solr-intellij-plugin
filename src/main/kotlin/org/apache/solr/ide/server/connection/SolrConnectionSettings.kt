@@ -74,7 +74,37 @@ class SolrConnectionSettings :
     class State : BaseState() {
         /** The configured connections, in the order they were added. */
         val connections: MutableList<ConnectionState> by list()
+
+        /** The identifier of the connection chosen as the default, or null where none was chosen. */
+        var selectedConnectionId: String? by string()
     }
+
+    /**
+     * The connection chosen as this project's default, by identifier.
+     *
+     * The default rather than the only one: per the specification, each server-backed surface may
+     * override it, because a drift view and a query console legitimately point at different servers.
+     */
+    var selectedConnectionId: String?
+        get() = state.selectedConnectionId
+        set(value) {
+            state.selectedConnectionId = value
+        }
+
+    /**
+     * The connection the default resolves to, or null where there are none configured.
+     *
+     * **Falls back to the first connection rather than resolving to nothing**, in two cases that
+     * both reach users. Nothing is chosen at all until someone chooses — and a developer who
+     * configured exactly one server has expressed their preference by doing so, so asking them to
+     * also pick it from a list would be the plugin asking a question it can answer. And a chosen
+     * identifier can name a connection that no longer exists, because the workspace file is
+     * hand-editable and outlives any particular list; resolving that to nothing would show an empty
+     * tool window on a project that has servers configured, which reads as broken rather than as
+     * unchosen.
+     */
+    val selectedConnection: SolrConnection?
+        get() = connections.firstOrNull { it.id == state.selectedConnectionId } ?: connections.firstOrNull()
 
     /**
      * The configured connections, in the order they were added.
@@ -142,6 +172,10 @@ class SolrConnectionSettings :
      */
     fun removeConnection(id: String) {
         state.connections.removeAll { it.id == id }
+        // Cleared with the connection rather than left dangling: a selection naming nothing resolves
+        // by falling back, so leaving it would make the fallback permanent and silently ignore the
+        // next connection the user actually chooses under that same stale id.
+        if (state.selectedConnectionId == id) state.selectedConnectionId = null
         setPassword(id, null)
     }
 

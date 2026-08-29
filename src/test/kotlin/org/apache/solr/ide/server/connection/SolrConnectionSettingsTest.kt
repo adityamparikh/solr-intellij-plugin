@@ -116,4 +116,68 @@ class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
         connectionSettings.addConnection(local)
         assertTrue(settings.manualRoots.isEmpty())
     }
+
+    // --- which connection a surface uses ----------------------------------------------------------
+
+    /**
+     * With nothing chosen and one connection configured, that connection is the one.
+     *
+     * A user who has configured exactly one server has expressed a preference by doing so, and
+     * making them also pick it from a list would be the plugin asking a question it can answer.
+     */
+    fun testTheOnlyConnectionIsSelectedWithoutBeingChosen() {
+        connectionSettings.addConnection(local)
+
+        assertEquals("local", connectionSettings.selectedConnection?.id)
+    }
+
+    fun testNoConnectionsMeansNoSelection() {
+        assertNull(connectionSettings.selectedConnection)
+    }
+
+    fun testAChosenConnectionIsTheSelectedOne() {
+        connectionSettings.addConnection(local)
+        connectionSettings.addConnection(local.copy(id = "other", baseUrl = "http://elsewhere:8983/solr"))
+
+        connectionSettings.selectedConnectionId = "other"
+
+        assertEquals("other", connectionSettings.selectedConnection?.id)
+    }
+
+    /**
+     * A selection naming a connection that no longer exists falls back rather than resolving to
+     * nothing.
+     *
+     * The workspace file outlives any particular connection list — it is hand-editable, and a
+     * connection can be removed from a second IDE window. Resolving to nothing there would show an
+     * empty tool window on a project that has servers configured, which reads as broken.
+     */
+    fun testASelectionNamingNothingFallsBackToTheFirstConnection() {
+        connectionSettings.addConnection(local)
+        connectionSettings.selectedConnectionId = "deleted-long-ago"
+
+        assertEquals("local", connectionSettings.selectedConnection?.id)
+    }
+
+    /** Removing the selected connection drops the selection with it. */
+    fun testRemovingTheSelectedConnectionClearsTheSelection() {
+        connectionSettings.addConnection(local)
+        connectionSettings.selectedConnectionId = "local"
+
+        connectionSettings.removeConnection("local")
+
+        assertNull(connectionSettings.selectedConnectionId)
+        assertNull(connectionSettings.selectedConnection)
+    }
+
+    /** Removing a connection that was not selected leaves the selection alone. */
+    fun testRemovingAnotherConnectionKeepsTheSelection() {
+        connectionSettings.addConnection(local)
+        connectionSettings.addConnection(local.copy(id = "other"))
+        connectionSettings.selectedConnectionId = "local"
+
+        connectionSettings.removeConnection("other")
+
+        assertEquals("local", connectionSettings.selectedConnectionId)
+    }
 }
