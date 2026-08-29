@@ -101,6 +101,8 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
      * @param baseUrl the server root
      * @param path the path to request, beginning with a slash
      * @param body the bytes to send
+     * @param contentType what the body is. A configset upload is opaque bytes; a Schema API request
+     *   is JSON, and telling Solr which is which is cheaper than relying on it to work that out
      * @param credential what to authenticate as
      * @return the outcome, classified exactly as [get]'s is
      */
@@ -108,10 +110,11 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         baseUrl: String,
         path: String,
         body: ByteArray,
+        contentType: String = OCTET_STREAM,
         credential: SolrCredential = SolrCredential.None,
     ): SolrResponse<JsonNode> {
         return send(baseUrl, path, credential) {
-            it.header("Content-Type", "application/octet-stream")
+            it.header("Content-Type", contentType)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))
         }
     }
@@ -214,6 +217,12 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
 
     /** Service lookup. */
     companion object {
+
+        /** An opaque body, which is what a configset archive is. */
+        const val OCTET_STREAM: String = "application/octet-stream"
+
+        /** A JSON body, which is what a Schema API request is. */
+        const val JSON: String = "application/json"
 
         /**
          * The transport for [project].

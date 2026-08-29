@@ -355,19 +355,20 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
      * doing nothing is the whole of the correct behaviour, which is precisely what nobody notices is
      * broken.
      */
-    fun testBothActionsStopWithNoConfigset() {
+    fun testEachActionStopsWithNoConfigset() {
         givenConnection()
         val page = panel()
         page.setCollection("books_prod")
 
         page.compare()
         page.uploadAndReload()
+        page.applyAdditive()
 
         assertEmpty(page.rowNames)
         assertNull(page.bannerMessage)
     }
 
-    fun testBothActionsStopWithNoCollection() {
+    fun testEachActionStopsWithNoCollection() {
         givenConnection()
         givenConfigset()
         val page = panel()
@@ -376,12 +377,13 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         page.compare()
         page.uploadAndReload()
+        page.applyAdditive()
 
         assertEmpty(page.rowNames)
         assertNull(page.bannerMessage)
     }
 
-    fun testBothActionsStopWithNoConnection() {
+    fun testEachActionStopsWithNoConnection() {
         givenConfigset()
         val page = panel()
         page.reloadConfigsets()
@@ -389,6 +391,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         page.compare()
         page.uploadAndReload()
+        page.applyAdditive()
 
         assertEmpty(page.rowNames)
         assertNull(page.bannerMessage)
@@ -417,7 +420,14 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         assertFalse(enabled.toString(), enabled.values.any { it })
     }
 
-    fun testEveryActionIsEnabledOnceEverythingIsChosen() {
+    /**
+     * Choosing everything enables reading and redeploying, and not applying.
+     *
+     * Apply is the one action that also needs a *result* — a comparison offering something additive
+     * — so it stays disabled until one exists. Asserting all three together would have hidden that,
+     * and did until this branch added the third.
+     */
+    fun testChoosingEverythingEnablesReadingAndWritingButNotApplying() {
         givenConnection()
         givenConfigset()
         val page = panel()
@@ -426,7 +436,12 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         val enabled = enablementOf(page)
 
-        assertTrue(enabled.toString(), enabled.values.all { it })
+        assertTrue(enabled.toString(), enabled.entries.single { it.key.contains("Compare") }.value)
+        assertTrue(enabled.toString(), enabled.entries.single { it.key.contains("Upload") }.value)
+        assertFalse(
+            "nothing has been compared, so there is nothing additive to apply: $enabled",
+            enabled.entries.single { it.key.contains("Apply") }.value,
+        )
     }
 
     // --- the whole path, past every guard ----------------------------------------------------------
@@ -456,5 +471,137 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         assertNull("a cancelled confirmation starts no work", job)
         assertNull(page.bannerMessage)
+    }
+
+    // --- what the apply action will and will not offer ---------------------------------------------
+
+    /** A comparison of nothing but type changes offers no change this plugin will send. */
+    fun testARefusedComparisonOffersNoApplicableChanges() {
+        val page = panel()
+
+        page.render(
+            SolrDriftView.Compared(
+                "books",
+                "books_prod",
+                drift(listOf(field("code", type = "pint")), listOf(field("code", type = "string"))),
+            ),
+        )
+
+        assertEmpty("a type change is never applicable", page.applicableChanges())
+    }
+
+    fun testAnAdditiveComparisonOffersItsChange() {
+        val page = panel()
+
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("added")), emptyList())))
+
+        assertEquals(1, page.applicableChanges().size)
+        assertEquals("add-field", page.applicableChanges().single().command)
+    }
+
+    /**
+     * Apply stays disabled with everything chosen, until a comparison offers an addition.
+     *
+     * The honest reading of "only additive changes get the second action": a comparison of type
+     * changes alone offers no button at all, rather than one that would refuse when pressed.
+     */
+    fun testApplyStaysDisabledUntilThereIsSomethingAdditiveToSend() {
+        givenConnection()
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+
+        page.render(
+            SolrDriftView.Compared(
+                "books",
+                "books_prod",
+                drift(listOf(field("code", type = "pint")), listOf(field("code", type = "string"))),
+            ),
+        )
+        val refusedOnly = enablementOf(page).entries.single { it.key.contains("Apply") }.value
+
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("added")), emptyList())))
+        val withAnAddition = enablementOf(page).entries.single { it.key.contains("Apply") }.value
+
+        assertFalse("a comparison of type changes alone offers nothing to apply", refusedOnly)
+        assertTrue("an addition is applicable", withAnAddition)
+    }
+
+    /** Apply stops before asking anything when the comparison has nothing applicable in it. */
+    fun testApplyStopsWhenNothingIsApplicable() {
+        givenConnection()
+        givenConfigset()
+        val page = panel()
+        page.reloadConfigsets()
+        page.setCollection("books_prod")
+        page.render(
+            SolrDriftView.Compared(
+                "books",
+                "books_prod",
+                drift(listOf(field("code", type = "pint")), listOf(field("code", type = "string"))),
+            ),
+        )
+
+        page.applyAdditive()
+
+        assertEquals("the comparison must be left exactly as it was", listOf("code"), page.rowNames)
+    }
+
+    // --- the payload pane, which is how a refusal explains itself ----------------------------------
+
+    /**
+     * Selecting an additive row shows the request that would be sent.
+     *
+     * Reading what a tool would do before deciding is the whole design; a row that showed nothing
+     * would be the greyed-out button with a tooltip this replaces.
+     */
+    fun testSelectingAnAdditiveRowShowsItsRequest() {
+        val page = panel()
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("price")), emptyList())))
+
+        page.selectRow(0)
+
+        assertTrue(page.payloadText, page.payloadText.contains("add-field"))
+        assertTrue(page.payloadText, page.payloadText.contains("price"))
+    }
+
+    /**
+     * A refused row shows the reason **before** the request.
+     *
+     * The ordering is the point rather than a nicety: a reader who meets the JSON first may copy it,
+     * and this is the one request in the view that must not be run without understanding why the
+     * plugin declined to run it.
+     */
+    fun testARefusedRowShowsTheReasonBeforeTheRequest() {
+        val page = panel()
+        page.render(
+            SolrDriftView.Compared(
+                "books",
+                "books_prod",
+                drift(listOf(field("code", type = "pint")), listOf(field("code", type = "string"))),
+            ),
+        )
+
+        page.selectRow(0)
+
+        val text = page.payloadText
+        assertTrue(text, text.contains("replace-field"))
+        assertTrue(text, text.contains("reindex"))
+        assertTrue(
+            "the warning must come first: $text",
+            text.indexOf("reindex") < text.indexOf("replace-field"),
+        )
+    }
+
+    /** Rendering a new comparison clears whatever payload was on screen. */
+    fun testANewComparisonClearsThePayloadPane() {
+        val page = panel()
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("price")), emptyList())))
+        page.selectRow(0)
+
+        page.render(SolrDriftView.NotCompared)
+
+        assertEquals("", page.payloadText)
     }
 }

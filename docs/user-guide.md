@@ -485,12 +485,59 @@ alongside](images/12-intention-companion-fields.png)
 
 ---
 
+## Closing a difference between the repository and a server
+
+*Needs a connection and a collection. The **Solr** tool window's **Drift** tab compares a configset
+on disk against a collection on the selected server, and shows what the two do not agree about.*
+
+Three kinds of difference, and the plugin treats them very differently:
+
+| The row says | It means | Offered? |
+|---|---|---|
+| **Not deployed** | The configset declares it; the server does not have it | **Yes** — an addition |
+| **Only on server** | Added through the Schema API and never committed | No |
+| **Differs** | Both have it, defined differently | **No, deliberately** |
+
+**Select any row to see the exact Schema API request that would close it.** For an addition, sending
+it is the next button along. For the other two the request is still shown, under the reason it is not
+offered — because "why can this not be applied" deserves a better answer than a greyed-out button,
+and because reading what a tool would do before deciding is the point.
+
+**Why a changed field is never applied for you.** Solr accepts a `replace-field` that changes a
+field's type, and reports success. Every document already indexed keeps the encoding it was written
+with. Against Solr 10.0.0, changing a `string` field holding `"abc"` to `pint` gave
+
+- a query for a value that *is* there matching nothing,
+- a query for the old text answering `400 Invalid Number`, and
+- **any** query merely naming the field in `fl` failing with `HTTP 500` — for every document,
+  including ones that never had it.
+
+Nothing in Solr's answer to the write hints at any of that. Only a reindex makes the schema true
+again, which this plugin cannot do and will not pretend to. You are left able to run the request
+yourself, against a collection you are prepared to reindex — that is your call, not the plugin's to
+prevent.
+
+**Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
+read back and compared again, and what you see is the result of that read. A `2xx` proves Solr
+accepted the request, not that the server now agrees — the two really do come apart, which is why
+this is worth saying twice.
+
+**Try it.** Add a field to `demo/books/conf/managed-schema.xml`, open **Drift**, choose that
+configset, type your collection, press **Compare**: the new field reads *Not deployed*. Select it to
+see its `add-field` payload, then press **Apply Additive Changes**. (Verified by
+[the drift and apply checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).)
+
+---
+
 ## What is not here yet
 
-Nothing server-side (a live connection, browsing [collections](glossary.md#collection), a query
-console, the repository-vs-server drift view) and nothing in Java or Kotlin code (field-name checks
-against [SolrJ](glossary.md#solrj) calls, query-syntax
-injection) exists yet. [The specification](../specs/0002-solr-intellij-plugin.md) describes the intent
-for both; [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place
-that says what is actually built, today, and it is worth reading directly rather than trusting a
-summary — including this one.
+**The server surfaces exist and this guide does not yet cover them all.** Connections, browsing
+[collections](glossary.md#collection), what an index actually holds, and running queries through the
+IDE's HTTP Client have all shipped; only the drift view above is written up here so far. What is
+genuinely not built is indexing test documents, and everything in Java or Kotlin code — field-name
+checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
+
+[The specification](../specs/0002-solr-intellij-plugin.md) describes the intent for both;
+[the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place that
+says what is actually built, today, and it is worth reading directly rather than trusting a summary —
+including this one.
