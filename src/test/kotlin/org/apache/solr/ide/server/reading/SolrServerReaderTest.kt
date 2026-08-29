@@ -31,21 +31,50 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
                    "fieldTypes":[{"name":"string","class":"solr.StrField"}]}}
     """.trimIndent()
 
-    private val systemBody = """
-        {"responseHeader":{"status":0},"mode":"solrcloud",
+    private val systemBody = systemBodyFor("solrcloud")
+
+    private fun systemBodyFor(mode: String) = """
+        {"responseHeader":{"status":0},"mode":"$mode",
          "lucene":{"solr-spec-version":"10.0.0","lucene-spec-version":"10.3.2"}}
     """.trimIndent()
 
-    /** A server answering both endpoints the reader asks for, and recording what it was asked. */
+    private val clusterStatusBody = """
+        {"responseHeader":{"status":0},
+         "cluster":{"collections":{"books":{"configName":"books_config","health":"GREEN",
+           "shards":{"shard1":{"range":"80000000-7fffffff","state":"active","health":"GREEN",
+             "replicas":{"core_node2":{"core":"books_shard1_replica_n1",
+               "node_name":"127.0.0.1:8983_solr","state":"active","type":"NRT","leader":"true"}}}}}},
+          "live_nodes":["127.0.0.1:8983_solr"]}}
+    """.trimIndent()
+
+    private val coresStatusBody = """
+        {"responseHeader":{"status":0},"status":{"books":{"name":"books","configSet":"_default"}}}
+    """.trimIndent()
+
+    /**
+     * A server answering the endpoints the reader asks for, and recording what it was asked.
+     *
+     * What it was asked matters as much as what it answered: the reader's contract is that it picks
+     * the endpoint from the mode rather than trying one and catching the refusal, and the only way to
+     * see that is to notice the request that was never made.
+     */
     private fun givenServer(
         schema: (HttpExchange) -> Unit = { respond(it, 200, schemaBody) },
         systemInfo: (HttpExchange) -> Unit = { respond(it, 200, systemBody) },
+        collections: (HttpExchange) -> Unit = { respond(it, 200, clusterStatusBody) },
+        cores: (HttpExchange) -> Unit = { respond(it, 200, coresStatusBody) },
     ): String {
         val started = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         started.createContext("/") { exchange ->
-            requested += exchange.requestURI.path
+            val path = exchange.requestURI.path
+            requested += path
             authorization = authorization ?: exchange.requestHeaders.getFirst("Authorization")
-            if (exchange.requestURI.path.endsWith("/schema")) schema(exchange) else systemInfo(exchange)
+            when {
+                path.endsWith("/schema") -> schema(exchange)
+                path.endsWith("/admin/collections") -> collections(exchange)
+                path.endsWith("/admin/cores") -> cores(exchange)
+                else -> systemInfo(exchange)
+            }
         }
         started.start()
         server = started
@@ -69,6 +98,10 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
 
     private fun read(connection: SolrConnection, collection: String = "books") = runBlocking {
         SolrServerReader.getInstance(project).read(connection, collection)
+    }
+
+    private fun topology(connection: SolrConnection) = runBlocking {
+        SolrServerReader.getInstance(project).topology(connection)
     }
 
     private fun connection(baseUrl: String, username: String? = null) =
@@ -114,6 +147,75 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
 
         assertTrue(result.toString(), result is SolrResponse.SolrError)
         assertEquals(404, (result as SolrResponse.SolrError).code)
+    }
+
+    // --- which endpoint the mode chooses ----------------------------------------------------------
+
+    /**
+     * A SolrCloud server is asked for its cluster status, and never for its cores.
+     *
+     * The negative half is the point. Both endpoints would answer *something* on a cloud server, so a
+     * test that only checked the collections came back would pass just as well for a reader that
+     * asked both and merged them.
+     */
+    fun testACloudServerIsAskedForItsCollections() {
+        val result = topology(connection(givenServer()))
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+        val found = (result as SolrResponse.Success).value
+        assertEquals(SolrServerMode.SOLR_CLOUD, found.mode)
+        assertEquals(listOf("books"), found.collections.map { it.name })
+        assertEquals(listOf("127.0.0.1:8983_solr"), found.liveNodes)
+        assertTrue("asked for: $requested", requested.any { it.endsWith("/admin/collections") })
+        assertFalse("a cloud server must not be asked for cores: $requested", requested.any { it.endsWith("/admin/cores") })
+    }
+
+    /**
+     * A standalone server is asked for its cores, and never for its collections.
+     *
+     * The case the mode check exists for: a standalone Solr answers every `/admin/collections` action
+     * with HTTP 400, so a reader that asked anyway would report a hard failure against a server that
+     * is working perfectly.
+     */
+    fun testAStandaloneServerIsAskedForItsCores() {
+        val result = topology(connection(givenServer(systemInfo = { respond(it, 200, systemBodyFor("std")) })))
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+        val found = (result as SolrResponse.Success).value
+        assertEquals(SolrServerMode.STANDALONE, found.mode)
+        assertEquals(listOf("books"), found.cores.map { it.name })
+        assertTrue("asked for: $requested", requested.any { it.endsWith("/admin/cores") })
+        assertFalse(
+            "a standalone server must not be asked for collections: $requested",
+            requested.any { it.endsWith("/admin/collections") },
+        )
+    }
+
+    /**
+     * A server that will not say which mode it is in is asked for neither.
+     *
+     * Reported as a successful read of an unknown server rather than as a failure: nothing went
+     * wrong, and there is simply nothing that can be said about what it holds. Guessing either
+     * vocabulary would produce a list the caller cannot interpret.
+     */
+    fun testAServerThatNamesNoModeIsAskedForNeitherVocabulary() {
+        val result = topology(connection(givenServer(systemInfo = { respond(it, 200, """{"responseHeader":{"status":0}}""") })))
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+        assertEquals(SolrServerMode.UNKNOWN, (result as SolrResponse.Success).value.mode)
+        assertFalse("neither endpoint may be asked: $requested", requested.any { it.contains("/admin/collections") })
+        assertFalse("neither endpoint may be asked: $requested", requested.any { it.contains("/admin/cores") })
+    }
+
+    /** A system-info call that fails is the answer, and stops the reader asking anything further. */
+    fun testAFailureReadingTheModeIsReportedRatherThanGuessedAround() {
+        val result = topology(
+            connection(givenServer(systemInfo = { respond(it, 500, """{"error":{"msg":"nope"}}""") })),
+        )
+
+        assertTrue(result.toString(), result is SolrResponse.SolrError)
+        assertEquals(500, (result as SolrResponse.SolrError).code)
+        assertEquals("only the system-info call should have been made, got: $requested", 1, requested.size)
     }
 
     // --- the credential, resolved here and nowhere else --------------------------------------------
