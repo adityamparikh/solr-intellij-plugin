@@ -766,6 +766,18 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       completion inside a string. **No Solr field names may appear.** The contributor is registered
       against JSON, so every JSON file in every project reaches it, and this is the failure worth
       checking by hand.
+- [ ] **SRV-19** — In the **Drift** tab, choose a configset and type a collection that exists, then
+      press Compare. A field present in the configset and not on the server reads *Not deployed*;
+      one added through the Schema API reads *Only on server*; one defined differently in each reads
+      *Differs* and **shows both definitions side by side**. A view that showed one side would hide
+      the disagreement in the place it exists to be shown.
+- [ ] **SRV-20** — Compare a configset against a collection created from it. The table is empty and
+      the line above it says the two agree **and how many declarations agreed**. That count is the
+      only thing distinguishing this from a comparison that never ran.
+- [ ] **SRV-21** — Stop Solr and press Compare. The table stays empty and the failure is reported.
+      **No field may be listed as not deployed** — treating an unreachable server as an empty one
+      would report an entire schema as undeployed, in the view a user opens precisely when they are
+      unsure what is deployed.
 
 ## Not yet in the suite
 

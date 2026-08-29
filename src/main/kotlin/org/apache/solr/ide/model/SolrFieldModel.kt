@@ -73,9 +73,13 @@ data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
  * Everything the plugin knows about one configset's fields, merged from the repository and,
  * eventually, from a server.
  *
- * **The server half is empty today.** The server reader has not landed, so every fact currently
- * reports [SolrAgreement.REPOSITORY_ONLY]. The seam exists now rather than later because retrofitting
- * a second source into a model shaped around one means revisiting everything built on it.
+ * **The server half is filled only where a caller has read one**, which is a distinction with teeth.
+ * A model built from a configset alone reports every fact as [SolrAgreement.REPOSITORY_ONLY], and
+ * that is indistinguishable from a server which genuinely has none of them — so a consumer that
+ * reads `agreement` without knowing whether a server was consulted can report an entire schema as
+ * undeployed on a project that has never connected to anything. The drift view avoids it by taking
+ * both halves as separate arguments rather than a model; see `SolrDrift.between`. The editing
+ * surfaces avoid it by never asking about agreement at all.
  *
  * @property fields declared fields, by name
  * @property dynamicFields dynamic-field declarations, by pattern
@@ -116,8 +120,10 @@ class SolrFieldModel(
     /**
      * The Solr line this configset targets, for reading the generated class catalog.
      *
-     * Only two of the spec's three sources are available here: the configset's own declaration, and
-     * the default. A connected server would outrank both, and will once the server reader lands.
+     * All three of the specification's sources can reach this now: a connected server's reported
+     * version outranks the configset's own declaration, which outranks the default. The server one
+     * is present only when a caller built this model with it — the editing surfaces do not, because
+     * nothing on the editor path contacts a server.
      */
     val solrVersion: SolrVersionSelection
         get() = serverVersion?.let { SolrVersionSelection.fromServerVersion(it) }

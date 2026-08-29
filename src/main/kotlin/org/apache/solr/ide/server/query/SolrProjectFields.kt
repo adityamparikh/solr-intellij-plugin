@@ -2,13 +2,9 @@ package org.apache.solr.ide.server.query
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
 import org.apache.solr.ide.configset.activation.SolrConfigset
-import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
-import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
+import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
@@ -48,34 +44,14 @@ class SolrProjectFields(private val project: Project) {
     /**
      * Every field and dynamic pattern the project's configsets declare.
      *
-     * **Empty during indexing rather than partial.** Finding configsets means asking the filename
-     * index, which is not available in dumb mode; answering from whatever happened to be indexed so
-     * far would offer a list that shrinks and grows for reasons a user cannot see. Completion that
-     * offers nothing is understood as "not ready"; completion that offers half is understood as the
-     * truth.
+     * Empty during indexing, because the configsets it reads are — see
+     * [SolrProjectConfigsets.all]. Completion that offers nothing is understood as "not ready";
+     * completion that offers half is understood as the truth.
      *
      * @return the fields, in configset order then declaration order, without duplicates by name
      */
-    fun all(): List<SolrCompletionField> {
-        if (DumbService.isDumb(project)) return emptyList()
-        return configsets().flatMap { fieldsIn(it) }.distinctBy { it.name }
-    }
-
-    /**
-     * The configsets this project holds.
-     *
-     * Found through the schema files that identify them rather than through a list someone
-     * maintains: `managed-schema` is self-identifying, and every configset has one of the schema
-     * spellings by definition.
-     */
-    private fun configsets(): List<SolrConfigset> {
-        val scope = GlobalSearchScope.projectScope(project)
-        val detector = SolrConfigsetDetector
-        return SCHEMA_KINDS.flatMap { it.fileNames }
-            .flatMap { FilenameIndex.getVirtualFilesByName(it, scope) }
-            .mapNotNull { detector.configsetFor(project, it) }
-            .distinct()
-    }
+    fun all(): List<SolrCompletionField> =
+        SolrProjectConfigsets.getInstance(project).all().flatMap { fieldsIn(it) }.distinctBy { it.name }
 
     private fun fieldsIn(configset: SolrConfigset): List<SolrCompletionField> {
         val model = SolrConfigsetReader.getInstance(project).modelFor(configset)
@@ -93,9 +69,6 @@ class SolrProjectFields(private val project: Project) {
 
     /** Service lookup. */
     companion object {
-        private val SCHEMA_KINDS =
-            listOf(SolrConfigsetFileKind.SCHEMA_MANAGED, SolrConfigsetFileKind.SCHEMA_CLASSIC)
-
         /**
          * The field source for [project].
          *
