@@ -71,6 +71,26 @@ object SolrRequestTemplates {
             """.trimIndent(),
         ),
         Template(
+            // The JSON Request API rather than URL parameters, because a body is where field
+            // completion can help — a query written as a URL query string has nowhere for the
+            // editor to offer anything.
+            description = "Query with a JSON body",
+            template = """
+                ### Query with a JSON body
+                # Solr's JSON Request API. Field names complete inside `fields`, `sort` and a
+                # facet's `field`, from the configsets in this project.
+                POST {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/query
+                Content-Type: application/json
+                Accept: application/json
+
+                {
+                  "query": "*:*",
+                  "fields": ["id"],
+                  "limit": 10
+                }
+            """.trimIndent(),
+        ),
+        Template(
             description = "Read a collection's schema",
             template = """
                 ### Read a collection's schema
