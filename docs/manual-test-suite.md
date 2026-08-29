@@ -778,6 +778,18 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       **No field may be listed as not deployed** — treating an unreachable server as an empty one
       would report an entire schema as undeployed, in the view a user opens precisely when they are
       unsure what is deployed.
+- [ ] **SRV-22** — With a drifted comparison on screen, press **Upload and Reload**. A confirmation
+      names the configset, the collection **and the server** before anything is written. Cancel:
+      nothing is uploaded. Confirm: the table is re-read and the difference clears.
+- [ ] **SRV-23** — Point the connection at a **standalone** Solr and press Upload and Reload.
+      It refuses, saying the server is not running in SolrCloud mode, and **sends no upload** —
+      `/admin/configs` answers every action with HTTP 400 there, so trying anyway would report a
+      hard failure against a healthy server.
+- [ ] **SRV-24** — The one worth engineering a failure for. Edit the configset so Solr will accept
+      the upload but not apply it — delete the `_version_` field. Press Upload and Reload. **The
+      upload succeeds and the table must still show drift**, because the view reports what the
+      re-read found rather than what the write returned. A cleared table here is the defect this
+      whole path is built to prevent.
 
 ## Not yet in the suite
 

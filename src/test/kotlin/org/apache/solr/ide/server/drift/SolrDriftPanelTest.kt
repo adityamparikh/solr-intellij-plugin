@@ -183,4 +183,56 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         assertTrue(page.bannerMessage.orEmpty(), page.bannerMessage.orEmpty().contains("not all of it"))
     }
+
+    // --- writing, and what a successful write does not prove ---------------------------------------
+
+    /** A write in flight is its own state, so a user watching one knows that is what they see. */
+    fun testAWriteInFlightSaysSo() {
+        val page = panel()
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(listOf(field("a")), emptyList())))
+
+        page.render(SolrDriftView.Writing)
+
+        assertEmpty("a write clears the stale comparison it is about to invalidate", page.rowNames)
+        assertNull(page.bannerMessage)
+    }
+
+    /**
+     * A failed write reports the failure and compares nothing.
+     *
+     * The write's own answer is the only thing known at that point, and reporting the previous
+     * comparison beside it would suggest the write left the server where the table says it is.
+     */
+    fun testAFailedWriteIsReportedAndComparesNothing() {
+        val page = panel()
+
+        page.render(SolrDriftView.Failed(SolrConfigsetWriter.NOT_SOLR_CLOUD))
+
+        assertEmpty(page.rowNames)
+        assertTrue(page.bannerMessage.orEmpty(), page.bannerMessage.orEmpty().contains("SolrCloud"))
+    }
+
+    /**
+     * A comparison after a write still reports drift where the server did not take it.
+     *
+     * **This is the rule the whole write path exists to obey.** A configset upload returning
+     * `status: 0` is not proof the server reflects it — an archive lacking `_version_` uploads
+     * cleanly, appears in `action=LIST`, and Solr then refuses to build a collection from it. The
+     * view must be able to say "written, and still different", which it cannot if a successful
+     * write clears the table.
+     */
+    fun testAComparisonAfterAWriteCanStillShowDrift() {
+        val page = panel()
+
+        page.render(
+            SolrDriftView.Compared(
+                "books",
+                "books_prod",
+                drift(repository = listOf(field("still_missing")), server = emptyList()),
+            ),
+        )
+
+        assertEquals(listOf("still_missing"), page.rowNames)
+        assertContainsElements(page.rowStates, "Not deployed")
+    }
 }

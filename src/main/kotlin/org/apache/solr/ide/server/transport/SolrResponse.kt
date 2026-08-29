@@ -64,6 +64,27 @@ sealed interface SolrResponse<out T> {
     data class Unrecognized(val description: String) : SolrResponse<Nothing>
 
     /**
+     * The result of [next], where this outcome succeeded, and this outcome otherwise.
+     *
+     * **For sequencing two writes**, where the second is worth attempting only if the first
+     * arrived: uploading a configset and then reloading the collection that uses it. A failure
+     * short-circuits carrying its own message, so the caller reports the step that actually failed
+     * rather than the last one it happened to run.
+     *
+     * A partial answer counts as arrived, matching [map]: what came back is real, and a caller that
+     * treated it as a failure would refuse to continue over an answer it already has.
+     *
+     * @param next what to do when this outcome carries a value
+     * @return the next outcome, or this failure unchanged
+     */
+    suspend fun <R> andThen(next: suspend () -> SolrResponse<R>): SolrResponse<R> = when (this) {
+        is Success, is Partial -> next()
+        is SolrError -> this
+        is TransportFailure -> this
+        is Unrecognized -> this
+    }
+
+    /**
      * The same outcome carrying [transform] of its value, where it has one.
      *
      * **Added with its first caller rather than before it.** Converting a parsed body into facts is

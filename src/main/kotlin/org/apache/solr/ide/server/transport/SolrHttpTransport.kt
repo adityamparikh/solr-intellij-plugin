@@ -90,6 +90,33 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
     }
 
     /**
+     * POSTs [body] to [path] and classifies the answer.
+     *
+     * **The body goes raw, under `application/octet-stream`.** A configset upload also accepts
+     * `multipart/form-data` — Solr unwraps multipart into a content stream before the handler sees
+     * it, and both forms were run against Solr 10.0.0 producing identical results — so the raw form
+     * is what this sends, being the one that reaches the same outcome with no multipart encoder to
+     * write and keep correct.
+     *
+     * @param baseUrl the server root
+     * @param path the path to request, beginning with a slash
+     * @param body the bytes to send
+     * @param credential what to authenticate as
+     * @return the outcome, classified exactly as [get]'s is
+     */
+    suspend fun post(
+        baseUrl: String,
+        path: String,
+        body: ByteArray,
+        credential: SolrCredential = SolrCredential.None,
+    ): SolrResponse<JsonNode> {
+        return send(baseUrl, path, credential) {
+            it.header("Content-Type", "application/octet-stream")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+        }
+    }
+
+    /**
      * Builds a request, authenticates it, sends it, and classifies the answer.
      *
      * **Separated from [get] so that a verb is the only thing a caller adds.** The configset upload
