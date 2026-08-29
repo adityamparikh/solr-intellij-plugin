@@ -755,6 +755,17 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       (`GET https://api.github.com/repos/apache/solr` is enough) and run it. **Nothing this plugin
       wrote may appear.** The presentation is called for every response the HTTP Client shows, so
       printing over another service's output is the failure worth checking by hand.
+- [ ] **SRV-16** — In `queries.http`, insert *Query with a JSON body* and put the caret inside the
+      `"fields"` array. Completion offers the fields declared in this project's configsets, each
+      showing its type and which configset it came from. Dynamic patterns like `*_i` appear in
+      italics.
+- [ ] **SRV-17** — The same completion works in `"sort"` and in a facet's `"field"`, and offers
+      **nothing** at `"limit"` or inside `"query"`. Query syntax is not handled yet, and offering
+      field names inside a phrase or a function call would be worse than offering none.
+- [ ] **SRV-18** — Open any other JSON file in the project — `package.json` will do — and invoke
+      completion inside a string. **No Solr field names may appear.** The contributor is registered
+      against JSON, so every JSON file in every project reaches it, and this is the failure worth
+      checking by hand.
 
 ## Not yet in the suite
 

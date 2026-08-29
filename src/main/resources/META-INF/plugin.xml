@@ -94,6 +94,15 @@
              therefore the common case, and `SolrQueryResultReader` decides from the response body
              rather than from the URL — Solr behind a reverse proxy is addressed at any path, and a
              non-Solr service may expose one called `/select`. -->
+        <!-- Field names inside a Solr query body written in an `.http` file. Registered against
+             JSON because the HTTP Client already injects JSON into a body carrying that
+             Content-Type, so this contributes to an injection that is already there rather than
+             arranging one. Every JSON file in the project reaches it, which is why it declines in
+             three steps before offering anything — see the class comment. -->
+        <completion.contributor
+                language="JSON"
+                implementationClass="org.apache.solr.ide.server.query.SolrQueryFieldCompletionContributor"/>
+
         <httpClient.responseCustomPresentation
                 implementation="org.apache.solr.ide.server.query.SolrQueryResponsePresentation"/>
 
