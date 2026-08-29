@@ -697,6 +697,34 @@ as a schema rather than as a diff.*
       keeps offering itself after it has been applied is the failure mode here**, since nothing
       underlines to tell a reader the work is done.
 
+## 13. Connections and the collections tool window (SRV)
+
+*Automated: `SolrConnectionsConfigurableTest`, `SolrConnectionDialogTest`, `SolrTopologyNodesTest`,
+`SolrCollectionsViewTest`, `SolrCollectionsPanelTest`. Manual adds: **that any of it appears at
+all**. The headless test environment registers no tool windows — not this plugin's, not any — so
+whether the registration takes effect is a question only a running IDE can answer. Everything below
+needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enough for all of them.*
+
+- [ ] **SRV-1** — Settings → Tools → **Solr Connections** exists, and `+` opens a form. Saving
+      `http://localhost:8983/solr` adds a row showing that URL.
+- [ ] **SRV-2** — The form refuses to save a URL with no scheme, naming the field, and accepts one
+      with a path that is not `/solr`. **Accepting the second matters more than rejecting the
+      first**: Solr behind a reverse proxy is ordinary, and a form that demanded `/solr` would
+      reject working deployments.
+- [ ] **SRV-3** — Re-open a saved connection with a password stored: the password field is **empty**
+      and says a password is stored. Change only the display name and press OK. Re-open: the
+      password is still stored. **This is the regression the overload exists to prevent** — the
+      field being empty must not be read as "no password".
+- [ ] **SRV-4** — The **Solr** tool window opens on the right and lists what the server holds:
+      `Cores` → `books` for a standalone server, `Collections` → shards → replicas for a cloud one.
+- [ ] **SRV-5** — Stop Solr and press Refresh. The failure appears **inline above the tree, once**,
+      and the tree empties. No popup, no dialog, and no stale topology left under the banner.
+- [ ] **SRV-6** — Start Solr again and press Refresh: the banner clears and the tree repopulates.
+      Then leave it alone for a few minutes and confirm **nothing refetches on its own** — server
+      data moves on request and on connection change, and on nothing else.
+- [ ] **SRV-7** — With two connections configured, switching the selector re-reads the other server
+      and the selection survives closing and reopening the project.
+
 ## Not yet in the suite
 
 Checks join a section above when their feature ships; **which features those are is the
@@ -705,7 +733,8 @@ list below is what the suite does not yet cover, and says nothing about what is 
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
 - The settings page and *Mark Directory as Solr Configset Root*
-- Everything server-side: connections, tool window, query console, drift view
+- The server-side surfaces that have not shipped: query console, drift view, indexing test
+  documents. Connections and the collections tool window are covered in section 13 above
 - Everything in Java/Kotlin code: field-name checks, query language injection
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a

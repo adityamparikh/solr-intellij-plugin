@@ -75,6 +75,19 @@
 
              Under the Tools group, which is where the other server-backed tools in the IDE put
              theirs, and not under Languages & Frameworks — nothing here affects how a file is read. -->
+        <!-- What the selected server actually holds. Under `toolWindow` rather than a dialog because
+             browsing a topology is something a developer does alongside editing a configset, not
+             instead of it. `anchor="right"` keeps it out of the way of the Project view, which is
+             where the configset being compared against it lives.
+
+             `canCloseContents="false"`: there is one tab and closing it would leave an empty tool
+             window with no way back to it. -->
+        <toolWindow
+                id="Solr"
+                factoryClass="org.apache.solr.ide.server.topology.SolrCollectionsToolWindowFactory"
+                anchor="right"
+                canCloseContents="false"/>
+
         <projectConfigurable
                 parentId="tools"
                 id="solr.connections"
