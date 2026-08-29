@@ -3,7 +3,12 @@ package org.apache.solr.ide.server.topology
 import com.intellij.openapi.util.Disposer
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.server.connection.SolrConnection
+import javax.swing.tree.DefaultMutableTreeNode
 import org.apache.solr.ide.server.reading.SolrCore
+import org.apache.solr.ide.server.reading.SolrIndexContents
+import org.apache.solr.ide.server.reading.SolrIndexField
+import org.apache.solr.ide.server.reading.SolrIndexSummary
+import org.apache.solr.ide.server.transport.SolrResponse
 import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrTopology
 
@@ -131,5 +136,115 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
 
         assertEquals("a", connectionSettings.selectedConnection?.id)
         assertEmpty(page.rootLabels)
+    }
+    // --- the indexed fields, fetched when their row is expanded ------------------------------------
+
+    private val indexed = SolrIndexContents(
+        summary = SolrIndexSummary(numDocs = 3),
+        fields = listOf(
+            SolrIndexField(name = "id", type = "string", docs = 3),
+            SolrIndexField(name = "author_s", type = "string", dynamicBase = "*_s", docs = 3),
+        ),
+    )
+
+    private fun fieldsRowIn(page: SolrCollectionsPanel): DefaultMutableTreeNode {
+        page.render(SolrCollectionsView.Loaded(standaloneRoots))
+        val cores = page.treeRoot.getChildAt(0) as DefaultMutableTreeNode
+        val books = cores.getChildAt(0) as DefaultMutableTreeNode
+        return books.getChildAt(0) as DefaultMutableTreeNode
+    }
+
+    /** The row is there and empty until someone opens it. */
+    fun testTheFieldsRowStartsEmpty() {
+        val row = fieldsRowIn(panel())
+
+        assertEquals("Fields", (row.userObject as SolrTopologyNode).label)
+        assertEquals(0, row.childCount)
+    }
+
+    fun testFilledFieldsBecomeRows() {
+        val page = panel()
+        val row = fieldsRowIn(page)
+
+        page.fillFields(row, SolrResponse.Success(indexed))
+
+        assertEquals(2, row.childCount)
+        assertEquals("id", ((row.getChildAt(0) as DefaultMutableTreeNode).userObject as SolrTopologyNode).label)
+        assertEquals("author_s", ((row.getChildAt(1) as DefaultMutableTreeNode).userObject as SolrTopologyNode).label)
+    }
+
+    /**
+     * The counts move onto the row that was expanded rather than under it.
+     *
+     * The reader returns its own "Fields" heading, and adopting its children while taking its detail
+     * is what stops a user opening Fields to find Fields.
+     */
+    fun testTheRowGainsTheFieldCounts() {
+        val page = panel()
+        val row = fieldsRowIn(page)
+
+        page.fillFields(row, SolrResponse.Success(indexed))
+
+        val detail = (row.userObject as SolrTopologyNode).detail
+        assertNotNull(detail)
+        assertTrue(detail!!, detail.contains("2 fields"))
+        assertTrue(detail, detail.contains("1 from dynamic patterns"))
+    }
+
+    /**
+     * A failure reading an index is reported inline and leaves the row empty.
+     *
+     * Filling it with an apology would put a field called "could not be read" in a list of field
+     * names, which is worse than an empty row beside a banner that says what happened.
+     */
+    fun testAFailureReadingFieldsIsReportedAndLeavesTheRowEmpty() {
+        val page = panel()
+        val row = fieldsRowIn(page)
+
+        page.fillFields(row, SolrResponse.SolrError(404, null))
+
+        assertEquals(0, row.childCount)
+        assertNotNull(page.bannerMessage)
+        assertTrue(page.bannerMessage!!, page.bannerMessage!!.contains("404"))
+    }
+
+    /** A partial answer fills what arrived and says it was partial. */
+    fun testAPartialFieldListIsShownAndLabelled() {
+        val page = panel()
+        val row = fieldsRowIn(page)
+
+        page.fillFields(row, SolrResponse.Partial(indexed, "time allowed exceeded"))
+
+        assertEquals(2, row.childCount)
+        assertNotNull(page.bannerMessage)
+    }
+
+    /**
+     * Expanding a row that already has its fields asks nothing.
+     *
+     * Nothing changed by the row being collapsed, so re-expanding must not spend a request. Refresh
+     * is what asks again.
+     */
+    fun testReExpandingAFilledRowDoesNotRefetch() {
+        connectionSettings.addConnection(connection())
+        val page = panel()
+        val row = fieldsRowIn(page)
+        page.fillFields(row, SolrResponse.Success(indexed))
+
+        page.fieldsRequested(row)
+
+        assertEquals("the rows must be left exactly as they were", 2, row.childCount)
+    }
+
+    /** A row that is not a fields row is not a request. */
+    fun testExpandingAnOrdinaryRowAsksNothing() {
+        connectionSettings.addConnection(connection())
+        val page = panel()
+        page.render(SolrCollectionsView.Loaded(standaloneRoots))
+        val cores = page.treeRoot.getChildAt(0) as DefaultMutableTreeNode
+
+        page.fieldsRequested(cores)
+
+        assertNull(page.bannerMessage)
     }
 }

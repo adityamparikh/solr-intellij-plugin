@@ -1,6 +1,7 @@
 package org.apache.solr.ide.server.topology
 
 import org.apache.solr.ide.SolrBundle
+import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrTopology
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -52,21 +53,56 @@ sealed interface SolrCollectionsView {
  * @param response what the server reader returned
  * @return the state the tool window should be in
  */
-fun viewFor(response: SolrResponse<SolrTopology>): SolrCollectionsView = when (response) {
-    is SolrResponse.Success -> SolrCollectionsView.Loaded(SolrTopologyNodes.rootsOf(response.value))
-    is SolrResponse.Partial -> SolrCollectionsView.Loaded(
-        SolrTopologyNodes.rootsOf(response.value),
-        warning = response.detail?.let { SolrBundle.message("collections.partial.detail", it) }
-            ?: SolrBundle.message("collections.partial"),
-    )
-    is SolrResponse.SolrError -> SolrCollectionsView.Failed(
+fun viewFor(response: SolrResponse<SolrTopology>): SolrCollectionsView =
+    when (val failure = failureMessageFor(response)) {
+        null -> SolrCollectionsView.Loaded(
+            roots = SolrTopologyNodes.rootsOf(valueIn(response) ?: SolrTopology(SolrServerMode.UNKNOWN)),
+            warning = warningFor(response),
+        )
+        else -> SolrCollectionsView.Failed(failure)
+    }
+
+/**
+ * Why [response] carries nothing usable, or null where it carries something.
+ *
+ * **Shared by every surface that reads a server, rather than each writing its own five-case
+ * `when`.** The indexed-fields view needs exactly this mapping over a different value type, and a
+ * second copy would be a second place for Solr's message to get paraphrased — which is the one thing
+ * the specification says must not happen to it.
+ *
+ * A partial answer is not a failure: what arrived is real. See [warningFor].
+ *
+ * @param response any outcome from a request to Solr
+ * @return the message to show, or null where the request succeeded
+ */
+fun failureMessageFor(response: SolrResponse<*>): String? = when (response) {
+    is SolrResponse.Success, is SolrResponse.Partial -> null
+    is SolrResponse.SolrError ->
         response.message?.let { SolrBundle.message("collections.solrError", response.code, it) }
-            ?: SolrBundle.message("collections.solrErrorNoMessage", response.code),
-    )
-    is SolrResponse.TransportFailure -> SolrCollectionsView.Failed(
-        SolrBundle.message("collections.transportFailure", response.description),
-    )
-    is SolrResponse.Unrecognized -> SolrCollectionsView.Failed(
-        SolrBundle.message("collections.unrecognized", response.description),
-    )
+            ?: SolrBundle.message("collections.solrErrorNoMessage", response.code)
+    is SolrResponse.TransportFailure -> SolrBundle.message("collections.transportFailure", response.description)
+    is SolrResponse.Unrecognized -> SolrBundle.message("collections.unrecognized", response.description)
+}
+
+/**
+ * What to say beside an answer that arrived incomplete, or null where it did not.
+ *
+ * @param response any outcome from a request to Solr
+ * @return the warning to show, or null where nothing was cut short
+ */
+fun warningFor(response: SolrResponse<*>): String? = (response as? SolrResponse.Partial)?.let {
+    it.detail?.let { detail -> SolrBundle.message("collections.partial.detail", detail) }
+        ?: SolrBundle.message("collections.partial")
+}
+
+/**
+ * The value [response] carries, where it carries one.
+ *
+ * @param response any outcome from a request to Solr
+ * @return the value from a complete or partial answer, or null from a failure
+ */
+fun <T> valueIn(response: SolrResponse<T>): T? = when (response) {
+    is SolrResponse.Success -> response.value
+    is SolrResponse.Partial -> response.value
+    else -> null
 }
