@@ -1,0 +1,6 @@
+[     277ms] [WARNING] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading @ https://maps.googleapis.com/maps/api/js?key=AIzaSyAQb1gupaJhY3CXQy2xmTwJMcjmot3M2hw&callback=initMap:329
+[     512ms] [WARNING] The `assetBase` meta tag is now deprecated.
+Use engineInitializer.initializeEngine(config) instead.
+See: https://docs.flutter.dev/development/platform-integration/web/initialization @ https://familylink.google.com/versions/20260817.04_RC00/main.dart.js:78369
+[    8372ms] [WARNING] The resource https://familylink.google.com/versions/20260817.04_RC00/assets/AssetManifest.bin.json was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://familylink.google.com/member/3/setting/resource/94:0
+[   17248ms] [WARNING] The resource https://familylink.google.com/versions/20260817.04_RC00/assets/AssetManifest.bin.json was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://familylink.google.com/member/3/controls:0
