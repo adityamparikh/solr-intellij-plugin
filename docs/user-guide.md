@@ -485,6 +485,91 @@ alongside](images/12-intention-companion-fields.png)
 
 ---
 
+## Pointing the plugin at a Solr server
+
+*Everything below needs a connection. Nothing above it does — configset editing works with no server
+configured at all, and never waits on one.*
+
+**Settings → Tools → Solr Connections**, or the `+` in the Solr tool window. A connection is a name,
+a URL and optionally a username; the password goes to the IDE's password safe and never to a project
+file, so a workspace that leaks is an inventory of hostnames rather than of credentials.
+
+Two things worth knowing before you wonder whether something is broken:
+
+- **The password field opens empty even when a password is stored**, and says so underneath. Leaving
+  it blank keeps what is stored. Pre-filling it would put your credential into a live dialog for as
+  long as it stays open, which is one more place than it needs to be.
+- **The URL only has to be an `http` or `https` address of some host.** No `/solr` suffix is
+  required, because a reverse proxy or a servlet context path can put Solr anywhere and rejecting
+  those would be the plugin having an opinion about your deployment.
+
+## Browsing what a server holds
+
+The **Solr** tool window, docked right, on the **Collections** tab. It shows collections, shards and
+replicas for a SolrCloud server, or cores for a standalone one.
+
+**Which vocabulary you see comes from the mode the server reports**, never from a guess. That matters
+because a standalone Solr answers every `/admin/collections` request with HTTP 400 — a plugin that
+assumed the cloud vocabulary would report a hard failure against a server that is working perfectly.
+
+Every collection and core carries a **Fields** row, and it starts empty. Expanding it asks the
+server; nothing else does. That is deliberate — reading an index costs one request per collection, so
+a server holding thirty of them would turn opening this window into thirty requests.
+
+**What that row shows is not the schema.** It is what the index actually holds, which includes every
+field a dynamic pattern created at index time:
+
+```
+Fields   9 fields · 5 from dynamic patterns · 3 documents
+  id           string    3 docs
+  author_s     string    ← *_s   3 docs
+  price_f      pfloat    ← *_f
+```
+
+`author_s` appears in no configset anywhere — the configset declares `*_s`, and the index holds what
+matched it. `price_f` shows no document count because Solr reports none for a point field, having no
+inverted index to count from; that is not the same as holding nothing.
+
+**Nothing refreshes on a timer.** Server data moves when you ask — Refresh, or changing the selected
+connection — and at no other time.
+
+## Running a query
+
+Solr queries are HTTP requests, and the IDE already ships a tool for authoring and running those from
+files in a repository. So there is no query console of this plugin's own: what it adds is Solr's
+knowledge to the HTTP Client's.
+
+In any `.http` file, **Add Request** offers a **Solr** group — query a collection, query with a field
+list and sort, explain why documents scored, read the schema, list what the index holds, and a POST
+using Solr's JSON Request API.
+
+**Every template addresses `{{solrUrl}}` rather than a host**, which is the whole reason saved
+queries live in `.http` files. Define the variables in `http-client.env.json` beside the requests and
+the file works for everyone who clones the repository; a committed file naming `localhost:8983` works
+only for whoever wrote it.
+
+Run one and the response gains a readable summary above its raw JSON:
+
+```
+2 documents matched, in 32 ms.
+Solr's internal fields are not shown: _version_, _root_
+
+id  title         author_s       price_f  tags_ss
+--  ------------  -------------  -------  --------------
+1   Dune          Frank Herbert  9.99     scifi, classic
+```
+
+**Matches and returned rows are stated separately** because they routinely differ — conflating them
+is how someone concludes their query found three documents when it found nine thousand and showed
+three. With `debugQuery=true` the scoring explanation appears below, with Solr's own indentation
+intact: the nesting is the information, and flattening it would leave a list of numbers with nothing
+saying which produced which.
+
+Inside a JSON request body, **field names complete** in `fields`, `sort` and a facet's `field`, from
+the configsets in this project. They come from the repository rather than the server so that
+completion never waits on a network — the trade is that a field only the deployed server has will not
+be offered.
+
 ## Closing a difference between the repository and a server
 
 *Needs a connection and a collection. The **Solr** tool window's **Drift** tab compares a configset
@@ -517,6 +602,13 @@ again, which this plugin cannot do and will not pretend to. You are left able to
 yourself, against a collection you are prepared to reindex — that is your call, not the plugin's to
 prevent.
 
+**A known gap, if the comparison looks wrong.** A field type whose analyzer chain is written with
+the classic `class="solr.LowerCaseFilterFactory"` spelling will read as *Differs* against a server,
+which reports the same filter under its SPI name `lowercase`. Both spellings mean the same factory
+and the plugin resolves them for every other purpose; the drift comparison does not yet, so it
+reports a difference that is not there. A configset using the `name=` spelling — which is what Solr's
+own shipped configsets use — is unaffected.
+
 **Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
 read back and compared again, and what you see is the result of that read. A `2xx` proves Solr
 accepted the request, not that the server now agrees — the two really do come apart, which is why
@@ -531,11 +623,8 @@ see its `add-field` payload, then press **Apply Additive Changes**. (Verified by
 
 ## What is not here yet
 
-**The server surfaces exist and this guide does not yet cover them all.** Connections, browsing
-[collections](glossary.md#collection), what an index actually holds, and running queries through the
-IDE's HTTP Client have all shipped; only the drift view above is written up here so far. What is
-genuinely not built is indexing test documents, and everything in Java or Kotlin code — field-name
-checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
+**Indexing test documents** is the one server-side step not built. Nor is anything in Java or Kotlin
+code — field-name checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
 
 [The specification](../specs/0002-solr-intellij-plugin.md) describes the intent for both;
 [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place that

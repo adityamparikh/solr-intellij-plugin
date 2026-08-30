@@ -588,13 +588,79 @@ result without touching the choosers.
 
 **Verifies** [SRV-26](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
 
+### 22. The connections settings page — `22-connections-settings.png`
+
+**⬜ Not captured.** Needs a sandbox pass; see SRV-1.
+
+**Shows** Settings → Tools → Solr Connections with one connection saved, and the editor open on it.
+
+**The frame must include the password field and the text under it.** The field is empty and says a
+password is stored — that pairing is the whole design, and a frame showing only an empty field
+documents something that looks like a bug.
+
+**Capture** add a connection with a username, save a password, reopen it for editing.
+
+**Redo when** the field layout or the stored-password wording changes.
+
+**Verifies** [SRV-1 and SRV-3](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 23. The collections tree — `23-collections-topology.png`
+
+**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-4.
+
+**Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
+shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
+
+**A standalone capture would show a different vocabulary and is a separate image**, if anyone wants
+one — the point of this frame is the cloud tree, since the mode check exists precisely because the
+two are not interchangeable.
+
+**Capture** `docker run -e SOLR_MODE=solrcloud solr:10.0.0`, create a collection, expand it.
+
+**Redo when** the row detail changes, or the toolbar gains a control.
+
+**Verifies** [SRV-4](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 24. What the index actually holds — `24-luke-fields.png`
+
+**⬜ Not captured.** Needs a running Solr with indexed documents; see SRV-8 and SRV-9.
+
+**Shows** a collection's **Fields** row expanded, with a dynamic instance marked `← *_s` and the
+group's detail naming how many of the fields came from patterns.
+
+**The row that carries the claim is the dynamic one.** A frame of ordinary declared fields shows
+nothing the schema view could not — this image exists to show a field that appears in no configset
+anywhere. Include a point field too, whose document count is absent rather than zero.
+
+**Capture** index a document with an undeclared `author_s` and a `price_f`, expand Fields.
+
+**Redo when** the detail format changes, or the pattern marker changes.
+
+**Verifies** [SRV-8 and SRV-9](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 25. A Solr query and its rendered answer — `25-query-and-results.png`
+
+**⬜ Not captured.** Needs a running Solr; see SRV-11 to SRV-14.
+
+**Shows** an `.http` file with a Solr request, run, and the response pane holding the summary line,
+the aligned table, and — if it fits — the start of a scoring explanation.
+
+**The summary line is the point, not the table.** It states matches and returned rows separately,
+which is the one thing raw JSON says plainly and a careless reading loses.
+
+**Capture** insert *Explain why documents scored*, define `http-client.env.json`, run it.
+
+**Redo when** the summary wording changes, or a column is added to the table.
+
+**Verifies** [SRV-13 and SRV-14](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
 ## Not yet capturable
 
 These have no gesture that does anything yet, or shipped but has not been captured. An entry moves up
 into the catalog when its feature ships **and** someone shoots it, mirroring the manual test suite's
 own "Not yet in the suite" list:
 
-- The settings page, and *Mark Directory as Solr Configset Root* — not yet built
+- *Mark Directory as Solr Configset Root* — shipped, never captured
 - Hover documentation on a factory attribute — owner, value type, default or required marker
   (see [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc))
 - A factory's complete effective configuration, unwritten attributes shown at their defaults

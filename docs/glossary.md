@@ -51,7 +51,8 @@ interchangeable for naming purposes: `SolrConfigset.name`
 root directory "sits inside a directory named for the core or collection". The plugin's editor path
 never talks to either — see [dumb mode](#dumb-mode)'s sibling rule, "nothing on the editor path
 contacts a server" (`docs/code-organization.md:188`) — a collection only becomes relevant once
-`server.connection` (not yet built beyond connection settings) reads one over HTTP.
+the `server` packages read one over HTTP — a schema, a topology, what the index actually
+holds — none of which any editor feature is allowed to wait on.
 
 ### configset
 
