@@ -289,3 +289,71 @@ Converting it would replace a correct tracker-based cache with a different corre
 tracker-based cache. The reason to record this is so the next reader does not
 "finish the job".
 
+
+## Talking to a server without blocking the editor
+
+Two mechanisms carry every server call this plugin makes, and both exist to keep a promise the
+editor surfaces depend on: **nothing on the editor path contacts a server**, and nothing a user is
+looking at waits on one.
+
+### The call itself is suspending, and cancellable for a reason
+
+`SolrHttpTransport` is a suspending function over `java.net.http.HttpClient`, and it wraps the
+blocking send in `runInterruptible` rather than plain `withContext(Dispatchers.IO)`. That distinction
+is not stylistic and was measured rather than assumed: coroutine cancellation is cooperative, so a
+`withContext` block sitting inside a blocking JDK call does not stop when its job is cancelled. A
+cancelled read against an unresponsive server took **30,203 ms** to return; with `runInterruptible`
+the same read returns in under 5,000 ms, because the thread is interrupted and the JDK call throws.
+
+The test that pins this asserts elapsed time, not just that the job reported itself cancelled — the
+original assertion passed either way, which is the whole reason the measurement was taken.
+
+### Every read is on request, and every write re-reads
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant V as A server surface
+    participant S as SolrServerReader
+    participant Solr
+
+    U->>V: Refresh, or change the connection
+    V->>S: read
+    S->>Solr: GET /admin/info/system
+    Solr-->>S: mode
+    Note over S: The mode decides which endpoint may be asked.<br/>A standalone Solr answers every /admin/collections<br/>request with HTTP 400.
+    S->>Solr: the endpoint that mode allows
+    Solr-->>S: response
+    S-->>V: facts, or the failure that prevented them
+    V-->>U: what the server holds, or why it could not be read
+```
+
+**There is no timer anywhere.** Server state refreshes on request and on connection change, and on
+nothing else — not on a repository file being saved, not on a tool window being redrawn. A cache in
+front of a fetch is fine and is invalidated by exactly those two events.
+
+After a write the same read runs again, and the view reports *that* rather than the write's own
+answer. The distinction is real: a configset upload lacking `_version_` returns
+`responseHeader.status` 0, appears in `action=LIST`, and Solr then refuses to build a collection from
+it. "The request was accepted" and "the server now agrees" are different facts, and only the second
+one is worth showing a user.
+
+```mermaid
+sequenceDiagram
+    participant V as Drift view
+    participant W as SolrConfigsetWriter
+    participant Solr
+    participant S as SolrServerReader
+
+    V->>W: upload, or apply additive changes
+    W->>Solr: POST
+    Solr-->>W: status 0
+    rect rgb(250, 235, 235)
+        Note over V,Solr: A 2xx is never the answer shown.
+    end
+    V->>S: read the collection back
+    S->>Solr: GET /{collection}/schema
+    Solr-->>S: the schema as it now stands
+    S-->>V: facts
+    V->>V: compare again, from the read
+```

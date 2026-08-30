@@ -51,7 +51,7 @@ flowchart LR
     Text["configset file text"] --> Parser["SolrSchemaParser.parse<br/>SolrConfigParser.parse<br/><i>pure functions</i>"]
     Parser --> Facts["SolrConfigsetFacts<br/><i>plain lists, one configset</i>"]
     Facts --> Of["SolrFieldModel.of(repository, server)"]
-    Server["server reader<br/><i>not yet built</i>"] -.-> Of
+    Server["SolrServerSchemaReader<br/><i>the same facts, from a live collection</i>"] --> Of
     Of --> Model["SolrFieldModel<br/><i>maps of SolrFact&lt;T&gt;</i>"]
     Model --> Feature["every editor feature"]
 ```

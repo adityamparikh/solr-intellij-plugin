@@ -114,8 +114,13 @@ org.apache.solr.ide
 │       ├── descriptor            (1)     the structure completion replacing the schema-less guess
 │       └── documentation         (2)     the two positions the schema provider declines
 │
-└── server
-    └── connection                (1)   how to reach a running Solr, and remembering it
+└── server                             nothing on the editor path may import any of this
+    ├── connection                (5)   how to reach a running Solr, and remembering it
+    ├── transport                 (3)   the HTTP call, the credential, and how an answer is classified
+    ├── reading                   (7)   a Solr response turned into facts
+    ├── topology                  (4)   the collections tool window
+    ├── query                     (5)   queries in `.http` files, and what their answers say
+    └── drift                     (6)   configset against collection, and the writes that close a gap
 ```
 
 ### If you have not written an IntelliJ plugin before
@@ -338,7 +343,12 @@ And the parts that belong to no single file:
 | Whether the plugin runs at all, or which configset owns a file | `configset.activation` | The [activation decision](#the-activation-decision) below |
 | Ctrl-click, Find Usages, rename | `configset.navigation` | [Add an editor feature](how-to/add-an-editor-feature.md) |
 | Guard rails shared by both aspects' inspections and fixes | `configset.editing` | [Add an editor feature](how-to/add-an-editor-feature.md) |
-| Reaching a running Solr, or remembering how to | `server.connection` | Nothing talks to a server yet |
+| Remembering how to reach a running Solr | `server.connection` | [The server surface](#the-server-surface) below |
+| Talking to one — HTTP, credentials, outcomes | `server.transport` | [The server surface](#the-server-surface) |
+| Turning a Solr response into facts | `server.reading` | [The server surface](#the-server-surface) |
+| The collections tool window | `server.topology` | [The server surface](#the-server-surface) |
+| Queries in `.http` files | `server.query` | [The server surface](#the-server-surface) |
+| Comparing a configset against a collection, and writing to one | `server.drift` | [The server surface](#the-server-surface) |
 | A user-visible string | `org.apache.solr.ide` (`SolrBundle`) | — |
 
 If your change spans two of these, that is usually correct and not a smell — an inspection reads the
@@ -628,21 +638,101 @@ the cases that decide *not* to offer can be tested without booting an IDE. Those
 the most: an intention offered where it does not apply is acted on, which is worse than one that is
 simply missing.
 
-### `org.apache.solr.ide.server.connection`
+### The server surface
 
-Talking to a live Solr server, and remembering how to reach one. Currently connection settings only.
+Six packages, and one rule that applies to all of them: **nothing on the editor path may import any
+of them.** That is not a convention — `SolrServerBoundaryContractTest` walks the source tree and
+fails on any package outside `org.apache.solr.ide.server` that names one, which is why the rule is
+stated as an allowlist of server consumers rather than a list of editor packages to forbid. A list of
+what to forbid is wrong the day someone adds a package.
 
-The distinction that governs this package is **where its state may be written**. A configset root is a
-fact about the project and is shared; a connection is a fact about one developer's machine.
-Connection definitions therefore persist to the per-user workspace file and their credentials to the
-IDE's PasswordSafe, never to a file that could be committed.
+They are layered, and the layering is what keeps each one testable:
 
-Nothing in this package may be reached from the editor path.
+```mermaid
+flowchart TD
+    subgraph ui["surfaces a user touches"]
+        Topology["topology<br/>collections tool window"]
+        Drift["drift<br/>configset vs collection"]
+        Query["query<br/>.http files"]
+    end
+    Reading["reading<br/>responses → facts<br/><i>pure, tested against captured bodies</i>"]
+    Transport["transport<br/>one HTTP call, classified five ways"]
+    Connection["connection<br/>where a server is, and who we are"]
+
+    Topology --> Reading
+    Drift --> Reading
+    Drift --> Transport
+    Query -.->|"reads configsets, never a server"| Reading
+    Reading --> Transport
+    Transport --> Connection
+```
+
+`query` is the odd one. Field completion inside an `.http` file reads the *project's configsets*, not
+a server — an `.http` file resolves to no configset of its own, so the names have to come from
+somewhere chosen, and the repository is the one that costs nothing and never makes the editor wait.
+
+#### `server.connection`
+
+Where a server is, who we authenticate as, and the settings page that creates one.
+
+The distinction that governs it is **where its state may be written**. A configset root is a fact
+about the project and is shared; a connection is a fact about one developer's machine. Connections
+therefore persist to the per-user workspace file and their credentials to the IDE's PasswordSafe,
+never to a file that could be committed.
+
+`SolrConnection` has no password field, and that is load-bearing rather than tidy: a secret that is
+never in the serialized object cannot leak into the serialized file. `addConnection` comes in two
+forms for the same reason — the presence of the password argument decides whether the secret is
+touched, because a default made "save this connection" and "forget its password" the same call.
+
+#### `server.transport`
+
+One HTTP call, and the five outcomes a caller must be able to tell apart: complete, partial, a Solr
+error, a transport failure, and an answer that could not be understood. Nothing here throws; a caller
+that had to catch to find out what happened would eventually catch too much.
+
+**Partial is the outcome that does not look like one.** A response can arrive with HTTP 200 and
+`responseHeader.status` 0 and still be incomplete, saying so only through a `partialResults` flag.
+Folded into success, a drift comparison built on one would report fields as missing from a server
+that merely stopped early.
+
+#### `server.reading`
+
+Responses turned into facts, as pure functions over a parsed body — which is what lets them be
+tested against bodies captured from running Solr on both supported lines rather than against a live
+server.
+
+`SolrServerSchemaReader` produces `SolrConfigsetFacts`, the same type the configset parser produces,
+because the model merges two halves of one shape. `SolrLukeReader` deliberately does **not**: what an
+index holds is a third answer to a different question, and a field a dynamic pattern created at index
+time appears in no configset anywhere. Merging it would make the model's symmetry false and break
+drift first.
+
+#### `server.topology`, `server.query`, `server.drift`
+
+The three surfaces. Each keeps its decisions in pure code and its Swing thin, so that what the view
+*says* can be read in a test: `SolrTopologyNodes` and `SolrCollectionsView` for the tool window,
+`SolrQueryResultReader` and `SolrQueryResultRenderer` for query answers, `SolrDrift` and
+`SolrSchemaApi` for comparison and what may be applied.
+
+**A known gap.** The comparison matches analyzer components by the string each source wrote, so a
+configset using `class="solr.LowerCaseFilterFactory"` reads as differing from a server reporting
+`name: "lowercase"`. Both name the same factory, and `SolrClassCatalog` already resolves between the
+spellings everywhere else. The specification records this as an open risk
+([the wire-format pass](../specs/0002-solr-server-integration.md)); closing it means resolving both
+sides through the catalog before comparing, rather than comparing what each happened to write.
+
+Two rules live in `drift` and are worth knowing before changing it. The comparison takes **two halves
+as separate arguments**, never a model — a model built with no server half reports every fact as
+repository-only, which is indistinguishable from a server that genuinely has none of them. And a
+write is never reported from its own answer: the view re-reads, because an accepted request is not
+proof the server agrees.
 
 ## Where later work goes
 
 - `org.apache.solr.ide.configset.*` — the configuration-files surface, split by file and then by gesture.
-- `org.apache.solr.ide.server.*` — the live-server surface, and the HTTP client when it lands.
+- `org.apache.solr.ide.server.*` — the live-server surface. Indexing test documents is the one
+  step of it not yet built.
 - Recognizers for Java and Kotlin code get their own surface when the first one is written.
 
 Packages are created when they have a file to hold, not before.
