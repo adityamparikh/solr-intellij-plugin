@@ -602,12 +602,11 @@ again, which this plugin cannot do and will not pretend to. You are left able to
 yourself, against a collection you are prepared to reindex — that is your call, not the plugin's to
 prevent.
 
-**A known gap, if the comparison looks wrong.** A field type whose analyzer chain is written with
-the classic `class="solr.LowerCaseFilterFactory"` spelling will read as *Differs* against a server,
-which reports the same filter under its SPI name `lowercase`. Both spellings mean the same factory
-and the plugin resolves them for every other purpose; the drift comparison does not yet, so it
-reports a difference that is not there. A configset using the `name=` spelling — which is what Solr's
-own shipped configsets use — is unaffected.
+**Spelling does not count as a difference.** A single analyzer factory is nameable three ways —
+`lowercase`, `solr.LowerCaseFilterFactory`, and its fully qualified Lucene class — and Solr's own
+configsets and a server reading them back do not always choose the same one, or even the same case.
+The comparison resolves all of them to the factory they mean before comparing, so a difference shown
+here is a difference in what the two sources *say*, not in how they spell it.
 
 **Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
 read back and compared again, and what you see is the result of that read. A `2xx` proves Solr

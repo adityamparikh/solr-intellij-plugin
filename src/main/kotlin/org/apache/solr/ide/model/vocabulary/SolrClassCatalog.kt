@@ -396,6 +396,52 @@ object SolrClassCatalog {
         }
 
     /**
+     * The fully qualified class [name] stands for, whichever of its three spellings was written.
+     *
+     * A single factory is nameable three ways: its SPI short name (`lowercase`), Solr's abbreviated
+     * class (`solr.LowerCaseFilterFactory`), and the fully qualified one
+     * (`org.apache.lucene.analysis.core.LowerCaseFilterFactory`). All three are correct, and which
+     * one appears depends on who wrote it — a hand-maintained configset tends to the second, Solr's
+     * own shipped configsets use the first, and a schema read back from a server reports the first.
+     *
+     * **This exists for comparing two sources, not for showing one.** An editor surface shows the
+     * user the spelling they wrote, which is the right answer there. Only a comparison has to decide
+     * whether two different strings name the same thing, and answering that by string equality is
+     * how a drift view reports differences that are not there.
+     *
+     * Version-free for the reason [classForSpiName] gives: a factory's class does not change between
+     * lines that both have it, so narrowing by version could only turn a resolvable name into an
+     * unresolvable one.
+     *
+     * @param name a class or SPI name as either source wrote it
+     * @return the fully qualified class, or null when no supported line knows that name
+     */
+    fun canonicalClassFor(name: String): String? {
+        if (name.isEmpty()) return null
+        return SUPPORTED_LINES.firstNotNullOfOrNull { line ->
+            load(line).firstOrNull { it.matchesIgnoringCase(name) }?.className
+        }
+    }
+
+    /**
+     * Whether this entry is the one [name] means, disregarding case.
+     *
+     * **Case-insensitive, and that was learned from Solr's own files rather than chosen.** The
+     * `_default` configset Solr ships writes `name="CJKWidth"`, and a server reads the same schema
+     * back as `cjkWidth`. Both are Solr's, both work, and a case-sensitive comparison reports the
+     * two as different filters — which is the whole failure this resolution exists to prevent,
+     * surviving in the one case nobody would think to write a test for.
+     *
+     * The risk it trades against is two distinct factories differing only in case. No supported
+     * line has such a pair, and a collision would be a naming accident in Lucene rather than
+     * something a schema could rely on.
+     */
+    private fun SolrClassEntry.matchesIgnoringCase(name: String): Boolean =
+        shortName.equals(name, ignoreCase = true) ||
+            className.equals(name, ignoreCase = true) ||
+            spiName?.equals(name, ignoreCase = true) == true
+
+    /**
      * The class registered under the SPI short name [spiName], on any supported line.
      *
      * Deliberately version-free, and that is the one thing worth arguing about here. Every other

@@ -4,9 +4,12 @@ import org.apache.solr.ide.model.SolrAgreement
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.SolrFact
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.schema.SolrAnalyzerChain
+import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
 import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 
 /** What kind of declaration a drift entry is about. */
 enum class SolrDriftKind {
@@ -92,7 +95,12 @@ data class SolrDrift(
          * @return what the two disagree about
          */
         fun between(repository: SolrConfigsetFacts, server: SolrConfigsetFacts): SolrDrift {
-            val model = SolrFieldModel.of(repository, server)
+            // Resolved before comparing, never compared as written. Solr reports an analyzer
+            // component under its SPI name — `lowercase` — while a configset may name the factory
+            // class it stands for, and both spellings mean the same thing. Compared as strings,
+            // every analyzer-carrying field type in a classically written configset would read as
+            // drift; a view that reports differences that are not there is one users stop reading.
+            val model = SolrFieldModel.of(resolveSpellings(repository), resolveSpellings(server))
             val entries = buildList {
                 addAll(model.fields.map { (name, fact) -> entryFor(SolrDriftKind.FIELD, name, fact, ::describeField) })
                 addAll(
@@ -134,6 +142,41 @@ data class SolrDrift(
             server = fact.server?.let(describe),
             change = SolrSchemaApi.changeFor(fact.agreement, fact.repository, fact.server),
         )
+
+        /**
+         * The same facts with every analyzer component named by its factory class.
+         *
+         * **Only for comparison.** The editor surfaces show a user the spelling they wrote, which is
+         * the right answer there; this exists because two sources writing the same thing differently
+         * is a question only a comparison has to answer.
+         *
+         * A component the catalog does not know — a custom factory — is left exactly as written.
+         * Resolving is how two spellings are recognised as one thing; inventing a resolution would
+         * be how two different things become one.
+         */
+        private fun resolveSpellings(facts: SolrConfigsetFacts): SolrConfigsetFacts =
+            facts.copy(fieldTypes = facts.fieldTypes.map(::resolveSpellings))
+
+        private fun resolveSpellings(type: SolrFieldType): SolrFieldType = type.copy(
+            indexAnalyzer = type.indexAnalyzer?.let(::resolveSpellings),
+            queryAnalyzer = type.queryAnalyzer?.let(::resolveSpellings),
+        )
+
+        private fun resolveSpellings(chain: SolrAnalyzerChain): SolrAnalyzerChain = chain.copy(
+            charFilters = chain.charFilters.map(::resolveSpellings),
+            tokenizer = chain.tokenizer?.let(::resolveSpellings),
+            filters = chain.filters.map(::resolveSpellings),
+            className = chain.className?.let(::resolvedName),
+        )
+
+        private fun resolveSpellings(component: SolrAnalyzerComponent): SolrAnalyzerComponent =
+            component.copy(className = resolvedName(component.className))
+
+        // Any of a factory's three spellings resolves to the one class it means. Version-free, for
+        // the reason the catalog gives: a factory's class does not change between lines that both
+        // have it, so narrowing by version could only turn a resolvable name into an unresolvable
+        // one.
+        private fun resolvedName(name: String): String = SolrClassCatalog.canonicalClassFor(name) ?: name
 
         private fun describeField(field: SolrField): String = buildList {
             add("type=${field.type}")
