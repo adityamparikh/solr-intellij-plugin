@@ -13,3 +13,9 @@
 # One was committed by a `git add -A` that swept the working tree; it is 165 bytes of
 # machine-local state naming whoever had the deck open.
 ~$*
+
+# Browser-automation scratch, and screenshots taken while checking something by hand. Both are
+# session artefacts that land in the working directory and have no business in the repository —
+# nine of them reached main in one commit because a `git add -A` ran where they were sitting.
+.playwright-mcp/
+check*.png
