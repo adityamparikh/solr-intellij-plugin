@@ -570,6 +570,35 @@ the configsets in this project. They come from the repository rather than the se
 completion never waits on a network — the trade is that a field only the deployed server has will not
 be offered.
 
+## Indexing a test document
+
+*Select a collection in the **Solr** tool window and press **Index a Test Document**. Any row under a
+collection will do — a shard, a replica, a field — since they all belong to one collection.*
+
+The plugin reads that collection's schema and writes you a starting document from it: the unique key
+and whatever the schema marks required, with placeholder values of the right JSON shape. Edit it,
+choose when it should become findable, and send.
+
+**Two mistakes are caught before the document is sent, because Solr will not catch them.** Both were
+run against Solr 10.0.0 on a collection created without a configset, which is what `_default` gives
+you:
+
+- **A field the schema cannot place.** Solr answers `status: 0` and *adds the field to the deployed
+  schema* — one typo produced a field, a `_str` companion and a copy-field directive between them,
+  all three of which then show up in the drift view as declarations only the server has.
+- **A document with no unique key.** Solr answers `status: 0` and indexes it under a generated
+  identifier, giving you a document that cannot be found again by any id you know.
+
+A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
+one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
+never meant.
+
+**When it becomes findable is chosen, not assumed.** The default is `commitWithin`, which makes the
+document findable shortly without forcing a commit the whole server pays for — and it is shown in the
+dialog rather than buried, because an uncommitted document that "isn't findable yet" is
+indistinguishable from a failed index to someone who was not told which to expect. Immediate is one
+click away when you want it.
+
 ## Closing a difference between the repository and a server
 
 *Needs a connection and a collection. The **Solr** tool window's **Drift** tab compares a configset
@@ -622,8 +651,7 @@ see its `add-field` payload, then press **Apply Additive Changes**. (Verified by
 
 ## What is not here yet
 
-**Indexing test documents** is the one server-side step not built. Nor is anything in Java or Kotlin
-code — field-name checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
+**Nothing in Java or Kotlin code** is built yet — field-name checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
 
 [The specification](../specs/0002-solr-intellij-plugin.md) describes the intent for both;
 [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place that
