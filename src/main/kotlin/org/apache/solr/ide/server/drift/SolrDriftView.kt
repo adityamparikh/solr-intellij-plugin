@@ -83,11 +83,13 @@ fun driftViewFor(
     response: SolrResponse<SolrServerRead>,
 ): SolrDriftView {
     failureMessageFor(response)?.let { return SolrDriftView.Failed(it) }
-    val server = valueIn(response)?.facts ?: return SolrDriftView.Failed(NO_FACTS)
+    val read = valueIn(response) ?: return SolrDriftView.Failed(NO_FACTS)
     return SolrDriftView.Compared(
         configset = configset,
         collection = collection,
-        drift = SolrDrift.between(repository, server),
+        // The version travels with the facts rather than being fetched again: the read that produced
+        // them already asked, and asking twice would be two answers about one moment.
+        drift = SolrDrift.between(repository, read.facts, read.solrVersion),
         warning = warningFor(response),
     )
 }

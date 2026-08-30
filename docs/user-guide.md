@@ -637,6 +637,14 @@ configsets and a server reading them back do not always choose the same one, or 
 The comparison resolves all of them to the factory they mean before comparing, so a difference shown
 here is a difference in what the two sources *say*, not in how they spell it.
 
+**The summary names the Solr the collection runs.** A field type that exists on one line and not
+the other is a difference the versions explain, so the comparison says which line it resolved
+against and whether that came from the server, the configset, or a default.
+
+**The summary names the Solr the collection runs.** A field type that exists on one line and not the
+other is a difference the versions explain, so the comparison says which line it resolved against and
+whether that came from the server, the configset, or a default.
+
 **Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
 read back and compared again, and what you see is the result of that read. A `2xx` proves Solr
 accepted the request, not that the server now agrees — the two really do come apart, which is why

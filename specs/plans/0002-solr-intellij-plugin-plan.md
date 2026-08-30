@@ -145,8 +145,7 @@ whole, and the gutter action goes with the Server track.
 
 ### Server track
 
-- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**;
-  `SolrVersionSource.SERVER` is still unreachable from production, which its own criterion says is not the whole of it
+- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**
 - [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**; acceptance awaits a sandbox pass
 - [Step 13 — Query console](#step-13-query-console-done) — **done**; acceptance awaits a sandbox pass
 - [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**; acceptance awaits a sandbox pass
@@ -1948,14 +1947,24 @@ it could not close, which are worth reading before the container fixture is writ
 **Success criteria:**
 
 - [x] A connection can be created, stored and used; credentials never reach project files.
-- [ ] The server half of the model populates — and **populating it is not the whole of this
-  criterion**. `SolrVersionSource.SERVER` exists today with user-facing text and no production code
-  path can produce it: `SolrFieldModel.solrVersion` reads only `luceneMatchVersion`, and
-  `SolrFieldModel.of` discards the server value outright. Filling the server half while leaving that
-  alone satisfies this line as written and still resolves a connected server's classes against a
-  version read from a file. [FR-5 and FR-6](../0002-solr-server-integration.md#functional) say what
-  the reader must produce and why the version is a separate fact rather than a value for the existing
-  one.
+- [x] The server half of the model populates — and **populating it was not the whole of this
+  criterion**, which is why the line was written that way. `SolrVersionSource.SERVER` had
+  user-facing text and no production path that could produce it, and it stayed that way through the
+  entire server track: the version reached `SolrServerRead` and stopped, because no caller passed it
+  to `SolrFieldModel.of`.
+
+  **What hid it is worth keeping.** The only consumer of a version's *source* is quick documentation,
+  and quick documentation builds a repository-only model by design — nothing on the editor path may
+  see a server. So the phrase "the connected server" was rendered by a surface that could never
+  produce it, and produced by nothing at all. Both halves were correct in isolation and every unit
+  test on either side of the gap passed.
+
+  The drift view is where the two meet: a server surface by definition, and the one place that builds
+  the two-source model. It now resolves against the line the server reported and says so.
+  `SolrServerVersionEndToEndTest` walks a captured Solr 10.0.0 response through the reader, the read,
+  the comparison and the view — the one shape of test that would have caught the original gap.
+  [FR-5 and FR-6](../0002-solr-server-integration.md#functional) say what the reader must produce and
+  why the version is a separate fact rather than a value for the existing one.
 - [ ] All five failure modes tested against the fake layer. **Four are**: a healthy response, a
   server that never answers, an authentication failure, and a body that is not the JSON it claimed —
   including the HTML a mistyped collection actually returns. The fifth, an *unrecognized server
