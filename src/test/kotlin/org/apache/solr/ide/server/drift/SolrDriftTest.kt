@@ -2,6 +2,8 @@ package org.apache.solr.ide.server.drift
 
 import org.apache.solr.ide.model.SolrAgreement
 import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.model.schema.SolrAnalyzerChain
+import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
 import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
@@ -252,5 +254,96 @@ class SolrDriftTest {
         assertEquals(2, drift.entries.size)
         assertTrue(drift.entries.all { it.agreement == SolrAgreement.SERVER_ONLY })
         assertFalse(drift.isClean)
+    }
+
+    // --- the same factory, written two ways --------------------------------------------------------
+
+    private fun typeWithFilter(component: String) = SolrFieldType(
+        name = "text_general",
+        className = "solr.TextField",
+        indexAnalyzer = SolrAnalyzerChain(filters = listOf(SolrAnalyzerComponent(component, emptyMap()))),
+    )
+
+    /**
+     * A configset writing `class=` agrees with a server reporting `name=`.
+     *
+     * **The failure this prevents is a drift view that cries wolf.** Solr reports an analyzer
+     * component under its SPI name — `lowercase` — while a configset may name the factory class it
+     * stands for. Compared as strings the two differ, so every analyzer-carrying field type in a
+     * classically written configset would read as drift, and a view that reports differences that
+     * are not there is one users stop reading.
+     */
+    @Test
+    fun `an spi name and its factory class are the same component`() {
+        val drift = driftBetween(
+            facts(fieldTypes = listOf(typeWithFilter("solr.LowerCaseFilterFactory"))),
+            facts(fieldTypes = listOf(typeWithFilter("lowercase"))),
+        )
+
+        assertTrue(drift.entries.toString(), drift.isClean)
+    }
+
+    /** And the other way round, since either source may use either spelling. */
+    @Test
+    fun `the spelling on each side does not matter`() {
+        val drift = driftBetween(
+            facts(fieldTypes = listOf(typeWithFilter("lowercase"))),
+            facts(fieldTypes = listOf(typeWithFilter("solr.LowerCaseFilterFactory"))),
+        )
+
+        assertTrue(drift.entries.toString(), drift.isClean)
+    }
+
+    /** A tokenizer resolves the same way a filter does. */
+    @Test
+    fun `a tokenizer resolves through its spi name too`() {
+        fun typeWithTokenizer(component: String) = SolrFieldType(
+            name = "text_general",
+            className = "solr.TextField",
+            indexAnalyzer = SolrAnalyzerChain(tokenizer = SolrAnalyzerComponent(component, emptyMap())),
+        )
+
+        val drift = driftBetween(
+            facts(fieldTypes = listOf(typeWithTokenizer("solr.StandardTokenizerFactory"))),
+            facts(fieldTypes = listOf(typeWithTokenizer("standard"))),
+        )
+
+        assertTrue(drift.entries.toString(), drift.isClean)
+    }
+
+    /**
+     * Genuinely different components still read as different.
+     *
+     * The half that makes the resolution worth having: normalising must not flatten two components
+     * into agreement just because both resolved.
+     */
+    @Test
+    fun `two different filters still disagree`() {
+        val drift = driftBetween(
+            facts(fieldTypes = listOf(typeWithFilter("solr.LowerCaseFilterFactory"))),
+            facts(fieldTypes = listOf(typeWithFilter("trim"))),
+        )
+
+        assertFalse(drift.entries.toString(), drift.isClean)
+    }
+
+    /**
+     * A component the catalog does not know is compared as written.
+     *
+     * A custom factory has no SPI name to resolve, and inventing one would be worse than comparing
+     * the strings — which is the correct answer when both sides wrote the same custom class.
+     */
+    @Test
+    fun `a custom component is compared as it was written`() {
+        val custom = "com.example.MyFilterFactory"
+
+        assertTrue(driftBetween(
+            facts(fieldTypes = listOf(typeWithFilter(custom))),
+            facts(fieldTypes = listOf(typeWithFilter(custom))),
+        ).isClean)
+        assertFalse(driftBetween(
+            facts(fieldTypes = listOf(typeWithFilter(custom))),
+            facts(fieldTypes = listOf(typeWithFilter("com.example.OtherFactory"))),
+        ).isClean)
     }
 }

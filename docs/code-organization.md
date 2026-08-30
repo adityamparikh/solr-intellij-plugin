@@ -715,12 +715,12 @@ The three surfaces. Each keeps its decisions in pure code and its Swing thin, so
 `SolrQueryResultReader` and `SolrQueryResultRenderer` for query answers, `SolrDrift` and
 `SolrSchemaApi` for comparison and what may be applied.
 
-**A known gap.** The comparison matches analyzer components by the string each source wrote, so a
-configset using `class="solr.LowerCaseFilterFactory"` reads as differing from a server reporting
-`name: "lowercase"`. Both name the same factory, and `SolrClassCatalog` already resolves between the
-spellings everywhere else. The specification records this as an open risk
-([the wire-format pass](../specs/0002-solr-server-integration.md)); closing it means resolving both
-sides through the catalog before comparing, rather than comparing what each happened to write.
+**Spellings are resolved before comparing, never compared as written.** One analyzer factory is
+nameable three ways, and the two sources routinely disagree about which to use — and about case:
+Solr's `_default` configset writes `CJKWidth` where a server reads the same schema back as
+`cjkWidth`. `SolrClassCatalog.canonicalClassFor` resolves any spelling to the class it means, and
+the comparison runs over the resolved form. A factory the catalog does not know is compared as
+written, because inventing a resolution is how two different things become one.
 
 Two rules live in `drift` and are worth knowing before changing it. The comparison takes **two halves
 as separate arguments**, never a model — a model built with no server half reports every fact as
