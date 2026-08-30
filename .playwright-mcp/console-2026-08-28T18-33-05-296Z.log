@@ -1,0 +1,8 @@
+[     172ms] [WARNING] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading @ https://maps.googleapis.com/maps/api/js?key=AIzaSyAQb1gupaJhY3CXQy2xmTwJMcjmot3M2hw&callback=initMap:329
+[     401ms] [WARNING] The `assetBase` meta tag is now deprecated.
+Use engineInitializer.initializeEngine(config) instead.
+See: https://docs.flutter.dev/development/platform-integration/web/initialization @ https://familylink.google.com/versions/20260817.04_RC00/main.dart.js:78369
+[    1300ms] [LOG] %c%s color: red; background: yellow; font-size: 24px; WARNING! @ https://www.gstatic.com/_/mss/boq-identity/_/js/k=boq-identity.AccountsSignInUi.en_US.qYopU9lN7VM.es5.O/am=EQEAAAAGvJEAIP__vwEADCDYDvi-FkATIGQAAAAAAAAAAABLAADQEEA/d=1/excm=_b,_tp,accountchooserview/ed=1/dg=0/wt=2/ujg=1/rs=AOaEmlG7HgWrgcCAYJ4Mq55GYWAg9w5-6A/dti=1/m=_b,_tp:559
+[    1300ms] [LOG] %c%s font-size: 18px; Using this console may allow attackers to impersonate you and steal your information using an attack called Self-XSS.
+Do not enter or paste code that you do not understand. @ https://www.gstatic.com/_/mss/boq-identity/_/js/k=boq-identity.AccountsSignInUi.en_US.qYopU9lN7VM.es5.O/am=EQEAAAAGvJEAIP__vwEADCDYDvi-FkATIGQAAAAAAAAAAABLAADQEEA/d=1/excm=_b,_tp,accountchooserview/ed=1/dg=0/wt=2/ujg=1/rs=AOaEmlG7HgWrgcCAYJ4Mq55GYWAg9w5-6A/dti=1/m=_b,_tp:559
+[    3557ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Ffamilylink.google.com%2Fsetting%2Fresource%2F94&dsh=S-835334537%3A1787941986393726&flowEntry=ServiceLogin&flowName=GlifWebSignIn:0

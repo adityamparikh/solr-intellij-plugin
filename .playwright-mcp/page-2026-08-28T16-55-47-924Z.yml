@@ -1,0 +1,1227 @@
+- generic [active] [ref=e1]:
+  - heading "Main.dc.html" [level=3] [ref=e2]
+  - generic [ref=e4]:
+    - generic [ref=e5]: IntelliJ IDEA 2026.2 · org.apache.solr.ide 0.1.0
+    - generic [ref=e6]: Apache Solr plugin UI
+    - paragraph [ref=e7]: The plugin registers no settings page, no tool window and no actions. Every surface below is one the platform already owns, with Solr's vocabulary rendered into it — drawn from demo/solr/conf and the shipped message bundle. Each row pairs the light theme with Dark.
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: "1"
+        - generic [ref=e11]:
+          - generic [ref=e12]: Match-capability inlay hints
+          - generic [ref=e13]: What each field can really match, beside its declaration. Restated defaults dim.
+      - generic [ref=e14]:
+        - generic [ref=e15]: "2"
+        - generic [ref=e16]:
+          - generic [ref=e17]: Dangling copyField reference
+          - generic [ref=e18]: The warning tooltip, its message and the fix behind ⌥⏎.
+      - generic [ref=e19]:
+        - generic [ref=e20]: "3"
+        - generic [ref=e21]:
+          - generic [ref=e22]: Attribute completion
+          - generic [ref=e23]: Solr's own vocabulary, each name carrying what it does and what it accepts.
+      - generic [ref=e24]:
+        - generic [ref=e25]: "4"
+        - generic [ref=e26]:
+          - generic [ref=e27]: Companion-field intentions
+          - generic [ref=e28]: An intention, not a warning — a field without exact matching is correct Solr.
+      - generic [ref=e29]:
+        - generic [ref=e30]: "5"
+        - generic [ref=e31]:
+          - generic [ref=e32]: Find Usages on a field type
+          - generic [ref=e33]: The header and group labels the platform would otherwise get wrong.
+      - generic [ref=e34]:
+        - generic [ref=e35]: "6"
+        - generic [ref=e36]:
+          - generic [ref=e37]: Quick documentation on a field
+          - generic [ref=e38]: Eighteen resolved properties, each naming where its value came from.
+      - generic [ref=e39]:
+        - generic [ref=e40]: "7"
+        - generic [ref=e41]:
+          - generic [ref=e42]: Inspections settings
+          - generic [ref=e43]: All eleven, as the IDE names them, every one registered at Warning.
+      - generic [ref=e44]:
+        - generic [ref=e45]: "8"
+        - generic [ref=e46]:
+          - generic [ref=e47]: Solr settings page
+          - generic [ref=e48]: The only artboard that proposes rather than reproduces — plan step 22, unbuilt.
+  - heading "Hints.dc.html" [level=3] [ref=e49]
+  - generic [ref=e50]:
+    - generic [ref=e51]:
+      - generic [ref=e52]: </>
+      - generic [ref=e53]: managed-schema.xml
+    - generic [ref=e54]:
+      - generic [ref=e55]: "65"
+      - generic [ref=e57]:
+        - generic [ref=e58]: "66"
+        - generic [ref=e59]:
+          - text: <field name="id" type="string" indexed="true" stored="true" required="true"/>
+          - generic [ref=e60]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e61]:
+        - generic [ref=e62]: "67"
+        - generic [ref=e63]:
+          - text: <field name="sku" type="string" indexed="true" stored="true"/>
+          - generic [ref=e64]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e65]:
+        - generic [ref=e66]: "68"
+        - generic [ref=e67]:
+          - text: <field name="name" type="text_general" indexed="true" stored="true"/>
+          - generic [ref=e68]: tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+      - generic [ref=e69]:
+        - generic [ref=e70]: "69"
+        - generic [ref=e71]:
+          - text: <field name="name_prefix" type="text_prefix" indexed="true" stored="false"/>
+          - generic [ref=e72]: tokenised, case-insensitive, prefix-capable, indexed, not stored, no doc values, single-valued
+      - generic [ref=e73]:
+        - generic [ref=e74]: "70"
+        - generic [ref=e75]:
+          - text: <field name="category" type="string" indexed="true" stored="true"/>
+          - generic [ref=e76]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e77]:
+        - generic [ref=e78]: "71"
+        - generic [ref=e79]:
+          - text: <field name="description" type="text_general" indexed="true" stored="true"/>
+          - generic [ref=e80]: tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+      - generic [ref=e81]:
+        - generic [ref=e82]: "72"
+        - generic [ref=e83]:
+          - text: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+          - generic [ref=e84]: tokenised, case-insensitive, indexed, not stored, no doc values, multi-valued
+      - generic [ref=e85]:
+        - generic [ref=e86]: "73"
+        - generic [ref=e87]:
+          - text: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+          - generic [ref=e88]: indexed, stored, no doc values, single-valued
+      - generic [ref=e89]:
+        - generic [ref=e90]: "74"
+        - generic [ref=e91]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e92]:
+        - generic [ref=e93]: "75"
+        - generic [ref=e94]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e95]:
+        - generic [ref=e96]: "76"
+        - generic [ref=e97]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e98]:
+        - generic [ref=e99]: "77"
+        - generic [ref=e100]:
+          - text: <field name="legacy" type=
+          - generic [ref=e101]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+  - heading "HintsDark.dc.html" [level=3] [ref=e104]
+  - generic [ref=e105]:
+    - generic [ref=e106]:
+      - generic [ref=e107]: </>
+      - generic [ref=e108]: managed-schema.xml
+    - generic [ref=e109]:
+      - generic [ref=e110]: "65"
+      - generic [ref=e112]:
+        - generic [ref=e113]: "66"
+        - generic [ref=e114]:
+          - text: <field name="id" type="string" indexed="true" stored="true" required="true"/>
+          - generic [ref=e115]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e116]:
+        - generic [ref=e117]: "67"
+        - generic [ref=e118]:
+          - text: <field name="sku" type="string" indexed="true" stored="true"/>
+          - generic [ref=e119]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e120]:
+        - generic [ref=e121]: "68"
+        - generic [ref=e122]:
+          - text: <field name="name" type="text_general" indexed="true" stored="true"/>
+          - generic [ref=e123]: tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+      - generic [ref=e124]:
+        - generic [ref=e125]: "69"
+        - generic [ref=e126]:
+          - text: <field name="name_prefix" type="text_prefix" indexed="true" stored="false"/>
+          - generic [ref=e127]: tokenised, case-insensitive, prefix-capable, indexed, not stored, no doc values, single-valued
+      - generic [ref=e128]:
+        - generic [ref=e129]: "70"
+        - generic [ref=e130]:
+          - text: <field name="category" type="string" indexed="true" stored="true"/>
+          - generic [ref=e131]: whole value, case-sensitive, indexed, stored, doc values, single-valued
+      - generic [ref=e132]:
+        - generic [ref=e133]: "71"
+        - generic [ref=e134]:
+          - text: <field name="description" type="text_general" indexed="true" stored="true"/>
+          - generic [ref=e135]: tokenised, case-insensitive, indexed, stored, no doc values, single-valued
+      - generic [ref=e136]:
+        - generic [ref=e137]: "72"
+        - generic [ref=e138]:
+          - text: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+          - generic [ref=e139]: tokenised, case-insensitive, indexed, not stored, no doc values, multi-valued
+      - generic [ref=e140]:
+        - generic [ref=e141]: "73"
+        - generic [ref=e142]:
+          - text: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+          - generic [ref=e143]: indexed, stored, no doc values, single-valued
+      - generic [ref=e144]:
+        - generic [ref=e145]: "74"
+        - generic [ref=e146]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e147]:
+        - generic [ref=e148]: "75"
+        - generic [ref=e149]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e150]:
+        - generic [ref=e151]: "76"
+        - generic [ref=e152]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e153]:
+        - generic [ref=e154]: "77"
+        - generic [ref=e155]:
+          - text: <field name="legacy" type=
+          - generic [ref=e156]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+  - heading "Inspection.dc.html" [level=3] [ref=e159]
+  - generic [ref=e160]:
+    - generic [ref=e161]:
+      - generic [ref=e162]: </>
+      - generic [ref=e163]: managed-schema.xml
+    - generic [ref=e164]:
+      - generic [ref=e165]:
+        - generic [ref=e166]: "84"
+        - generic [ref=e167]: <dynamicField name="*_t" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e168]: "85"
+      - generic [ref=e170]:
+        - generic [ref=e171]: "86"
+        - generic [ref=e172]: <uniqueKey>id</uniqueKey>
+      - generic [ref=e173]: "87"
+      - generic [ref=e175]:
+        - generic [ref=e176]: "88"
+        - generic [ref=e177]: <copyField source="name" dest="text"/>
+      - generic [ref=e178]:
+        - generic [ref=e179]: "89"
+        - generic [ref=e180]: <copyField source="description" dest="text"/>
+      - generic [ref=e181]:
+        - generic [ref=e182]: "90"
+        - generic [ref=e183]: <copyField source="name" dest="name_prefix"/>
+      - generic [ref=e184]:
+        - generic [ref=e185]: "91"
+        - generic [ref=e186]: "<!-- DELIBERATE: no such field. This is the dangling-reference inspection demo. -->"
+      - generic [ref=e187]:
+        - generic [ref=e188]: "92"
+        - generic [ref=e190]:
+          - text: <copyField source=
+          - generic [ref=e191]: "\"manufacturer\""
+          - text: dest="text"/>
+      - generic [ref=e192]:
+        - generic [ref=e193]: "93"
+        - generic [ref=e194]: </schema>
+    - generic [ref=e197]:
+      - generic [ref=e198]: "Solr: no field named 'manufacturer' is declared in this configset"
+      - generic [ref=e199]:
+        - generic [ref=e201]: Change to 'category'
+        - generic [ref=e202]: ⌥⏎
+        - generic [ref=e203]: Dangling copyField reference
+  - heading "InspectionDark.dc.html" [level=3] [ref=e204]
+  - generic [ref=e205]:
+    - generic [ref=e206]:
+      - generic [ref=e207]: </>
+      - generic [ref=e208]: managed-schema.xml
+    - generic [ref=e209]:
+      - generic [ref=e210]:
+        - generic [ref=e211]: "84"
+        - generic [ref=e212]: <dynamicField name="*_t" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e213]: "85"
+      - generic [ref=e215]:
+        - generic [ref=e216]: "86"
+        - generic [ref=e217]: <uniqueKey>id</uniqueKey>
+      - generic [ref=e218]: "87"
+      - generic [ref=e220]:
+        - generic [ref=e221]: "88"
+        - generic [ref=e222]: <copyField source="name" dest="text"/>
+      - generic [ref=e223]:
+        - generic [ref=e224]: "89"
+        - generic [ref=e225]: <copyField source="description" dest="text"/>
+      - generic [ref=e226]:
+        - generic [ref=e227]: "90"
+        - generic [ref=e228]: <copyField source="name" dest="name_prefix"/>
+      - generic [ref=e229]:
+        - generic [ref=e230]: "91"
+        - generic [ref=e231]: "<!-- DELIBERATE: no such field. This is the dangling-reference inspection demo. -->"
+      - generic [ref=e232]:
+        - generic [ref=e233]: "92"
+        - generic [ref=e235]:
+          - text: <copyField source=
+          - generic [ref=e236]: "\"manufacturer\""
+          - text: dest="text"/>
+      - generic [ref=e237]:
+        - generic [ref=e238]: "93"
+        - generic [ref=e239]: </schema>
+    - generic [ref=e242]:
+      - generic [ref=e243]: "Solr: no field named 'manufacturer' is declared in this configset"
+      - generic [ref=e244]:
+        - generic [ref=e246]: Change to 'category'
+        - generic [ref=e247]: ⌥⏎
+        - generic [ref=e248]: Dangling copyField reference
+  - heading "Completion.dc.html" [level=3] [ref=e249]
+  - generic [ref=e250]:
+    - generic [ref=e251]:
+      - generic [ref=e252]: </>
+      - generic [ref=e253]: managed-schema.xml
+    - generic [ref=e254]:
+      - generic [ref=e255]:
+        - generic [ref=e256]: "70"
+        - generic [ref=e257]: <field name="category" type="string" indexed="true" stored="true"
+      - generic [ref=e259]:
+        - generic [ref=e260]: "71"
+        - generic [ref=e261]: <field name="description" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e262]:
+        - generic [ref=e263]: "72"
+        - generic [ref=e264]: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+      - generic [ref=e265]:
+        - generic [ref=e266]: "73"
+        - generic [ref=e267]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+      - generic [ref=e268]:
+        - generic [ref=e269]: "74"
+        - generic [ref=e270]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e271]:
+        - generic [ref=e272]: "75"
+        - generic [ref=e273]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e274]:
+        - generic [ref=e275]: "76"
+        - generic [ref=e276]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e277]:
+        - generic [ref=e278]: "77"
+        - generic [ref=e279]:
+          - text: <field name="legacy" type=
+          - generic [ref=e280]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+      - generic [ref=e281]: "78"
+      - generic [ref=e283]: "79"
+      - generic [ref=e285]: "80"
+      - generic [ref=e287]: "81"
+    - generic [ref=e291]:
+      - generic [ref=e292]:
+        - generic [ref=e293]:
+          - generic [ref=e294]: docValues
+          - generic [ref=e295]: Whether a column-oriented structure is b…
+          - generic [ref=e296]: true or false
+        - generic [ref=e297]:
+          - generic [ref=e298]: sortMissingLast
+          - generic [ref=e299]: Whether documents lacking this fie…
+          - generic [ref=e300]: true or false
+        - generic [ref=e301]:
+          - generic [ref=e302]: default
+          - generic [ref=e303]: A value used when the document sup…
+          - generic [ref=e304]: any value of the type
+        - generic [ref=e305]:
+          - generic [ref=e306]: large
+          - generic [ref=e307]: Whether the value is lazily loaded and not c…
+          - generic [ref=e308]: true or false
+        - generic [ref=e309]:
+          - generic [ref=e310]: multiValued
+          - generic [ref=e311]: Whether one document may hold several …
+          - generic [ref=e312]: true or false
+        - generic [ref=e313]:
+          - generic [ref=e314]: omitNorms
+          - generic [ref=e315]: Whether length normalisation and index-t…
+          - generic [ref=e316]: true or false
+        - generic [ref=e317]:
+          - generic [ref=e318]: omitPositions
+          - generic [ref=e319]: Whether positions are discarded whil…
+          - generic [ref=e320]: true or false
+        - generic [ref=e321]:
+          - generic [ref=e322]: omitTermFreqAndPositions
+          - generic [ref=e323]: Whether term frequency an…
+          - generic [ref=e324]: true or false
+        - generic [ref=e325]:
+          - generic [ref=e326]: required
+          - generic [ref=e327]: Whether a document lacking this field is …
+          - generic [ref=e328]: true or false
+        - generic [ref=e329]:
+          - generic [ref=e330]: sortMissingFirst
+          - generic [ref=e331]: Whether documents lacking this fi…
+          - generic [ref=e332]: true or false
+        - generic [ref=e333]:
+          - generic [ref=e334]: termOffsets
+          - generic [ref=e335]: Whether offsets are stored in the term…
+          - generic [ref=e336]: true or false
+      - generic [ref=e337]:
+        - text: Press ^Space to view tags from other namespaces
+        - link "Next Tip" [ref=e338] [cursor=pointer]:
+          - /url: "#"
+  - heading "CompletionDark.dc.html" [level=3] [ref=e339]
+  - generic [ref=e340]:
+    - generic [ref=e341]:
+      - generic [ref=e342]: </>
+      - generic [ref=e343]: managed-schema.xml
+    - generic [ref=e344]:
+      - generic [ref=e345]:
+        - generic [ref=e346]: "70"
+        - generic [ref=e347]: <field name="category" type="string" indexed="true" stored="true"
+      - generic [ref=e349]:
+        - generic [ref=e350]: "71"
+        - generic [ref=e351]: <field name="description" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e352]:
+        - generic [ref=e353]: "72"
+        - generic [ref=e354]: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+      - generic [ref=e355]:
+        - generic [ref=e356]: "73"
+        - generic [ref=e357]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+      - generic [ref=e358]:
+        - generic [ref=e359]: "74"
+        - generic [ref=e360]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e361]:
+        - generic [ref=e362]: "75"
+        - generic [ref=e363]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e364]:
+        - generic [ref=e365]: "76"
+        - generic [ref=e366]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e367]:
+        - generic [ref=e368]: "77"
+        - generic [ref=e369]:
+          - text: <field name="legacy" type=
+          - generic [ref=e370]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+      - generic [ref=e371]: "78"
+      - generic [ref=e373]: "79"
+      - generic [ref=e375]: "80"
+      - generic [ref=e377]: "81"
+    - generic [ref=e381]:
+      - generic [ref=e382]:
+        - generic [ref=e383]:
+          - generic [ref=e384]: docValues
+          - generic [ref=e385]: Whether a column-oriented structure is b…
+          - generic [ref=e386]: true or false
+        - generic [ref=e387]:
+          - generic [ref=e388]: sortMissingLast
+          - generic [ref=e389]: Whether documents lacking this fie…
+          - generic [ref=e390]: true or false
+        - generic [ref=e391]:
+          - generic [ref=e392]: default
+          - generic [ref=e393]: A value used when the document sup…
+          - generic [ref=e394]: any value of the type
+        - generic [ref=e395]:
+          - generic [ref=e396]: large
+          - generic [ref=e397]: Whether the value is lazily loaded and not c…
+          - generic [ref=e398]: true or false
+        - generic [ref=e399]:
+          - generic [ref=e400]: multiValued
+          - generic [ref=e401]: Whether one document may hold several …
+          - generic [ref=e402]: true or false
+        - generic [ref=e403]:
+          - generic [ref=e404]: omitNorms
+          - generic [ref=e405]: Whether length normalisation and index-t…
+          - generic [ref=e406]: true or false
+        - generic [ref=e407]:
+          - generic [ref=e408]: omitPositions
+          - generic [ref=e409]: Whether positions are discarded whil…
+          - generic [ref=e410]: true or false
+        - generic [ref=e411]:
+          - generic [ref=e412]: omitTermFreqAndPositions
+          - generic [ref=e413]: Whether term frequency an…
+          - generic [ref=e414]: true or false
+        - generic [ref=e415]:
+          - generic [ref=e416]: required
+          - generic [ref=e417]: Whether a document lacking this field is …
+          - generic [ref=e418]: true or false
+        - generic [ref=e419]:
+          - generic [ref=e420]: sortMissingFirst
+          - generic [ref=e421]: Whether documents lacking this fi…
+          - generic [ref=e422]: true or false
+        - generic [ref=e423]:
+          - generic [ref=e424]: termOffsets
+          - generic [ref=e425]: Whether offsets are stored in the term…
+          - generic [ref=e426]: true or false
+      - generic [ref=e427]:
+        - text: Press ^Space to view tags from other namespaces
+        - link "Next Tip" [ref=e428] [cursor=pointer]:
+          - /url: "#"
+  - heading "Intention.dc.html" [level=3] [ref=e429]
+  - generic [ref=e430]:
+    - generic [ref=e431]:
+      - generic [ref=e432]: </>
+      - generic [ref=e433]: managed-schema.xml
+    - generic [ref=e434]:
+      - generic [ref=e435]:
+        - generic [ref=e436]: "70"
+        - generic [ref=e437]: <field name="category" type="string" indexed="true" stored="true"/>
+      - generic [ref=e438]:
+        - generic [ref=e439]: "71"
+        - generic [ref=e440]: <field name="description" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e441]:
+        - generic [ref=e442]: "72"
+        - generic [ref=e444]: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+      - generic [ref=e445]:
+        - generic [ref=e446]: "73"
+        - generic [ref=e447]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+      - generic [ref=e448]:
+        - generic [ref=e449]: "74"
+        - generic [ref=e450]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e451]:
+        - generic [ref=e452]: "75"
+        - generic [ref=e453]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e454]:
+        - generic [ref=e455]: "76"
+        - generic [ref=e456]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e457]:
+        - generic [ref=e458]: "77"
+        - generic [ref=e459]:
+          - text: <field name="legacy" type=
+          - generic [ref=e460]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+    - generic [ref=e461]:
+      - generic [ref=e462]:
+        - generic [ref=e463]:
+          - generic [ref=e464]:
+            - generic [ref=e466]: Add exact-match companion field (string)
+            - generic [ref=e467]: ⋮
+          - generic [ref=e468]: Add prefix-capable companion field (text_prefix)
+          - generic [ref=e471]: Rearrange tag attributes
+          - generic [ref=e473]: Remove attribute
+          - generic [ref=e475]: Disable 'Solr field match capability' Inlay Hints
+          - generic [ref=e477]: Inject language or reference
+          - generic [ref=e479]: Put attributes on separate lines
+        - generic [ref=e481]: Press ^J to toggle preview
+      - generic [ref=e482]:
+        - paragraph [ref=e483]: Adds a companion field that holds a tokenized field's whole value, so it can be matched, faceted and sorted exactly.
+        - paragraph [ref=e484]: A tokenized field does not keep the string a document carried. Widget Pro enters the index as widget and pro, so a filter on the whole value, a facet over it, or a sort by it all have nothing to work against — and none of them reports an error. The standard remedy is a string companion beside the text field, populated by a copyField rule, and this writes both.
+  - heading "IntentionDark.dc.html" [level=3] [ref=e485]
+  - generic [ref=e486]:
+    - generic [ref=e487]:
+      - generic [ref=e488]: </>
+      - generic [ref=e489]: managed-schema.xml
+    - generic [ref=e490]:
+      - generic [ref=e491]:
+        - generic [ref=e492]: "70"
+        - generic [ref=e493]: <field name="category" type="string" indexed="true" stored="true"/>
+      - generic [ref=e494]:
+        - generic [ref=e495]: "71"
+        - generic [ref=e496]: <field name="description" type="text_general" indexed="true" stored="true"/>
+      - generic [ref=e497]:
+        - generic [ref=e498]: "72"
+        - generic [ref=e500]: <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
+      - generic [ref=e501]:
+        - generic [ref=e502]: "73"
+        - generic [ref=e503]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+      - generic [ref=e504]:
+        - generic [ref=e505]: "74"
+        - generic [ref=e506]: "<!-- DELIBERATE: no such type. This is the undeclared-field-type inspection demo. Unlike"
+      - generic [ref=e507]:
+        - generic [ref=e508]: "75"
+        - generic [ref=e509]: "`notes` above, resolution has no field type to fall back on at all here, so the inlay"
+      - generic [ref=e510]:
+        - generic [ref=e511]: "76"
+        - generic [ref=e512]: hint stays silent rather than guessing at a default the type might have overridden. -->
+      - generic [ref=e513]:
+        - generic [ref=e514]: "77"
+        - generic [ref=e515]:
+          - text: <field name="legacy" type=
+          - generic [ref=e516]: "\"discontinued\""
+          - text: indexed="true" stored="true"/>
+    - generic [ref=e517]:
+      - generic [ref=e518]:
+        - generic [ref=e519]:
+          - generic [ref=e520]:
+            - generic [ref=e522]: Add exact-match companion field (string)
+            - generic [ref=e523]: ⋮
+          - generic [ref=e524]: Add prefix-capable companion field (text_prefix)
+          - generic [ref=e527]: Rearrange tag attributes
+          - generic [ref=e529]: Remove attribute
+          - generic [ref=e531]: Disable 'Solr field match capability' Inlay Hints
+          - generic [ref=e533]: Inject language or reference
+          - generic [ref=e535]: Put attributes on separate lines
+        - generic [ref=e537]: Press ^J to toggle preview
+      - generic [ref=e538]:
+        - paragraph [ref=e539]: Adds a companion field that holds a tokenized field's whole value, so it can be matched, faceted and sorted exactly.
+        - paragraph [ref=e540]: A tokenized field does not keep the string a document carried. Widget Pro enters the index as widget and pro, so a filter on the whole value, a facet over it, or a sort by it all have nothing to work against — and none of them reports an error. The standard remedy is a string companion beside the text field, populated by a copyField rule, and this writes both.
+  - heading "FindUsages.dc.html" [level=3] [ref=e541]
+  - generic [ref=e543]:
+    - generic [ref=e544]:
+      - generic [ref=e545]: ↻
+      - generic [ref=e546]: ↑
+      - generic [ref=e547]: ↓
+      - generic [ref=e548]: ⚙
+      - generic [ref=e549]: 👁
+    - generic [ref=e550]:
+      - generic [ref=e551]:
+        - generic [ref=e552]: Find
+        - generic [ref=e553]:
+          - text: text_general in Project Files
+          - generic [ref=e554]: ×
+        - generic [ref=e555]: ⋮
+        - generic [ref=e556]: −
+      - generic [ref=e557]:
+        - generic [ref=e558]:
+          - generic [ref=e559]:
+            - generic [ref=e560]: ▼
+            - generic [ref=e561]: Field type
+          - generic [ref=e562]: text_general (managed-schema.xml)
+          - generic [ref=e564]:
+            - generic [ref=e565]: ▼
+            - generic [ref=e566]: Usages in Project Files
+            - generic [ref=e567]: 4 results
+          - generic [ref=e568]:
+            - generic [ref=e569]: ▼
+            - generic [ref=e570]: Field declaring this type
+            - generic [ref=e571]: 4 results
+          - generic [ref=e572]:
+            - generic [ref=e573]: ▼
+            - generic [ref=e575]: solr-plugin-demo
+            - generic [ref=e576]: 4 results
+          - generic [ref=e577]:
+            - generic [ref=e578]: ▼
+            - generic [ref=e580]: solr/conf
+            - generic [ref=e581]: 4 results
+          - generic [ref=e582]:
+            - generic [ref=e583]: ▼
+            - generic [ref=e584]: </>
+            - generic [ref=e585]: managed-schema.xml
+            - generic [ref=e586]: 4 results
+          - generic [ref=e588]:
+            - generic [ref=e589]: "68"
+            - generic [ref=e590]:
+              - text: <field name="name" type=
+              - generic [ref=e591]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e592]:
+            - generic [ref=e593]: "71"
+            - generic [ref=e594]:
+              - text: <field name="description" type=
+              - generic [ref=e595]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e596]:
+            - generic [ref=e597]: "72"
+            - generic [ref=e598]:
+              - text: <field name="text" type=
+              - generic [ref=e599]: "\"text_general\""
+              - text: indexed="true" stored="false" mu
+          - generic [ref=e600]:
+            - generic [ref=e601]: "84"
+            - generic [ref=e602]:
+              - text: <dynamicField name="*_t" type=
+              - generic [ref=e603]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+        - generic [ref=e604]:
+          - generic [ref=e605]:
+            - generic [ref=e606]: "64"
+            - generic [ref=e607]: </fieldType>
+          - generic [ref=e608]: "65"
+          - generic [ref=e610]:
+            - generic [ref=e611]: "66"
+            - generic [ref=e612]: <field name="id" type="string" indexed="true" stored="true" re
+          - generic [ref=e613]:
+            - generic [ref=e614]: "67"
+            - generic [ref=e615]: <field name="sku" type="string" indexed="true" stored="true"/>
+          - generic [ref=e616]:
+            - generic [ref=e617]: "68"
+            - generic [ref=e618]:
+              - text: <field name="name" type=
+              - generic [ref=e619]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e620]:
+            - generic [ref=e621]: "69"
+            - generic [ref=e622]: <field name="name_prefix" type="text_prefix" indexed="true" stored="false"/>
+          - generic [ref=e623]:
+            - generic [ref=e624]: "70"
+            - generic [ref=e625]: <field name="category" type="string" indexed="true" stored="true"/>
+          - generic [ref=e626]:
+            - generic [ref=e627]: "71"
+            - generic [ref=e628]:
+              - text: <field name="description" type=
+              - generic [ref=e629]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e630]:
+            - generic [ref=e631]: "72"
+            - generic [ref=e632]:
+              - text: <field name="text" type=
+              - generic [ref=e633]: "\"text_general\""
+              - text: indexed="true" stored="false"
+          - generic [ref=e634]:
+            - generic [ref=e635]: "73"
+            - generic [ref=e636]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+  - heading "FindUsagesDark.dc.html" [level=3] [ref=e637]
+  - generic [ref=e639]:
+    - generic [ref=e640]:
+      - generic [ref=e641]: ↻
+      - generic [ref=e642]: ↑
+      - generic [ref=e643]: ↓
+      - generic [ref=e644]: ⚙
+      - generic [ref=e645]: 👁
+    - generic [ref=e646]:
+      - generic [ref=e647]:
+        - generic [ref=e648]: Find
+        - generic [ref=e649]:
+          - text: text_general in Project Files
+          - generic [ref=e650]: ×
+        - generic [ref=e651]: ⋮
+        - generic [ref=e652]: −
+      - generic [ref=e653]:
+        - generic [ref=e654]:
+          - generic [ref=e655]:
+            - generic [ref=e656]: ▼
+            - generic [ref=e657]: Field type
+          - generic [ref=e658]: text_general (managed-schema.xml)
+          - generic [ref=e660]:
+            - generic [ref=e661]: ▼
+            - generic [ref=e662]: Usages in Project Files
+            - generic [ref=e663]: 4 results
+          - generic [ref=e664]:
+            - generic [ref=e665]: ▼
+            - generic [ref=e666]: Field declaring this type
+            - generic [ref=e667]: 4 results
+          - generic [ref=e668]:
+            - generic [ref=e669]: ▼
+            - generic [ref=e671]: solr-plugin-demo
+            - generic [ref=e672]: 4 results
+          - generic [ref=e673]:
+            - generic [ref=e674]: ▼
+            - generic [ref=e676]: solr/conf
+            - generic [ref=e677]: 4 results
+          - generic [ref=e678]:
+            - generic [ref=e679]: ▼
+            - generic [ref=e680]: </>
+            - generic [ref=e681]: managed-schema.xml
+            - generic [ref=e682]: 4 results
+          - generic [ref=e684]:
+            - generic [ref=e685]: "68"
+            - generic [ref=e686]:
+              - text: <field name="name" type=
+              - generic [ref=e687]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e688]:
+            - generic [ref=e689]: "71"
+            - generic [ref=e690]:
+              - text: <field name="description" type=
+              - generic [ref=e691]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e692]:
+            - generic [ref=e693]: "72"
+            - generic [ref=e694]:
+              - text: <field name="text" type=
+              - generic [ref=e695]: "\"text_general\""
+              - text: indexed="true" stored="false" mu
+          - generic [ref=e696]:
+            - generic [ref=e697]: "84"
+            - generic [ref=e698]:
+              - text: <dynamicField name="*_t" type=
+              - generic [ref=e699]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+        - generic [ref=e700]:
+          - generic [ref=e701]:
+            - generic [ref=e702]: "64"
+            - generic [ref=e703]: </fieldType>
+          - generic [ref=e704]: "65"
+          - generic [ref=e706]:
+            - generic [ref=e707]: "66"
+            - generic [ref=e708]: <field name="id" type="string" indexed="true" stored="true" re
+          - generic [ref=e709]:
+            - generic [ref=e710]: "67"
+            - generic [ref=e711]: <field name="sku" type="string" indexed="true" stored="true"/>
+          - generic [ref=e712]:
+            - generic [ref=e713]: "68"
+            - generic [ref=e714]:
+              - text: <field name="name" type=
+              - generic [ref=e715]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e716]:
+            - generic [ref=e717]: "69"
+            - generic [ref=e718]: <field name="name_prefix" type="text_prefix" indexed="true" stored="false"/>
+          - generic [ref=e719]:
+            - generic [ref=e720]: "70"
+            - generic [ref=e721]: <field name="category" type="string" indexed="true" stored="true"/>
+          - generic [ref=e722]:
+            - generic [ref=e723]: "71"
+            - generic [ref=e724]:
+              - text: <field name="description" type=
+              - generic [ref=e725]: "\"text_general\""
+              - text: indexed="true" stored="true"/>
+          - generic [ref=e726]:
+            - generic [ref=e727]: "72"
+            - generic [ref=e728]:
+              - text: <field name="text" type=
+              - generic [ref=e729]: "\"text_general\""
+              - text: indexed="true" stored="false"
+          - generic [ref=e730]:
+            - generic [ref=e731]: "73"
+            - generic [ref=e732]: <field name="notes" type="custom_text" indexed="true" stored="true"/>
+  - heading "QuickDoc.dc.html" [level=3] [ref=e733]
+  - generic [ref=e735]:
+    - generic [ref=e736]: field category of type string
+    - generic [ref=e737]:
+      - paragraph [ref=e738]: "Matches: whole value, case-sensitive."
+      - paragraph [ref=e739]:
+        - text: Wildcard queries such as
+        - generic [ref=e740]: wid*
+        - text: work on any indexed field and are expanded across the dictionary at query time. This describes what the index supports efficiently.
+      - paragraph [ref=e741]: Properties
+      - table [ref=e742]:
+        - rowgroup [ref=e743]:
+          - row [ref=e744]:
+            - columnheader "Property" [ref=e745]
+            - columnheader "Value" [ref=e746]
+            - columnheader "From" [ref=e747]
+            - columnheader "Accepts" [ref=e748]
+            - columnheader "Meaning" [ref=e749]
+        - rowgroup [ref=e750]:
+          - row [ref=e751]:
+            - cell "indexed" [ref=e752]
+            - cell "true" [ref=e754]
+            - cell "on this field" [ref=e755]
+            - cell "true or false" [ref=e756]
+            - cell "Can be searched, filtered and sorted on." [ref=e757]
+          - row [ref=e758]:
+            - cell "stored" [ref=e759]
+            - cell "true" [ref=e761]
+            - cell "on this field" [ref=e762]
+            - cell "true or false" [ref=e763]
+            - cell "The original value is returned in results and available to highlighting." [ref=e764]
+          - row [ref=e765]:
+            - cell "docValues" [ref=e766]
+            - cell "true" [ref=e768]
+            - cell "from the field type" [ref=e769]
+            - cell "true or false" [ref=e770]
+            - cell "A column store is built, so sorting, faceting, grouping and function queries are efficient." [ref=e771]
+          - row [ref=e772]:
+            - cell "multiValued" [ref=e773]
+            - cell "false" [ref=e775]
+            - cell "Solr default at schema version 1.6" [ref=e776]
+            - cell "true or false" [ref=e777]
+            - cell "One document may hold at most one value; a second causes an indexing error." [ref=e778]
+          - row [ref=e779]:
+            - cell "required" [ref=e780]
+            - cell "false" [ref=e782]
+            - cell "Solr default" [ref=e783]
+            - cell "true or false" [ref=e784]
+            - cell "A document may omit this field." [ref=e785]
+          - row [ref=e786]:
+            - cell "default" [ref=e787]
+            - cell "depends on the field type" [ref=e789]
+            - cell "see the guide" [ref=e790]
+            - cell "any value of the type" [ref=e791]
+            - cell "A value used when the document supplies none." [ref=e792]
+          - row [ref=e793]:
+            - cell "omitNorms" [ref=e794]
+            - cell "true" [ref=e796]
+            - cell "Solr default for solr.StrField" [ref=e797]
+            - cell "true or false" [ref=e798]
+            - cell "Length normalisation and index-time boosts are discarded, saving memory; short and long values score alike." [ref=e799]
+          - row [ref=e800]:
+            - cell "omitTermFreqAndPositions" [ref=e801]
+            - cell "depends on the field type" [ref=e803]
+            - cell "see the guide" [ref=e804]
+            - cell "true or false" [ref=e805]
+            - cell "Whether term frequency and position data are discarded. Phrase queries stop working." [ref=e806]
+          - row [ref=e807]:
+            - cell "omitPositions" [ref=e808]
+            - cell "depends on the field type" [ref=e810]
+            - cell "see the guide" [ref=e811]
+            - cell "true or false" [ref=e812]
+            - cell "Whether positions are discarded while frequencies are kept." [ref=e813]
+          - row [ref=e814]:
+            - cell "termVectors" [ref=e815]
+            - cell "false" [ref=e817]
+            - cell "Solr default" [ref=e818]
+            - cell "true or false" [ref=e819]
+            - cell "No term vectors; highlighting re-analyses the stored value instead." [ref=e820]
+          - row [ref=e821]:
+            - cell "termPositions" [ref=e822]
+            - cell "false" [ref=e824]
+            - cell "Solr default" [ref=e825]
+            - cell "true or false" [ref=e826]
+            - cell "The term vector carries no positions." [ref=e827]
+          - row [ref=e828]:
+            - cell "termOffsets" [ref=e829]
+            - cell "false" [ref=e831]
+            - cell "Solr default" [ref=e832]
+            - cell "true or false" [ref=e833]
+            - cell "The term vector carries no offsets." [ref=e834]
+          - row [ref=e835]:
+            - cell "termPayloads" [ref=e836]
+            - cell "false" [ref=e838]
+            - cell "Solr default" [ref=e839]
+            - cell "true or false" [ref=e840]
+            - cell "The term vector carries no payloads." [ref=e841]
+          - row [ref=e842]:
+            - cell "sortMissingFirst" [ref=e843]
+            - cell "false" [ref=e845]
+            - cell "Solr default" [ref=e846]
+            - cell "true or false" [ref=e847]
+            - cell "Nothing forces documents lacking this field to sort first." [ref=e848]
+          - row [ref=e849]:
+            - cell "sortMissingLast" [ref=e850]
+            - cell "true" [ref=e852]
+            - cell "from the field type" [ref=e853]
+            - cell "true or false" [ref=e854]
+            - cell "Documents lacking this field sort after all others, in either direction." [ref=e855]
+          - row [ref=e856]:
+            - cell "uninvertible" [ref=e857]
+            - cell "true" [ref=e859]
+            - cell "Solr default at schema version 1.6" [ref=e860]
+            - cell "true or false" [ref=e861]
+            - cell "The field may be un-inverted at query time when it has no doc values — correct, but memory-hungry on a large index." [ref=e862]
+          - row [ref=e863]:
+            - cell "useDocValuesAsStored" [ref=e864]
+            - cell "true" [ref=e866]
+            - cell "Solr default at schema version 1.6" [ref=e867]
+            - cell "true or false" [ref=e868]
+            - cell "Doc values are returned as though the field were stored, so even a wildcard fl gets a value back." [ref=e869]
+          - row [ref=e870]:
+            - cell "large" [ref=e871]
+            - cell "false" [ref=e873]
+            - cell "Solr default" [ref=e874]
+            - cell "true or false" [ref=e875]
+            - cell "The value is loaded and cached like any other." [ref=e876]
+    - generic [ref=e877]:
+      - link "Field types included with Solr ↗" [ref=e878] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=e879]: ·
+      - link "Field type definitions and properties ↗" [ref=e880] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=e881]: ✎
+      - generic [ref=e882]: ⋮
+  - heading "QuickDocDark.dc.html" [level=3] [ref=e883]
+  - generic [ref=e885]:
+    - generic [ref=e886]: field category of type string
+    - generic [ref=e887]:
+      - paragraph [ref=e888]: "Matches: whole value, case-sensitive."
+      - paragraph [ref=e889]:
+        - text: Wildcard queries such as
+        - generic [ref=e890]: wid*
+        - text: work on any indexed field and are expanded across the dictionary at query time. This describes what the index supports efficiently.
+      - paragraph [ref=e891]: Properties
+      - table [ref=e892]:
+        - rowgroup [ref=e893]:
+          - row [ref=e894]:
+            - columnheader "Property" [ref=e895]
+            - columnheader "Value" [ref=e896]
+            - columnheader "From" [ref=e897]
+            - columnheader "Accepts" [ref=e898]
+            - columnheader "Meaning" [ref=e899]
+        - rowgroup [ref=e900]:
+          - row [ref=e901]:
+            - cell "indexed" [ref=e902]
+            - cell "true" [ref=e904]
+            - cell "on this field" [ref=e905]
+            - cell "true or false" [ref=e906]
+            - cell "Can be searched, filtered and sorted on." [ref=e907]
+          - row [ref=e908]:
+            - cell "stored" [ref=e909]
+            - cell "true" [ref=e911]
+            - cell "on this field" [ref=e912]
+            - cell "true or false" [ref=e913]
+            - cell "The original value is returned in results and available to highlighting." [ref=e914]
+          - row [ref=e915]:
+            - cell "docValues" [ref=e916]
+            - cell "true" [ref=e918]
+            - cell "from the field type" [ref=e919]
+            - cell "true or false" [ref=e920]
+            - cell "A column store is built, so sorting, faceting, grouping and function queries are efficient." [ref=e921]
+          - row [ref=e922]:
+            - cell "multiValued" [ref=e923]
+            - cell "false" [ref=e925]
+            - cell "Solr default at schema version 1.6" [ref=e926]
+            - cell "true or false" [ref=e927]
+            - cell "One document may hold at most one value; a second causes an indexing error." [ref=e928]
+          - row [ref=e929]:
+            - cell "required" [ref=e930]
+            - cell "false" [ref=e932]
+            - cell "Solr default" [ref=e933]
+            - cell "true or false" [ref=e934]
+            - cell "A document may omit this field." [ref=e935]
+          - row [ref=e936]:
+            - cell "default" [ref=e937]
+            - cell "depends on the field type" [ref=e939]
+            - cell "see the guide" [ref=e940]
+            - cell "any value of the type" [ref=e941]
+            - cell "A value used when the document supplies none." [ref=e942]
+          - row [ref=e943]:
+            - cell "omitNorms" [ref=e944]
+            - cell "true" [ref=e946]
+            - cell "Solr default for solr.StrField" [ref=e947]
+            - cell "true or false" [ref=e948]
+            - cell "Length normalisation and index-time boosts are discarded, saving memory; short and long values score alike." [ref=e949]
+          - row [ref=e950]:
+            - cell "omitTermFreqAndPositions" [ref=e951]
+            - cell "depends on the field type" [ref=e953]
+            - cell "see the guide" [ref=e954]
+            - cell "true or false" [ref=e955]
+            - cell "Whether term frequency and position data are discarded. Phrase queries stop working." [ref=e956]
+          - row [ref=e957]:
+            - cell "omitPositions" [ref=e958]
+            - cell "depends on the field type" [ref=e960]
+            - cell "see the guide" [ref=e961]
+            - cell "true or false" [ref=e962]
+            - cell "Whether positions are discarded while frequencies are kept." [ref=e963]
+          - row [ref=e964]:
+            - cell "termVectors" [ref=e965]
+            - cell "false" [ref=e967]
+            - cell "Solr default" [ref=e968]
+            - cell "true or false" [ref=e969]
+            - cell "No term vectors; highlighting re-analyses the stored value instead." [ref=e970]
+          - row [ref=e971]:
+            - cell "termPositions" [ref=e972]
+            - cell "false" [ref=e974]
+            - cell "Solr default" [ref=e975]
+            - cell "true or false" [ref=e976]
+            - cell "The term vector carries no positions." [ref=e977]
+          - row [ref=e978]:
+            - cell "termOffsets" [ref=e979]
+            - cell "false" [ref=e981]
+            - cell "Solr default" [ref=e982]
+            - cell "true or false" [ref=e983]
+            - cell "The term vector carries no offsets." [ref=e984]
+          - row [ref=e985]:
+            - cell "termPayloads" [ref=e986]
+            - cell "false" [ref=e988]
+            - cell "Solr default" [ref=e989]
+            - cell "true or false" [ref=e990]
+            - cell "The term vector carries no payloads." [ref=e991]
+          - row [ref=e992]:
+            - cell "sortMissingFirst" [ref=e993]
+            - cell "false" [ref=e995]
+            - cell "Solr default" [ref=e996]
+            - cell "true or false" [ref=e997]
+            - cell "Nothing forces documents lacking this field to sort first." [ref=e998]
+          - row [ref=e999]:
+            - cell "sortMissingLast" [ref=e1000]
+            - cell "true" [ref=e1002]
+            - cell "from the field type" [ref=e1003]
+            - cell "true or false" [ref=e1004]
+            - cell "Documents lacking this field sort after all others, in either direction." [ref=e1005]
+          - row [ref=e1006]:
+            - cell "uninvertible" [ref=e1007]
+            - cell "true" [ref=e1009]
+            - cell "Solr default at schema version 1.6" [ref=e1010]
+            - cell "true or false" [ref=e1011]
+            - cell "The field may be un-inverted at query time when it has no doc values — correct, but memory-hungry on a large index." [ref=e1012]
+          - row [ref=e1013]:
+            - cell "useDocValuesAsStored" [ref=e1014]
+            - cell "true" [ref=e1016]
+            - cell "Solr default at schema version 1.6" [ref=e1017]
+            - cell "true or false" [ref=e1018]
+            - cell "Doc values are returned as though the field were stored, so even a wildcard fl gets a value back." [ref=e1019]
+          - row [ref=e1020]:
+            - cell "large" [ref=e1021]
+            - cell "false" [ref=e1023]
+            - cell "Solr default" [ref=e1024]
+            - cell "true or false" [ref=e1025]
+            - cell "The value is loaded and cached like any other." [ref=e1026]
+    - generic [ref=e1027]:
+      - link "Field types included with Solr ↗" [ref=e1028] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=e1029]: ·
+      - link "Field type definitions and properties ↗" [ref=e1030] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=e1031]: ✎
+      - generic [ref=e1032]: ⋮
+  - heading "Inspections.dc.html" [level=3] [ref=e1033]
+  - generic [ref=e1035]:
+    - generic [ref=e1036]:
+      - generic [ref=e1037]: Settings › Editor
+      - generic [ref=e1038]: Inspections
+    - generic [ref=e1039]:
+      - generic [ref=e1040]:
+        - generic [ref=e1041]: ⚲
+        - text: Solr
+      - generic [ref=e1042]: "Profile:"
+      - generic [ref=e1043]:
+        - text: Project Default
+        - generic [ref=e1044]: ▼
+    - generic [ref=e1045]:
+      - generic [ref=e1046]:
+        - generic [ref=e1047]:
+          - generic [ref=e1048]: ▼
+          - generic [ref=e1049]: ✓
+          - generic [ref=e1051]: Solr
+        - generic [ref=e1052]:
+          - generic [ref=e1053]: ✓
+          - generic [ref=e1055]: Analyzer chain ordered so a component cannot work
+        - generic [ref=e1056]:
+          - generic [ref=e1057]: ✓
+          - generic [ref=e1059]: Attribute value of the wrong kind
+        - generic [ref=e1060]:
+          - generic [ref=e1061]: ✓
+          - generic [ref=e1063]: Dangling copyField reference
+        - generic [ref=e1064]:
+          - generic [ref=e1065]: ✓
+          - generic [ref=e1067]: Element Solr no longer accepts
+        - generic [ref=e1068]:
+          - generic [ref=e1069]: ✓
+          - generic [ref=e1071]: Faceting or sorting parameter names a field that cannot serve it
+        - generic [ref=e1072]:
+          - generic [ref=e1073]: ✓
+          - generic [ref=e1075]: Handler parameter names an undeclared field
+        - generic [ref=e1076]:
+          - generic [ref=e1077]: ✓
+          - generic [ref=e1079]: Relevance parameter names a non-indexed field
+        - generic [ref=e1080]:
+          - generic [ref=e1081]: ✓
+          - generic [ref=e1083]: Request parameter name is almost one Solr reads
+        - generic [ref=e1084]:
+          - generic [ref=e1085]: ✓
+          - generic [ref=e1087]: Unknown attribute
+        - generic [ref=e1088]:
+          - generic [ref=e1089]: ✓
+          - generic [ref=e1091]: Unknown field type
+        - generic [ref=e1092]:
+          - generic [ref=e1093]: ✓
+          - generic [ref=e1095]: Unused field type
+      - generic [ref=e1096]:
+        - generic [ref=e1097]:
+          - generic [ref=e1098]: "Severity:"
+          - generic [ref=e1099]:
+            - text: Warning
+            - generic [ref=e1101]: ▼
+          - generic [ref=e1102]: In All Scopes
+        - generic [ref=e1103]:
+          - paragraph [ref=e1104]: Reports a copyField whose source or dest names a field the configset does not declare.
+          - paragraph [ref=e1105]: "Solr refuses to load a core with a dangling copy rule, so the failure arrives at deploy time rather than while the file is being edited. Until then nothing in the editor can see it: the reference is a bare string in an attribute, connected to the field it names by nothing but convention."
+          - paragraph [ref=e1106]: Silent on names containing * — a glob source is a pattern over dynamic fields — and on the names Solr supplies without the schema declaring them (score, _version_, _root_).
+          - paragraph [ref=e1107]: "Example: <copyField source=\"manufacturer\" dest=\"text\"/>"
+  - heading "InspectionsDark.dc.html" [level=3] [ref=e1108]
+  - generic [ref=e1110]:
+    - generic [ref=e1111]:
+      - generic [ref=e1112]: Settings › Editor
+      - generic [ref=e1113]: Inspections
+    - generic [ref=e1114]:
+      - generic [ref=e1115]:
+        - generic [ref=e1116]: ⚲
+        - text: Solr
+      - generic [ref=e1117]: "Profile:"
+      - generic [ref=e1118]:
+        - text: Project Default
+        - generic [ref=e1119]: ▼
+    - generic [ref=e1120]:
+      - generic [ref=e1121]:
+        - generic [ref=e1122]:
+          - generic [ref=e1123]: ▼
+          - generic [ref=e1124]: ✓
+          - generic [ref=e1126]: Solr
+        - generic [ref=e1127]:
+          - generic [ref=e1128]: ✓
+          - generic [ref=e1130]: Analyzer chain ordered so a component cannot work
+        - generic [ref=e1131]:
+          - generic [ref=e1132]: ✓
+          - generic [ref=e1134]: Attribute value of the wrong kind
+        - generic [ref=e1135]:
+          - generic [ref=e1136]: ✓
+          - generic [ref=e1138]: Dangling copyField reference
+        - generic [ref=e1139]:
+          - generic [ref=e1140]: ✓
+          - generic [ref=e1142]: Element Solr no longer accepts
+        - generic [ref=e1143]:
+          - generic [ref=e1144]: ✓
+          - generic [ref=e1146]: Faceting or sorting parameter names a field that cannot serve it
+        - generic [ref=e1147]:
+          - generic [ref=e1148]: ✓
+          - generic [ref=e1150]: Handler parameter names an undeclared field
+        - generic [ref=e1151]:
+          - generic [ref=e1152]: ✓
+          - generic [ref=e1154]: Relevance parameter names a non-indexed field
+        - generic [ref=e1155]:
+          - generic [ref=e1156]: ✓
+          - generic [ref=e1158]: Request parameter name is almost one Solr reads
+        - generic [ref=e1159]:
+          - generic [ref=e1160]: ✓
+          - generic [ref=e1162]: Unknown attribute
+        - generic [ref=e1163]:
+          - generic [ref=e1164]: ✓
+          - generic [ref=e1166]: Unknown field type
+        - generic [ref=e1167]:
+          - generic [ref=e1168]: ✓
+          - generic [ref=e1170]: Unused field type
+      - generic [ref=e1171]:
+        - generic [ref=e1172]:
+          - generic [ref=e1173]: "Severity:"
+          - generic [ref=e1174]:
+            - text: Warning
+            - generic [ref=e1176]: ▼
+          - generic [ref=e1177]: In All Scopes
+        - generic [ref=e1178]:
+          - paragraph [ref=e1179]: Reports a copyField whose source or dest names a field the configset does not declare.
+          - paragraph [ref=e1180]: "Solr refuses to load a core with a dangling copy rule, so the failure arrives at deploy time rather than while the file is being edited. Until then nothing in the editor can see it: the reference is a bare string in an attribute, connected to the field it names by nothing but convention."
+          - paragraph [ref=e1181]: Silent on names containing * — a glob source is a pattern over dynamic fields — and on the names Solr supplies without the schema declaring them (score, _version_, _root_).
+          - paragraph [ref=e1182]: "Example: <copyField source=\"manufacturer\" dest=\"text\"/>"
+  - heading "Settings.dc.html" [level=3] [ref=e1183]
+  - generic [ref=e1185]:
+    - generic [ref=e1186]:
+      - generic [ref=e1187]: Settings
+      - generic [ref=e1188]: Languages & Frameworks › Solr
+      - generic [ref=e1189]: Proposed — not built
+    - generic [ref=e1190]:
+      - generic [ref=e1191]:
+        - generic [ref=e1192]: Appearance & Behavior
+        - generic [ref=e1194]: Editor
+        - generic [ref=e1196]: Build, Execution, Deployment
+        - generic [ref=e1198]:
+          - generic [ref=e1199]: ▼
+          - generic [ref=e1200]: Languages & Frameworks
+        - generic [ref=e1201]:
+          - generic [ref=e1202]: ▼
+          - generic [ref=e1203]: Solr
+        - generic [ref=e1204]: Connections
+        - generic [ref=e1206]: Tools
+      - generic [ref=e1208]:
+        - generic [ref=e1209]:
+          - generic [ref=e1210]:
+            - generic [ref=e1211]: ✓
+            - generic [ref=e1213]: Detect Solr configsets automatically
+          - paragraph [ref=e1214]: A configset is recognised by the files it holds, not by where it sits — a directory carrying managed-schema.xml, schema.xml or solrconfig.xml. Detection is local, cached, and runs on every file you open.
+        - generic [ref=e1215]:
+          - generic [ref=e1216]:
+            - generic [ref=e1217]: Configset roots
+            - generic [ref=e1218]: +
+            - generic [ref=e1219]: −
+          - generic [ref=e1220]:
+            - generic [ref=e1221]:
+              - generic [ref=e1222]: Path
+              - generic [ref=e1223]: Source
+            - generic [ref=e1224]:
+              - generic [ref=e1225]: demo/solr/conf
+              - generic [ref=e1226]: Detected
+            - generic [ref=e1227]:
+              - generic [ref=e1228]: demo/build/solr-home/products/conf
+              - generic [ref=e1229]: Detected
+            - generic [ref=e1230]:
+              - generic [ref=e1231]: src/test/resources/configsets/minimal
+              - generic [ref=e1232]: Marked manually
+          - paragraph [ref=e1233]: A detected root is listed for confirmation and cannot be removed here — switch detection off to stop reading it. Marking a directory adds one detection missed.
+        - generic [ref=e1234]:
+          - generic [ref=e1235]: Servers
+          - paragraph [ref=e1236]: Nothing on the editor path contacts a server, so there is nothing to configure here yet. Browsing collections, running queries and comparing a configset against what a server is really running arrive with the server integration, on the Connections page beside this one.
+  - heading "SettingsDark.dc.html" [level=3] [ref=e1237]
+  - generic [ref=e1239]:
+    - generic [ref=e1240]:
+      - generic [ref=e1241]: Settings
+      - generic [ref=e1242]: Languages & Frameworks › Solr
+      - generic [ref=e1243]: Proposed — not built
+    - generic [ref=e1244]:
+      - generic [ref=e1245]:
+        - generic [ref=e1246]: Appearance & Behavior
+        - generic [ref=e1248]: Editor
+        - generic [ref=e1250]: Build, Execution, Deployment
+        - generic [ref=e1252]:
+          - generic [ref=e1253]: ▼
+          - generic [ref=e1254]: Languages & Frameworks
+        - generic [ref=e1255]:
+          - generic [ref=e1256]: ▼
+          - generic [ref=e1257]: Solr
+        - generic [ref=e1258]: Connections
+        - generic [ref=e1260]: Tools
+      - generic [ref=e1262]:
+        - generic [ref=e1263]:
+          - generic [ref=e1264]:
+            - generic [ref=e1265]: ✓
+            - generic [ref=e1267]: Detect Solr configsets automatically
+          - paragraph [ref=e1268]: A configset is recognised by the files it holds, not by where it sits — a directory carrying managed-schema.xml, schema.xml or solrconfig.xml. Detection is local, cached, and runs on every file you open.
+        - generic [ref=e1269]:
+          - generic [ref=e1270]:
+            - generic [ref=e1271]: Configset roots
+            - generic [ref=e1272]: +
+            - generic [ref=e1273]: −
+          - generic [ref=e1274]:
+            - generic [ref=e1275]:
+              - generic [ref=e1276]: Path
+              - generic [ref=e1277]: Source
+            - generic [ref=e1278]:
+              - generic [ref=e1279]: demo/solr/conf
+              - generic [ref=e1280]: Detected
+            - generic [ref=e1281]:
+              - generic [ref=e1282]: demo/build/solr-home/products/conf
+              - generic [ref=e1283]: Detected
+            - generic [ref=e1284]:
+              - generic [ref=e1285]: src/test/resources/configsets/minimal
+              - generic [ref=e1286]: Marked manually
+          - paragraph [ref=e1287]: A detected root is listed for confirmation and cannot be removed here — switch detection off to stop reading it. Marking a directory adds one detection missed.
+        - generic [ref=e1288]:
+          - generic [ref=e1289]: Servers
+          - paragraph [ref=e1290]: Nothing on the editor path contacts a server, so there is nothing to configure here yet. Browsing collections, running queries and comparing a configset against what a server is really running arrive with the server integration, on the Connections page beside this one.

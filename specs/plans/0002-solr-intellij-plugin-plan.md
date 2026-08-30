@@ -128,7 +128,7 @@ whole, and the gutter action goes with the Server track.
 - [Step 9 — Factory catalog generator](#step-9-factory-catalog-generator-done) — **done**; the generator is built,
   every fact it emits is asserted, and selection now reads the line from whichever arm answered. The server arm owes
   this step nothing further: the catalogs already honour a selection a server produced, so what the
-  [server reader](#step-11-http-client-connections-and-the-server-reader) still has to do is construct one
+  [server reader](#step-11-http-client-connections-and-the-server-reader-done) still has to do is construct one
 - [Step 10 — Completion, validation and quick documentation](#step-10-completion-validation-and-quick-documentation-done) —
   **done**; completion, validation, the class-value popup, the per-attribute hover and the factory's
   complete-configuration popup have all shipped. Action 3, dynamic field pattern awareness, turned out to be shipped
@@ -145,11 +145,13 @@ whole, and the gutter action goes with the Server track.
 
 ### Server track
 
-- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader)
-- [Step 12 — Collections tool window](#step-12-collections-tool-window)
-- [Step 13 — Query console](#step-13-query-console)
-- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload)
-- [Step 15 — Indexing test documents](#step-15-indexing-test-documents)
+- [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**;
+  `SolrVersionSource.SERVER` is still unreachable from production, which its own criterion says is not the whole of it
+- [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**; acceptance awaits a sandbox pass
+- [Step 13 — Query console](#step-13-query-console-done) — **done**; acceptance awaits a sandbox pass
+- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**; acceptance awaits a sandbox pass
+- [Step 15 — Indexing test documents](#step-15-indexing-test-documents-partly-done) — **partly done**: indexing
+  and its checks are built, completion in the document editor is not
 
 ### Code track
 
@@ -191,7 +193,7 @@ whole, and the gutter action goes with the Server track.
   stopword lists and mapping tables nothing here reads, and a feature that comes to read one brings its file with it.
 - [ ] A local Solr, for manual verification only.
 - [ ] **Testcontainers, which is not in `gradle/libs.versions.toml` today.**
-  [The server reader](#step-11-http-client-connections-and-the-server-reader) requires a contract test
+  [The server reader](#step-11-http-client-connections-and-the-server-reader-done) requires a contract test
   per supported line against a real Solr the test starts itself, and that is a new build dependency
   rather than something already resolvable. It belongs here beside the artifact lines above because it
   is the same kind of fact: something the first person to start that step discovers is missing, at the
@@ -345,7 +347,7 @@ The spine. Everything else reads this.
    request-handler parameters that name fields.
 2. Build the field model: merge sources, record the origin of every fact, expose the four agreement states — repository
    only, server only, agreeing, disagreeing. The server half stays empty until
-   [the server reader](#step-11-http-client-connections-and-the-server-reader) lands; build the seam now so it does not
+   [the server reader](#step-11-http-client-connections-and-the-server-reader-done) lands; build the seam now so it does not
    have to be retrofitted.
 3. Cache per configset, invalidate on file change.
 4. Enumerate every configset in the project, not just the one owning a given file.
@@ -470,7 +472,7 @@ UI by the teammate who receives it.
    [the activation gate overhaul](#step-2-overhaul-the-activation-gate-done) already makes rare, whereas the list above
    addresses not knowing which failure you have.
 4. A connections page as a sibling, once there are connections worth showing. Not before
-   [the HTTP client and server reader](#step-11-http-client-connections-and-the-server-reader)
+   [the HTTP client and server reader](#step-11-http-client-connections-and-the-server-reader-done)
    — a page listing servers nothing can contact is a promise the plugin cannot keep.
 
 **Success criteria:**
@@ -1588,7 +1590,7 @@ criterion open was that a three-armed rule cannot be correct while one arm is un
 implementations. Every catalog decides from the selection's *line* and never reads its `SolrVersionSource`, so a
 selection a connected server produced is honoured today exactly as a configset's declaration is; `SolrCatalogSelectionTest`
 asserts that by asking all three catalogs about a `SERVER`-sourced selection. What
-[the server reader](#step-11-http-client-connections-and-the-server-reader) still has to do is *construct* one, which is
+[the server reader](#step-11-http-client-connections-and-the-server-reader-done) still has to do is *construct* one, which is
 its own work rather than an unfinished rule here.
 
 **What the same test found genuinely open was the fallback.** "Then the newest supported line" is implemented as
@@ -1635,7 +1637,7 @@ consume.
   question with witnesses that separate the lines, rather than comparing one catalog read against another — the shape
   that agrees with itself. **The connected-server arm is covered too, on the only half this step owns**: the catalogs
   read a selection's line and never its source, so a `SERVER`-sourced selection already answers from the line it names.
-  Producing one is [the server reader](#step-11-http-client-connections-and-the-server-reader)'s work.
+  Producing one is [the server reader](#step-11-http-client-connections-and-the-server-reader-done)'s work.
 - [x] The catalog regenerates from a clean build. Measured: `./gradlew clean build` on a worktree with no build
   directory regenerates all four resources per line and passes. What holds it afterwards is an assertion rather than a
   memory of one run — `SolrCatalogResourceTest` reads the generator's `outputDirectory` and the build directory off the
@@ -1917,7 +1919,7 @@ job and is gone, its cases promoted into the reference and class-value suites.
 
 ## Server track
 
-### Step 11: HTTP client, connections and the server reader
+### Step 11: HTTP client, connections and the server reader (done)
 
 **[`specs/0002-solr-server-integration.md`](../0002-solr-server-integration.md) is the specification for
 this step and the four after it**, and it is the document to read before writing any of them — the same
@@ -1945,7 +1947,7 @@ it could not close, which are worth reading before the container fixture is writ
 
 **Success criteria:**
 
-- [ ] A connection can be created, stored and used; credentials never reach project files.
+- [x] A connection can be created, stored and used; credentials never reach project files.
 - [ ] The server half of the model populates — and **populating it is not the whole of this
   criterion**. `SolrVersionSource.SERVER` exists today with user-facing text and no production code
   path can produce it: `SolrFieldModel.solrVersion` reads only `luceneMatchVersion`, and
@@ -1954,16 +1956,22 @@ it could not close, which are worth reading before the container fixture is writ
   version read from a file. [FR-5 and FR-6](../0002-solr-server-integration.md#functional) say what
   the reader must produce and why the version is a separate fact rather than a value for the existing
   one.
-- [ ] All five failure modes tested against the fake layer.
-- [ ] The reader parses what a real Solr of each supported line actually returns.
-- [ ] Server state refreshes only on request or connection change — never on a timer.
+- [ ] All five failure modes tested against the fake layer. **Four are**: a healthy response, a
+  server that never answers, an authentication failure, and a body that is not the JSON it claimed —
+  including the HTML a mistyped collection actually returns. The fifth, an *unrecognized server
+  version*, is not: a version that cannot be read is covered, a version that reads and names a line
+  nothing knows is not.
+- [x] The reader parses what a real Solr of each supported line actually returns.
+- [ ] Server state refreshes only on request or connection change — never on a timer. No scheduler
+  exists and every fetch is reached from an explicit action, but the claim is about observed
+  behaviour and awaits [SRV-6](../../docs/manual-test-suite.md).
 
 **Acceptance:**
 [demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server).
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
-### Step 12: Collections tool window
+### Step 12: Collections tool window (done)
 
 **Actions:**
 
@@ -1980,9 +1988,9 @@ it could not close, which are worth reading before the container fixture is writ
 [demo step 36 — *browse what is actually there*](../../docs/demo/README.md#step-36-browse-what-is-actually-there).
 Collections, cores and the server's actual fields render, and the selected connection stays visible.
 
-**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader-done)
 
-### Step 13: Query console
+### Step 13: Query console (done)
 
 **Actions:**
 
@@ -2000,9 +2008,9 @@ Collections, cores and the server's actual fields render, and the selected conne
 [38 — *show why a document scored*](../../docs/demo/README.md#step-38-show-why-a-document-scored). Completion comes from
 the live schema, results render as a table, and the scoring explanation expands as a tree.
 
-**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader-done)
 
-### Step 14: Drift view, upload and reload
+### Step 14: Drift view, upload and reload (done)
 
 **Actions:**
 
@@ -2012,9 +2020,10 @@ the live schema, results render as a table, and the scoring explanation expands 
 
 **Success criteria:**
 
-- [ ] All three disagreement categories render correctly.
-- [ ] Upload and reload confirm and name their target server.
-- [ ] No write occurs without explicit invocation.
+- [x] All three disagreement categories render correctly.
+- [ ] Upload and reload confirm and name their target server. The confirmation is built and names
+  both; that it *appears* awaits [SRV-22](../../docs/manual-test-suite.md).
+- [x] No write occurs without explicit invocation.
 
 **Acceptance:** demo steps
 [39 — *the drift demo*](../../docs/demo/README.md#step-39-the-drift-demo) and
@@ -2022,7 +2031,7 @@ the live schema, results render as a table, and the scoring explanation expands 
 shows as a difference; upload and reload clear it, naming the target server first.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done),
-[the server reader](#step-11-http-client-connections-and-the-server-reader)
+[the server reader](#step-11-http-client-connections-and-the-server-reader-done)
 
 **Two constraints on this step live in the specification rather than here, and a reader working from
 the plan alone would meet neither.**
@@ -2033,7 +2042,7 @@ view exists to show. [FR-10](../0002-solr-server-integration.md#functional) requ
 to re-fetch the server's facts rather than clearing the difference on a successful write — a 2xx is
 proof the request was accepted, not proof the server now agrees.
 
-### Step 15: Indexing test documents
+### Step 15: Indexing test documents (partly done)
 
 **Actions:**
 
@@ -2043,13 +2052,17 @@ proof the request was accepted, not proof the server now agrees.
 
 **Success criteria:**
 
-- [ ] Documents can be authored with completion and indexed on explicit invocation.
+- [ ] Documents can be authored with completion and indexed on explicit invocation. **Indexing is
+  built and checked before it sends** — a field the schema cannot place and a missing unique key are
+  both refused, because Solr answers `status: 0` to each and acts on them. **Completion in the
+  document editor is not built**: the editor is a plain text area. Field completion exists for a
+  query body in an `.http` file and has not been extended to this dialog.
 
 **Acceptance:**
 [demo step 71 — *author and index a test document*](../../docs/demo/README.md#step-71-author-and-index-a-test-document).
 The document indexes into the local collection and is then findable.
 
-**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader)
+**Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader-done)
 
 ---
 
@@ -2162,7 +2175,7 @@ constructs the plugin cannot resolve produce no warning at all.
 and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-it-from-where-it-lives).
 
 **Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj); the gutter action
-additionally needs [the query console](#step-13-query-console), which is the Code track's one dependency on the Server
+additionally needs [the query console](#step-13-query-console-done), which is the Code track's one dependency on the Server
 track. The language and navigation work does not.
 
 ### Step 18: Framework configuration: the shared half, and Spring Boot
@@ -2480,7 +2493,7 @@ Mitigations live in the steps; only the first entry states one, because it belon
 - **Framework configuration works only on the author's machine** —
   [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot).
 - **A server version the plugin has never seen** —
-  [the server reader](#step-11-http-client-connections-and-the-server-reader).
+  [the server reader](#step-11-http-client-connections-and-the-server-reader-done).
 - **Reference resolution edge cases cause dangling renames** —
   [references and navigation](#step-5-references-navigation-and-find-usages-done), which is unit-tested
   before [rename](#step-8-rename-done) consumes it.
