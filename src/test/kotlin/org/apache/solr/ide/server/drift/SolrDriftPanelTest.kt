@@ -604,4 +604,41 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
 
         assertEquals("", page.payloadText)
     }
+
+    // --- which Solr the comparison resolved against -------------------------------------------------
+
+    /**
+     * The summary names the Solr line and where it came from.
+     *
+     * **This is the only place a user can ever read "the connected server".** The phrase belongs to
+     * `SolrVersionSelection.describeSource`, whose other two callers are quick documentation — which
+     * builds a repository-only model by design, because nothing on the editor path may see a server.
+     * The value was therefore shown in a surface that could not produce it, and produced nowhere at
+     * all. Here it is both.
+     */
+    fun testTheSummaryNamesTheSolrLineAndItsSource() {
+        val page = panel()
+        val compared = SolrDrift.between(
+            org.apache.solr.ide.model.SolrConfigsetFacts(),
+            org.apache.solr.ide.model.SolrConfigsetFacts(),
+            serverVersion = "10.0.0",
+        )
+
+        page.render(SolrDriftView.Compared("books", "books_prod", compared))
+
+        val summary = page.bannerMessage.orEmpty()
+        assertTrue(summary, summary.contains("Solr 10"))
+        assertTrue(summary, summary.contains("connected server"))
+    }
+
+    /** With no version from the server, the summary says where the line did come from. */
+    fun testTheSummaryStillNamesASourceWithNoServerVersion() {
+        val page = panel()
+
+        page.render(SolrDriftView.Compared("books", "books_prod", drift(emptyList(), emptyList())))
+
+        val summary = page.bannerMessage.orEmpty()
+        assertTrue(summary, summary.contains("Resolved against Solr"))
+        assertFalse("nothing may claim a server said something it did not", summary.contains("connected server"))
+    }
 }

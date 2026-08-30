@@ -2,6 +2,7 @@ package org.apache.solr.ide.server.drift
 
 import org.apache.solr.ide.model.SolrAgreement
 import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.model.SolrVersionSource
 import org.apache.solr.ide.model.schema.SolrAnalyzerChain
 import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
 import org.apache.solr.ide.model.schema.SolrCopyField
@@ -345,5 +346,53 @@ class SolrDriftTest {
             facts(fieldTypes = listOf(typeWithFilter(custom))),
             facts(fieldTypes = listOf(typeWithFilter("com.example.OtherFactory"))),
         ).isClean)
+    }
+
+    // --- which Solr the collection runs -------------------------------------------------------------
+
+    /**
+     * A comparison knows the line the server reported, and says the server is where it came from.
+     *
+     * **`SolrVersionSource.SERVER` had no production path that could produce it**, which the plan
+     * recorded as an open risk before the server track started and which survived the whole of it.
+     * The reason it survived is worth keeping: the only consumer of a version's *source* is quick
+     * documentation, and quick documentation builds a repository-only model by design, because
+     * nothing on the editor path may see a server. So the value could not be produced where it could
+     * be shown. A drift comparison is both — it is a server surface, and it builds the two-source
+     * model.
+     */
+    @Test
+    fun `a comparison reports the solr line the server named`() {
+        val drift = SolrDrift.between(facts(), facts(), serverVersion = "10.0.0")
+
+        assertEquals(SolrVersionSource.SERVER, drift.solrVersion.source)
+        assertTrue(drift.solrVersion.describeSource(), drift.solrVersion.describeSource().contains("connected server"))
+    }
+
+    /**
+     * Without a server version the comparison falls back, rather than claiming a server said
+     * something it did not.
+     */
+    @Test
+    fun `a comparison with no server version does not claim one`() {
+        val drift = SolrDrift.between(facts(), facts())
+
+        assertFalse(drift.solrVersion.source == SolrVersionSource.SERVER)
+    }
+
+    /**
+     * The server outranks what the configset declares, which is the ordering the specification sets.
+     *
+     * A configset saying it targets 9 while the collection runs 10 is exactly the disagreement this
+     * view exists to surface; resolving classes against the configset's claim there would describe a
+     * server that is not the one being compared.
+     */
+    @Test
+    fun `the server's line outranks the configset's declaration`() {
+        val declaring9 = facts().copy(luceneMatchVersion = "9.10.1")
+
+        val drift = SolrDrift.between(declaring9, facts(), serverVersion = "10.0.0")
+
+        assertEquals(SolrVersionSource.SERVER, drift.solrVersion.source)
     }
 }

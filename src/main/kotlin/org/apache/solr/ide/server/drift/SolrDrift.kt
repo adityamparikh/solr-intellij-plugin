@@ -4,6 +4,7 @@ import org.apache.solr.ide.model.SolrAgreement
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.SolrFact
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrVersionSelection
 import org.apache.solr.ide.model.schema.SolrAnalyzerChain
 import org.apache.solr.ide.model.schema.SolrAnalyzerComponent
 import org.apache.solr.ide.model.schema.SolrCopyField
@@ -68,10 +69,15 @@ data class SolrDriftEntry(
  *
  * @property entries every declaration the two sources disagree about, in a stable order
  * @property agreeingCount how many they agree about, which is not shown but is worth saying
+ * @property solrVersion the line the comparison resolved against, and where that came from. Where
+ *   the server named one it wins, because a configset claiming to target 9 while the collection runs
+ *   10 is precisely the disagreement this view exists to surface — resolving against the claim there
+ *   would describe a server other than the one being compared
  */
 data class SolrDrift(
     val entries: List<SolrDriftEntry> = emptyList(),
     val agreeingCount: Int = 0,
+    val solrVersion: SolrVersionSelection = SolrVersionSelection.DEFAULT,
 ) {
     /** Whether the configset and the collection say the same thing. */
     val isClean: Boolean get() = entries.isEmpty()
@@ -92,15 +98,29 @@ data class SolrDrift(
          *
          * @param repository the facts parsed from the configset on disk
          * @param server the facts read from a live collection
+         * @param serverVersion the Solr the collection reported running, where it said
          * @return what the two disagree about
          */
-        fun between(repository: SolrConfigsetFacts, server: SolrConfigsetFacts): SolrDrift {
+        fun between(
+            repository: SolrConfigsetFacts,
+            server: SolrConfigsetFacts,
+            serverVersion: String? = null,
+        ): SolrDrift {
             // Resolved before comparing, never compared as written. Solr reports an analyzer
             // component under its SPI name — `lowercase` — while a configset may name the factory
             // class it stands for, and both spellings mean the same thing. Compared as strings,
             // every analyzer-carrying field type in a classically written configset would read as
             // drift; a view that reports differences that are not there is one users stop reading.
-            val model = SolrFieldModel.of(resolveSpellings(repository), resolveSpellings(server))
+            // The server's own version travels with the facts. It is the one place in this plugin
+            // that can produce `SolrVersionSource.SERVER`: the value's only other consumer is quick
+            // documentation, which builds a repository-only model because nothing on the editor path
+            // may see a server — so the source could be *shown* there and never *produced*. Here it
+            // is both produced and shown, in a surface that is about a server by definition.
+            val model = SolrFieldModel.of(
+                resolveSpellings(repository),
+                resolveSpellings(server),
+                serverVersion,
+            )
             val entries = buildList {
                 addAll(model.fields.map { (name, fact) -> entryFor(SolrDriftKind.FIELD, name, fact, ::describeField) })
                 addAll(
@@ -124,6 +144,7 @@ data class SolrDrift(
                 entries = entries.filterNot { it.agreement == SolrAgreement.AGREEING }
                     .sortedWith(compareBy({ it.kind }, { it.name })),
                 agreeingCount = entries.count { it.agreement == SolrAgreement.AGREEING },
+                solrVersion = model.solrVersion,
             )
         }
 
