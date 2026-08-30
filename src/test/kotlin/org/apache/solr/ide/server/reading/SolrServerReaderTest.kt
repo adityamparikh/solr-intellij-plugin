@@ -6,6 +6,10 @@ import java.net.InetSocketAddress
 import kotlinx.coroutines.runBlocking
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.server.connection.SolrConnection
+import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.SolrVersionSelection
+import org.apache.solr.ide.model.SolrVersionSource
 import org.apache.solr.ide.server.transport.SolrResponse
 
 /**
@@ -32,6 +36,11 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
     """.trimIndent()
 
     private val systemBody = systemBodyFor("solrcloud")
+
+    private fun systemBodyNaming(version: String) = """
+        {"responseHeader":{"status":0},"mode":"solrcloud",
+         "lucene":{"solr-spec-version":"$version","lucene-spec-version":"$version"}}
+    """.trimIndent()
 
     private fun systemBodyFor(mode: String) = """
         {"responseHeader":{"status":0},"mode":"$mode",
@@ -259,6 +268,62 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
         assertTrue(
             "the failure should name the user, got: ${(result as SolrResponse.TransportFailure).description}",
             result.description.contains("solr"),
+        )
+    }
+
+    // --- a version this build has no catalog for ----------------------------------------------------
+
+    /**
+     * A server running a line this build ships no catalog for is read, not refused.
+     *
+     * The fifth failure mode, and the one that reads least like a failure. The other four announce
+     * themselves — nothing answers, the credential is wrong, the body is not JSON. This one arrives
+     * as a perfectly good response naming a release that did not exist when the plugin was built,
+     * which is the ordinary consequence of Solr shipping again. Refusing it would make every future
+     * Solr an outage; guessing a guide URL for it would invent a page that may not be published.
+     */
+    fun testAServerOnAnUnrecognizedLineIsReadRatherThanRefused() {
+        val url = givenServer(systemInfo = { respond(it, 200, systemBodyNaming("99.0.0")) })
+
+        val result = read(connection(url))
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+        val read = (result as SolrResponse.Success).value
+        assertEquals("the version is carried as the server said it", "99.0.0", read.solrVersion)
+        assertEquals("the facts are unaffected", listOf("id"), read.facts.fields.map { it.name })
+    }
+
+    /**
+     * And the model still sources it to the server.
+     *
+     * The alternative — falling back to the default selection — would discard the fact that a server
+     * answered at all, which is exactly what the version is read for.
+     */
+    fun testAnUnrecognizedLineStillSourcesToTheServer() {
+        val url = givenServer(systemInfo = { respond(it, 200, systemBodyNaming("99.0.0")) })
+
+        val read = (read(connection(url)) as SolrResponse.Success).value
+        val model = SolrFieldModel.of(SolrConfigsetFacts(), read.facts, read.solrVersion)
+
+        assertEquals(SolrVersionSource.SERVER, model.solrVersion.source)
+        assertEquals(
+            "an unpublished guide must not be invented for it",
+            SolrVersionSelection.DEFAULT.guidePathSegment,
+            model.solrVersion.guidePathSegment,
+        )
+    }
+
+    /** A supported line resolves to its own guide rather than the fallback. */
+    fun testASupportedLineNamesItsOwnGuide() {
+        val url = givenServer(systemInfo = { respond(it, 200, systemBodyNaming("9.10.1")) })
+
+        val read = (read(connection(url)) as SolrResponse.Success).value
+        val model = SolrFieldModel.of(SolrConfigsetFacts(), read.facts, read.solrVersion)
+
+        assertEquals(SolrVersionSource.SERVER, model.solrVersion.source)
+        assertFalse(
+            "a line with a catalog must not fall back: ${model.solrVersion.guidePathSegment}",
+            model.solrVersion.guidePathSegment == SolrVersionSelection.DEFAULT.guidePathSegment,
         )
     }
 }
