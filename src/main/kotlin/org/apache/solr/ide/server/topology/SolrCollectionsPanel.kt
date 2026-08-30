@@ -36,6 +36,9 @@ import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionDialog
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.reading.SolrIndexContents
+import org.apache.solr.ide.server.indexing.SolrCommitMode
+import org.apache.solr.ide.server.indexing.SolrDocumentIndexer
+import org.apache.solr.ide.server.indexing.SolrIndexDocumentDialog
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -123,6 +126,20 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
                 override fun actionPerformed(event: AnActionEvent) = refresh()
                 override fun update(event: AnActionEvent) {
                     event.presentation.isEnabled = settings.selectedConnection != null
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.EDT
+            },
+            object : DumbAwareAction(
+                SolrBundle.message("indexing.action.index"),
+                SolrBundle.message("indexing.action.index.description"),
+                com.intellij.icons.AllIcons.Actions.Upload,
+            ) {
+                override fun actionPerformed(event: AnActionEvent) {
+                    indexTestDocument()
+                }
+                override fun update(event: AnActionEvent) {
+                    event.presentation.isEnabled = selectedCollection() != null &&
+                        settings.selectedConnection != null
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.EDT
             },
@@ -249,6 +266,67 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     }
 
     /**
+     * The collection or core the selected row belongs to, or null where none is selected.
+     *
+     * A row deeper in the tree — a shard, a replica, a field — still answers with the collection it
+     * sits under, because that is the one a document would be indexed into and asking a user to
+     * click the exact right row would be the plugin being unhelpful on purpose.
+     */
+    internal fun selectedCollection(): String? {
+        var node = tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode
+        while (node != null) {
+            val row = node.userObject as? SolrTopologyNode
+            row?.collection?.let { return it }
+            if (row?.kind == SolrTopologyNodeKind.COLLECTION || row?.kind == SolrTopologyNodeKind.CORE) {
+                return row.label
+            }
+            node = node.parent as? DefaultMutableTreeNode
+        }
+        return null
+    }
+
+    /**
+     * Reads the collection's schema, then offers a document to index into it.
+     *
+     * The schema is read rather than taken from a configset, because the document is checked against
+     * what the collection actually has — which is the thing that will accept or silently reshape it.
+     */
+    internal fun indexTestDocument() {
+        val collection = selectedCollection() ?: return
+        val connection = settings.selectedConnection ?: return
+
+        project.service<SolrCollectionsScope>().scope.launch {
+            val response = SolrServerReader.getInstance(project).read(connection, collection)
+            withContext(Dispatchers.EDT) {
+                val facts = valueIn(response)?.facts
+                if (facts == null) {
+                    showBanner(failureMessageFor(response).orEmpty())
+                    return@withContext
+                }
+                val dialog = SolrIndexDocumentDialog(project, collection, connection.displayName, facts)
+                if (dialog.showAndGet()) sendDocument(connection, collection, dialog.document, dialog.commitMode)
+            }
+        }
+    }
+
+    private fun sendDocument(
+        connection: org.apache.solr.ide.server.connection.SolrConnection,
+        collection: String,
+        document: String,
+        commit: SolrCommitMode,
+    ) {
+        project.service<SolrCollectionsScope>().scope.launch {
+            val result = SolrDocumentIndexer.getInstance(project).index(connection, collection, document, commit)
+            withContext(Dispatchers.EDT) {
+                showBanner(
+                    failureMessageFor(result)
+                        ?: SolrBundle.message("indexing.indexed", collection, commit.label),
+                )
+            }
+        }
+    }
+
+    /**
      * Shows [view], and nothing about how it was arrived at.
      *
      * Reachable rather than private because it is the whole of what the panel does with a result,
@@ -292,6 +370,11 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
 
     /** What the banner is saying, or null where it is hidden. */
     internal val bannerMessage: String? get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
+
+    /** Selects [path], as clicking that row would. */
+    internal fun selectPath(path: javax.swing.tree.TreePath) {
+        tree.selectionPath = path
+    }
 
     /** The tree's invisible root, so a test can walk to the row it means to exercise. */
     internal val treeRoot: DefaultMutableTreeNode get() = root

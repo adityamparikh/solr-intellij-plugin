@@ -247,4 +247,70 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
 
         assertNull(page.bannerMessage)
     }
+
+    // --- which collection a document would go into --------------------------------------------------
+
+    private fun collectionsTreeOn(page: SolrCollectionsPanel) {
+        page.render(SolrCollectionsView.Loaded(standaloneRoots))
+    }
+
+    /** Nothing selected means nothing to index into, and the action stays out of the way. */
+    fun testNoSelectionNamesNoCollection() {
+        val page = panel()
+        collectionsTreeOn(page)
+
+        assertNull(page.selectedCollection())
+    }
+
+    /**
+     * A row deeper in the tree still answers with the collection it sits under.
+     *
+     * Asking a user to click the exact right row would be the plugin being unhelpful on purpose:
+     * a field, a shard and a replica all belong to one collection, and that is the one a document
+     * would go into.
+     */
+    fun testARowUnderACollectionNamesThatCollection() {
+        val page = panel()
+        collectionsTreeOn(page)
+        val cores = page.treeRoot.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+        val books = cores.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+        val fieldsRow = books.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+
+        page.selectPath(javax.swing.tree.TreePath(fieldsRow.path))
+
+        assertEquals("books", page.selectedCollection())
+    }
+
+    /** Selecting the core itself names it. */
+    fun testSelectingACoreNamesIt() {
+        val page = panel()
+        collectionsTreeOn(page)
+        val cores = page.treeRoot.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+        val books = cores.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+
+        page.selectPath(javax.swing.tree.TreePath(books.path))
+
+        assertEquals("books", page.selectedCollection())
+    }
+
+    /** A heading belongs to no collection, so it names none. */
+    fun testAGroupHeadingNamesNoCollection() {
+        val page = panel()
+        collectionsTreeOn(page)
+        val cores = page.treeRoot.getChildAt(0) as javax.swing.tree.DefaultMutableTreeNode
+
+        page.selectPath(javax.swing.tree.TreePath(cores.path))
+
+        assertNull(page.selectedCollection())
+    }
+
+    /** With no connection there is nothing to index into, whatever is selected. */
+    fun testIndexingWithNoConnectionDoesNothing() {
+        val page = panel()
+        collectionsTreeOn(page)
+
+        page.indexTestDocument()
+
+        assertNull(page.bannerMessage)
+    }
 }

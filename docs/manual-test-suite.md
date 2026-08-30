@@ -800,6 +800,19 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
 - [ ] **SRV-27** — Make the only difference a **Differs** row. **Apply Additive Changes is disabled**
       — a comparison with nothing additive in it offers no button at all, which is the honest reading
       of "only additive changes get the second action".
+- [ ] **SRV-28** — Select a collection in the **Solr** window and press **Index a Test Document**.
+      The dialog names the collection **and the server** in its title, opens on a document carrying
+      the unique key, and reports no problems.
+- [ ] **SRV-29** — Change a field name to a typo. The dialog reports it and **OK is refused**. This
+      is the check worth engineering: pressing OK anyway against a `_default` collection would add
+      the field to the deployed schema, and Solr would report success.
+- [ ] **SRV-30** — Delete the `id` line. Refused again, for the other reason Solr answers `status: 0`
+      to. Restore it, add `"author_s": "x"` — accepted, because `*_s` matches. Add
+      `"_version_": 1` — a warning, and OK still works.
+- [ ] **SRV-31** — Index with the default commit setting, then immediately query the collection.
+      **The document is not there yet**, and that is correct — `commitWithin` is what the dialog
+      said. Wait a second, query again: it appears. Repeat with *findable immediately* and it is
+      there at once.
 
 ## Not yet in the suite
 
