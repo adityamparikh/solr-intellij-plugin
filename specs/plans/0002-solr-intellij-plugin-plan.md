@@ -2156,7 +2156,7 @@ that could disprove it is unwritable.
 - [ ] Unresolvable constructs produce no warning.
 - [ ] A module with no Solr client on its classpath produces no findings at all, asserted on a fixture of two modules
   where only one depends on SolrJ.
-- [ ] **The module gate reads no index**, which is what makes it safe while the IDE is still indexing without a
+- [x] **The module gate reads no index**, which is what makes it safe while the IDE is still indexing without a
   contract to hold it there. Answering "does this module depend on SolrJ" by resolving
   `org.apache.solr.client.solrj.SolrClient` through PSI would be exact and would put the widest index-reading path the
   plugin has on every file the user opens — against the rule whose weaker form is how a defect shipped here once.

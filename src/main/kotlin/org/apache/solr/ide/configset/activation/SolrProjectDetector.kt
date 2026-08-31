@@ -79,17 +79,34 @@ class SolrProjectDetector(private val project: Project) {
      * @param module the module a recognizer is considering running in
      * @return true if this module's dependencies include a recognized Solr client library
      */
-    fun isSolrModule(module: Module): Boolean = ReadAction.computeBlocking<Boolean, RuntimeException> {
-        var found = false
-        OrderEnumerator.orderEntries(module).librariesOnly().forEachLibrary { library ->
-            val name = library.name
-            if (name != null && SOLR_CLIENT_COORDINATES.any { it in name }) {
-                found = true
+    fun isSolrModule(module: Module): Boolean = moduleDependsOn(module, SOLR_CLIENT_COORDINATES)
+
+    /**
+     * Whether [module] depends on a library whose name contains any of [coordinates].
+     *
+     * The general form of [isSolrModule], for recognizers that need something narrower than "some
+     * Solr client". A recognizer reading Camel URIs is worth running on a module carrying
+     * `camel-solr` and worth nothing on one carrying only SolrJ, and it is the recognizer that knows
+     * which — so it declares its own coordinates and this answers about those.
+     *
+     * @param module the module a recognizer is considering running in
+     * @param coordinates fragments matched as substrings against library names, which is what lets
+     *   `solr-solrj` find `Gradle: org.apache.solr:solr-solrj:9.10.0` without knowing how any build
+     *   tool spells a version
+     * @return true if any of this module's libraries carries any of those fragments in its name
+     */
+    fun moduleDependsOn(module: Module, coordinates: List<String>): Boolean =
+        ReadAction.computeBlocking<Boolean, RuntimeException> {
+            var found = false
+            OrderEnumerator.orderEntries(module).librariesOnly().forEachLibrary { library ->
+                val name = library.name
+                if (name != null && coordinates.any { it in name }) {
+                    found = true
+                }
+                !found // stop enumerating once a match is found
             }
-            !found // stop enumerating once a match is found
+            found
         }
-        found
-    }
 
     /**
      * Discards the cached answer.

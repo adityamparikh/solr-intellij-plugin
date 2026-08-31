@@ -1,6 +1,7 @@
 package org.apache.solr.ide.code.solrj
 
 import com.intellij.psi.PsiFile
+import org.apache.solr.ide.code.SolrRecognizers
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -52,7 +53,10 @@ class SolrJRecognizerTest : SolrConfigsetTestCase() {
             """.trimIndent(),
         )
 
-    private fun usages(file: PsiFile) = SolrJRecognizer.fieldUsagesIn(file)
+    // Through the dispatcher rather than the recognizer, because that is where the module gate now
+    // lives and therefore what a consumer actually calls. Asking the recognizer directly would test
+    // a path nothing in the plugin takes.
+    private fun usages(file: PsiFile) = SolrRecognizers.fieldUsagesIn(file)
 
     /** The demo's planted defect: a typo inside a filter query, which compiles and matches nothing. */
     fun testAFilterQueryNamesTheFieldInsideIt() {

@@ -638,6 +638,22 @@ the cases that decide *not* to offer can be tested without booting an IDE. Those
 the most: an intention offered where it does not apply is acted on, which is worse than one that is
 simply missing.
 
+### `org.apache.solr.ide.code` and `org.apache.solr.ide.code.solrj`
+
+What a project's own source says about Solr — which servers it talks to, and which fields it asks
+them for. `code` holds the contract and the two facts it reports; `code.solrj` is the first
+implementation of that contract, and each further library recognized gets a sibling package.
+
+**A recognizer never asks whether its library is present.** It declares the coordinates it needs and
+`SolrRecognizers` answers, once, for all of them — against the *module*, so a repository where one
+module talks to Solr does not have the others warned about their field names. That gate reads library
+names off the project model and no index, which is what makes it safe to ask on every file the user
+opens, including while the IDE is still indexing.
+
+**Everything here reads through UAST rather than Java PSI**, so one implementation serves both JVM
+languages. That is a claim a mirrored test suite has to keep honest rather than the compiler — see
+the note in [`docs/Module.md`](Module.md) on why a Kotlin string is not a literal.
+
 ### The server surface
 
 Six packages, and one rule that applies to all of them: **nothing on the editor path may import any
@@ -731,8 +747,8 @@ proof the server agrees.
 ## Where later work goes
 
 - `org.apache.solr.ide.configset.*` — the configuration-files surface, split by file and then by gesture.
-- `org.apache.solr.ide.server.*` — the live-server surface. Indexing test documents is the one
-  step of it not yet built.
-- Recognizers for Java and Kotlin code get their own surface when the first one is written.
+- `org.apache.solr.ide.server.*` — the live-server surface.
+- `org.apache.solr.ide.code.*` — the code surface: what a project's own Java and Kotlin say about
+  Solr. One package per library recognized, under a shared contract.
 
 Packages are created when they have a file to hold, not before.
