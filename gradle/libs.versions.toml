@@ -16,7 +16,7 @@ changelog = "2.5.0"
 kover = "0.9.9"
 sonarqube = "7.4.0.8496"
 dokka = "2.2.0"
-testcontainers = "1.21.3"
+testcontainers = "1.21.4"
 
 [libraries]
 # Consumed by buildSrc: reads Solr class files to generate the shipped class catalog.
