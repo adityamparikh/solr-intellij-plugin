@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.activation
 
+import com.intellij.testFramework.DumbModeTestUtils
+
 class SolrProjectDetectorTest : SolrConfigsetTestCase() {
 
     private val detector: SolrProjectDetector get() = SolrProjectDetector.getInstance(project)
@@ -114,6 +116,35 @@ class SolrProjectDetectorTest : SolrConfigsetTestCase() {
         givenNoSolrOnTheClasspath()
         givenLibrary("Gradle: com.example:solr-config-linter:1.0.0")
         assertFalse(detector.isSolrModule(module))
+    }
+
+    /**
+     * The general gate answers about the coordinates it is handed, not about Solr in general.
+     *
+     * What lets each recognizer declare the library it needs. A recognizer reading Camel URIs is
+     * worth nothing on a module carrying only SolrJ, and until this existed every recognizer would
+     * have run wherever any Solr client did.
+     */
+    fun testTheGateNarrowsToTheCoordinatesItIsGiven() {
+        assertTrue(detector.moduleDependsOn(module, listOf("solr-solrj")))
+        assertFalse(detector.moduleDependsOn(module, listOf("camel-solr")))
+        assertTrue(detector.moduleDependsOn(module, listOf("camel-solr", "solr-solrj")))
+    }
+
+    /**
+     * The gate answers while the IDE is still indexing, which is the property that makes it safe.
+     *
+     * Every recognizer in the plugin runs behind this question, and it is asked on files the user
+     * opens — including during the indexing that follows opening a project, which is exactly when
+     * somebody first looks at their code. Answering it by resolving `SolrClient` through PSI would
+     * be exact and would throw here. Reading library names off the project model needs no index, and
+     * this is the test that stops that from silently becoming untrue.
+     */
+    fun testTheGateAnswersWhileTheIdeIsIndexing() {
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(detector.moduleDependsOn(module, listOf("solr-solrj")))
+            assertFalse(detector.moduleDependsOn(module, listOf("camel-solr")))
+        }
     }
 
     /**

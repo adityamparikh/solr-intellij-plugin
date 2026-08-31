@@ -149,6 +149,19 @@ lets it be tested against captured response bodies rather than a running server,
 and what lets `SolrFieldModel.of(repository, server)` merge two instances of one
 shape without privileging either.
 
+# Package org.apache.solr.ide.code
+
+The contract every code recognizer implements, and the two facts one reports: the
+Solr servers a source file says it talks to, and the fields it asks them for.
+
+`SolrUsageRecognizer` is what a recognizer implements; `SolrRecognizers` is what a
+consumer calls. The split exists for one reason: the module gate. A recognizer
+declares the library coordinates it needs and never checks for them, so the check
+cannot be the thing a later recognizer forgets. `SolrEndpointUsage` carries a
+username beside its URL because wherever a server is named the identity is named
+beside it, and it carries no password because what a source file holds in that
+position is usually a placeholder — the IDE's password safe holds the real one.
+
 # Package org.apache.solr.ide.code.solrj
 
 Reading Solr usage out of Java and Kotlin, and the facts about SolrJ's API that
