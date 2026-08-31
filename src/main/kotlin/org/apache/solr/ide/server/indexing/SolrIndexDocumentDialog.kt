@@ -4,8 +4,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
+import com.intellij.json.JsonFileType
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiFileFactory
+import com.intellij.util.LocalTimeCounter
+import com.intellij.ui.EditorTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
@@ -40,7 +44,39 @@ class SolrIndexDocumentDialog(
     private val facts: SolrConfigsetFacts,
 ) : DialogWrapper(project) {
 
-    private val documentArea = JBTextArea(SolrSampleDocument.forSchema(facts), 14, 60)
+    // A real editor rather than a text area, because a text area cannot offer completion — and
+    // completing a field name is the one thing that stops the mistake this dialog exists to catch
+    // before it is typed rather than after. The schema travels on the file: completion is called
+    // with nothing but a caret, and a document written for a collection belongs to no configset any
+    // rule over its location could find.
+    private val documentFile: PsiFile = PsiFileFactory.getInstance(project)
+        .createFileFromText(
+            "solr-document.json",
+            JsonFileType.INSTANCE,
+            SolrSampleDocument.forSchema(facts),
+            LocalTimeCounter.currentTime(),
+            // Event system enabled, which is what gives the file a document to edit. Without it the
+            // file parses and has no `Document` at all, and the editor built over it opens empty.
+            true,
+        )
+        .apply { putUserData(SOLR_DOCUMENT_SCHEMA, facts) }
+
+    private val documentArea: EditorTextField = EditorTextField(
+        checkNotNull(PsiDocumentManager.getInstance(project).getDocument(documentFile)) {
+            "the in-memory document file has no document"
+        },
+        project,
+        JsonFileType.INSTANCE,
+        false,
+        false,
+    ).apply {
+        setOneLineMode(false)
+        preferredSize = java.awt.Dimension(620, 260)
+        addSettingsProvider { editor ->
+            editor.settings.isLineNumbersShown = false
+            editor.settings.isUseSoftWraps = false
+        }
+    }
     private val commitCombo = JComboBox(DefaultComboBoxModel(SolrCommitMode.entries.toTypedArray()))
     private val problemsLabel = JBLabel()
 
@@ -61,14 +97,15 @@ class SolrIndexDocumentDialog(
             },
             BorderLayout.NORTH,
         )
-        add(JBScrollPane(documentArea), BorderLayout.CENTER)
+        add(documentArea, BorderLayout.CENTER)
         add(problemsLabel, BorderLayout.SOUTH)
         documentArea.document.addDocumentListener(
-            object : javax.swing.event.DocumentListener {
-                override fun insertUpdate(e: javax.swing.event.DocumentEvent) = refreshProblems()
-                override fun removeUpdate(e: javax.swing.event.DocumentEvent) = refreshProblems()
-                override fun changedUpdate(e: javax.swing.event.DocumentEvent) = refreshProblems()
+            object : com.intellij.openapi.editor.event.DocumentListener {
+                override fun documentChanged(event: com.intellij.openapi.editor.event.DocumentEvent) {
+                    refreshProblems()
+                }
             },
+            disposable,
         )
     }
 
@@ -87,7 +124,9 @@ class SolrIndexDocumentDialog(
 
     /** Replaces the document, as typing into it would. */
     internal fun setDocument(text: String) {
-        documentArea.text = text
+        com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+            documentArea.document.setText(text)
+        }
     }
 
     /** The document as it currently stands, which is what will be sent. */

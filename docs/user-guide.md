@@ -579,6 +579,11 @@ The plugin reads that collection's schema and writes you a starting document fro
 and whatever the schema marks required, with placeholder values of the right JSON shape. Edit it,
 choose when it should become findable, and send.
 
+**Field names complete as you type them**, from that collection's schema — not from the project's
+configsets, because the document is going to one named collection and a field it cannot accept is a
+field it would silently gain. Dynamic patterns are offered too, in italics: `*_s` is the only clue
+the schema gives that a name like `author_s` is legal at all.
+
 **Two mistakes are caught before the document is sent, because Solr will not catch them.** Both were
 run against Solr 10.0.0 on a collection created without a configset, which is what `_default` gives
 you:

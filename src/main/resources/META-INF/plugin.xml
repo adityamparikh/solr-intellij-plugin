@@ -94,6 +94,16 @@
              therefore the common case, and `SolrQueryResultReader` decides from the response body
              rather than from the URL — Solr behind a reverse proxy is addressed at any path, and a
              non-Solr service may expose one called `/select`. -->
+        <!-- Field names inside a document being written for a collection. Registered against JSON
+             like the query completion beside it, and declining on the same terms: it offers nothing
+             unless the file carries the schema this plugin's document editor put there, which no
+             file outside that editor can. The fields come from the collection rather than from the
+             project's configsets, because a document is about to be sent to one named collection
+             and completing from anything else would offer a field the target cannot accept. -->
+        <completion.contributor
+                language="JSON"
+                implementationClass="org.apache.solr.ide.server.indexing.SolrDocumentFieldCompletionContributor"/>
+
         <!-- Field names inside a Solr query body written in an `.http` file. Registered against
              JSON because the HTTP Client already injects JSON into a body carrying that
              Content-Type, so this contributes to an injection that is already there rather than

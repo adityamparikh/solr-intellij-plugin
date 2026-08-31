@@ -149,8 +149,7 @@ whole, and the gutter action goes with the Server track.
 - [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**; acceptance awaits a sandbox pass
 - [Step 13 — Query console](#step-13-query-console-done) — **done**; acceptance awaits a sandbox pass
 - [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**; acceptance awaits a sandbox pass
-- [Step 15 — Indexing test documents](#step-15-indexing-test-documents-partly-done) — **partly done**: indexing
-  and its checks are built, completion in the document editor is not
+- [Step 15 — Indexing test documents](#step-15-indexing-test-documents-done) — **done**
 
 ### Code track
 
@@ -1965,11 +1964,14 @@ it could not close, which are worth reading before the container fixture is writ
   the comparison and the view — the one shape of test that would have caught the original gap.
   [FR-5 and FR-6](../0002-solr-server-integration.md#functional) say what the reader must produce and
   why the version is a separate fact rather than a value for the existing one.
-- [ ] All five failure modes tested against the fake layer. **Four are**: a healthy response, a
-  server that never answers, an authentication failure, and a body that is not the JSON it claimed —
-  including the HTML a mistyped collection actually returns. The fifth, an *unrecognized server
-  version*, is not: a version that cannot be read is covered, a version that reads and names a line
-  nothing knows is not.
+- [x] All five failure modes tested against the fake layer: a healthy response, a server that never
+  answers, an authentication failure, a body that is not the JSON it claimed — including the HTML a
+  mistyped collection actually returns — and a server running a line this build ships no catalog for.
+  The fifth reads least like a failure, which is why it was the one missing: it arrives as a
+  perfectly good response naming a release that did not exist when the plugin was built, and is the
+  ordinary consequence of Solr shipping again. It is read, its version carried verbatim, and its
+  selection still sourced to the server — refusing it would make every future Solr an outage, and
+  naming a guide segment for it would invent a page that may not be published.
 - [x] The reader parses what a real Solr of each supported line actually returns.
 - [ ] Server state refreshes only on request or connection change — never on a timer. No scheduler
   exists and every fetch is reached from an explicit action, but the claim is about observed
@@ -2051,7 +2053,7 @@ view exists to show. [FR-10](../0002-solr-server-integration.md#functional) requ
 to re-fetch the server's facts rather than clearing the difference on a successful write — a 2xx is
 proof the request was accepted, not proof the server now agrees.
 
-### Step 15: Indexing test documents (partly done)
+### Step 15: Indexing test documents (done)
 
 **Actions:**
 
@@ -2061,11 +2063,16 @@ proof the request was accepted, not proof the server now agrees.
 
 **Success criteria:**
 
-- [ ] Documents can be authored with completion and indexed on explicit invocation. **Indexing is
-  built and checked before it sends** — a field the schema cannot place and a missing unique key are
-  both refused, because Solr answers `status: 0` to each and acts on them. **Completion in the
-  document editor is not built**: the editor is a plain text area. Field completion exists for a
-  query body in an `.http` file and has not been extended to this dialog.
+- [x] Documents can be authored with completion and indexed on explicit invocation. Indexing is
+  checked before it sends — a field the schema cannot place and a missing unique key are both
+  refused, because Solr answers `status: 0` to each and acts on them.
+
+  **Completion needed a real editor, not a text area.** The dialog now edits an in-memory JSON file
+  through an `EditorTextField`, and the collection's schema travels on that file: completion is
+  called with nothing but a caret, and a document written for a collection belongs to no configset
+  any rule over its location could find. The fields offered are **the collection's**, not the
+  project's — a document is about to be sent to one named collection, and completing from anything
+  else would offer a field the target cannot accept and would then silently gain.
 
 **Acceptance:**
 [demo step 71 — *author and index a test document*](../../docs/demo/README.md#step-71-author-and-index-a-test-document).
