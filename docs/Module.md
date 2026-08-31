@@ -163,6 +163,14 @@ Kotlin are one implementation, and confirms a call's receiver really is SolrJ's
 knows the grammar of a parameter's *value*: this package knows which method writes
 which parameter, and that one knows how to read it.
 
+**One implementation is not the same as one behaviour, and only a test tells them
+apart.** UAST unifies the *shape* of a call, not the shape of everything inside it:
+a Java string arrives as a literal and a Kotlin string never does, because Kotlin
+models every string as a template that might interpolate. Anything reading an
+argument therefore has to descend rather than cast, and the two mirrored test
+suites — one Java, one Kotlin, silences included — are what keeps a construct from
+being read in one language and quietly dropped in the other.
+
 # Package org.apache.solr.ide.configset.activation
 
 Deciding whether the plugin runs at all, and against which configset.

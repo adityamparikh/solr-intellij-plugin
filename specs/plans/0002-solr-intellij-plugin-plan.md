@@ -2150,7 +2150,7 @@ that could disprove it is unwritable.
 **Success criteria:**
 
 - [ ] Field references resolve in builder calls, raw strings, document building and bean annotations.
-- [ ] **The same constructs resolve in a Kotlin fixture as in the Java one**, through the same recognizer — the
+- [x] **The same constructs resolve in a Kotlin fixture as in the Java one**, through the same recognizer — the
   assertion that the UAST decision above bought what it was chosen for, rather than a second code path having quietly
   grown.
 - [ ] Unresolvable constructs produce no warning.

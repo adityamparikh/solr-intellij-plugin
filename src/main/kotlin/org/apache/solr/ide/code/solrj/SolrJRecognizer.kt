@@ -7,8 +7,10 @@ import org.apache.solr.ide.configset.activation.SolrProjectDetector
 import org.apache.solr.ide.model.query.SolrQueryExpressions
 import org.apache.solr.ide.model.query.SolrQueryFields
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.UPolyadicExpression
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -36,10 +38,16 @@ data class SolrFieldUsage(
  * calls, so half of this would be silently dark there.
  *
  * **Silence wherever the answer is not certain.** A call is read only when its receiver resolves to
- * SolrJ's own `SolrQuery`, its method is one that names fields, and its argument is a literal string.
- * Anything else — a variable, a project's own class with a method of the same name, a method taking
- * a count — produces nothing. That is precision over recall, which is the correct trade for a
- * feature whose failure mode is a warning on somebody's working code.
+ * SolrJ's own `SolrQuery`, its method is one that names fields, and its argument spells the name out
+ * in the source. Anything else — a variable, an interpolated string, a project's own class with a
+ * method of the same name, a method taking a count — produces nothing. That is precision over
+ * recall, which is the correct trade for a feature whose failure mode is a warning on somebody's
+ * working code.
+ *
+ * **The two languages are held level by a mirrored test suite, because the compiler will not do it.**
+ * `SolrJRecognizerKotlinTest` repeats every case in the Java suite, silences included. Until it
+ * existed the Kotlin half was entirely dark and the build was green: a Kotlin string is never a
+ * literal but always a template, so the cast this once performed failed on every one of them.
  */
 object SolrJRecognizer {
 
@@ -86,13 +94,45 @@ object SolrJRecognizer {
 
         val arguments = if (method.readsOnlyFirstArgument) call.valueArguments.take(1) else call.valueArguments
         for (argument in arguments) {
-            val literal = argument as? ULiteralExpression ?: continue
-            val text = literal.value as? String ?: continue
-            val anchor = literal.sourcePsi ?: continue
+            val text = constantTextOf(argument) ?: continue
+            val anchor = argument.sourcePsi ?: continue
             for (name in namesIn(method, text)) {
                 into += SolrFieldUsage(name, method.parameter, anchor)
             }
         }
+    }
+
+    /**
+     * The string an argument spells out in the source, or null where it does not spell one out.
+     *
+     * **Not `evaluateString`, which is the obvious answer and the wrong one.** UAST's evaluator
+     * follows a Kotlin `val` to its assignment while declining a Java local and even a Java
+     * `static final`, so a recognizer built on it reads a variable in one language and not the
+     * other — the disagreement that writing against UAST was chosen to prevent.
+     *
+     * What is wanted is narrower: the argument is read only where the source spells the name out.
+     * A Java string literal arrives as [ULiteralExpression]; a Kotlin one never does, because Kotlin
+     * models every string as a template that *may* interpolate, so `"categry:books"` arrives as a
+     * polyadic expression holding a single literal operand. Both spell the name out.
+     *
+     * **The recursion is what keeps the two languages honest, and it is not optional.** A flat check
+     * — a polyadic whose operands are all literals — would read Java's `"categry" + ":books"`, whose
+     * operands are two literals, and decline Kotlin's identical source, whose operands are two
+     * templates. That is the same defect this function was written to remove, one level down.
+     * Descending through operands asks the same question of every level, so a concatenation of
+     * spelled-out parts reads the same in both languages and an interpolated part stops it in both.
+     *
+     * @param argument one argument of a call already known to name fields
+     * @return the string it spells out, or null to say nothing about this call
+     */
+    private fun constantTextOf(argument: UExpression): String? {
+        if (argument is ULiteralExpression) return argument.value as? String
+        if (argument !is UPolyadicExpression) return null
+        // A single unreadable operand discards the whole argument rather than the part: half a field
+        // name is not a field name, and reporting `books` out of `"$prefix:books"` would warn about
+        // a field the developer never wrote.
+        val parts = argument.operands.map { constantTextOf(it) ?: return null }
+        return parts.joinToString("")
     }
 
     /**

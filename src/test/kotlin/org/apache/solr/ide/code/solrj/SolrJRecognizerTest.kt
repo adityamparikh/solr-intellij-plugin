@@ -136,6 +136,14 @@ class SolrJRecognizerTest : SolrConfigsetTestCase() {
         assertEmpty(usages(javaFile("""q.addField("*");""")))
     }
 
+    /** A name spelled across a concatenation is read, as it is in Kotlin. */
+    fun testLiteralsJoinedByConcatenationAreRead() {
+        givenSolrJ()
+        val found = usages(javaFile("""q.addFilterQuery("categry" + ":books");"""))
+
+        assertEquals(listOf("categry"), found.map { it.fieldName })
+    }
+
     /** A non-literal argument cannot be read, and is not guessed at. */
     fun testAVariableArgumentIsNotRead() {
         givenSolrJ()
