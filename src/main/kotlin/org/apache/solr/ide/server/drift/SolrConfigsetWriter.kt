@@ -60,7 +60,7 @@ class SolrConfigsetWriter(private val project: Project) {
             return SolrResponse.TransportFailure(NOT_SOLR_CLOUD)
         }
 
-        val path = "/solr/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
+        val path = "/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
         return SolrHttpTransport.getInstance(project)
             .post(connection.baseUrl, path, archive, SolrHttpTransport.OCTET_STREAM, credentialFor(connection))
             .map { }
@@ -82,7 +82,7 @@ class SolrConfigsetWriter(private val project: Project) {
         SolrHttpTransport.getInstance(project)
             .get(
                 connection.baseUrl,
-                "/solr/admin/collections?action=RELOAD&name=${encode(collection)}",
+                "/admin/collections?action=RELOAD&name=${encode(collection)}",
                 credentialFor(connection),
             )
             .map { }
@@ -111,7 +111,7 @@ class SolrConfigsetWriter(private val project: Project) {
         SolrHttpTransport.getInstance(project)
             .post(
                 connection.baseUrl,
-                "/solr/${encode(collection)}/schema",
+                "/${encode(collection)}/schema",
                 request.toByteArray(),
                 SolrHttpTransport.JSON,
                 credentialFor(connection),
