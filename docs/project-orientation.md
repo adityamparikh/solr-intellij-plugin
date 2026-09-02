@@ -21,7 +21,7 @@ you're trying to do.
 > place that needs it references or links to that column instead of storing its own copy. A derived
 > column can drift from the one it was computed from; a second status paragraph can drift from the
 > plan the same way, and by the same mechanism — someone updates one copy and not the other. [The
-> section below](#a-correction-this-documents-own-research-produced) is that failure caught once,
+> section below](#two-corrections-and-the-second-one-is-this-documents-own) is that failure caught twice,
 > not prevented forever.
 
 ## The shape of the project
@@ -50,7 +50,7 @@ being blocked.
 
 ## Where effort has actually gone
 
-Of the three surfaces, the **Configuration** one is where the work has landed. It is not a partial
+Of the three surfaces, the **Configuration** one is where most of the work has landed. It is not a partial
 slice of that surface either — the plan records every step it was originally scoped with as done,
 plus seven more added as sandbox use and design work turned up gaps the original scope did not
 anticipate. [The user guide](user-guide.md) is the capability-by-capability account of what that adds
@@ -58,12 +58,16 @@ up to for someone using the plugin, and [the manual test suite](manual-test-suit
 evidence trail — which gestures have actually been pressed against a running sandbox, and when, as
 distinct from what merely has a passing automated test.
 
-The **Server** surface exists only as stored connection settings — no HTTP client, no tool window, no
-query console, and nothing that talks to a running Solr. The **Code** surface has not started at all:
-no recognizer exists, so a Java or Kotlin file gets nothing from this plugin today. Neither is
-blocked by the other or by the Configuration track finishing; they are simply not where the work has
-gone. [The plan's Server and Code track sections](../specs/plans/0002-solr-intellij-plugin-plan.md#server-track)
-list what each step involves, for anyone picking one up.
+The **Server** and **Code** surfaces both exist in code. How far each has got is a per-step question
+this document deliberately does not answer, and the paragraph that used to answer it is the second
+half of [the corrections below](#two-corrections-and-the-second-one-is-this-documents-own).
+[The plan's track index](../specs/plans/0002-solr-intellij-plugin-plan.md#build-order) carries the
+position of every step on all three tracks, and
+[its Server and Code track sections](../specs/plans/0002-solr-intellij-plugin-plan.md#server-track)
+say what each step involves, for anyone picking one up. What is durable enough to state here is only
+this: neither surface is blocked by the other or by the Configuration track finishing, so the order
+in which they have been built reflects where attention went rather than any dependency between
+them.
 
 **"Done" in the Configuration track is a narrower claim than "finished."** The track's own text is
 direct about this: what it does *not* close is the manual verification pass. Several checks in the
@@ -73,7 +77,7 @@ type, which reports something true rather than something wrong) is recorded in t
 design question rather than a settled one. Reading "every Configuration step is done" as "there is
 nothing left to verify" is the mistake to avoid here.
 
-## A correction this document's own research produced
+## Two corrections, and the second one is this document's own
 
 Before this document was written, [the plan's "Current state" section](../specs/plans/0002-solr-intellij-plugin-plan.md#overview)
 carried a stale claim: that `solrconfig.xml` "still lacks its own structure," because element
@@ -87,9 +91,26 @@ plan's opening paragraph has been corrected to match, with the sandbox capture a
 
 The reason to record the correction here rather than let it disappear into a diff: it is exactly the
 failure mode this document exists to avoid producing. A second file describing status is a second
-place status can go stale, and this one had, for a claim that mattered — someone reading only the
-opening paragraph would have believed a shipped capability was still missing. The fix was to correct
-the one file that owns status, not to add a second correct answer alongside a wrong one.
+place status can go stale, and the plan's opening paragraph had, for a claim that mattered — someone
+reading only that paragraph would have believed a shipped capability was still missing. The fix was
+to correct the one file that owns status, not to add a second correct answer alongside a wrong one.
+
+**The second correction is this document's own, and it is the same failure with the roles reversed.**
+The paragraph above about the Server and Code surfaces used to enumerate what did not exist: no HTTP
+client, no tool window, no query console, no recognizer. Every clause was true the day it was
+written. By the time anyone checked, the Server track had shipped all five of its steps and the Code
+track had started — and this file had spent that whole stretch telling readers that nothing here
+talks to a running Solr. So the document that opens by declaring it owns no status had gone stale on
+status, in the same section that reports the plan doing it.
+
+That is the strongest argument available for the rule stated at the top, and it sharpens it. The
+discipline is not "keep the copy updated," because a copy is only ever written by someone who
+believes they will keep it updated. It is "do not write the copy at all." The replacement above links to the plan's track
+index rather than restating any part of it, and asserts only the one thing that does not move: that
+the three surfaces are independent of each other. Note what survived the correction untouched — the
+[shape of the project](#the-shape-of-the-project) section describes all three surfaces in the present
+tense and needed no edit, because describing what a surface *is for* is orientation, while counting
+what it has *shipped* is status wearing orientation's clothes.
 
 ## Where to look next
 
