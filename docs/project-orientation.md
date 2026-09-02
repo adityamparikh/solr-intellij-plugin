@@ -10,7 +10,7 @@ here" before diving into the plan's step-by-step detail, not a second source of 
 **This document owns no status.** [CLAUDE.md](../CLAUDE.md) is explicit: "the plan owns what is
 built," and mirroring its step status into another file is exactly the mistake that lets a copy go
 stale while the plan stays correct — the session that produced this document found a live example of
-that mistake, seven paragraphs down. So nothing here says step 9 is done or step 14 is not; every
+that mistake, seven paragraphs down. So nothing here says which steps are done and which are not; every
 claim of that shape links to [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md)
 instead of restating it. What this document adds is orientation: which of the three surfaces the
 specification promises exist in any form, how they relate, and where to look next depending on what
@@ -50,13 +50,15 @@ being blocked.
 
 ## Where effort has actually gone
 
-Of the three surfaces, the **Configuration** one is where most of the work has landed. It is not a partial
-slice of that surface either — the plan records every step it was originally scoped with as done,
-plus seven more added as sandbox use and design work turned up gaps the original scope did not
-anticipate. [The user guide](user-guide.md) is the capability-by-capability account of what that adds
-up to for someone using the plugin, and [the manual test suite](manual-test-suite.md) is the
-evidence trail — which gestures have actually been pressed against a running sandbox, and when, as
-distinct from what merely has a passing automated test.
+Of the three surfaces, the **Configuration** one is where most of the work has landed, and not as a
+partial slice of that surface either. Its scope grew as it went: steps were added to it after the
+plan was written, as sandbox use and design work turned up gaps the original scope had not
+anticipated. Which those are, and which of them are closed, is
+[the plan's Editor track index](../specs/plans/0002-solr-intellij-plugin-plan.md#editor-track).
+[The user guide](user-guide.md) is the capability-by-capability account of what that adds up to for
+someone using the plugin, and [the manual test suite](manual-test-suite.md) is the evidence trail —
+which gestures have actually been pressed against a running sandbox, and when, as distinct from what
+merely has a passing automated test.
 
 The **Server** and **Code** surfaces both exist in code. How far each has got is a per-step question
 this document deliberately does not answer, and the paragraph that used to answer it is the second
@@ -111,6 +113,12 @@ the three surfaces are independent of each other. Note what survived the correct
 [shape of the project](#the-shape-of-the-project) section describes all three surfaces in the present
 tense and needed no edit, because describing what a surface *is for* is orientation, while counting
 what it has *shipped* is status wearing orientation's clothes.
+
+By that test one sentence in [where effort has actually gone](#where-effort-has-actually-gone) was
+still status — a tally of how many steps the Configuration track had gained since the plan was
+written. It was accurate on the day it was checked, which is exactly what the two corrections above
+were as well. It went in the same pass, while it was still true, and the sentence now points at the
+track index instead of counting for it.
 
 ## Where to look next
 
