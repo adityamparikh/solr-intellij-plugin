@@ -73,7 +73,7 @@ class SolrDocumentIndexer(private val project: Project) {
         return SolrHttpTransport.getInstance(project)
             .post(
                 connection.baseUrl,
-                "/solr/${encode(collection)}/update$query",
+                "/${encode(collection)}/update$query",
                 // Wrapped where it is not already a list. Solr's update handler takes either, and a
                 // user editing a generated document should not have to know which.
                 asDocumentList(document).toByteArray(),

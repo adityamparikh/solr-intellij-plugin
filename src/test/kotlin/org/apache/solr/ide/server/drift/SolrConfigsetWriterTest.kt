@@ -91,9 +91,9 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
 
         assertTrue(result.toString(), result is SolrResponse.Success)
         val uploadRequest = requested.single { it.contains("action=UPLOAD") }
-        assertTrue(uploadRequest, uploadRequest.contains("/solr/admin/configs"))
+        assertTrue(uploadRequest, uploadRequest.contains("/admin/configs"))
         assertTrue(uploadRequest, uploadRequest.contains("name=books"))
-        assertEquals("the-zip-bytes", bodies["/solr/admin/configs"]?.decodeToString())
+        assertEquals("the-zip-bytes", bodies["/admin/configs"]?.decodeToString())
     }
 
     /** Raw, not multipart: both reach the same outcome and only one needs an encoder written. */
@@ -162,7 +162,7 @@ class SolrConfigsetWriterTest : SolrConfigsetTestCase() {
 
         assertTrue(result.toString(), result is SolrResponse.Success)
         val reloadRequest = requested.single { it.contains("action=RELOAD") }
-        assertTrue(reloadRequest, reloadRequest.contains("/solr/admin/collections"))
+        assertTrue(reloadRequest, reloadRequest.contains("/admin/collections"))
         assertTrue(reloadRequest, reloadRequest.contains("name=books"))
         assertFalse("the core form must not be used", reloadRequest.contains("/admin/cores"))
     }

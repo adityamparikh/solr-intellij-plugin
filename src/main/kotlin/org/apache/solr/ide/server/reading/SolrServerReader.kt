@@ -60,7 +60,7 @@ class SolrServerReader(private val project: Project) {
         val credential = credentialFor(connection)
         val transport = SolrHttpTransport.getInstance(project)
 
-        val schema = transport.get(connection.baseUrl, "/solr/$collection/schema", credential)
+        val schema = transport.get(connection.baseUrl, "/$collection/schema", credential)
             .map { SolrServerSchemaReader.read(it) }
 
         // The version is asked for only where a schema arrived. A server that could not answer the
@@ -96,7 +96,7 @@ class SolrServerReader(private val project: Project) {
         val credential = credentialFor(connection)
         val transport = SolrHttpTransport.getInstance(project)
 
-        val systemInfo = transport.get(connection.baseUrl, "/solr/admin/info/system", credential)
+        val systemInfo = transport.get(connection.baseUrl, "/admin/info/system", credential)
         val mode = when (systemInfo) {
             is SolrResponse.Success -> SolrTopologyReader.modeIn(systemInfo.value)
             is SolrResponse.Partial -> SolrTopologyReader.modeIn(systemInfo.value)
@@ -105,10 +105,10 @@ class SolrServerReader(private val project: Project) {
 
         return when (mode) {
             SolrServerMode.SOLR_CLOUD ->
-                transport.get(connection.baseUrl, "/solr/admin/collections?action=CLUSTERSTATUS", credential)
+                transport.get(connection.baseUrl, "/admin/collections?action=CLUSTERSTATUS", credential)
                     .map { SolrTopologyReader.cloudTopologyIn(it) }
             SolrServerMode.STANDALONE ->
-                transport.get(connection.baseUrl, "/solr/admin/cores?action=STATUS", credential)
+                transport.get(connection.baseUrl, "/admin/cores?action=STATUS", credential)
                     .map { SolrTopologyReader.standaloneTopologyIn(it) }
             // Neither endpoint is asked, because one of them would fail and the other would answer
             // in a vocabulary nothing has established the server uses.
@@ -137,7 +137,7 @@ class SolrServerReader(private val project: Project) {
     suspend fun indexContents(connection: SolrConnection, collection: String): SolrResponse<SolrIndexContents> {
         val credential = credentialFor(connection)
         return SolrHttpTransport.getInstance(project)
-            .get(connection.baseUrl, "/solr/$collection/admin/luke", credential)
+            .get(connection.baseUrl, "/$collection/admin/luke", credential)
             .map { SolrLukeReader.read(it) }
     }
 
@@ -150,7 +150,7 @@ class SolrServerReader(private val project: Project) {
      */
     private suspend fun versionOf(connection: SolrConnection, credential: SolrCredential): String? {
         val response = SolrHttpTransport.getInstance(project)
-            .get(connection.baseUrl, "/solr/admin/info/system", credential)
+            .get(connection.baseUrl, "/admin/info/system", credential)
         val body = when (response) {
             is SolrResponse.Success -> response.value
             is SolrResponse.Partial -> response.value
