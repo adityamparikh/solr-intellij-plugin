@@ -131,7 +131,7 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
     fun testTheCollectionNamedIsTheCollectionAsked() {
         read(connection(givenServer()), collection = "products")
 
-        assertTrue("asked for: $requested", requested.any { it == "/solr/products/schema" })
+        assertTrue("asked for: $requested", requested.any { it == "/products/schema" })
     }
 
     /**

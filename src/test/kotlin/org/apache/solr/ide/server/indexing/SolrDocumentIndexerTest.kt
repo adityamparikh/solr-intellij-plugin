@@ -72,7 +72,7 @@ class SolrDocumentIndexerTest : SolrConfigsetTestCase() {
         val result = index(givenServer())
 
         assertTrue(result.toString(), result is SolrResponse.Success)
-        assertTrue(requested.toString(), requested.single().startsWith("/solr/books/update"))
+        assertTrue(requested.toString(), requested.single().startsWith("/books/update"))
         assertEquals("application/json", contentType)
     }
 

@@ -43,7 +43,7 @@ class SolrServerContractTest {
         get(container.host, container.getMappedPort(SOLR_PORT), path)
 
     private fun get(host: String, port: Int, path: String) = runBlocking {
-        transport.get("http://$host:$port", path)
+        transport.get("http://$host:$port/solr", path)
     }
 
     private fun bodyOf(container: SolrContainer, path: String) = bodyOf(get(container, path), path)
@@ -70,16 +70,16 @@ class SolrServerContractTest {
 
     /** The mode decides the endpoint here exactly as it does in the composition under test. */
     private fun topologyOf(body: (String) -> tools.jackson.databind.JsonNode): SolrTopology =
-        when (val mode = SolrTopologyReader.modeIn(body("/solr/admin/info/system"))) {
+        when (val mode = SolrTopologyReader.modeIn(body("/admin/info/system"))) {
             SolrServerMode.SOLR_CLOUD ->
-                SolrTopologyReader.cloudTopologyIn(body("/solr/admin/collections?action=CLUSTERSTATUS"))
+                SolrTopologyReader.cloudTopologyIn(body("/admin/collections?action=CLUSTERSTATUS"))
             SolrServerMode.STANDALONE ->
-                SolrTopologyReader.standaloneTopologyIn(body("/solr/admin/cores?action=STATUS"))
+                SolrTopologyReader.standaloneTopologyIn(body("/admin/cores?action=STATUS"))
             SolrServerMode.UNKNOWN -> throw AssertionError("the server reported mode $mode")
         }
 
     private fun schemaOf(container: SolrContainer, collection: String) = runBlocking {
-        transport.get("http://${container.host}:${container.solrPort}", "/solr/$collection/schema")
+        transport.get("http://${container.host}:${container.solrPort}/solr", "/$collection/schema")
     }
 
     // --- what the reader is built on ---------------------------------------------------------------
@@ -134,7 +134,7 @@ class SolrServerContractTest {
     fun `the reported version names the line the container is running`() {
         for ((line, container) in containers) {
             val response = runBlocking {
-                transport.get("http://${container.host}:${container.solrPort}", "/solr/admin/info/system")
+                transport.get("http://${container.host}:${container.solrPort}/solr", "/admin/info/system")
             }
             val version = SolrServerSchemaReader.solrVersionIn((response as SolrResponse.Success).value)
 
@@ -167,8 +167,8 @@ class SolrServerContractTest {
         val container = containers.first().second
         val response = runBlocking {
             transport.get(
-                "http://${container.host}:${container.solrPort}",
-                "/solr/$COLLECTION/select?q=nosuchfield:x",
+                "http://${container.host}:${container.solrPort}/solr",
+                "/$COLLECTION/select?q=nosuchfield:x",
             )
         }
 
@@ -228,7 +228,7 @@ class SolrServerContractTest {
     /** And the Collections API really does refuse it, which is why the mode is read first. */
     @Test
     fun `a standalone server refuses the collections api`() {
-        val response = get(standalone, "/solr/admin/collections?action=LIST")
+        val response = get(standalone, "/admin/collections?action=LIST")
 
         assertTrue(response.toString(), response is SolrResponse.SolrError)
         assertTrue(
