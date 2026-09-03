@@ -10,6 +10,9 @@ import org.apache.solr.ide.server.reading.SolrIndexField
 import org.apache.solr.ide.server.reading.SolrIndexSummary
 import org.apache.solr.ide.server.transport.SolrResponse
 import org.apache.solr.ide.server.reading.SolrServerMode
+import org.apache.solr.ide.server.reading.SolrCollection
+import org.apache.solr.ide.server.reading.SolrReplica
+import org.apache.solr.ide.server.reading.SolrShard
 import org.apache.solr.ide.server.reading.SolrTopology
 
 /**
@@ -312,5 +315,87 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
         page.indexTestDocument()
 
         assertNull(page.bannerMessage)
+    }
+
+    // --- the fields row has to be reachable before it has anything in it -------------------------
+
+    private val cloudRoots = SolrTopologyNodes.rootsOf(
+        SolrTopology(
+            SolrServerMode.SOLR_CLOUD,
+            collections = listOf(
+                SolrCollection(
+                    name = "books",
+                    configName = "_default",
+                    health = "GREEN",
+                    shards = listOf(
+                        SolrShard(
+                            name = "shard1",
+                            range = "80000000-7fffffff",
+                            state = "active",
+                            health = "GREEN",
+                            replicas = listOf(
+                                SolrReplica("core_node2", "books_s1_r_n1", "n:8983_solr", "active", "NRT", true),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    private fun fieldsRowUnderTheCollection(page: SolrCollectionsPanel): DefaultMutableTreeNode {
+        page.render(SolrCollectionsView.Loaded(cloudRoots))
+        val collections = page.treeRoot.getChildAt(0) as DefaultMutableTreeNode
+        val books = collections.getChildAt(0) as DefaultMutableTreeNode
+        val fields = books.getChildAt(0) as DefaultMutableTreeNode
+        assertEquals("Fields", (fields.userObject as SolrTopologyNode).label)
+        return fields
+    }
+
+    /**
+     * **The row is a promise, and a promise nobody can click is not one.**
+     *
+     * Its children arrive only when it is expanded, so it is built empty — and a tree asked whether
+     * an empty node is a leaf says yes, draws no handle, and never fires the expansion the fetch
+     * hangs off. The fetch was reachable from a test and unreachable from the tool window.
+     */
+    fun testTheFieldsRowCanBeExpandedBeforeItHasAnyFields() {
+        val page = panel()
+
+        val fields = fieldsRowUnderTheCollection(page)
+
+        assertEquals("the row has no children yet, which is the whole point", 0, fields.childCount)
+        assertTrue("the fields row must offer an expand handle", page.willOfferExpansion(fields))
+    }
+
+    /**
+     * And nothing else grows one it has no use for.
+     *
+     * Making the tree ask each node rather than count its children is what fixes the row above; a
+     * replica answering yes by default would put a handle on every leaf in the tree.
+     */
+    fun testARowWithNothingUnderItIsStillALeaf() {
+        val page = panel()
+        page.render(SolrCollectionsView.Loaded(cloudRoots))
+        val collections = page.treeRoot.getChildAt(0) as DefaultMutableTreeNode
+        val shard = (collections.getChildAt(0) as DefaultMutableTreeNode).getChildAt(1) as DefaultMutableTreeNode
+        val replica = shard.getChildAt(0) as DefaultMutableTreeNode
+
+        assertFalse("a replica has nothing under it", page.willOfferExpansion(replica))
+    }
+
+    /**
+     * Rendering must not open it, which would fetch from every Refresh.
+     *
+     * [render] expands the rows a user came for, and the fields row becoming expandable puts it in
+     * reach of that. Server data moves on request and connection change and on nothing else, so an
+     * auto-expanded row here would issue a request nobody asked for on every redraw.
+     */
+    fun testRenderingDoesNotOpenTheFieldsRow() {
+        val page = panel()
+
+        val fields = fieldsRowUnderTheCollection(page)
+
+        assertFalse("rendering must not expand the fields row", page.isExpandedRow(fields))
     }
 }
