@@ -73,7 +73,12 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     private val settings get() = SolrConnectionSettings.getInstance(project)
 
     private val root = DefaultMutableTreeNode()
-    private val treeModel = DefaultTreeModel(root)
+
+    // `asksAllowsChildren` because one row's children arrive only when it is opened. A tree left to
+    // decide for itself calls any childless node a leaf, draws no handle, and so never fires the
+    // expansion the fields fetch hangs off — the row would be a promise nothing could redeem. Asking
+    // each node instead moves that decision to `nodeFor`, which knows which rows are still to fill.
+    private val treeModel = DefaultTreeModel(root, true)
     private val tree = Tree(treeModel)
     private val banner = JBLabel()
     private val connectionCombo = JComboBox<SolrConnection>()
@@ -359,8 +364,12 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
         banner.foreground = if (message != null) UIUtil.getErrorForeground() else UIUtil.getLabelForeground()
     }
 
+    // A row is openable when it already has children or is the one that fetches them on being
+    // opened. Everything else says no: with the model asking rather than counting, a default of yes
+    // would hang an empty handle off every field and every replica in the tree.
     private fun nodeFor(node: SolrTopologyNode): DefaultMutableTreeNode =
-        DefaultMutableTreeNode(node).apply { node.children.forEach { add(nodeFor(it)) } }
+        DefaultMutableTreeNode(node, node.children.isNotEmpty() || node.kind == SolrTopologyNodeKind.FIELDS)
+            .apply { node.children.forEach { add(nodeFor(it)) } }
 
     /** The rows currently on screen, top level first. */
     internal val rootLabels: List<String>
@@ -378,6 +387,30 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
 
     /** The tree's invisible root, so a test can walk to the row it means to exercise. */
     internal val treeRoot: DefaultMutableTreeNode get() = root
+
+    /**
+     * Whether the tree will offer [node] an expand handle.
+     *
+     * The property a lazily-filled row depends on and cannot demonstrate for itself: its children
+     * arrive on expansion, so it is empty until it is opened, and a row nothing will open stays
+     * empty forever.
+     *
+     * @param node the row to ask about
+     * @return true where the tree will let it be opened
+     */
+    internal fun willOfferExpansion(node: DefaultMutableTreeNode): Boolean = !treeModel.isLeaf(node)
+
+    /**
+     * Whether [node] is currently open.
+     *
+     * Separate from [willOfferExpansion] because the two answers must differ after a render: the
+     * fields row has to be openable and has to stay shut, or every redraw fetches.
+     *
+     * @param node the row to ask about
+     * @return true where the row is expanded
+     */
+    internal fun isExpandedRow(node: DefaultMutableTreeNode): Boolean =
+        tree.isExpanded(javax.swing.tree.TreePath(node.path))
 
     /** Releases the panel; the fetch scope belongs to the project and is cancelled with it. */
     override fun dispose() = Unit
