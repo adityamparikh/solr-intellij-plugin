@@ -1,0 +1,24 @@
+<html>
+<body>
+Reports a Solr field name written in Java or Kotlin that no configset in the project declares.
+<p>
+  A field name in <code>addFilterQuery("categry:books")</code> or <code>@Field("prce")</code> is a
+  string. It compiles, it deploys, and Solr answers a query against a field that does not exist with
+  zero results rather than an error &mdash; so the mistake arrives as an empty page in production,
+  and nothing between the typo and there has any reason to look at it.
+</p>
+<p>
+  Read through UAST, so Java and Kotlin are checked by one implementation, and only in modules that
+  depend on a Solr client. A name the source does not spell out &mdash; held in a variable, or built
+  by interpolation &mdash; is not reported: following values through a program is best-effort by
+  nature, and this prefers silence.
+</p>
+<p>
+  <b>Nothing is reported in a project with no configset to check against.</b> A service talking to a
+  Solr whose schema lives in another repository is an ordinary deployment, and the plugin cannot
+  know a name is wrong when it has nothing to compare it with.
+</p>
+<p><small>Example: <code>q.addFilterQuery("categry:books")</code> where the configset declares
+  <code>category</code>.</small></p>
+</body>
+</html>
