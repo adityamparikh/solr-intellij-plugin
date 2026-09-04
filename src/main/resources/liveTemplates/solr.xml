@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The requests offered under *Add Request* in an `.http` file, and the source of truth for their text.
+
+  **These are live templates because the platform resolves them as live templates.** The HTTP
+  Client's Add Request action takes the `template` of a `TemplateDescriptor` as a *key* and looks it
+  up with `TemplateSettings.getTemplate(key, group)`; a descriptor carrying the request text instead
+  finds nothing and the action reports "Cannot find template for this request". So the text lives
+  here, `SolrRequestTemplates` reads it back, and there is one copy rather than two that must agree.
+
+  Every one addresses {{solrUrl}} and {{collection}} rather than a host. A query worth keeping is a
+  query worth committing, and a committed file naming localhost:8983 does not work on a colleague's
+  machine. `http-client.env.json` beside the requests is what makes the file shareable, and a
+  template that hardcoded a host would quietly opt every user out of it.
+-->
+<templateSet group="Solr">
+  <!-- Querying comes first because it is what the console is for. -->
+  <template name="solrq" value="### Query a Solr collection&#10;# Define {{solrUrl}} and {{collection}} in http-client.env.json so this&#10;# file works for everyone who clones the repository.&#10;GET {{solrUrl}}/{{collection}}/select?q=*:*&amp;rows=10&#10;Accept: application/json"
+            description="Query a Solr collection" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+  <template name="solrqfl" value="### Query with a field list and a sort&#10;GET {{solrUrl}}/{{collection}}/select?q=*:*&amp;fl=id,score&amp;sort=score desc&amp;rows=10&#10;Accept: application/json"
+            description="Query with a field list and a sort" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+  <!-- debugQuery=true rather than debug=results, because the explanation is the point and this is the
+       parameter that carries it alongside the parsed query and the timings. -->
+  <template name="solrexplain" value="### Explain why documents scored&#10;# debugQuery=true returns the parsed query and a per-document scoring explanation.&#10;GET {{solrUrl}}/{{collection}}/select?q=*:*&amp;rows=5&amp;debugQuery=true&#10;Accept: application/json"
+            description="Explain why documents scored" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+  <!-- The JSON Request API rather than URL parameters, because a body is where field completion can
+       help - a query written as a URL query string has nowhere for the editor to offer anything. -->
+  <template name="solrjson" value="### Query with a JSON body&#10;# Solr's JSON Request API. Field names complete inside `fields`, `sort` and a&#10;# facet's `field`, from the configsets in this project.&#10;POST {{solrUrl}}/{{collection}}/query&#10;Content-Type: application/json&#10;Accept: application/json&#10;&#10;{&#10;  &quot;query&quot;: &quot;*:*&quot;,&#10;  &quot;fields&quot;: [&quot;id&quot;],&#10;  &quot;limit&quot;: 10&#10;}"
+            description="Query with a JSON body" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+  <template name="solrschema" value="### Read a collection's schema&#10;GET {{solrUrl}}/{{collection}}/schema&#10;Accept: application/json"
+            description="Read a collection's schema" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+  <!-- The Luke handler rather than the Schema API, because the question it answers is the other one:
+       what the index *has*, including every field a dynamic pattern created. -->
+  <template name="solrluke" value="### List the fields the index actually holds&#10;# The Luke handler reports fields a dynamic pattern created at index time, which the&#10;# schema cannot name.&#10;GET {{solrUrl}}/{{collection}}/admin/luke&#10;Accept: application/json"
+            description="List the fields the index actually holds" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="REQUEST" value="true"/>
+    </context>
+  </template>
+</templateSet>

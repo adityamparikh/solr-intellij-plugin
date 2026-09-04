@@ -23,6 +23,9 @@ class SolrRequestTemplateProvider : AddRequestTemplateProvider {
      */
     override fun provideTemplates(): List<AddRequestTemplateProvider.TemplateDescriptor> =
         SolrRequestTemplates.all.map {
-            AddRequestTemplateProvider.TemplateDescriptor(it.template, SolrRequestTemplates.GROUP, it.description)
+            // The first argument is a live template *key*, not the request text. The action resolves
+            // it with `TemplateSettings.getTemplate(key, group)`, so the text belongs in the
+            // registered template file and only its name travels through here.
+            AddRequestTemplateProvider.TemplateDescriptor(it.key, SolrRequestTemplates.GROUP, it.description)
         }
 }

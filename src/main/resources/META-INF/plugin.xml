@@ -113,6 +113,10 @@
                 language="JSON"
                 implementationClass="org.apache.solr.ide.server.query.SolrQueryFieldCompletionContributor"/>
 
+        <!-- The requests offered under Add Request. Registered as live templates because that is
+             how the action resolves them: by key, against TemplateSettings. -->
+        <defaultLiveTemplates file="liveTemplates/solr.xml"/>
+
         <httpClient.responseCustomPresentation
                 implementation="org.apache.solr.ide.server.query.SolrQueryResponsePresentation"/>
 
