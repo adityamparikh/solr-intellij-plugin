@@ -12,6 +12,7 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.util.messages.Topic
 
 /**
  * One configured Solr server, as it is persisted — everything except the secret.
@@ -49,7 +50,7 @@ data class SolrConnection(
  */
 @Service(Service.Level.PROJECT)
 @State(name = "SolrConnectionSettings", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
-class SolrConnectionSettings :
+class SolrConnectionSettings(private val project: Project) :
     SimplePersistentStateComponent<SolrConnectionSettings.State>(State()) {
 
     /** The persisted, secret-free form of one connection. */
@@ -142,6 +143,7 @@ class SolrConnectionSettings :
                 username = connection.username
             },
         )
+        connectionsChanged()
     }
 
     /**
@@ -177,6 +179,7 @@ class SolrConnectionSettings :
         // next connection the user actually chooses under that same stale id.
         if (state.selectedConnectionId == id) state.selectedConnectionId = null
         setPassword(id, null)
+        connectionsChanged()
     }
 
     /**
@@ -219,6 +222,12 @@ class SolrConnectionSettings :
     fun getStoredUsername(id: String): String? =
         PasswordSafe.instance.get(credentialAttributes(id))?.userName
 
+    // Announced rather than polled, and only for the two calls that change the *list* — a password
+    // written or forgotten leaves every view of it saying exactly what it said before.
+    private fun connectionsChanged() {
+        project.messageBus.syncPublisher(CONNECTIONS_CHANGED).connectionsChanged()
+    }
+
     private fun credentialAttributes(id: String) =
         CredentialAttributes(generateServiceName(CREDENTIAL_SUBSYSTEM, id))
 
@@ -228,6 +237,18 @@ class SolrConnectionSettings :
         private const val CREDENTIAL_SUBSYSTEM = "Solr Connections"
 
         /**
+         * Announces that the configured connections have changed.
+         *
+         * **A view of the list needs this because it has more than one author.** Connections are
+         * added from the tool window's own `+` and from Settings → Tools → Solr Connections, and a
+         * view that rebuilt itself only on the gestures it hosts is stale after every one of the
+         * others — silently, because a stale list looks exactly like a short one.
+         */
+        @JvmField
+        val CONNECTIONS_CHANGED: Topic<SolrConnectionsListener> =
+            Topic.create("Solr connections changed", SolrConnectionsListener::class.java)
+
+        /**
          * The connection settings for [project].
          *
          * @param project the project whose connections are wanted
@@ -235,4 +256,16 @@ class SolrConnectionSettings :
          */
         fun getInstance(project: Project): SolrConnectionSettings = project.service()
     }
+}
+
+/**
+ * Told when the configured connection list changes.
+ *
+ * Carries nothing: what changed is the list, and every subscriber reads it back from
+ * [SolrConnectionSettings] rather than from an event that would be a second copy able to disagree.
+ */
+fun interface SolrConnectionsListener {
+
+    /** The connection list has changed; read it again. */
+    fun connectionsChanged()
 }

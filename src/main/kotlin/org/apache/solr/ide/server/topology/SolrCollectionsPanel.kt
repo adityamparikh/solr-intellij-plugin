@@ -35,6 +35,7 @@ import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionDialog
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
+import org.apache.solr.ide.server.connection.SolrConnectionsListener
 import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.indexing.SolrCommitMode
 import org.apache.solr.ide.server.indexing.SolrDocumentIndexer
@@ -87,6 +88,10 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     // something and fire a fetch at whatever happens to land in slot zero.
     private var populating = false
 
+    // The connection the tree currently shows, so a change to the list can tell whether the server
+    // it would read has actually moved. Null means nothing has been read.
+    private var lastReadConnectionId: String? = null
+
     init {
         tree.isRootVisible = false
         tree.showsRootHandles = true
@@ -116,6 +121,13 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
                 add(banner, BorderLayout.NORTH)
                 add(JBScrollPane(tree), BorderLayout.CENTER)
             },
+        )
+
+        // The third author of the connection list, and the one that used to be missed: Settings
+        // writes it without this panel hosting the gesture.
+        project.messageBus.connect(this).subscribe(
+            SolrConnectionSettings.CONNECTIONS_CHANGED,
+            SolrConnectionsListener { connectionsChanged() },
         )
 
         reloadConnections()
@@ -169,10 +181,35 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     /**
      * Rebuilds the connection list from settings and reads the server that is selected.
      *
-     * Called when the panel opens and after a connection is added, which are the two moments the
-     * list can have changed under it.
+     * Used where both are wanted at once: the panel opening, and the `+` beside the selector, which
+     * adds a connection *and* chooses it.
      */
     internal fun reloadConnections() {
+        refillConnections()
+        refresh()
+    }
+
+    /**
+     * Answers a change to the connection list without necessarily reading a server.
+     *
+     * **Refilling the selector and reading a server are separate jobs, and welding them together is
+     * what hid the defect this exists to fix.** While the only way to refill was a call that also
+     * fetched, refilling was safe on just the two gestures this panel hosts — so a connection added
+     * through Settings left the selector holding the model it was built with, reading *No
+     * connections*, disabled, and collapsed to the width of a combo with nothing in it. The tree
+     * hid it rather than showing it, because [refresh] reads `selectedConnection` live and falls
+     * back to the first one.
+     *
+     * Refilling is local and costs nothing, so it follows every change. A request follows only where
+     * the selection it would read has actually moved, which is the rule the whole panel keeps:
+     * server data moves on request and on connection change, and on nothing else.
+     */
+    private fun connectionsChanged() {
+        refillConnections()
+        if (settings.selectedConnection?.id != lastReadConnectionId) refresh()
+    }
+
+    private fun refillConnections() {
         val connections = settings.connections
         populating = true
         try {
@@ -182,7 +219,6 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
             populating = false
         }
         connectionCombo.isEnabled = connections.isNotEmpty()
-        refresh()
     }
 
     private fun selectionChanged() {
@@ -209,6 +245,7 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
      * of who calls this rather than a rule scattered through the panel.
      */
     internal fun refresh() {
+        lastReadConnectionId = settings.selectedConnection?.id
         val connection = settings.selectedConnection ?: return render(SolrCollectionsView.NoConnection)
         render(SolrCollectionsView.Loading)
         project.service<SolrCollectionsScope>().scope.launch {
@@ -411,6 +448,24 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
      */
     internal fun isExpandedRow(node: DefaultMutableTreeNode): Boolean =
         tree.isExpanded(javax.swing.tree.TreePath(node.path))
+
+    /**
+     * The connections the selector is offering, by display name.
+     *
+     * Reachable because what the selector holds is not visible from the settings it was built from —
+     * which is exactly how it came to hold a list that was already out of date.
+     */
+    internal val offeredConnections: List<String>
+        get() = (0 until connectionCombo.itemCount).map { connectionCombo.getItemAt(it).displayName }
+
+    /**
+     * Whether the selector can be operated.
+     *
+     * Separate from [offeredConnections] because a combo left disabled from an empty model is the
+     * half a user actually meets: the list may be right and the control still refuse the click.
+     */
+    internal val selectorIsUsable: Boolean
+        get() = connectionCombo.isEnabled
 
     /** Releases the panel; the fetch scope belongs to the project and is cancelled with it. */
     override fun dispose() = Unit
