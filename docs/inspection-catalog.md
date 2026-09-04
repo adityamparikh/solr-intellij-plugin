@@ -34,7 +34,7 @@ it came from. Where a page and the code disagree, this document says so rather t
   design of these rules went: Solr configuration is full of syntax that resembles a field name, and a
   warning on a correct file is what gets a plugin uninstalled.
 
-## The eleven at a glance
+## The twelve at a glance
 
 | Inspection (as the IDE names it) | Short name | File | Finding |
 |---|---|---|---|
@@ -49,8 +49,13 @@ it came from. Where a page and the code disagree, this document says so rather t
 | Request parameter name is almost one Solr reads | `SolrMisspelledParameter` | `solrconfig.xml` | Defect |
 | Unknown attribute | `SolrUnknownAttribute` | either, where the vocabulary is closed | Defect |
 | Attribute value of the wrong kind | `SolrInvalidAttributeValue` | either, where the kind is known | Defect |
+| Code names a field no configset declares | `SolrUnknownCodeField` | Java and Kotlin | Defect |
 
-The three groups below follow the same split
+The last of those is the only one that fires outside a Solr file at all, and it gets a group of its
+own below for the same reason: what it reads is application source, and what it checks against is
+every configset in the project rather than the one file it sits in.
+
+The groups below follow the same split
 [code organization](code-organization.md) uses — which file the caret is in when the check fires —
 with one honest exception. The two attribute checks live in the schema aspect's package and read the
 generated class catalog rather than the schema, and neither gates on the file's kind: what decides
@@ -383,3 +388,39 @@ Every count above was checked against the repository rather than counted by eye:
 - **The parameter lists.** Sixteen parameters read for field names; of those, four ask for searching,
   two for faceting and three for sorting. Counted from the tables in the `solrconfig.xml` parser,
   which is the single place they are declared.
+
+---
+
+## Code checks
+
+### Code names a field no configset declares — `SolrUnknownCodeField`
+
+**Reports** a Solr field name written in Java or Kotlin that no configset in the project declares.
+
+**Finding: defect.** This is the failure the specification opens with, and it is quieter than any
+configuration mistake. A field name inside `addFilterQuery("categry:books")` or `@Field("prce")` is a
+string: it compiles, it deploys, and Solr answers a query against a field that does not exist with
+zero results rather than an error. The typo reaches production as an empty page, and nothing between
+the two has any reason to look at it.
+
+**Reads Java and Kotlin through one implementation.** UAST is a read-only view each JVM language
+implements, so `SolrQuery` builder calls, raw parameter strings and `@Field` annotations are
+recognized identically in both. Groovy is not supported and the plan records why: its UAST provider
+converts annotations but not calls, so half of this would be silently dark there.
+
+**Runs only where a Solr client is on the module's classpath.** The gate is the module rather than
+the project, so a repository in which one module talks to Solr does not have the others warned about
+their field names.
+
+**Silent on names the source does not spell out.** A name held in a variable, built by
+interpolation, or read from a constant is not reported: following values through a program is
+best-effort by nature, and this prefers silence. Also silent on the names Solr supplies itself, and
+on anything carrying a wildcard.
+
+**Silent, above all, in a project with no configset to check against.** A service talking to a Solr
+whose schema lives in another repository is an ordinary deployment, and a check that cannot see must
+not accuse. That same rule is what keeps it honest during indexing, when the configsets are not yet
+findable — the inspection waits rather than reading "none found" as "none declared", which would
+underline every field name in the codebase at once.
+
+**Quick-fix:** the declared fields closest in spelling.
