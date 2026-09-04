@@ -12,6 +12,21 @@ document owns three things: the **gesture** to make, the **expected outcome**, a
 [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) does, and a feature's checks
 join this suite only when its code has shipped and there is something to press.
 
+**Licence the sandbox before the first pass, or section 14 is untestable and does not say so.**
+The sandbox keeps its own `config/` and inherits no licence from your everyday IDE. Unlicensed,
+IntelliJ IDEA Ultimate disables `com.intellij.modules.ultimate` at every start — it rewrites
+`.intellijPlatform/sandbox/<project>/<IDE>/config/disabled_plugins.txt` each time, so deleting that
+file does not stick. **The HTTP Client's editor half survives this and its execution does not**:
+requests insert, gutter icons appear, syntax highlights, and pressing Run does nothing at all, with
+no error, no dialog and nothing in `idea.log`. Every check from `SRV-11` to `SRV-18` then fails in a
+way that looks like this plugin. Register once through Help → Register in the sandbox, or copy
+`idea.key` from your IDE's config directory into the sandbox's; either survives a relaunch.
+
+**Never `kill` the sandbox — close it.** A hard kill during startup makes IntelliJ suspect a plugin
+crashed and disable it, and it is what writes the `disabled_plugins.txt` above. It also loses
+workspace state that has not been flushed, including the HTTP Client's selected environment, which
+silently turns `SRV-12` into a wall of unresolved variables.
+
 **How to run a pass**
 
 1. `./gradlew runIde` — the sandbox opens `demo/`. Open [`solr/conf/managed-schema.xml`](glossary.md#managed-schema).

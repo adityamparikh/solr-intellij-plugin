@@ -1,0 +1,15 @@
+### Query a Solr collection
+# Define {{solrUrl}} and {{collection}} in http-client.env.json so this
+# file works for everyone who clones the repository.
+GET http://localhost:8985/solr/books/select?q=*:*&rows=10
+Accept: application/json
+
+### B — minimal, no comments, no variables
+GET http://localhost:8985/solr/books/select?q=*:*&rows=1
+
+### C — a non-Solr URL, to see if anything runs at all
+GET https://api.github.com/repos/apache/solr
+
+### D — the shipped template form, for SRV-12 (needs the 'local' environment selected)
+GET {{solrUrl}}/{{collection}}/select?q=*:*&rows=10
+Accept: application/json
