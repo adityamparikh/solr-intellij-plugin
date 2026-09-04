@@ -8,6 +8,7 @@ behind a link. Read the relevant one before designing anything.
 | Document | Owns |
 |---|---|
 | [`docs/contributing.md`](docs/contributing.md) | Setup, first run, where work comes from, commit and PR mechanics, CI |
+| [`docs/user-guide.md`](docs/user-guide.md) | **What the plugin can do**, by capability, and the gesture that reaches each |
 | [`docs/installing.md`](docs/installing.md) | Getting the plugin into an IDE, and the two activation gates that explain silence |
 | [`docs/how-to/releasing.md`](docs/how-to/releasing.md) | Cutting a release, and the preflight a Marketplace publication still needs |
 | [`docs/code-organization.md`](docs/code-organization.md) | Where a change goes, and what each package boundary forbids |
