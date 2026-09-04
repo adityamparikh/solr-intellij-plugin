@@ -253,6 +253,39 @@ class SolrServerReaderTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * An edited username is what authenticates, even while the old one is still filed beside the
+     * secret.
+     *
+     * **Editing a username and editing a password are separate gestures, and the dialog makes them
+     * so.** Its password field opens empty on a connection that has a secret, so changing only the
+     * username leaves `passwordEdited` false and `setPassword` uncalled — `PasswordSafe` keeps the
+     * pair it was given, under the user it was given with. The connection is the half the user just
+     * edited; the stored username is the half nobody touched.
+     *
+     * Preferring the stored one makes the username field a no-op for as long as a secret exists: the
+     * row shows the new user, and every request authenticates as the old one, with nothing on screen
+     * saying so. A connection naming a user the secret was not filed under should fail against the
+     * server, visibly, rather than succeed as somebody else.
+     */
+    fun testAnEditedUsernameIsSentRatherThanTheOneFiledWithTheSecret() {
+        val url = givenServer()
+        connectionSettings.addConnection(connection(url, username = "solr"), "SolrRocks".toCharArray())
+
+        // What the dialog does when only the display name or username changed: the connection is
+        // re-saved and the secret is left exactly as it was.
+        connectionSettings.addConnection(connection(url, username = "admin"))
+
+        read(connection(url, username = "admin"))
+
+        assertEquals("admin:SolrRocks", decodedAuthorization())
+    }
+
+    private fun decodedAuthorization(): String {
+        val header = authorization ?: fail("no Authorization header was sent")
+        return String(java.util.Base64.getDecoder().decode(header.toString().removePrefix("Basic ")))
+    }
+
+    /**
      * A connection naming a user with nothing stored for it is reported, and nothing is sent.
      *
      * The case the specification singles out: sending an empty password would be rejected by most
