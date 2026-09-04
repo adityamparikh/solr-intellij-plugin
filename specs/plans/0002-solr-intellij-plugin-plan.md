@@ -2139,11 +2139,12 @@ onto this one.
    severity and what it stays silent about are owned.
 5. **Silence where resolution fails.** Assert this in tests explicitly — precision matters more than recall.
 
-**The two-module fixture needs more than the light test project.** `BasePlatformTestCase`
-supplies one module with no real library dependencies, so the last criterion below cannot be written on it at all. The
-cheap route is a `LightProjectDescriptor` adding a second module and putting a SolrJ artifact on one module's classpath
-through `PsiTestUtil.addLibrary`; the expensive route is `HeavyPlatformTestCase`, which builds a real project per test.
-Try the cheap one. This is recorded here because it is the sort of constraint that gets discovered halfway through the
+**The two-module fixture needs more than the light test project, and the cheap route does not exist.**
+`BasePlatformTestCase` supplies one module with no real library dependencies, so the criterion cannot be written on it at
+all. This was tried: a light project refuses a second module outright — *"Adding modules is not permitted in light
+tests"* — and its in-memory `TempFileSystem` cannot give a module the real path its `.iml` needs, which is a second and
+independent blocker. `HeavyPlatformTestCase` is therefore the route rather than the fallback, and it turned out cheap in
+practice: `SolrJModuleGateTest` is the suite's only heavy test and runs in about a second. This is recorded here because it is the sort of constraint that gets discovered halfway through the
 step and misread as the test framework being broken — and because the gate in action 2 is worthless if the only fixture
 that could disprove it is unwritable.
 
@@ -2154,7 +2155,7 @@ that could disprove it is unwritable.
   assertion that the UAST decision above bought what it was chosen for, rather than a second code path having quietly
   grown.
 - [ ] Unresolvable constructs produce no warning.
-- [ ] A module with no Solr client on its classpath produces no findings at all, asserted on a fixture of two modules
+- [x] A module with no Solr client on its classpath produces no findings at all, asserted on a fixture of two modules
   where only one depends on SolrJ.
 - [x] **The module gate reads no index**, which is what makes it safe while the IDE is still indexing without a
   contract to hold it there. Answering "does this module depend on SolrJ" by resolving
