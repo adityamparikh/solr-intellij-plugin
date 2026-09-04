@@ -1,12 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke="#B4BDCC" stroke-width="3.6">
-      <path d="M10.6 8.8 3.8 20l6.8 11.2"/>
-      <path d="M29.4 8.8 36.2 20l-6.8 11.2"/>
-    </g>
-    <g stroke="#6DA8FF" stroke-width="2.8">
-      <circle cx="19" cy="17.8" r="5.5"/>
-      <path d="M22.9 21.7 25.8 24.6"/>
-    </g>
+  <!--
+    The Apache Solr sunburst: a disc cut by rays that converge just inside its lower-left rim.
+    Drawn rather than traced, and reduced to the mark alone. The official lockup pairs the disc
+    with a "Solr" wordmark that is illegible below about 96px, and this icon is shown at 40.
+  -->
+  <defs>
+    <clipPath id="disc">
+      <circle cx="20.0" cy="20.0" r="15.2"/>
+    </clipPath>
+  </defs>
+  <circle cx="20.0" cy="20.0" r="15.2" fill="#E8492F"/>
+  <g clip-path="url(#disc)" fill="#FFFFFF">
+      <polygon points="9.40,30.60 55.06,24.99 54.22,20.25"/>
+      <polygon points="9.40,30.60 52.02,13.29 49.67,8.37"/>
+      <polygon points="9.40,30.60 46.04,2.79 42.04,-1.81"/>
+      <polygon points="9.40,30.60 37.40,-5.89 32.05,-9.44"/>
+      <polygon points="9.40,30.60 26.48,-12.11 20.68,-13.99"/>
+      <polygon points="9.40,30.60 13.97,-15.17 8.84,-15.40"/>
   </g>
 </svg>
