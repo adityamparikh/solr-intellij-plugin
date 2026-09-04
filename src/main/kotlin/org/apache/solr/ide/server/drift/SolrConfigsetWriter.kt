@@ -118,12 +118,14 @@ class SolrConfigsetWriter(private val project: Project) {
             )
             .map { }
 
-    private fun credentialFor(connection: SolrConnection): SolrCredential {
-        val username = connection.username ?: return SolrCredential.None
-        val settings = SolrConnectionSettings.getInstance(project)
-        val password = settings.getPassword(connection.id) ?: return SolrCredential.Missing(username)
-        return SolrCredential.Resolved(username, password)
-    }
+    // Composed by `SolrCredential.of` rather than decided here: which of the three cases a
+    // connection is in is one rule, and this was the third place spelling it out. See the note in
+    // `SolrDocumentIndexer` for what the copies disagreed about.
+    private fun credentialFor(connection: SolrConnection): SolrCredential =
+        SolrCredential.of(
+            username = connection.username,
+            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
+        )
 
     // Names come from a user and from a directory on disk, so they carry whatever characters those
     // allow. Encoded rather than trusted: an unencoded `&` would silently truncate the request into
