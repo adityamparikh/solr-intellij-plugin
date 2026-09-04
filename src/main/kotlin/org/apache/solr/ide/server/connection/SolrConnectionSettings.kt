@@ -155,8 +155,8 @@ class SolrConnectionSettings :
      * @param password the secret, stored in [PasswordSafe]; null forgets any stored secret
      */
     fun addConnection(connection: SolrConnection, password: CharArray?) {
-        // Saved first, because `setPassword` files the secret under the username it reads back from
-        // the saved connection — writing the secret first would file it under the old username.
+        // Saved first, because `setPassword` labels the entry with the username it reads back from
+        // the saved connection — writing the secret first would label it with the old username.
         addConnection(connection)
         setPassword(connection.id, password)
     }
@@ -186,9 +186,9 @@ class SolrConnectionSettings :
      * @param password the secret to store, or null to forget it
      */
     fun setPassword(id: String, password: CharArray?) {
-        // Filed under the connection's real user, not its id. The id keys the PasswordSafe entry;
-        // the user field has to carry the username the server will actually be sent, or the first
-        // authenticated request will send an identifier no Solr has heard of.
+        // Filed under the connection's real user, not its id: the id keys the entry, and the user
+        // field is what names the account in the OS credential store a person may go and read. No
+        // request is composed from it — see `getStoredUsername`.
         val user = connections.firstOrNull { it.id == id }?.username
         val credentials = password?.let { Credentials(user, it) }
         PasswordSafe.instance.set(credentialAttributes(id), credentials)
@@ -206,8 +206,12 @@ class SolrConnectionSettings :
     /**
      * The username stored alongside the secret for [id], or null if none is stored.
      *
-     * Reads back from [PasswordSafe] rather than from the persisted state, so that callers building
-     * an authenticated request take both halves of a credential from the same place.
+     * **Nothing authenticating with this reads it**, and that is the point of saying so here. A
+     * request takes its username from the connection and only its password from [PasswordSafe],
+     * because those are the halves a user edits separately: the two agree wherever nothing is wrong
+     * and differ only where a username was just changed, so a reader preferring this one would
+     * authenticate as the previous user with nothing on screen saying so. What it is for is
+     * observing where a secret was filed.
      *
      * @param id the connection's identifier
      * @return the stored username, or null

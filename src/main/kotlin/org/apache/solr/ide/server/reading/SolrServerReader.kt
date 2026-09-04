@@ -162,16 +162,22 @@ class SolrServerReader(private val project: Project) {
     /**
      * The credential this connection authenticates with, read at the point of use.
      *
-     * The stored username is preferred over the connection's own, because `PasswordSafe` holds the
-     * pair that was actually saved and a connection edited after the fact may name a user no secret
-     * was filed under.
+     * **The username comes from the connection and only the password from `PasswordSafe`**, because
+     * those are the two halves a user edits separately. The dialog's password field opens empty on a
+     * connection that already has a secret, so changing a username alone leaves the secret unwritten
+     * and still filed under the previous user. The stored username is therefore identical to the
+     * connection's in every case where nothing is wrong, and differs only where the user has just
+     * changed it — so preferring it cannot be right anywhere, and is silent where it is wrong: the
+     * connection row shows the new user while every request authenticates as the old one.
+     *
+     * A connection naming a user the stored secret was not filed under is a credential the server
+     * should refuse, which the user can see and correct by re-entering the password.
      */
     private fun credentialFor(connection: SolrConnection): SolrCredential {
         if (connection.username.isNullOrEmpty()) return SolrCredential.None
-        val settings = SolrConnectionSettings.getInstance(project)
         return SolrCredential.of(
-            username = settings.getStoredUsername(connection.id) ?: connection.username,
-            password = settings.getPassword(connection.id),
+            username = connection.username,
+            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
         )
     }
 
