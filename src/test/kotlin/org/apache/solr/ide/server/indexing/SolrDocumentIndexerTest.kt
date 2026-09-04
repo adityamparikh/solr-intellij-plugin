@@ -6,6 +6,7 @@ import java.net.InetSocketAddress
 import kotlinx.coroutines.runBlocking
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.server.connection.SolrConnection
+import org.apache.solr.ide.server.transport.SolrCredential
 import org.apache.solr.ide.server.transport.SolrResponse
 
 /**
@@ -152,6 +153,27 @@ class SolrDocumentIndexerTest : SolrConfigsetTestCase() {
     fun testAConnectionWithNoStoredPasswordSendsNothing() {
         val url = givenServer()
         val authenticated = SolrConnection(id = "c1", displayName = "local", baseUrl = url, username = "solr")
+
+        val result = runBlocking { indexer().index(authenticated, "books", """{"id":"1"}""") }
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+        assertEmpty(requested)
+    }
+
+    /**
+     * An emptied stored secret is nothing to send, not an empty password to send.
+     *
+     * `PasswordSafe` answers with an empty string for some cleared entries, and `user:` on the wire
+     * is the same wrong credential as `user:` built from a null — most Solr Basic Auth
+     * configurations reject it as a *wrong* credential rather than *no* credential, turning a
+     * cleared entry into an authentication failure against a server that was never asked properly.
+     * That rule lives in [SolrCredential.of], and this is the check that this caller reaches it
+     * rather than deciding for itself.
+     */
+    fun testAnEmptyStoredPasswordIsNotSentAsACredential() {
+        val url = givenServer()
+        val authenticated = SolrConnection(id = "c1", displayName = "local", baseUrl = url, username = "solr")
+        connectionSettings.addConnection(authenticated, charArrayOf())
 
         val result = runBlocking { indexer().index(authenticated, "books", """{"id":"1"}""") }
 

@@ -97,12 +97,16 @@ class SolrDocumentIndexer(private val project: Project) {
         return if (trimmed.startsWith("[")) trimmed else "[$trimmed]"
     }
 
-    private fun credentialFor(connection: SolrConnection): SolrCredential {
-        val username = connection.username ?: return SolrCredential.None
-        val password = SolrConnectionSettings.getInstance(project).getPassword(connection.id)
-            ?: return SolrCredential.Missing(username)
-        return SolrCredential.Resolved(username, password)
-    }
+    // Composed by `SolrCredential.of` rather than decided here: which of the three cases a
+    // connection is in is one rule, and this was the second place spelling it out. The two agreed on
+    // the obvious halves and diverged on the ones that matter -- an empty username, and an empty
+    // stored password, which `PasswordSafe` returns for some cleared entries and which reaches a
+    // server as the same wrong credential a null would.
+    private fun credentialFor(connection: SolrConnection): SolrCredential =
+        SolrCredential.of(
+            username = connection.username,
+            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
+        )
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 
