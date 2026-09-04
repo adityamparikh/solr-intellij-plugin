@@ -30,6 +30,23 @@ class SolrQueryResultRendererTest : SolrConfigsetTestCase() {
     }
 
     /**
+     * One match reads as one document, not as "1 documents".
+     *
+     * The count is the first thing the summary says and the first thing anyone reads, so it is the
+     * one place a plural taken on faith is certain to be seen. A single hit is also the ordinary
+     * case for a query on a unique key, rather than the edge the phrasing can afford to get wrong.
+     */
+    fun testASingleMatchIsNotPlural() {
+        val rendered = renderOfJson(
+            """{"responseHeader":{"status":0,"QTime":9},
+                "response":{"numFound":1,"start":0,"docs":[{"id":"1"}]}}""",
+        )
+
+        assertTrue(rendered, rendered.lines().first().contains("1 document matched"))
+        assertFalse(rendered, rendered.lines().first().contains("1 documents"))
+    }
+
+    /**
      * Matching and returning are stated as different numbers when they differ.
      *
      * The failure this prevents is a reader concluding their query found ten documents when it found
