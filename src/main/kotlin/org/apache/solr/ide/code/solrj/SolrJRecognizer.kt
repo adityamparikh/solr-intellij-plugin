@@ -1,15 +1,20 @@
 package org.apache.solr.ide.code.solrj
 
 import com.intellij.psi.PsiFile
+import com.intellij.psi.util.PsiTreeUtil
 import org.apache.solr.ide.code.SolrEndpointUsage
 import org.apache.solr.ide.code.SolrFieldUsage
 import org.apache.solr.ide.code.SolrUsageRecognizer
 import org.apache.solr.ide.model.query.SolrQueryExpressions
 import org.apache.solr.ide.model.query.SolrQueryFields
+import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UVariable
 import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UPolyadicExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
@@ -55,8 +60,107 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * @param file a Java or Kotlin file
      * @return the field usages it contains, empty where it references none
      */
-    override fun readFieldUsages(file: PsiFile): List<SolrFieldUsage> =
-        readThrough(file) { node, into -> readCall(node, into) }
+    override fun readFieldUsages(file: PsiFile): List<SolrFieldUsage> {
+        val uFile = file.toUElementOfType<UFile>() ?: return emptyList()
+        val found = mutableListOf<SolrFieldUsage>()
+        // Two node kinds rather than one, because a field name is written in two shapes and an
+        // annotation is not a call. Visited in one pass: building the UAST view is the expensive
+        // part, and a second traversal would pay for it twice to answer about the same file.
+        uFile.accept(
+            object : AbstractUastVisitor() {
+                override fun visitCallExpression(node: UCallExpression): Boolean {
+                    readCall(node, found)
+                    return false
+                }
+
+
+            },
+        )
+        readBeanAnnotations(file, found)
+        return found
+    }
+
+    /**
+     * Reads every `@Field` in [file], reached through PSI rather than through the UAST tree.
+     *
+     * **A Kotlin property's annotation is not in that tree, and this is the one place UAST does not
+     * hide the difference.** In Java the annotation is a node the visitor reaches; in Kotlin it is
+     * attached to the property, which has no Java counterpart, so neither `visitAnnotation` nor the
+     * light class's `uAnnotations` ever offers it — the only annotation surfacing there is the
+     * `@Nullable` the compiler synthesises. It converts perfectly well *on demand*, which is what
+     * this does.
+     *
+     * Found by the `@` that opens it: a one-character leaf whose parent is the annotation, in both
+     * languages. That is cheaper than converting every node in the file to ask what it is, and it
+     * names no language's own PSI classes — importing `KtAnnotationEntry` here is exactly the
+     * split-by-language this recognizer exists to avoid.
+     */
+    private fun readBeanAnnotations(file: PsiFile, into: MutableList<SolrFieldUsage>) {
+        val opens = PsiTreeUtil.collectElements(file) {
+            it.firstChild == null && it.textLength == 1 && it.text == "@"
+        }
+        for (open in opens) {
+            val annotation = open.parent?.toUElementOfType<UAnnotation>() ?: continue
+            readBeanAnnotation(annotation, into)
+        }
+    }
+
+    /**
+     * Reads a `@Field` binding, or declines to.
+     *
+     * **Matched by qualified name, which is not fussiness.** `Field` is among the most reused
+     * annotation names on the JVM — JPA, Lucene and several serialization libraries each ship one —
+     * so a simple-name match would report a field reference for every annotated property in a great
+     * many projects that have never used Solr.
+     *
+     * **A bare `@Field` names the property it sits on**, because that is what SolrJ does with it:
+     * its default value is the sentinel `#default`, and `DocumentObjectBinder` reads the member's
+     * own name in its place. Declining to read that would be the more cautious choice and the wrong
+     * one — the name still reaches Solr, so passing over it is a miss that surfaces as silence.
+     *
+     * A setter contributes the name it sets rather than its own, for the same reason: `setPrice` is
+     * how SolrJ spells a binding to `price`.
+     */
+    private fun readBeanAnnotation(annotation: UAnnotation, into: MutableList<SolrFieldUsage>) {
+        if (annotation.qualifiedName != BEAN_FIELD_ANNOTATION) return
+
+        val written = annotation.findAttributeValue(VALUE_ATTRIBUTE)
+        val spelled = written?.let { constantTextOf(it) }
+        if (spelled != null && spelled != NAMES_ITS_MEMBER) {
+            val anchor = written.sourcePsi ?: return
+            if (into.none { it.element == anchor }) {
+                into += SolrFieldUsage(spelled, BOUND_AT_INDEX_TIME, anchor)
+            }
+            return
+        }
+        // A value that is present and not spelled out stops here, as everywhere else in this
+        // recognizer: following a constant back to its assignment is what it declines to do.
+        if (written != null && spelled == null) return
+
+        // Absent, or SolrJ's `#default`: the member's own name, anchored to the member so a finding
+        // underlines the name that is wrong rather than the binding that is fine.
+        val member = memberHolding(annotation) ?: return
+        val name = memberNameOf(member) ?: return
+        val anchor = (member as? UDeclaration)?.uastAnchor?.sourcePsi ?: annotation.sourcePsi ?: return
+        if (into.none { it.element == anchor }) {
+            into += SolrFieldUsage(name, BOUND_AT_INDEX_TIME, anchor)
+        }
+    }
+
+    /** The declaration an annotation sits on, whichever language wrote it. */
+    private fun memberHolding(annotation: UAnnotation): UDeclaration? =
+        generateSequence(annotation.sourcePsi?.parent) { it.parent }
+            .mapNotNull { it.toUElementOfType<UDeclaration>() }
+            .firstOrNull()
+
+    /** The Solr field a bare `@Field` on [member] binds, or null where the member names none. */
+    private fun memberNameOf(member: UElement): String? = when (member) {
+        is UVariable -> member.name
+        is UMethod -> member.name.removePrefix("set").removePrefix("get")
+            .takeIf { it.isNotEmpty() && it != member.name }
+            ?.replaceFirstChar { it.lowercaseChar() }
+        else -> null
+    }
 
     /**
      * The Solr servers [file] constructs a client against, in the order they are written.
@@ -223,4 +327,22 @@ object SolrJRecognizer : SolrUsageRecognizer {
 
     /** The builder method that names the user a client connects as. */
     private const val BASIC_AUTH_METHOD = "withBasicAuthCredentials"
+
+    /** SolrJ's own bean-binding annotation, matched in full so nobody else's `Field` is read. */
+    private const val BEAN_FIELD_ANNOTATION = "org.apache.solr.client.solrj.beans.Field"
+
+    /** The attribute that carries the written name. */
+    private const val VALUE_ATTRIBUTE = "value"
+
+    /** SolrJ's sentinel for "use the member's own name", spelled exactly as SolrJ spells it. */
+    private const val NAMES_ITS_MEMBER = "#default"
+
+    /**
+     * What a `@Field` asks of a field, where the query methods name a request parameter.
+     *
+     * A binding is not a request parameter and pretending otherwise would put `@Field` where `fq`
+     * and `sort` live, which are answers to a different question: those say what the field must be
+     * able to *do*, and this says only that it must exist.
+     */
+    private const val BOUND_AT_INDEX_TIME = "@Field"
 }
