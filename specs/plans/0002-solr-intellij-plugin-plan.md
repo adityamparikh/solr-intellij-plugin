@@ -11,7 +11,7 @@ Deliver the plugin described in the spec: configuration intelligence, a live Sol
 support, unified by one field model.
 
 **Current state.** The build, CI and documentation tooling are complete and stay as they are. Foundation is built apart
-from its settings page. Of the three tracks the work then splits into, only the Editor one has moved, and what it built
+from its settings page. Of the three tracks the work then splits into, the Editor one is finished, and what it built
 is real rather than scaffolding: a configset parses into a field model, and that model reaches the screen as
 match-capability inlay hints, quick documentation on schema elements, field types and
 `class` values, eight inspections — several of them offering the valid names rather than only reporting the invalid one —
@@ -58,11 +58,33 @@ all. A field attribute that decides nothing is dimmed where it stands, with an i
 time the plugin says something about a line without being asked, and it says it only where the model can prove the
 field would be unchanged.
 
-**The Server and Code tracks have not started**, which is two of the spec's three pillars.
-`server/` holds `SolrConnectionSettings` and nothing else — no HTTP client, no tool window, no query console — and no
-recognizer exists, so a Java or Kotlin file gets nothing at all. Neither track is blocked by the other, and neither is
-blocked by the Editor track; they are simply unstarted. [The build order](#build-order) explains what cutting one whole
-would cost.
+**The Server track is built and the Code track has started**, and this paragraph said the opposite for as long as
+that was false. It read that neither had started and that `server/` held `SolrConnectionSettings` and nothing else —
+true when it was written, and left standing through every pull request that made it untrue.
+[The track index](#build-order) was right the whole time, which is the point: a status sentence kept away from the list
+that owns status goes stale in silence, and this is the second such sentence this section has had to correct.
+
+**The Server track shipped all five of its steps** —
+[the HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done),
+[the collections tool window](#step-12-collections-tool-window-done),
+[the query console](#step-13-query-console-done),
+[the drift view, upload and reload](#step-14-drift-view-upload-and-reload-done), and
+[indexing test documents](#step-15-indexing-test-documents-done). **What it has not had is a sandbox pass**, and that
+is the whole of what is outstanding: all thirty-one checks in
+[the manual suite's connections and tool window section](../../docs/manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+are unpressed, and the six success criteria still open across those steps are open for that reason alone. Each is a
+claim about observed behaviour — that the topology renders, that an unreachable server degrades inline rather than to a
+popup, that a confirmation naming its target server actually appears — and no JVM test discharges a claim of that
+shape. Nothing is left to build there; something is left to watch.
+
+**The Code track has started and is nowhere near finished.**
+[The recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj) has its interface, its SolrJ recognizer
+and its module gate, and reads Kotlin through the same path as Java — two of that step's five criteria, with field
+references in builder calls and the two-module gate fixture still to come. Every step after it is unstarted, so a Java
+or Kotlin file gets some of what the spec promises and not yet the rest.
+
+Neither track is blocked by the other, and neither is blocked by the Editor track.
+[The build order](#build-order) explains what cutting one whole would cost.
 
 **What this plan dropped.** The provenance classification, the API-first write gating, and the runtime derivation of
 reference data from project jars are gone. The spec records why, in "What this replaces" and "The factory catalog";
