@@ -1,5 +1,7 @@
 package org.apache.solr.ide.server.connection
 
+import com.intellij.configurationStore.deserializeInto
+import com.intellij.configurationStore.serialize
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
@@ -67,6 +69,49 @@ class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
         val serialized = connectionSettings.state.connections.single()
         assertFalse(listOfNotNull(serialized.id, serialized.displayName, serialized.baseUrl, serialized.username)
             .any { it.contains("s3cret") })
+    }
+
+    /**
+     * A saved connection is in the state that gets written, not only in the one held in memory.
+     *
+     * **This is the assertion every other test here was standing next to and not making.** They read
+     * `connectionSettings.connections` back, which answers from the live object and passes whether
+     * or not a single byte would ever reach the workspace file. Serialization is a separate
+     * question, and it had a separate answer: the list was skipped and `selectedConnectionId` beside
+     * it was not, so the component was written on every save, looked entirely healthy, and carried
+     * no connections. Restarting the IDE lost every server the user had configured, and the tool
+     * window reported it as none ever having been configured.
+     */
+    fun testASavedConnectionSurvivesSerialization() {
+        connectionSettings.addConnection(local)
+
+        val written = serialize(connectionSettings.state)
+        val reloaded = SolrConnectionSettings.State().also { checkNotNull(written).deserializeInto(it) }
+
+        assertEquals(listOf(local.baseUrl), reloaded.connections.map { it.baseUrl })
+        assertEquals(local.displayName, reloaded.connections.single().displayName)
+    }
+
+    /**
+     * Adding a connection marks the state for writing.
+     *
+     * **In-memory correctness is not persistence, and every other test here checks only the first.**
+     * A `BaseState` reaches the workspace file when its modification count moves. A property
+     * assigned through `by string()` moves it plainly; a list mutated in place through `add` relies
+     * on the collection tracking that itself, which is a property of the platform rather than of
+     * this class. Were it ever not to hold, the connection list would work perfectly for a whole
+     * session and be gone on the next start, leaving a `selectedConnectionId` naming a connection
+     * that no longer exists -- so it is worth an assertion rather than an assumption.
+     */
+    fun testAddingAConnectionMarksTheStateForWriting() {
+        val before = connectionSettings.state.modificationCount
+
+        connectionSettings.addConnection(local)
+
+        assertTrue(
+            "the workspace file is only rewritten when the modification count moves",
+            connectionSettings.state.modificationCount > before,
+        )
     }
 
     /** A deleted connection must not leave an orphaned credential behind under its old key. */

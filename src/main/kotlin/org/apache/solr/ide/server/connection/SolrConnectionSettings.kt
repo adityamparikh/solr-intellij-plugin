@@ -12,6 +12,7 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.util.xmlb.annotations.XCollection
 import com.intellij.util.messages.Topic
 
 /**
@@ -74,7 +75,13 @@ class SolrConnectionSettings(private val project: Project) :
      */
     class State : BaseState() {
         /** The configured connections, in the order they were added. */
-        val connections: MutableList<ConnectionState> by list()
+        // **Annotated, or it is not written at all.** A `BaseState` collection reaches the
+        // workspace file only when a binding is produced for it; without this the property is
+        // skipped in silence -- `selectedConnectionId` beside it persists, so the file looks
+        // written and merely has no connections in it. Every connection then survives exactly as
+        // long as the IDE stays open.
+        @get:XCollection
+        val connections: MutableList<ConnectionState> by list<ConnectionState>()
 
         /** The identifier of the connection chosen as the default, or null where none was chosen. */
         var selectedConnectionId: String? by string()
