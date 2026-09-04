@@ -298,6 +298,19 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection"/>
+        <!-- The code track's only inspection so far, and the one that reaches outside a configset:
+             it reads Java and Kotlin through UAST and checks the names found against every configset
+             in the project. Registered without a `language` so both reach it; the recognizers' own
+             module gate is what keeps it off code that has no Solr client. -->
+        <localInspection
+                shortName="SolrUnknownCodeField"
+                bundle="messages.SolrBundle"
+                key="inspection.codeField.displayName"
+                groupBundle="messages.SolrBundle"
+                groupKey="inspection.group"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.apache.solr.ide.code.inspection.SolrUnknownCodeFieldInspection"/>
         <localInspection
                 language="XML"
                 shortName="SolrUnknownFieldReference"
