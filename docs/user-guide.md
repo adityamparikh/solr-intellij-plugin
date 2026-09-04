@@ -7,14 +7,45 @@
 > **Read first:** [Glossary](glossary.md) if Solr terms are new · [Project orientation](project-orientation.md)
 
 Everything the plugin does today, organised by what you are trying to do rather than by which
-IntelliJ [extension point](glossary.md#extension-point) implements it. This is the
-configuration-files surface only — the
-[server](../specs/plans/0002-solr-intellij-plugin-plan.md#server-track) and
-[code](../specs/plans/0002-solr-intellij-plugin-plan.md#code-track) surfaces the specification
-describes are not built yet, and this guide does not pretend otherwise. See
-[the project orientation](project-orientation.md) for how the three fit together, and
+IntelliJ [extension point](glossary.md#extension-point) implements it. Two of the specification's
+three surfaces are here: the **configuration files** you edit, and the **server** you talk to. The
+[code](../specs/plans/0002-solr-intellij-plugin-plan.md#code-track) surface — field names checked
+against [SolrJ](glossary.md#solrj) calls, query syntax injected into string literals — is not, and
+this guide does not pretend otherwise. See [the project orientation](project-orientation.md) for how
+the three fit together, and
 [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) for what "done" means for
 each capability below.
+
+## What the plugin can do
+
+Each row is a capability, the gesture that reaches it, and the section of
+[the manual test suite](manual-test-suite.md) that verifies it by hand. **The plan, not this table,
+owns what is built** — a row here means the guide documents the capability, and the suite is where
+its checks live.
+
+| Capability | Gesture | Verified by |
+|---|---|---|
+| [Activation](#following-along) | Open a configset file | `ACT`, `BASE` |
+| [What a field can match](#what-can-this-field-actually-match) | Inlay hint on a field type | `HINT` |
+| [Quick documentation](#getting-documentation-without-leaving-the-file) | Hover, or <kbd>Ctrl-Q</kbd> | `DOC` |
+| [Completion: schema vocabulary](#the-schemas-own-vocabulary) | <kbd>Ctrl-Space</kbd> in `managed-schema.xml` | `COMP` |
+| [Completion: catalog-backed classes](#catalog-backed-classes-and-factory-attributes) | <kbd>Ctrl-Space</kbd> in a `class` attribute | `CAT` |
+| [Completion: `solrconfig.xml` structure](#solrconfigxmls-own-structure) | <kbd>Ctrl-Space</kbd> in `solrconfig.xml` | `STR` |
+| [Completion: fields in parameters](#field-names-inside-solrconfigxml-parameters) | <kbd>Ctrl-Space</kbd> inside `fl`, `qf`, `pf` | `PRM` |
+| [Navigation and Find Usages](#navigating-and-finding-usages) | <kbd>Ctrl-click</kbd>, <kbd>Alt-F7</kbd> | `NAV` |
+| [Rename](#renaming-safely-across-a-configset) | <kbd>Shift-F6</kbd> on a field | `REN` |
+| [Inspections and quick-fixes](#catching-mistakes-before-solr-does) | Editing anything wrong; <kbd>Alt-Enter</kbd> | `INSP` |
+| [Restated defaults](#seeing-whats-already-redundant) | An attribute set to Solr's own default | `DIM` |
+| [Companion-field intentions](#fixing-a-missing-capability-automatically) | <kbd>Alt-Enter</kbd> on a field | `INT` |
+| [Connections](#pointing-the-plugin-at-a-solr-server) | Settings → Tools → Solr Connections | `SRV-1`–`SRV-3` |
+| [Browsing a server](#browsing-what-a-server-holds) | The **Solr** tool window | `SRV-4`–`SRV-10` |
+| [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr | `SRV-11`–`SRV-18` |
+| [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
+| [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
+
+Every capability above works on a configset the plugin can see, and nothing on the editing path
+contacts a server. The server rows are the exception by definition, and they move data only when
+asked — on a refresh, or on a connection change.
 
 ## Following along
 
