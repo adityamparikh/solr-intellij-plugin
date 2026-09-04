@@ -38,6 +38,44 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
         SolrTopology(SolrServerMode.STANDALONE, cores = listOf(SolrCore("books", "_default"))),
     )
 
+    // --- the connection list under it -------------------------------------------------------------
+
+    /**
+     * A connection added through the Settings page reaches the selector.
+     *
+     * **The gesture the tool window's own `+` is not.** `SRV-1` adds a connection through
+     * Settings → Tools → Solr Connections, which writes to [SolrConnectionSettings] and tells this
+     * panel nothing. The tree hides the omission rather than showing it: `refresh` reads
+     * `selectedConnection` live and falls back to the first connection, so the topology appears
+     * beside a selector still holding the empty model it was built with — reading *No connections*,
+     * disabled, and collapsed to the width of a combo with nothing in it. The selector is then the
+     * one control a user cannot operate, which is every gesture that switches servers.
+     */
+    fun testAConnectionAddedThroughSettingsReachesTheSelector() {
+        val page = panel()
+
+        connectionSettings.addConnection(connection())
+
+        assertEquals(listOf("Local Solr"), page.offeredConnections)
+        assertTrue("a selector with a connection in it must be usable", page.selectorIsUsable)
+    }
+
+    /**
+     * Removing the last connection empties the selector again.
+     *
+     * The other direction of the same rule, and the one that would let a stale list name a server
+     * that no longer exists.
+     */
+    fun testRemovingTheLastConnectionEmptiesTheSelector() {
+        val page = panel()
+        connectionSettings.addConnection(connection())
+
+        connectionSettings.removeConnection("a")
+
+        assertEmpty(page.offeredConnections)
+        assertFalse("nothing to choose between", page.selectorIsUsable)
+    }
+
     // --- what it shows in each state --------------------------------------------------------------
 
     /**
