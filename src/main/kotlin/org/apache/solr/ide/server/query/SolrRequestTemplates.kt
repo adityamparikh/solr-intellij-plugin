@@ -1,22 +1,33 @@
 package org.apache.solr.ide.server.query
 
+import javax.xml.parsers.DocumentBuilderFactory
+import org.w3c.dom.Element
+
 /**
  * The starting requests this plugin offers inside an `.http` file.
  *
- * **Every one addresses `{{solrUrl}}` rather than a host**, and that is the whole reason saved
- * queries are `.http` files at all. A query worth keeping is a query worth committing, and a
- * committed file naming `localhost:8983` is a file that does not work on a colleague's machine —
- * their Solr is not this one. The HTTP Client already solves that with environments:
- * `http-client.env.json` committed beside the requests, `http-client.private.env.json` git-ignored
- * beside that. A template that hardcoded a host would quietly opt every user out of the mechanism
- * that makes the file shareable.
+ * **Read from the live template file rather than written here, because that file is what the IDE
+ * loads.** The HTTP Client's *Add Request* action does not take the request text from the extension
+ * point: it takes a *key*, and resolves it with `TemplateSettings.getTemplate(key, group)` against
+ * the live templates the IDE has registered. A descriptor carrying the text instead resolves to
+ * nothing, and the action answers *Cannot find template for this request* — which is what shipped,
+ * for every entry, while a test asserting the descriptor carried the request text passed.
+ *
+ * So `liveTemplates/solr.xml` is the source of truth and this reads it back. Holding the text in
+ * both would be two copies that have to agree, and a test asserting properties of the copy the IDE
+ * never loads would be checking nothing.
  *
  * Plain data, separate from the extension point that publishes it, so what the templates say can be
  * checked without the IDE deciding when to offer them.
  */
 object SolrRequestTemplates {
 
-    /** The group these appear under in the HTTP Client's *Add Request* menu. */
+    /**
+     * The group these appear under in the HTTP Client's *Add Request* menu.
+     *
+     * Also the live template group, and necessarily the same string: it is half of the pair the
+     * action looks the key up by.
+     */
     const val GROUP = "Solr"
 
     /** The environment variable a template expects to hold the Solr base URL. */
@@ -25,90 +36,53 @@ object SolrRequestTemplates {
     /** The environment variable a template expects to hold the collection or core name. */
     const val COLLECTION_VARIABLE = "collection"
 
+    /** The classpath resource holding the templates, which is also what the IDE registers. */
+    const val RESOURCE = "/liveTemplates/solr.xml"
+
     /**
      * One offered request.
      *
+     * @property key the live template name, which is what the *Add Request* action resolves
      * @property description what the menu entry says
-     * @property template the `.http` text inserted when it is chosen
+     * @property template the `.http` text the live template expands to
      */
-    data class Template(val description: String, val template: String)
+    data class Template(val key: String, val description: String, val template: String)
 
     /**
-     * Every request offered, in the order a user meets them.
+     * Every request offered, in the order the file declares them.
      *
-     * Querying comes first because it is what the console is for; the two that read a collection's
-     * shape come after, because a user reaches for them when a query returned something they did
-     * not expect.
+     * That order is the order a user meets them: querying first because it is what the console is
+     * for, then the two that read a collection's shape, which a user reaches for when a query
+     * returned something they did not expect.
      */
-    val all: List<Template> = listOf(
-        Template(
-            description = "Query a Solr collection",
-            template = """
-                ### Query a Solr collection
-                # Define {{$URL_VARIABLE}} and {{$COLLECTION_VARIABLE}} in http-client.env.json so this
-                # file works for everyone who clones the repository.
-                GET {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/select?q=*:*&rows=10
-                Accept: application/json
-            """.trimIndent(),
-        ),
-        Template(
-            description = "Query with a field list and a sort",
-            template = """
-                ### Query with a field list and a sort
-                GET {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/select?q=*:*&fl=id,score&sort=score desc&rows=10
-                Accept: application/json
-            """.trimIndent(),
-        ),
-        Template(
-            // `debugQuery=true` rather than `debug=results`, because the explanation is the point and
-            // this is the parameter that carries it alongside the parsed query and the timings.
-            description = "Explain why documents scored",
-            template = """
-                ### Explain why documents scored
-                # debugQuery=true returns the parsed query and a per-document scoring explanation.
-                GET {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/select?q=*:*&rows=5&debugQuery=true
-                Accept: application/json
-            """.trimIndent(),
-        ),
-        Template(
-            // The JSON Request API rather than URL parameters, because a body is where field
-            // completion can help — a query written as a URL query string has nowhere for the
-            // editor to offer anything.
-            description = "Query with a JSON body",
-            template = """
-                ### Query with a JSON body
-                # Solr's JSON Request API. Field names complete inside `fields`, `sort` and a
-                # facet's `field`, from the configsets in this project.
-                POST {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/query
-                Content-Type: application/json
-                Accept: application/json
+    val all: List<Template> = read()
 
-                {
-                  "query": "*:*",
-                  "fields": ["id"],
-                  "limit": 10
+    private fun read(): List<Template> {
+        val stream = checkNotNull(SolrRequestTemplates::class.java.getResourceAsStream(RESOURCE)) {
+            "$RESOURCE is missing from the plugin"
+        }
+        val document = stream.use {
+            // Not a document anyone but this build writes, but the defaults are the defaults: a
+            // template file is data, and data does not get to name external entities.
+            DocumentBuilderFactory.newInstance()
+                .apply {
+                    setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                    isXIncludeAware = false
+                    isExpandEntityReferences = false
                 }
-            """.trimIndent(),
-        ),
-        Template(
-            description = "Read a collection's schema",
-            template = """
-                ### Read a collection's schema
-                GET {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/schema
-                Accept: application/json
-            """.trimIndent(),
-        ),
-        Template(
-            // The Luke handler rather than the Schema API, because the question it answers is the
-            // other one: what the index *has*, including every field a dynamic pattern created.
-            description = "List the fields the index actually holds",
-            template = """
-                ### List the fields the index actually holds
-                # The Luke handler reports fields a dynamic pattern created at index time, which the
-                # schema cannot name.
-                GET {{$URL_VARIABLE}}/{{$COLLECTION_VARIABLE}}/admin/luke
-                Accept: application/json
-            """.trimIndent(),
-        ),
-    )
+                .newDocumentBuilder()
+                .parse(it)
+        }
+        val templates = document.getElementsByTagName("template")
+        return (0 until templates.length).map { index ->
+            val element = templates.item(index) as Element
+            Template(
+                key = element.getAttribute("name"),
+                description = element.getAttribute("description"),
+                // `$$` is how the file spells a literal `$`, since a single one delimits a live
+                // template variable. Undone here so callers read the text a user will see.
+                template = element.getAttribute("value").replace("\$\$", "$"),
+            )
+        }
+    }
 }
