@@ -51,6 +51,19 @@ object SolrRecognizers {
         applicableTo(file).flatMap { it.readEndpoints(file) }
 
     /**
+     * Whether any recognized Solr library is on [file]'s module.
+     *
+     * The same gate [fieldUsagesIn] applies, asked without reading anything — which is what
+     * completion needs, because it runs while a name is being typed and there is nothing written to
+     * read. Exposed rather than reproduced: a second spelling of "is this module a Solr module"
+     * would be a second answer able to disagree with this one.
+     *
+     * @param file the file a caret is in
+     * @return true where at least one recognizer would run here
+     */
+    fun recognizeSolrIn(file: PsiFile): Boolean = applicableTo(file).isNotEmpty()
+
+    /**
      * The recognizers whose library is on [file]'s module.
      *
      * The module is resolved once and each recognizer's own coordinates are asked about separately,
