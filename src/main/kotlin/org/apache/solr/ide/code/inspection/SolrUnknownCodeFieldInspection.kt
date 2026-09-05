@@ -66,27 +66,33 @@ class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
         val usages = SolrRecognizers.fieldUsagesIn(file).filter { SolrInspections.isCheckableFieldName(it.fieldName) }
         if (usages.isEmpty()) return null
 
+        // Asked once for the file, not once per finding. `checkFile` runs on every editor pass, and
+        // finding the project's configsets goes through the filename index; repeating that per
+        // problem made a file with ten typos pay for ten index queries to answer one question.
         val declaring = configsetModelsIn(file.project) ?: return null
-        val problems = usages
-            .filterNot { usage -> declaring.any { it.resolve(usage.fieldName) != null } }
-            .map { usage ->
-                manager.createProblemDescriptor(
-                    usage.element,
-                    // The name inside the expression rather than the expression itself: a warning
-                    // over `"categry:books"` entire underlines the quotes and the value a reader
-                    // already knows are fine, and hides which half is wrong.
-                    nameRangeIn(usage.element.text, usage.fieldName),
-                    SolrBundle.message("inspection.codeField.unknown", usage.fieldName),
-                    ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                    isOnTheFly,
-                    *SolrInspections.replacementFixes(
-                        usage.fieldName,
-                        namesFor(file.project),
-                        SolrBundle.message("inspection.codeField.family"),
-                    ),
-                )
-            }
-        return problems.takeIf { it.isNotEmpty() }?.toTypedArray()
+
+        val unknown = usages.filterNot { usage -> declaring.any { it.resolve(usage.fieldName) != null } }
+        if (unknown.isEmpty()) return null
+
+        // Built only once something is actually being reported, so a clean file never pays for it.
+        val candidates = declaring.flatMapTo(mutableSetOf()) { it.fields.keys }
+        return unknown.map { usage ->
+            manager.createProblemDescriptor(
+                usage.element,
+                // The name inside the expression rather than the expression itself: a warning over
+                // `"categry:books"` entire underlines the quotes and the value a reader already
+                // knows are fine, and hides which half is wrong.
+                nameRangeIn(usage.element.text, usage.fieldName),
+                SolrBundle.message("inspection.codeField.unknown", usage.fieldName),
+                ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+                isOnTheFly,
+                *SolrInspections.replacementFixes(
+                    usage.fieldName,
+                    candidates,
+                    SolrBundle.message("inspection.codeField.family"),
+                ),
+            )
+        }.toTypedArray()
     }
 
     /**
@@ -111,11 +117,4 @@ class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
         SolrProjectConfigsets.getInstance(project).all()
             .takeIf { it.isNotEmpty() }
             ?.map { SolrConfigsetReader.getInstance(project).modelFor(it) }
-
-    /** Every name the project's configsets declare, for the "did you mean" fixes. */
-    private fun namesFor(project: Project): Set<String> {
-        val reader = SolrConfigsetReader.getInstance(project)
-        return SolrProjectConfigsets.getInstance(project).all()
-            .flatMapTo(mutableSetOf()) { reader.modelFor(it).fields.keys }
-    }
 }

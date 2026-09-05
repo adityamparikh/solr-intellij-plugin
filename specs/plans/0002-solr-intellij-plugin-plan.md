@@ -2165,8 +2165,10 @@ onto this one.
 `BasePlatformTestCase` supplies one module with no real library dependencies, so the criterion cannot be written on it at
 all. This was tried: a light project refuses a second module outright — *"Adding modules is not permitted in light
 tests"* — and its in-memory `TempFileSystem` cannot give a module the real path its `.iml` needs, which is a second and
-independent blocker. `HeavyPlatformTestCase` is therefore the route rather than the fallback, and it turned out cheap in
-practice: `SolrJModuleGateTest` is the suite's only heavy test and runs in about a second. This is recorded here because it is the sort of constraint that gets discovered halfway through the
+independent blocker. `HeavyPlatformTestCase` is therefore the route rather than the fallback. It is not free —
+`SolrJModuleGateTest` is the suite's only heavy test and takes about seven seconds against the tens
+of milliseconds a light one costs — but it is the only way to assert the criterion at all, and one
+such test is a price worth paying once. This is recorded here because it is the sort of constraint that gets discovered halfway through the
 step and misread as the test framework being broken — and because the gate in action 2 is worthless if the only fixture
 that could disprove it is unwritable.
 

@@ -40,7 +40,7 @@ object SolrJFieldPositions {
                 return it.qualifiedName == BEAN_FIELD_ANNOTATION
             }
             element.toUElementOfType<UCallExpression>()?.let { call ->
-                return namesFields(call)
+                return fieldNamingMethod(call) != null
             }
             element = element.parent
         }
@@ -48,16 +48,20 @@ object SolrJFieldPositions {
     }
 
     /**
-     * Whether [call] is a query-building call whose arguments are field names.
+     * The query method [call] invokes, where it is one that names fields, and null otherwise.
      *
-     * The same two conditions the recognizer applies to a written name: the method must be one that
-     * names fields, and the receiver must resolve to SolrJ's own class rather than to something else
-     * carrying a method of that name. Completion is offered in fewer places than a warning is
-     * reported, never more.
+     * **The one place this rule is written.** Two conditions have to hold together — the method must
+     * be one that names fields, and the receiver must resolve to SolrJ's own class rather than to
+     * something else carrying a method of that name — and both the recognizer and completion need
+     * exactly that answer. Written twice they would be two rules able to drift, which is how
+     * completion comes to offer names in a position the check does not examine, or the reverse.
+     *
+     * @param call any call expression
+     * @return the method, or null where this call names no fields
      */
-    private fun namesFields(call: UCallExpression): Boolean {
-        if (SolrJQueryMethods.forMethod(call.methodName ?: return false) == null) return false
-        val owner = call.resolve()?.containingClass?.qualifiedName ?: return false
-        return SolrJQueryMethods.isSolrQueryClass(owner)
+    fun fieldNamingMethod(call: UCallExpression): SolrJQueryMethod? {
+        val method = SolrJQueryMethods.forMethod(call.methodName ?: return null) ?: return null
+        val owner = call.resolve()?.containingClass?.qualifiedName ?: return null
+        return method.takeIf { SolrJQueryMethods.isSolrQueryClass(owner) }
     }
 }

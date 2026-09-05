@@ -7,7 +7,7 @@ import org.apache.solr.ide.configset.activation.SolrConfigset
 import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
 
 /**
- * One field a query could name, and where the plugin learned about it.
+ * One field code could name, and where the plugin learned about it.
  *
  * @property name the field's name
  * @property type the field type it is declared as
@@ -23,11 +23,12 @@ data class SolrCompletionField(
 )
 
 /**
- * The fields a query written in this project could reasonably name.
+ * The fields code written in this project could reasonably name.
  *
- * **Read from the project's configsets, not from a server, and that is a deliberate trade.** An
- * `.http` file sits anywhere in a repository and resolves to no configset of its own, so the field
- * names have to come from somewhere chosen rather than somewhere implied. The configsets win on the
+ * **Read from the project's configsets, not from a server, and that is a deliberate trade.** The two
+ * surfaces that ask — a query in an `.http` file, and a SolrJ call in Java or Kotlin — both sit
+ * anywhere in a repository and resolve to no configset of their own, so the field names have to come
+ * from somewhere chosen rather than somewhere implied. The configsets win on the
  * property that matters most while typing: they are already parsed, already cached, and answering
  * from them costs nothing — the editor never waits on a network, which is this plugin's standing
  * rule everywhere else. The cost is that a field only the deployed server has will not be offered,

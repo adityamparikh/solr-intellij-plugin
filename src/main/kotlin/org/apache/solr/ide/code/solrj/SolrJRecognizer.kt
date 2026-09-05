@@ -203,9 +203,9 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * does not — the specification calls that best-effort by nature and chooses silence.
      */
     private fun readCall(call: UCallExpression, into: MutableList<SolrFieldUsage>) {
-        val method = SolrJQueryMethods.forMethod(call.methodName ?: return) ?: return
-        val owner = call.resolve()?.containingClass?.qualifiedName ?: return
-        if (!SolrJQueryMethods.isSolrQueryClass(owner)) return
+        // Which calls name fields is decided in one place, because completion asks the same question
+        // and two spellings of it would let the two surfaces disagree about where a name belongs.
+        val method = SolrJFieldPositions.fieldNamingMethod(call) ?: return
 
         val arguments = if (method.readsOnlyFirstArgument) call.valueArguments.take(1) else call.valueArguments
         for (argument in arguments) {

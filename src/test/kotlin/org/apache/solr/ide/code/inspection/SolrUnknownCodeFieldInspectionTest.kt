@@ -1,5 +1,6 @@
 package org.apache.solr.ide.code.inspection
 
+import org.apache.solr.ide.code.SolrCodeFixtures
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -27,42 +28,6 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
         myFixture.enableInspections(SolrUnknownCodeFieldInspection())
     }
 
-    /**
-     * A configset declaring [fields], plus a `*_s` pattern and a unique key.
-     *
-     * Assembled by joining lines rather than by interpolating into a raw string. A multi-line value
-     * dropped into `trimIndent` brings its own indentation, which makes the common indent zero and
-     * leaves the XML declaration indented — and an `<?xml?>` that is not the first thing in the
-     * document is malformed, so the schema silently parses to nothing and every field in it reads as
-     * undeclared. That failed exactly one test here, the one declaring two fields.
-     */
-    private fun givenAConfigsetDeclaring(vararg fields: String) {
-        val lines = buildList {
-            add("""<?xml version="1.0" encoding="UTF-8"?>""")
-            add("""<schema name="test" version="1.6">""")
-            add("""  <fieldType name="string" class="solr.StrField"/>""")
-            fields.forEach { add("""  <field name="$it" type="string" indexed="true" stored="true"/>""") }
-            add("""  <dynamicField name="*_s" type="string" indexed="true" stored="true"/>""")
-            add("  <uniqueKey>id</uniqueKey>")
-            add("</schema>")
-        }
-        myFixture.addFileToProject("solr/conf/managed-schema.xml", lines.joinToString("\n"))
-    }
-
-    private fun givenSolrJ() {
-        myFixture.addFileToProject(
-            "org/apache/solr/client/solrj/SolrQuery.java",
-            """
-            package org.apache.solr.client.solrj;
-            public class SolrQuery {
-                public SolrQuery(String q) {}
-                public SolrQuery addFilterQuery(String... fq) { return this; }
-                public SolrQuery setFields(String... fields) { return this; }
-            }
-            """.trimIndent(),
-        )
-    }
-
     private fun searching(body: String) = """
         import org.apache.solr.client.solrj.SolrQuery;
         class Search {
@@ -82,16 +47,16 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
 
     /** A declared field is not reported, which is the case every other test is measured against. */
     fun testADeclaredFieldIsNotReported() {
-        givenSolrJ()
-        givenAConfigsetDeclaring("id", "category")
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
 
         check(searching("""q.addFilterQuery("category:books");"""))
     }
 
     /** A name a dynamic pattern covers is declared, even though nothing spells it out. */
     fun testANameADynamicPatternCoversIsNotReported() {
-        givenSolrJ()
-        givenAConfigsetDeclaring("id")
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
 
         check(searching("""q.addFilterQuery("author_s:herbert");"""))
     }
@@ -104,7 +69,7 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
      * elsewhere — which is most of them.
      */
     fun testNothingIsReportedWithNoConfigsetToCheckAgainst() {
-        givenSolrJ()
+        SolrCodeFixtures.givenSolrJ(myFixture)
 
         check(searching("""q.addFilterQuery("categry:books");"""))
     }
@@ -115,16 +80,16 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
      * `score` is computed per result and appears in half the field lists ever written.
      */
     fun testSolrsOwnFieldsAreNotReported() {
-        givenSolrJ()
-        givenAConfigsetDeclaring("id")
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
 
         check(searching("""q.setFields("id", "score");"""))
     }
 
     /** A module with no Solr client is not examined, so nothing in it can be reported. */
     fun testNothingIsReportedWithoutASolrClient() {
-        givenSolrJ()
-        givenAConfigsetDeclaring("id")
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
         givenNoSolrOnTheClasspath()
 
         check(searching("""q.addFilterQuery("categry:books");"""))
@@ -133,8 +98,8 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
     // --- and then what it reports -----------------------------------------------------------------
 
     fun testAnUndeclaredFieldIsReported() {
-        givenSolrJ()
-        givenAConfigsetDeclaring("id", "category")
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
 
         check(
             searching(
@@ -145,14 +110,8 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
 
     /** The same name in a bean annotation is reported the same way. */
     fun testAnUndeclaredBeanFieldIsReported() {
-        givenAConfigsetDeclaring("id", "price")
-        myFixture.addFileToProject(
-            "org/apache/solr/client/solrj/beans/Field.java",
-            """
-            package org.apache.solr.client.solrj.beans;
-            public @interface Field { String value() default "#default"; }
-            """.trimIndent(),
-        )
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "price")
 
         myFixture.configureByText(
             "Product.java",
