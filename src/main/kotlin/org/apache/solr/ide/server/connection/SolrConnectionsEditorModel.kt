@@ -96,9 +96,9 @@ class SolrConnectionsEditorModel(private val settings: SolrConnectionSettings) {
      * re-added under the same id ends up added rather than removed.
      */
     fun apply() {
-        val kept = drafts.map { it.id }.toSet()
-        settings.connections.map { it.id }.filterNot { it in kept }.forEach { settings.removeConnection(it) }
-        drafts.forEach { settings.addConnection(it) }
+        // One call rather than a remove-then-add sequence, so the list is announced once, when it
+        // is whole. See `replaceConnections` for what a burst of announcements costs.
+        settings.replaceConnections(drafts.toList())
         // After the connections, because `setPassword` files the secret under the connection's
         // username and reads that from the saved connection — writing it first would file it under
         // the username the connection used to have.
