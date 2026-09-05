@@ -56,11 +56,14 @@ class SolrRequestTemplateResolutionTest : BasePlatformTestCase() {
     }
 
     /**
-     * A resolved template expands to the request the reader reports.
+     * A resolved template carries exactly the text the reader reports, byte for byte.
      *
-     * The join between the two halves: what `SolrRequestTemplates` reads out of the file and what
-     * the IDE loaded from it are the same text, or the menu inserts something other than what every
-     * other test in this package asserts about.
+     * **The join between the two halves, and the reason the reader does no decoding of its own.**
+     * `SolrRequestTemplates` parses the same file the IDE parses, so any transformation it applied
+     * -- unescaping a `$`, trimming, normalising a newline -- would be a second decoder, and the
+     * first template to use that syntax is where the two would part company. Every other test in
+     * this package asserts against the reader's text; this is what makes those assertions statements
+     * about what the IDE actually inserts.
      */
     fun testAResolvedTemplateCarriesTheTextTheReaderReports() {
         val settings = TemplateSettings.getInstance()
