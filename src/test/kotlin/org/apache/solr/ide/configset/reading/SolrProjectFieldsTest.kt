@@ -1,4 +1,4 @@
-package org.apache.solr.ide.server.query
+package org.apache.solr.ide.configset.reading
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 

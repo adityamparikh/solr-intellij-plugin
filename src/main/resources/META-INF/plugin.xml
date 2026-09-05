@@ -100,6 +100,13 @@
              file outside that editor can. The fields come from the collection rather than from the
              project's configsets, because a document is about to be sent to one named collection
              and completing from anything else would offer a field the target cannot accept. -->
+        <!-- Field names where Java or Kotlin names one. Registered without a `language` so both
+             reach it; the recognizers' module gate and the position check are what keep it quiet
+             everywhere else. -->
+        <completion.contributor
+                language="any"
+                implementationClass="org.apache.solr.ide.code.completion.SolrCodeFieldCompletionContributor"/>
+
         <completion.contributor
                 language="JSON"
                 implementationClass="org.apache.solr.ide.server.indexing.SolrDocumentFieldCompletionContributor"/>
