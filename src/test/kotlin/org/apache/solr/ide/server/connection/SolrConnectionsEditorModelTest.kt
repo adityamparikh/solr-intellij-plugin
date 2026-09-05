@@ -20,6 +20,33 @@ class SolrConnectionsEditorModelTest : SolrConfigsetTestCase() {
         username = username,
     )
 
+    /**
+     * One Apply announces the list once, however many connections it moves.
+     *
+     * **The announcement's unit is the Apply, not the mutation.** `apply` removes what was dropped
+     * and re-adds every draft, so a per-mutation announcement makes a single OK on the settings page
+     * publish a burst of them — and every subscriber then evaluates a list that is half applied. The
+     * tool window's is the one that shows: it refetches when the selection it would read has moved,
+     * and mid-burst the selection moves to whatever happens to remain, so a user pressing OK once
+     * can send requests to a server they never selected.
+     */
+    fun testOneApplyAnnouncesTheListOnce() {
+        connectionSettings.addConnection(connection("a"))
+        connectionSettings.addConnection(connection("b"))
+        var announcements = 0
+        project.messageBus.connect(testRootDisposable).subscribe(
+            SolrConnectionSettings.CONNECTIONS_CHANGED,
+            SolrConnectionsListener { announcements++ },
+        )
+        val editor = model
+        editor.reset()
+        editor.remove(0)
+
+        editor.apply()
+
+        assertEquals(1, announcements)
+    }
+
     // --- what it shows ----------------------------------------------------------------------------
 
     fun testResetShowsWhatIsSaved() {

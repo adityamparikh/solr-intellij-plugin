@@ -141,6 +141,35 @@ class SolrConnectionSettings(private val project: Project) :
      * @param connection the non-secret half of the connection
      */
     fun addConnection(connection: SolrConnection) {
+        put(connection)
+        connectionsChanged()
+    }
+
+    /**
+     * Makes [connections] the whole list, announcing it once.
+     *
+     * **The unit of an announcement is the edit a user made, not the mutations it decomposes into.**
+     * A settings page's Apply drops what was removed and re-saves everything that remains, so
+     * spelling it as a sequence of [addConnection] and [removeConnection] calls publishes a burst —
+     * and every subscriber then reads a list that is half applied. The tool window's is the one that
+     * shows: it refetches when the selection it would read has moved, and mid-burst the selection
+     * moves to whatever happens to remain, so one press of OK can send requests to a server the user
+     * never chose.
+     *
+     * Secrets are untouched, as they are by [addConnection]: the page writes those separately,
+     * afterwards, because a secret is filed under the username of the connection as saved.
+     *
+     * @param connections the list as it should now stand, in the order it should keep
+     */
+    fun replaceConnections(connections: List<SolrConnection>) {
+        val kept = connections.mapTo(mutableSetOf()) { it.id }
+        state.connections.mapNotNull { it.id }.filterNot { it in kept }.forEach { forget(it) }
+        connections.forEach { put(it) }
+        connectionsChanged()
+    }
+
+    /** Writes [connection] into the state, replacing any entry with its id. Announces nothing. */
+    private fun put(connection: SolrConnection) {
         state.connections.removeAll { it.id == connection.id }
         state.connections.add(
             ConnectionState().apply {
@@ -150,7 +179,6 @@ class SolrConnectionSettings(private val project: Project) :
                 username = connection.username
             },
         )
-        connectionsChanged()
     }
 
     /**
@@ -180,13 +208,18 @@ class SolrConnectionSettings(private val project: Project) :
      * @param id the identifier of the connection to remove; an unknown id is ignored
      */
     fun removeConnection(id: String) {
+        forget(id)
+        connectionsChanged()
+    }
+
+    /** Drops the connection with [id] and its secret. Announces nothing. */
+    private fun forget(id: String) {
         state.connections.removeAll { it.id == id }
         // Cleared with the connection rather than left dangling: a selection naming nothing resolves
         // by falling back, so leaving it would make the fallback permanent and silently ignore the
         // next connection the user actually chooses under that same stale id.
         if (state.selectedConnectionId == id) state.selectedConnectionId = null
         setPassword(id, null)
-        connectionsChanged()
     }
 
     /**
