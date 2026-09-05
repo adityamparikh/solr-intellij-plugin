@@ -8,6 +8,7 @@ import com.intellij.openapi.components.SimplePersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.project.Project
+import com.intellij.util.xmlb.annotations.XCollection
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 
@@ -42,6 +43,12 @@ class SolrConfigsetSettings(private val project: Project) :
          * Directories the user manually marked as configset roots, stored in collapsed form
          * (see the class KDoc). Read them as usable absolute paths via [manualRoots].
          */
+        // **Annotated, or it is not written at all.** A `BaseState` collection reaches the
+        // workspace file only when a binding is produced for it; `by list()` alone produces none and
+        // the property is skipped in silence. `detectionEnabled` beside it is a plain `by property`
+        // and persists, so the component is written on every save and merely arrives back empty --
+        // which reads as a user who has marked no roots rather than one whose roots were dropped.
+        @get:XCollection
         val manualConfigsetRoots: MutableList<String> by list()
     }
 

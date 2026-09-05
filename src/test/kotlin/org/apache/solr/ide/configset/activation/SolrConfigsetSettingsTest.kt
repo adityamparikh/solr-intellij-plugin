@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.activation
 
+import com.intellij.configurationStore.deserializeInto
+import com.intellij.configurationStore.serialize
 import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -23,6 +25,29 @@ class SolrConfigsetSettingsTest : SolrConfigsetTestCase() {
         assertFalse(settings.isDetectionEnabled)
         settings.setDetectionEnabled(true)
         assertTrue(settings.isDetectionEnabled)
+    }
+
+    /**
+     * A marked root is in the state that gets written, not only in the one held in memory.
+     *
+     * **Every other test here reads the roots back from the live object**, which answers whether or
+     * not a byte ever reaches the workspace file. Serialization is a separate question and it had a
+     * separate answer: the list was skipped and `detectionEnabled` beside it was not, so the
+     * component was written on every save and came back holding no roots — indistinguishable from a
+     * user who had never marked one.
+     *
+     * What that cost is the whole of this escape hatch. A repository holding configsets and nothing
+     * else cannot satisfy the dependency gate, so marking a root by hand is the only way the plugin
+     * ever wakes there — and it woke until the IDE was closed, then never again.
+     */
+    fun testAMarkedRootSurvivesSerialization() {
+        val state = SolrConfigsetSettings.State()
+        state.manualConfigsetRoots.add("\$PROJECT_DIR\$/solr/conf")
+
+        val written = checkNotNull(serialize(state)) { "the state serialized to nothing at all" }
+        val reloaded = SolrConfigsetSettings.State().also { written.deserializeInto(it) }
+
+        assertEquals(listOf("\$PROJECT_DIR\$/solr/conf"), reloaded.manualConfigsetRoots)
     }
 
     fun testNoRootsMeansNothingIsUnderAManualRoot() {
