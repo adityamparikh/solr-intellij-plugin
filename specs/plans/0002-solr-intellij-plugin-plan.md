@@ -153,7 +153,7 @@ whole, and the gutter action goes with the Server track.
 
 ### Code track
 
-- [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+- [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) — **done**
 - [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge)
 - [Step 18 — Framework configuration: the shared half, and Spring Boot](#step-18-framework-configuration-the-shared-half-and-spring-boot)
 - [Step 31 — Framework configuration: Quarkus](#step-31-framework-configuration-quarkus)
@@ -223,7 +223,7 @@ These apply to all steps and are not repeated in each one.
   *unmarked*
   highlights is what makes the zero-false-positive bar enforceable per test rather than only in CI. Heavy tests only
   where a light project cannot express the fixture;
-  [the recognizer interface](#step-16-recognizer-interface-and-solrj) is the one step that says so. **No test drives a
+  [the recognizer interface](#step-16-recognizer-interface-and-solrj-done) is the one step that says so. **No test drives a
   running IDE.** Neither `intellij-ide-starter` nor Remote Robot is used: every claim this plugin makes is a highlight,
   a resolve target, a completion list or a model value, and all four are assertable headlessly. A tool window that
   merely renders is not a claim worth a flaky test, and a step that seems to need one has put logic in a component
@@ -2084,7 +2084,7 @@ The document indexes into the local collection and is then findable.
 
 ## Code track
 
-### Step 16: Recognizer interface and SolrJ
+### Step 16: Recognizer interface and SolrJ (done)
 
 **Read through UAST, not Java PSI, and that decides what a second language costs.** PSI is
 language-specific: `PsiMethodCallExpression` and `PsiAnnotation` describe Java, `KtCallExpression` and
@@ -2150,11 +2150,11 @@ that could disprove it is unwritable.
 
 **Success criteria:**
 
-- [ ] Field references resolve in builder calls, raw strings, document building and bean annotations.
+- [x] Field references resolve in builder calls, raw strings, document building and bean annotations.
 - [x] **The same constructs resolve in a Kotlin fixture as in the Java one**, through the same recognizer — the
   assertion that the UAST decision above bought what it was chosen for, rather than a second code path having quietly
   grown.
-- [ ] Unresolvable constructs produce no warning.
+- [x] Unresolvable constructs produce no warning.
 - [x] A module with no Solr client on its classpath produces no findings at all, asserted on a fixture of two modules
   where only one depends on SolrJ.
 - [x] **The module gate reads no index**, which is what makes it safe while the IDE is still indexing without a
@@ -2191,14 +2191,14 @@ constructs the plugin cannot resolve produce no warning at all.
 [45 — *show the query as a language*](../../docs/demo/README.md#step-45-show-the-query-as-a-language)
 and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-it-from-where-it-lives).
 
-**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj); the gutter action
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done); the gutter action
 additionally needs [the query console](#step-13-query-console-done), which is the Code track's one dependency on the Server
 track. The language and navigation work does not.
 
 ### Step 18: Framework configuration: the shared half, and Spring Boot
 
 **A plain Java application using SolrJ is supported before any framework is, and that is
-[Step 16](#step-16-recognizer-interface-and-solrj) rather than a promise made here.** The recognizer interface and the
+[Step 16](#step-16-recognizer-interface-and-solrj-done) rather than a promise made here.** The recognizer interface and the
 SolrJ recognizer come first because a framework recognizer resolves a URL that a SolrJ client then *uses* — the client
 construction site is what makes an endpoint worth reporting at all. A framework layer built before the plain case would
 have nothing underneath it to hand a resolved URL to.
@@ -2228,7 +2228,7 @@ where it first binds.
    the URL in a profile belongs to that profile's candidate, and on confirmation the secret is copied into PasswordSafe
    rather than re-read from the configuration file on each use. The spec sets the rules under "Recognizing Solr usage";
    the consequence here is that a candidate is a URL *and* a credential, so the recognizer interface must be able to
-   report both — which is why [the recognizer interface](#step-16-recognizer-interface-and-solrj) has to know about it
+   report both — which is why [the recognizer interface](#step-16-recognizer-interface-and-solrj-done) has to know about it
    before this step starts. **Shared.**
 4. Offer discovered endpoints as connection candidates. Never connect automatically. **Shared.**
 5. Resolve a Solr URL and its credentials per profile with **Spring Boot's** precedence: profile files, and the property
@@ -2259,7 +2259,7 @@ instead. Quarkus is the one to get right, for the reason the spec gives under "R
 offered by following `${app.solr.url}` from the SolrJ client bean into the active profile, and is never connected to
 automatically.
 
-**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done)
 
 ### Step 31: Framework configuration: Quarkus
 
@@ -2341,7 +2341,7 @@ project and a running route to show what a fixture test shows in a second. Accep
 endpoint in a Java route and in an XML route is offered as a connection candidate, and a misspelled URI option is
 flagged.
 
-**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj)
+**Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done)
 
 ---
 
@@ -2506,7 +2506,7 @@ Mitigations live in the steps; only the first entry states one, because it belon
   awkward to unit-test, against an 80% Kover floor bound to `check`. Decide the response before it bites — package-level
   exclusions, or moving the floor to changed lines and letting SonarCloud's new-code gate be the real defence.
 - **Code analysis produces false positives** —
-  [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj).
+  [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done).
 - **Framework configuration works only on the author's machine** —
   [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot).
 - **A server version the plugin has never seen** —

@@ -70,6 +70,7 @@ object SolrJRecognizer : SolrUsageRecognizer {
             object : AbstractUastVisitor() {
                 override fun visitCallExpression(node: UCallExpression): Boolean {
                     readCall(node, found)
+                    readDocumentCall(node, found)
                     return false
                 }
 
@@ -217,6 +218,31 @@ object SolrJRecognizer : SolrUsageRecognizer {
     }
 
     /**
+     * Reads a field name out of a document being built, or declines to.
+     *
+     * **Checked by receiver, not by method name, and the two disagree here.** `SolrInputDocument`
+     * carries an `addField` and so does `SolrQuery`; a query's names something to return and a
+     * document's names something to store, so they are read separately even though they are spelled
+     * the same. Only the first argument is a name — the second is the value, and reading it would
+     * report every string an application indexes as a field.
+     *
+     * Indexing into an undeclared field is the more expensive of the two mistakes this recognizer
+     * catches. A collection running the default update chain adds the field to the deployed schema
+     * rather than refusing the document, answers `status: 0`, and leaves the configset in the
+     * repository and the schema on the server quietly disagreeing.
+     */
+    private fun readDocumentCall(call: UCallExpression, into: MutableList<SolrFieldUsage>) {
+        if (call.methodName !in DOCUMENT_FIELD_METHODS) return
+        val owner = call.resolve()?.containingClass?.qualifiedName ?: return
+        if (owner !in SOLR_DOCUMENT_CLASSES) return
+
+        val argument = call.valueArguments.firstOrNull() ?: return
+        val name = constantTextOf(argument) ?: return
+        val anchor = argument.sourcePsi ?: return
+        into += SolrFieldUsage(name, BOUND_AT_INDEX_TIME, anchor)
+    }
+
+    /**
      * The string an argument spells out in the source, or null where it does not spell one out.
      *
      * **Not `evaluateString`, which is the obvious answer and the wrong one.** UAST's evaluator
@@ -327,6 +353,18 @@ object SolrJRecognizer : SolrUsageRecognizer {
 
     /** The builder method that names the user a client connects as. */
     private const val BASIC_AUTH_METHOD = "withBasicAuthCredentials"
+
+    /**
+     * The document classes whose field-naming methods are read.
+     *
+     * `SolrInputDocument` is the one a client builds by hand. Spelled in full for the same reason
+     * the query classes are: a receiver check that matched on simple name would read any class
+     * anywhere carrying an `addField`.
+     */
+    private val SOLR_DOCUMENT_CLASSES = setOf("org.apache.solr.common.SolrInputDocument")
+
+    /** The document methods whose first argument is a field name. */
+    private val DOCUMENT_FIELD_METHODS = setOf("addField", "setField")
 
     /** SolrJ's own bean-binding annotation, matched in full so nobody else's `Field` is read. */
     private const val BEAN_FIELD_ANNOTATION = "org.apache.solr.client.solrj.beans.Field"

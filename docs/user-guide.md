@@ -7,12 +7,11 @@
 > **Read first:** [Glossary](glossary.md) if Solr terms are new · [Project orientation](project-orientation.md)
 
 Everything the plugin does today, organised by what you are trying to do rather than by which
-IntelliJ [extension point](glossary.md#extension-point) implements it. Two of the specification's
-three surfaces are here: the **configuration files** you edit, and the **server** you talk to. The
-[code](../specs/plans/0002-solr-intellij-plugin-plan.md#code-track) surface — field names checked
-against [SolrJ](glossary.md#solrj) calls, query syntax injected into string literals — is not, and
-this guide does not pretend otherwise. See [the project orientation](project-orientation.md) for how
-the three fit together, and
+IntelliJ [extension point](glossary.md#extension-point) implements it. All three of the
+specification's surfaces are now here in some form: the **configuration files** you edit, the
+**server** you talk to, and the **code** that names fields — though the last is the youngest, and
+what it covers is SolrJ rather than every way a JVM application reaches Solr. See
+[the project orientation](project-orientation.md) for how the three fit together, and
 [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) for what "done" means for
 each capability below.
 
@@ -42,6 +41,8 @@ its checks live.
 | [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr | `SRV-11`–`SRV-18` |
 | [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
 | [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
+| [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | — |
+| [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | <kbd>Ctrl-Space</kbd> in a Solr call | — |
 
 Every capability above works on a configset the plugin can see, and nothing on the editing path
 contacts a server. The server rows are the exception by definition, and they move data only when
@@ -693,9 +694,53 @@ see its `add-field` payload, then press **Apply Additive Changes**. (Verified by
 
 ---
 
+## Catching a field name typo in Java or Kotlin
+
+A Solr field name written in code is a string. `q.addFilterQuery("categry:books")` compiles, deploys,
+and returns nothing — Solr answers a query against a field that does not exist with zero results
+rather than an error, so the typo arrives as an empty page in production.
+
+The plugin reads four places a name is written and checks each against the configsets in your
+project:
+
+| Written as | Example |
+|---|---|
+| A query-builder call | `q.addFilterQuery("category:books")` |
+| A field list in a raw parameter string | `q.setFields("id,name,score")` |
+| A document being built | `doc.addField("price", 9.99)` |
+| A bean binding | `@Field("price") BigDecimal price;` |
+
+Java and Kotlin are read by one implementation, so both behave identically. A bare `@Field` names the
+property it sits on, which is what [SolrJ](glossary.md#solrj) does with it.
+
+**It stays quiet in three situations, deliberately.** In a module with no Solr client on its
+classpath, so a repository where one module talks to Solr does not have the others warned. On names
+the source does not spell out — held in a variable, or built by interpolation — because following
+values through a program is best-effort and this prefers silence. And **in a project with no
+configset at all**, because a service talking to a Solr whose schema lives in another repository is
+an ordinary deployment, and a check that cannot see must not accuse.
+
+[The catalog entry](inspection-catalog.md#code-names-a-field-no-configset-declares--solrunknowncodefield)
+has the full rules.
+
+## Completing a field name in Java or Kotlin
+
+The same positions offer the project's field names as you type them. Each entry shows its type and
+which configset declared it; a [dynamic field](glossary.md#dynamic-field) pattern such as `*_s` is
+offered in italics, because naming the pattern is how you name the field it will create.
+
+Offered in fewer places than the check reports: the same two conditions — a method that names fields,
+on SolrJ's own class — plus the module gate. Somebody else's `@Field` annotation, of which the JVM
+has several, offers nothing.
+
 ## What is not here yet
 
-**Nothing in Java or Kotlin code** is built yet — field-name checks against [SolrJ](glossary.md#solrj) calls, query-syntax injection.
+**Query syntax inside string literals** is not read. A field name is recognized where SolrJ's API
+puts one; the Solr query language inside `q.setQuery("title:dune AND categry:books")` is still just a
+string to the plugin.
+
+**Only SolrJ is recognized.** Spring Data, Camel and framework configuration each name Solr in their
+own way, and none of them is read yet.
 
 [The specification](../specs/0002-solr-intellij-plugin.md) describes the intent for both;
 [the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place that
