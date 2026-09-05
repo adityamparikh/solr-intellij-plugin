@@ -79,9 +79,13 @@ object SolrRequestTemplates {
             Template(
                 key = element.getAttribute("name"),
                 description = element.getAttribute("description"),
-                // `$$` is how the file spells a literal `$`, since a single one delimits a live
-                // template variable. Undone here so callers read the text a user will see.
-                template = element.getAttribute("value").replace("\$\$", "$"),
+                // Returned exactly as the file spells it, with no unescaping. A rule here that knew
+                // how `$` is escaped would be a second decoder of a file the platform already
+                // decodes, and the first `$` in any template is where the two would part company --
+                // silently, because `all` is read only by tests and the divergence would be between
+                // what they assert and what the IDE inserts. Byte-for-byte agreement is instead
+                // asserted directly, in `SolrRequestTemplateResolutionTest`.
+                template = element.getAttribute("value"),
             )
         }
     }
