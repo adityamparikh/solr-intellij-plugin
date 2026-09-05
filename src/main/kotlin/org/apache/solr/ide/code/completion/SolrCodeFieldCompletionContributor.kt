@@ -5,6 +5,7 @@ import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import org.apache.solr.ide.code.SolrRecognizers
+import org.jetbrains.uast.UastFacade
 import org.apache.solr.ide.code.solrj.SolrJFieldPositions
 import org.apache.solr.ide.configset.reading.SolrProjectFields
 
@@ -36,20 +37,19 @@ class SolrCodeFieldCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
         val position = parameters.position
 
+        // **Cheapest question first, and it is what makes `language="any"` affordable.** Registered
+        // that way this is reached from every Ctrl-Space in every file the IDE opens — Markdown,
+        // YAML, JSON, XML — and the gate below walks the module's libraries under a read action. A
+        // file no JVM language reads can never reach the position check, so it is turned away here
+        // rather than after that walk.
+        if (UastFacade.findPlugin(position.language) == null) return
+
         // The recognizers' own gate, asked without reading: there is no written name yet.
         if (!SolrRecognizers.recognizeSolrIn(position.containingFile ?: return)) return
 
         if (!SolrJFieldPositions.namesAFieldAt(position)) return
 
-        SolrProjectFields.getInstance(position.project).all().forEach { field ->
-            result.addElement(
-                LookupElementBuilder.create(field.name)
-                    .withTypeText(field.type)
-                    .withTailText("  ${field.configset}", true)
-                    // A pattern is not a field, and italics is how both other Solr completions mark
-                    // that same distinction — so the three surfaces read alike.
-                    .withItemTextItalic(field.dynamic),
-            )
-        }
+        SolrProjectFields.getInstance(position.project).all()
+            .forEach { result.addElement(it.asLookupElement()) }
     }
 }

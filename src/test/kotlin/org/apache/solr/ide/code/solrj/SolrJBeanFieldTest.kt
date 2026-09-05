@@ -122,6 +122,21 @@ class SolrJBeanFieldTest : SolrConfigsetTestCase() {
         assertEquals(listOf("categry"), found.map { it.fieldName })
     }
 
+    /**
+     * Kotlin's bracketed annotation list is read, and it is the form a token scan cannot see.
+     *
+     * `@[Foo Bar]` carries one `@` for two annotations, so looking for the character that opens an
+     * annotation finds the list and neither entry inside it. Asking the platform which PSI classes
+     * convert to a `UAnnotation` finds both, because the language declares its own forms.
+     */
+    fun testAKotlinAnnotationListIsRead() {
+        givenTheAnnotation()
+
+        val found = usages(kotlinBean("""@[Field("prce")] val price: String? = null"""))
+
+        assertEquals(listOf("prce"), found.map { it.fieldName })
+    }
+
     // --- what it declines to read -------------------------------------------------------------------
 
     /**

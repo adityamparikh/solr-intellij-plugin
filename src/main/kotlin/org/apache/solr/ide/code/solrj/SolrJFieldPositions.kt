@@ -20,9 +20,6 @@ import org.jetbrains.uast.toUElementOfType
  */
 object SolrJFieldPositions {
 
-    /** SolrJ's bean-binding annotation, matched in full so nobody else's `Field` is offered against. */
-    private const val BEAN_FIELD_ANNOTATION = "org.apache.solr.client.solrj.beans.Field"
-
     /**
      * Whether a field name belongs at [position].
      *
@@ -37,7 +34,7 @@ object SolrJFieldPositions {
         var element: PsiElement? = position
         while (element != null && element !is PsiFile) {
             element.toUElementOfType<UAnnotation>()?.let {
-                return it.qualifiedName == BEAN_FIELD_ANNOTATION
+                return it.qualifiedName == SolrJQueryMethods.BEAN_FIELD_ANNOTATION
             }
             element.toUElementOfType<UCallExpression>()?.let { call ->
                 return fieldNamingMethod(call) != null

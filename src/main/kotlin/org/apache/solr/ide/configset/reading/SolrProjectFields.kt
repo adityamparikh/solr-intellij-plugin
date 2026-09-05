@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.reading
 
+import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -20,7 +21,26 @@ data class SolrCompletionField(
     val type: String,
     val configset: String,
     val dynamic: Boolean = false,
-)
+) {
+
+    /**
+     * How this field is offered in a completion popup.
+     *
+     * **One renderer, because two surfaces show these and both claim to read alike.** The query
+     * console and the code completion offer the same list, and a copy of this chain in each is how
+     * they come to mark a dynamic pattern differently, or show the configset in one and not the
+     * other — a drift visible only by opening two popups side by side.
+     *
+     * @return the entry to add to a completion result
+     */
+    fun asLookupElement(): LookupElementBuilder =
+        LookupElementBuilder.create(name)
+            .withTypeText(type)
+            .withTailText("  $configset", true)
+            // A pattern is not a field; italics is how the schema completion already marks the same
+            // distinction, so every surface reads alike.
+            .withItemTextItalic(dynamic)
+}
 
 /**
  * The fields code written in this project could reasonably name.

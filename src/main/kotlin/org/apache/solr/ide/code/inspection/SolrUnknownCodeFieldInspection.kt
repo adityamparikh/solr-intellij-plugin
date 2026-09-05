@@ -12,6 +12,7 @@ import org.apache.solr.ide.code.SolrRecognizers
 import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
 import org.apache.solr.ide.configset.editing.SolrInspections
 import org.apache.solr.ide.configset.reading.SolrConfigsetReader
+import org.jetbrains.uast.UastFacade
 
 /**
  * Reports a field name written in Java or Kotlin that no configset in this project declares.
@@ -63,6 +64,11 @@ class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
      * @return the problems found, or null where there are none
      */
     override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
+        // Registered without a language, so every file the IDE inspects arrives here. A file no JVM
+        // language reads has no UAST view to build and no call to recognize, and turning it away
+        // first keeps the module-library walk behind it off every editor pass in the project.
+        if (UastFacade.findPlugin(file.language) == null) return null
+
         val usages = SolrRecognizers.fieldUsagesIn(file).filter { SolrInspections.isCheckableFieldName(it.fieldName) }
         if (usages.isEmpty()) return null
 
