@@ -10,6 +10,7 @@ import com.intellij.json.psi.JsonValue
 import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentsOfType
+import org.apache.solr.ide.configset.reading.SolrProjectFields
 
 /**
  * Field names inside a Solr query written in an `.http` file.

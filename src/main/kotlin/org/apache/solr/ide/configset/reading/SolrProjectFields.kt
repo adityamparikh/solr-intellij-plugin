@@ -1,11 +1,10 @@
-package org.apache.solr.ide.server.query
+package org.apache.solr.ide.configset.reading
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import org.apache.solr.ide.configset.activation.SolrConfigset
 import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
-import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 
 /**
  * One field a query could name, and where the plugin learned about it.
