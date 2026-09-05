@@ -45,16 +45,8 @@ class SolrQueryFieldCompletionContributor : CompletionContributor() {
         val path = pathOf(position)
         if (!SolrQueryBodyPositions.isQueryBody(path) || !SolrQueryBodyPositions.namesAField(path)) return
 
-        SolrProjectFields.getInstance(position.project).all().forEach { field ->
-            result.addElement(
-                LookupElementBuilder.create(field.name)
-                    .withTypeText(field.type)
-                    .withTailText("  ${field.configset}", true)
-                    // A pattern is not a field; italics is how the schema completion already marks
-                    // the same distinction, so the two surfaces read alike.
-                    .withItemTextItalic(field.dynamic),
-            )
-        }
+        SolrProjectFields.getInstance(position.project).all()
+            .forEach { result.addElement(it.asLookupElement()) }
     }
 
     /**

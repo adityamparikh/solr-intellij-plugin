@@ -67,6 +67,16 @@ object SolrJQueryMethods {
     fun isSolrQueryClass(qualifiedName: String): Boolean = qualifiedName in SOLR_QUERY_CLASSES
 
     /**
+     * SolrJ's bean-binding annotation, in full.
+     *
+     * Beside [SOLR_QUERY_CLASSES] and for its reason: SolrJ relocates classes between lines, and a
+     * qualified name copied into two files is one that gets updated in one of them. Were that to
+     * happen here the inspection and completion would disagree about whether a `@Field` is Solr's —
+     * reported but never offered, or offered and never checked.
+     */
+    const val BEAN_FIELD_ANNOTATION = "org.apache.solr.client.solrj.beans.Field"
+
+    /**
      * Every Solr parameter this map can produce.
      *
      * Exposed so a test can hold the code track and the grammar to the same vocabulary — a parameter

@@ -19,6 +19,7 @@ import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UPolyadicExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
 import org.jetbrains.uast.UastCallKind
+import org.jetbrains.uast.UastFacade
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -61,22 +62,12 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * @return the field usages it contains, empty where it references none
      */
     override fun readFieldUsages(file: PsiFile): List<SolrFieldUsage> {
-        val uFile = file.toUElementOfType<UFile>() ?: return emptyList()
-        val found = mutableListOf<SolrFieldUsage>()
-        // Two node kinds rather than one, because a field name is written in two shapes and an
-        // annotation is not a call. Visited in one pass: building the UAST view is the expensive
-        // part, and a second traversal would pay for it twice to answer about the same file.
-        uFile.accept(
-            object : AbstractUastVisitor() {
-                override fun visitCallExpression(node: UCallExpression): Boolean {
-                    readCall(node, found)
-                    readDocumentCall(node, found)
-                    return false
-                }
-
-
-            },
-        )
+        // Both call readers share the one traversal `readThrough` exists to hold; annotations are
+        // not calls and are collected after it, from the same file.
+        val found = readThrough(file) { node, into ->
+            readCall(node, into)
+            readDocumentCall(node, into)
+        }.toMutableList()
         readBeanAnnotations(file, found)
         return found
     }
@@ -91,17 +82,18 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * `@Nullable` the compiler synthesises. It converts perfectly well *on demand*, which is what
      * this does.
      *
-     * Found by the `@` that opens it: a one-character leaf whose parent is the annotation, in both
-     * languages. That is cheaper than converting every node in the file to ask what it is, and it
-     * names no language's own PSI classes — importing `KtAnnotationEntry` here is exactly the
-     * split-by-language this recognizer exists to avoid.
+     * **Which PSI classes to convert is asked of the platform rather than guessed.**
+     * `getPossiblePsiSourceTypes` is how each language declares what converts to a `UAnnotation`, so
+     * every form that language spells an annotation in is covered — including Kotlin's bracketed
+     * `@[Foo Bar]` list, whose entries an earlier version of this missed entirely because it looked
+     * for the `@` that opens an annotation and that form has one `@` for two annotations. Naming no
+     * language's own PSI classes is the property being preserved; the language plugin names them.
      */
     private fun readBeanAnnotations(file: PsiFile, into: MutableList<SolrFieldUsage>) {
-        val opens = PsiTreeUtil.collectElements(file) {
-            it.firstChild == null && it.textLength == 1 && it.text == "@"
-        }
-        for (open in opens) {
-            val annotation = open.parent?.toUElementOfType<UAnnotation>() ?: continue
+        val sourceTypes = UastFacade.getPossiblePsiSourceTypes(UAnnotation::class.java)
+        val candidates = PsiTreeUtil.collectElements(file) { sourceTypes.contains(it.javaClass) }
+        for (candidate in candidates) {
+            val annotation = candidate.toUElementOfType<UAnnotation>() ?: continue
             readBeanAnnotation(annotation, into)
         }
     }
@@ -123,7 +115,7 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * how SolrJ spells a binding to `price`.
      */
     private fun readBeanAnnotation(annotation: UAnnotation, into: MutableList<SolrFieldUsage>) {
-        if (annotation.qualifiedName != BEAN_FIELD_ANNOTATION) return
+        if (annotation.qualifiedName != SolrJQueryMethods.BEAN_FIELD_ANNOTATION) return
 
         val written = annotation.findAttributeValue(VALUE_ATTRIBUTE)
         val spelled = written?.let { constantTextOf(it) }
@@ -365,9 +357,6 @@ object SolrJRecognizer : SolrUsageRecognizer {
 
     /** The document methods whose first argument is a field name. */
     private val DOCUMENT_FIELD_METHODS = setOf("addField", "setField")
-
-    /** SolrJ's own bean-binding annotation, matched in full so nobody else's `Field` is read. */
-    private const val BEAN_FIELD_ANNOTATION = "org.apache.solr.client.solrj.beans.Field"
 
     /** The attribute that carries the written name. */
     private const val VALUE_ATTRIBUTE = "value"
