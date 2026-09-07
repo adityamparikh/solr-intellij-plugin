@@ -305,6 +305,12 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection"/>
+        <!-- A field name in Java or Kotlin, navigable to the schema that declares it. Registered
+             without a language for the same reason the check is: the recognizer decides which
+             languages it can read, and naming one here would name one language's PSI. -->
+        <psi.referenceContributor
+                implementation="org.apache.solr.ide.code.navigation.SolrCodeFieldReferenceContributor"/>
+
         <!-- The code track's only inspection so far, and the one that reaches outside a configset:
              it reads Java and Kotlin through UAST and checks the names found against every configset
              in the project. Registered without a `language` so both reach it; the recognizers' own
