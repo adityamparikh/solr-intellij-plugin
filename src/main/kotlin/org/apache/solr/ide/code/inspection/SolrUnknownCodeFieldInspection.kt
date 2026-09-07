@@ -5,7 +5,6 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.code.SolrRecognizers
@@ -88,7 +87,7 @@ class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
                 // The name inside the expression rather than the expression itself: a warning over
                 // `"categry:books"` entire underlines the quotes and the value a reader already
                 // knows are fine, and hides which half is wrong.
-                nameRangeIn(usage.element.text, usage.fieldName),
+                usage.rangeInElement,
                 SolrBundle.message("inspection.codeField.unknown", usage.fieldName),
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 isOnTheFly,
@@ -100,16 +99,6 @@ class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
             )
         }.toTypedArray()
     }
-
-    /**
-     * Where [name] sits inside [text], or null to let the whole element carry the warning.
-     *
-     * Null where the name is not found verbatim, which happens when the source spelled it across a
-     * concatenation: there is no single range to point at, and pointing at part of one would be
-     * worse than pointing at all of it.
-     */
-    private fun nameRangeIn(text: String, name: String): TextRange? =
-        text.indexOf(name).takeIf { it >= 0 }?.let { TextRange(it, it + name.length) }
 
     /**
      * A model per configset the project holds, or null where it holds none.

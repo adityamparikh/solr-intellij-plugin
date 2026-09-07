@@ -1,11 +1,13 @@
 package org.apache.solr.ide.configset.navigation
 
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.psi.xml.XmlTag
+import org.apache.solr.ide.configset.activation.SolrConfigset
 import org.apache.solr.ide.configset.activation.SolrConfigsetDetector
 import org.apache.solr.ide.configset.activation.SolrConfigsetFileKind
 import org.apache.solr.ide.configset.activation.SolrSchemaTags
@@ -55,12 +57,26 @@ internal object SolrSchemaPsi {
      * @param file any file of the configset, typically its `solrconfig.xml`
      * @return the schema as PSI, or null outside a configset or where none exists
      */
-    fun schemaFileOf(file: PsiFile): PsiFile? {
-        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
+    fun schemaFileOf(file: PsiFile): PsiFile? =
+        SolrConfigsetDetector.configsetFor(file)?.let { schemaFileIn(it, file.project) }
+
+    /**
+     * The schema file inside [configset].
+     *
+     * Separate from [schemaFileOf] because a caret is not always inside the configset it is asking
+     * about: code in Java or Kotlin belongs to no configset and may resolve against any of the
+     * project's. The rule for which file in a root is the schema is the same either way, and is
+     * written once here.
+     *
+     * @param configset the configset to look inside
+     * @param project the project it belongs to
+     * @return its schema file, or null where the root holds none
+     */
+    fun schemaFileIn(configset: SolrConfigset, project: Project): PsiFile? {
         val schema = configset.root.children
             .filter { SolrConfigsetFileKind.forFileName(it.name)?.isSchema == true }
             .minByOrNull { it.name } ?: return null
-        return PsiManager.getInstance(file.project).findFile(schema)
+        return PsiManager.getInstance(project).findFile(schema)
     }
 
     /**

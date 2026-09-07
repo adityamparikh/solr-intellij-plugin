@@ -1,5 +1,6 @@
 package org.apache.solr.ide.code
 
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 
@@ -15,7 +16,23 @@ data class SolrFieldUsage(
     val fieldName: String,
     val parameter: String,
     val element: PsiElement,
-)
+) {
+
+    /**
+     * Where the name sits inside [element], or null where it is not there verbatim.
+     *
+     * **Asked here so that everything pointing at a name points at the same characters.** A warning
+     * and a navigable reference over the same usage that disagreed by a character would be visible
+     * as a highlight that does not line up with what Ctrl-click activates.
+     *
+     * Null where the source spelled the name across a concatenation: there is no single range to
+     * offer, and offering part of one would be worse than offering the whole expression.
+     */
+    val rangeInElement: TextRange?
+        get() = element.text.indexOf(fieldName)
+            .takeIf { it >= 0 }
+            ?.let { TextRange(it, it + fieldName.length) }
+}
 
 /**
  * A Solr server a piece of code says it talks to, and who it connects as.
