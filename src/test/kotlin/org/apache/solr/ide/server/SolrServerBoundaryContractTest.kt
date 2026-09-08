@@ -30,13 +30,31 @@ class SolrServerBoundaryContractTest {
      *
      * The server surface itself, and — as the specification anticipates — the tool windows and
      * actions that exist to talk to a server. Those live under `server` too, per the code
-     * organization's rule that `org.apache.solr.ide.server.*` *is* the live-server surface, so this
-     * list has one entry rather than a growing tail of UI packages.
+     * organization's rule that `org.apache.solr.ide.server.*` *is* the live-server surface, which is
+     * why this list stays short rather than growing a tail of UI packages.
+     *
+     * The one exception is the gutter action that runs a query written in code. It cannot live under
+     * `server` because what decides *whether there is a query here* is the code recognizer, and it
+     * cannot be refused because the plan names it as the Code track's single sanctioned dependency
+     * on the Server track. What makes it safe is the same thing that makes the tool windows safe: it
+     * runs when a user asks, never while a file is being read.
      *
      * Adding to it is a deliberate act. Anything that would need adding because an editor feature
      * wanted "just to check the live server" is the thing this test exists to stop.
      */
-    private val allowedConsumers = listOf("org.apache.solr.ide.server")
+    private val allowedConsumers = listOf(
+        "org.apache.solr.ide.server",
+        // The gutter action that runs a query written in Java or Kotlin. The plan names this as the
+        // Code track's *one* dependency on the Server track, so it is sanctioned rather than
+        // discovered — and it is the narrowest package that can hold it: the line marker deciding
+        // where the icon goes stays in `code` and reaches no server, and only the click does.
+        //
+        // It is also not the editor path. Nothing here runs while a file is being read; it runs when
+        // a user presses something, which is the same rule every other server surface keeps. That
+        // distinction is what the boundary protects, and adding a package that ignored it -- an
+        // inspection or a completion reaching for a live server -- is what this list exists to stop.
+        "org.apache.solr.ide.code.run",
+    )
 
     private val serverPackage = "org.apache.solr.ide.server"
 
