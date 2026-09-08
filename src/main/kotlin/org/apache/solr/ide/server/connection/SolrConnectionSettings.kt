@@ -14,6 +14,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.annotations.XCollection
 import com.intellij.util.messages.Topic
+import org.apache.solr.ide.server.transport.SolrCredential
 
 /**
  * One configured Solr server, as it is persisted — everything except the secret.
@@ -236,6 +237,27 @@ class SolrConnectionSettings(private val project: Project) :
         val credentials = password?.let { Credentials(user, it) }
         PasswordSafe.instance.set(credentialAttributes(id), credentials)
     }
+
+    /**
+     * The stored secret for the connection with [id], or null if none is stored.
+     *
+     * @param id the connection's identifier
+     * @return the secret, or null
+     */
+    /**
+     * What [connection] authenticates as.
+     *
+     * **The one place a connection becomes a credential.** Four callers compose one — the reader,
+     * the configset writer, the document indexer and the query runner — and each spelling it out
+     * separately is how they came to disagree once already: two null-checked where the rule checks
+     * emptiness, and sent `user:` where the others sent nothing. The rule is
+     * [SolrCredential.of]'s; the password lives here; so the composition belongs here too.
+     *
+     * @param connection the connection about to be used
+     * @return the credential to send, which may be [SolrCredential.None]
+     */
+    fun credentialFor(connection: SolrConnection): SolrCredential =
+        SolrCredential.of(username = connection.username, password = getPassword(connection.id))
 
     /**
      * The stored secret for the connection with [id], or null if none is stored.
