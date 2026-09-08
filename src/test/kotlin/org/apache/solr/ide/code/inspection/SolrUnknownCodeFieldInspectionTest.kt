@@ -95,6 +95,24 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
         check(searching("""q.addFilterQuery("categry:books");"""))
     }
 
+    /**
+     * A declared field whose name contains a hyphen is not reported.
+     *
+     * **The symptom the scanner's contradiction produced.** `-` separated clauses unconditionally
+     * while also being legal inside a name, so `some-field:books` was read as the field `field` and
+     * reported undeclared — a warning on correct code naming a field that is declared, which is the
+     * one failure this plugin's rules put above all others.
+     *
+     * Solr settles it: `some-field:books` comes back as *undefined field some-field*, so the whole
+     * token is the name.
+     */
+    fun testAHyphenatedFieldNameIsNotReported() {
+        SolrCodeFixtures.givenSolrJ(myFixture)
+        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "some-field")
+
+        check(searching("""q.addFilterQuery("some-field:books");"""))
+    }
+
     // --- and then what it reports -----------------------------------------------------------------
 
     fun testAnUndeclaredFieldIsReported() {

@@ -73,21 +73,34 @@ class SolrQuerySpansTest {
     }
 
     /**
-     * A hyphen ends the name before it, and the tail is what is read.
+     * A hyphen inside a name is part of the name.
      *
-     * **Recorded rather than asserted as correct, because the model contradicts itself here.** `-`
-     * is in the separator list *and* in the characters a name may contain, and the separator wins —
-     * so `some-field:books` reads as the field `field`. Nothing covered this either way before.
-     *
-     * Whether that is right is a question about Solr rather than about this scan: `-` prohibits a
-     * clause where it stands alone, and Solr's own guidance discourages but does not forbid a hyphen
-     * inside a field name. Settling it changes what the code inspection reports, so it does not
-     * belong in a change about colour. This test exists so the next person meets the contradiction
-     * deliberately instead of discovering it as a false warning.
+     * **Verified against Solr rather than reasoned about.** `some-field:books` comes back as
+     * *undefined field some-field* — the whole token is the field name. `-` and `+` are operators
+     * only where a clause begins, which is why `-id:1` parses as a prohibited clause on `id` and
+     * `a+b:c` comes back as *undefined field a+b*.
      */
     @Test
-    fun `a hyphen ends the name before it`() {
-        assertEquals(listOf("FIELD:field"), spans("some-field:books"))
+    fun `a hyphen inside a name is part of the name`() {
+        assertEquals(listOf("FIELD:some-field"), spans("some-field:books"))
+    }
+
+    /** A leading minus prohibits the clause, and is not part of the name after it. */
+    @Test
+    fun `a leading minus is not part of the name`() {
+        assertEquals(listOf("FIELD:category"), spans("-category:books"))
+    }
+
+    /** A leading plus requires the clause, and is likewise not part of the name. */
+    @Test
+    fun `a leading plus is not part of the name`() {
+        assertEquals(listOf("FIELD:category"), spans("+category:books"))
+    }
+
+    /** A plus inside a token is part of it, as Solr reads `a+b:c` as the field `a+b`. */
+    @Test
+    fun `a plus inside a name is part of the name`() {
+        assertEquals(listOf("FIELD:a+b"), spans("a+b:c"))
     }
 
     // --- what it will not read ----------------------------------------------------------------------

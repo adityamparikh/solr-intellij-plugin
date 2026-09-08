@@ -78,6 +78,11 @@ object SolrQueryExpressions {
                     }
                     tokenStart = index + 1
                 }
+                // `+` and `-` end nothing where a token is already underway: Solr reads
+                // `some-field:books` as the field `some-field` and answers `a+b:c` with *undefined
+                // field a+b*, while `-id:1` is a prohibited clause on `id`. They are operators only
+                // where a clause begins, which is exactly where the current token is still empty.
+                character in PREFIX_OPERATORS && index > tokenStart -> Unit
                 character in CLAUSE_SEPARATORS -> {
                     operatorAt(query, tokenStart, index)?.let { spans += it }
                     tokenStart = index + 1
@@ -124,8 +129,17 @@ object SolrQueryExpressions {
         return name
     }
 
-    /** What ends one clause and begins the next, outside a phrase. */
+    /**
+     * What ends one clause and begins the next, outside a phrase.
+     *
+     * `+` and `-` are here because they *begin* a clause, and only there — see the guard above them
+     * in the scan. `!` and `^` are unconditional: Lucene needs either escaped inside a term, so an
+     * unescaped one is always syntax rather than part of a name.
+     */
     private val CLAUSE_SEPARATORS = charArrayOf(' ', '\t', '\n', '\r', '(', ')', '+', '-', '!', '^')
+
+    /** The two separators that only separate where a clause begins. */
+    private val PREFIX_OPERATORS = charArrayOf('+', '-')
 
     /**
      * Every spelling Solr reads as a boolean operator.
@@ -135,6 +149,12 @@ object SolrQueryExpressions {
      */
     private val OPERATORS = setOf("AND", "OR", "NOT", "TO", "&&", "||")
 
-    /** Characters legal inside a field name besides letters and digits. */
-    private val NAME_CHARACTERS = charArrayOf('_', '.', '-')
+    /**
+     * Characters legal inside a field name besides letters and digits.
+     *
+     * `-` is reachable now. It sat here unreachable for as long as `-` separated unconditionally,
+     * so a hyphenated field name was read as its tail and reported undeclared — the contradiction
+     * between these two lists was the defect.
+     */
+    private val NAME_CHARACTERS = charArrayOf('_', '.', '-', '+')
 }
