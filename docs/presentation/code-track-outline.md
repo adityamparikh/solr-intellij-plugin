@@ -1,0 +1,147 @@
+# Act 5 — the Code track: a speaker's outline
+
+> **Who this is for.** Someone building the code-track slides in PowerPoint or Keynote. This is
+> content and structure, not a deck — `solr-intellij-plugin.pptx` is a designed artifact with
+> embedded screenshots, and new slides need building by hand in the same template.
+>
+> **What is already in the deck.** Nothing from this act. The closing "three surfaces" slide will
+> need its wording changed, because there are now three rather than two.
+>
+> **Screenshots.** Four are specified in [the screenshot catalog](../screenshots.md) and none exists
+> yet. They are produced during the
+> [code-track checks](../manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code);
+> an image joins a slide when someone shoots it.
+
+The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it,
+and the Server act keeps that shape while carrying more in words because its claims are mostly about
+what the plugin declines to do. This act is different again: its claims are about a boundary. Every
+slide here says something about the gap between a name written in Java and a name declared in XML,
+and the deck's job is to make an audience feel that gap before it shows the plugin closing it.
+
+---
+
+## C1 · The failure this act is about
+
+**Claim.** `q.addFilterQuery("categry:books")` compiles, deploys, and returns nothing. Solr answers a
+query against a field that does not exist with **zero results, not an error** — so the typo arrives
+as an empty page in production, and nothing between the two has any reason to look at it.
+
+**Why it lands.** Everyone in the room has shipped a string like this. Say the field name is a
+string and let it sit for a beat before showing anything.
+
+**Source.** `demo/src/main/java/com/example/demo/ProductSearch.java`, which carries the defect
+deliberately and says so in its own Javadoc.
+
+---
+
+## C2 · What the plugin says about it
+
+**Claim.** The name is underlined, and the message names the field rather than the line.
+
+**What to show.** `code-field-warning.png`. Frame it tight: the underline covers `categry` and not
+the whole string, and that distinction is the slide.
+
+**What it costs.** The check runs against every configset in the project, and reports nothing where
+there is none — a service talking to a Solr whose schema lives in another repository is an ordinary
+deployment, and a check that cannot see must not accuse.
+
+**Source.**
+[the catalog entry](../inspection-catalog.md#code-names-a-field-no-configset-declares--solrunknowncodefield).
+
+---
+
+## C3 · One implementation, two languages
+
+**Claim.** Java and Kotlin are read by one recognizer, because it is written against UAST rather
+than either language's own syntax tree.
+
+**Where it stopped being free.** A Kotlin property's annotation is not in the UAST tree at all — it
+attaches to the property, which has no Java counterpart, so neither the visitor nor the light class
+offers it. Asking the platform which PSI classes convert to an annotation is what fixed it; guessing
+at the `@` that opens one silently missed Kotlin's `@[Foo Bar]` list form.
+
+**Why it belongs in the deck.** It is the honest version of "write it once and it works everywhere":
+mostly true, and the exception cost a day.
+
+**Source.** `SolrJRecognizer`; the plan's Step 16 note on why Groovy is excluded.
+
+---
+
+## C4 · The boundary nothing else crosses
+
+**Claim.** <kbd>Ctrl-click</kbd> a field name in Java and land on the `<field>` in XML that declares
+it.
+
+**What to show.** `code-navigate-to-schema.png` — a two-pane split, both ends of the boundary in one
+image. This is the act's strongest single slide; give it the room.
+
+**What makes it true.** The reference is silent under exactly the conditions the check is silent
+under, because both read the same recognizer. Two answers about one name would be worse than one.
+
+---
+
+## C5 · A query is a string, until it is not
+
+**Claim.** The fields and the operators in a query are told apart, so the structure is visible
+without reading it character by character.
+
+**What to show.** `code-query-colour.png`, default light theme.
+
+**What to admit, and it is the point of the slide.** This is **colour, not a parser**. There is no
+grammar, no injected language and no folding. The scope was chosen: a parser is larger than this, and
+larger than the payoff for a string that is usually one clause long. Say so plainly — an audience
+that discovers it later stops believing the rest of the deck.
+
+**The detail worth one sentence.** A lowercase `and` is not coloured, because Solr reads it as a term
+rather than an operator. Colouring it would tell a reader their query combines two clauses when it
+searches for three.
+
+---
+
+## C6 · Running it from where it is written
+
+**Claim.** A gutter icon beside the query runs it against the selected connection, and the answer
+appears in the file.
+
+**What to show.** `code-run-from-gutter.png` — the collection chooser open, not the result. The
+chooser is what shows the interesting problem.
+
+**The interesting problem.** A query in code **names no collection**. `setQuery("category:books")`
+says what to match and nothing about where; the collection is chosen when the client is built, often
+in another file, often from configuration. So the plugin asks, from the list the server actually
+holds.
+
+**What it declines.** Only the main query carries the icon. Running a filter query alone answers a
+different question from the one the code asks — a filter narrows and scores nothing, so its matches
+are not what the program would see.
+
+---
+
+## C7 · The one dependency, and why it is allowed
+
+**Claim.** Nothing on the editor path may reach a running server. The gutter action reaches one, and
+that is sanctioned rather than overlooked.
+
+**Why it is safe.** It runs when a user presses something. The rule protects the editor path — the
+checks, the completion, the colour, none of which ever contact a server — and a test enforces it by
+allowlist, so a package that reaches for a server fails the build until someone adds it in a diff a
+reviewer sees.
+
+**Source.** `SolrServerBoundaryContractTest`; the plan names this as the Code track's one dependency
+on the Server track.
+
+---
+
+## C8 · What the track taught
+
+**Claim.** Every defect this track shipped and then fixed had one shape: **a rule written down
+twice**, agreeing by luck until a case arrived that the copies had each decided separately.
+
+**The examples, if there is time for one.** A test asserting that a request template carried the
+request text, when the platform reads that field as a key — the test and the code agreed with each
+other, and the only party that disagreed was the platform, which nothing in the suite had ever asked.
+And a field name scanner where `-` was both a separator and a legal name character, so a hyphenated
+field was reported undeclared; Solr settled it in one query.
+
+**The close.** Three surfaces now: the files you edit, the server you talk to, and the code that
+names fields. One model underneath, and one question asked four ways — *does this field exist?*

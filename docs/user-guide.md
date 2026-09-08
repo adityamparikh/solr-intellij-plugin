@@ -43,6 +43,9 @@ its checks live.
 | [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
 | [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | — |
 | [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | <kbd>Ctrl-Space</kbd> in a Solr call | — |
+| [Navigating from code to the schema](#from-a-field-name-in-code-to-its-declaration) | <kbd>Ctrl-click</kbd> a field name in code | — |
+| [Query structure in code](#seeing-the-shape-of-a-query-written-in-code) | Editing a Solr query in a string | — |
+| [Running a query from code](#running-a-query-without-leaving-the-file) | The gutter icon beside a query | — |
 
 Every capability above works on a configset the plugin can see, and nothing on the editing path
 contacts a server. The server rows are the exception by definition, and they move data only when
@@ -733,11 +736,61 @@ Offered in fewer places than the check reports: the same two conditions — a me
 on SolrJ's own class — plus the module gate. Somebody else's `@Field` annotation, of which the JVM
 has several, offers nothing.
 
+## From a field name in code to its declaration
+
+<kbd>Ctrl-click</kbd> a Solr field name in Java or Kotlin and you land on the `<field>` that declares
+it — from a `.java` file that belongs to no configset, across a boundary nothing else in the IDE
+connects. A field name in code and its declaration in XML are related by convention and by nothing
+the tooling can see.
+
+It works from all four places a name is written: a query-builder call, a field list, a document being
+built, and a `@Field` binding. Where the project holds several configsets it resolves against the
+first that declares the name — two collections declaring `id` is ordinary, and either declaration is
+the one you wanted to read.
+
+**It is silent wherever the check is silent**, and for the same reasons, read from the same place: no
+Solr client on the module, a name the source does not spell out, or no configset to resolve against.
+
+## Seeing the shape of a query written in code
+
+A query in a string is one colour end to end, so you do the parsing. The field names and the boolean
+operators are now told apart:
+
+```java
+q.setQuery("category:books AND name:solr");
+//          ^^^^^^^^       ^^^     ^^^^      field, operator, field
+```
+
+**This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
+scan that reads field names for the check decides what to colour, so a name the check reports is a
+name you can see. Operators are recognized only in the spellings Solr reads as operators: a lowercase
+`and` is a term, and colouring it would tell you the query combines two clauses when it searches for
+three.
+
+Nothing inside a phrase is coloured, because a phrase is a value in its entirety; nor is anything in
+a local-parameter block, whose names are parameters rather than fields.
+
+## Running a query without leaving the file
+
+A gutter icon sits beside a query. Click it and the query runs against the connection you have
+selected, and the answer appears where you are reading — the same rendering the
+[query console](#running-a-query) prints above a response.
+
+**A query in code names no collection**, so you are asked which one, from the list the server
+actually holds. `setQuery("category:books")` says what to match and nothing about where; the
+collection is chosen when the client is built, often in another file.
+
+**Only the main query carries the icon**, not the filter queries beside it. Running an `fq` alone
+answers a different question from the one your code asks — a filter narrows a result set and scores
+nothing, so its matches are not what the program would see.
+
+Only the `q` is sent: no rows, no field list, no sort. Every parameter added would be one your code
+did not ask for, and the answer would be about a query you never wrote.
+
 ## What is not here yet
 
-**Query syntax inside string literals** is not read. A field name is recognized where SolrJ's API
-puts one; the Solr query language inside `q.setQuery("title:dune AND categry:books")` is still just a
-string to the plugin.
+**A query is coloured, not parsed.** There is no structure to fold, no error for a malformed query,
+and nothing that understands a range or a function query as anything but text.
 
 **Only SolrJ is recognized.** Spring Data, Camel and framework configuration each name Solr in their
 own way, and none of them is read yet.
