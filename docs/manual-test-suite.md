@@ -829,6 +829,51 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       said. Wait a second, query again: it appears. Repeat with *findable immediately* and it is
       there at once.
 
+## 14. Field names and queries in Java and Kotlin (CODE)
+
+*Automated: `SolrJRecognizerTest`, `SolrJBeanFieldTest`, `SolrJDocumentFieldTest`,
+`SolrJModuleGateTest`, `SolrUnknownCodeFieldInspectionTest`, `SolrCodeFieldCompletionTest`,
+`SolrCodeFieldReferenceTest`, `SolrRunQueryLineMarkerTest`, `SolrQueryRunnerTest`,
+`SolrQuerySpansTest`. Manual adds: **that any of it is visible**, which no fixture asserts — a
+gutter icon, a colour and a popup are things a headless test can only assert the existence of.*
+
+*The subject is `demo/src/main/java/com/example/demo/ProductSearch.java`. It holds both a correct
+query and two planted defects, so every check below is one file.*
+
+- [ ] **CODE-1** — `findBooks` warns on `categry` in `addFilterQuery("categry:books")`, and
+      **underlines the name rather than the whole string**. The quotes and `books` are fine; showing
+      that is the difference between naming the mistake and pointing at the line.
+- [ ] **CODE-2** — The same warning offers `category` as a fix, closest spelling first. Applying it
+      leaves the rest of the string untouched.
+- [ ] **CODE-3** — `price` in `setFields("id,name,price")` warns too. **This is the second defect and
+      a different one**: `categry` is a typo for a field that exists, `price` is a field that never
+      has.
+- [ ] **CODE-4** — In `findSolrBooks`, nothing warns. Every name there is declared, and a check that
+      cannot stay quiet on correct code is worse than no check.
+- [ ] **CODE-5** — In that same query, `category` and `name` are coloured as fields and `AND` as an
+      operator. Change `AND` to lowercase `and`: **the colour goes**, because Solr reads it as a term
+      rather than an operator.
+- [ ] **CODE-6** — Put the caret inside `addFilterQuery("` and invoke completion: the demo
+      configset's fields are offered, each showing its type and configset, with `*_t` in italics.
+- [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`. It lands on
+      `<field name="category">` in `solr/conf/managed-schema.xml`. **This is the boundary nothing
+      else in the IDE crosses** — the Java file belongs to no configset.
+- [ ] **CODE-8** — <kbd>Ctrl-click</kbd> `categry` in `findBooks`: nothing resolves. The check and
+      the navigation are two halves of one answer, and disagreeing here would be the plugin
+      contradicting itself.
+- [ ] **CODE-9** — A gutter icon sits beside the `setQuery` in `findSolrBooks`, and **beside nothing
+      else in the file** — not the `addFilterQuery`, not the `setFields`.
+- [ ] **CODE-10** — Click it with a connection selected. A list of that server's collections appears;
+      choosing one runs the query and shows the answer where you are reading. The rendering is the
+      same one the query console prints above a response.
+- [ ] **CODE-11** — Click it with no connection configured: it says so, and sends nothing.
+- [ ] **CODE-12** — Open a Kotlin file using SolrJ. Everything above behaves identically — one
+      recognizer serves both languages, and a difference here is the thing UAST was chosen to
+      prevent.
+- [ ] **CODE-13** — Open any Java file in a module with no Solr client. **No colour, no icon, no
+      warning, no completion.** The registrations name no language, so every file in the IDE reaches
+      them; this is the check that they stay quiet in the projects that have never heard of Solr.
+
 ## Not yet in the suite
 
 Checks join a section above when their feature ships; **which features those are is the
@@ -839,7 +884,7 @@ finding one of these gestures alive means the suite is behind, not that somethin
 - The settings page and *Mark Directory as Solr Configset Root*
 - The server-side surfaces that have not shipped: query console, drift view, indexing test
   documents. Connections and the collections tool window are covered in section 13 above
-- Everything in Java/Kotlin code: field-name checks, query language injection
+- Framework configuration, and any Solr client that is not SolrJ — Spring Data, Camel
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
   type carries — [the check that a field's property table reports a version-derived

@@ -677,7 +677,22 @@ own "Not yet in the suite" list:
   — needs `solr-core` added to the demo's dependencies first, a fixture change out of scope for a
   screenshot pass
 - Everything server-side: connections, the tool window, the query console, the drift view
-- Everything in Java and Kotlin code: field-name checks, query language injection
+- **Java and Kotlin code — shipped, specified below, never captured.** Four images, all from
+  `demo/src/main/java/com/example/demo/ProductSearch.java`, produced during the
+  [code-track checks](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code):
+  - `code-field-warning.png` — the warning on `categry` in `findBooks`, framed tight enough to show
+    that **the underline covers the name and not the whole string**. That distinction is the image's
+    entire argument; a wider crop showing the method loses it. (`CODE-1`)
+  - `code-query-colour.png` — the `setQuery` line in `findSolrBooks`, with `category` and `name`
+    coloured as fields and `AND` as an operator. Shoot it in the **default light theme**: the colours
+    are the platform's own keys, so a custom theme photographs a claim about that theme rather than
+    about the plugin. (`CODE-5`)
+  - `code-navigate-to-schema.png` — a two-pane split, `ProductSearch.java` left and
+    `managed-schema.xml` right with the caret landed on `<field name="category">`. **The split is the
+    point**: one image showing both ends of a boundary nothing else in the IDE connects. (`CODE-7`)
+  - `code-run-from-gutter.png` — the gutter icon beside the `setQuery`, with the collection chooser
+    open beside it. Not the result popup: the chooser is what shows the thing worth explaining, which
+    is that **a query in code names no collection**. (`CODE-10`)
 
 The drift view is worth planning a capture for in advance — a side-by-side of repository and server
 disagreeing is the single image that explains why the plugin edits a file Solr's banner says not to.

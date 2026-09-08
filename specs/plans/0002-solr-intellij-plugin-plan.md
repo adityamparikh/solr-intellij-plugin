@@ -176,7 +176,7 @@ whole, and the gutter action goes with the Server track.
 ### Code track
 
 - [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) — **done**
-- [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge)
+- [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge-done) — **done**
 - [Step 18 — Framework configuration: the shared half, and Spring Boot](#step-18-framework-configuration-the-shared-half-and-spring-boot)
 - [Step 31 — Framework configuration: Quarkus](#step-31-framework-configuration-quarkus)
 - [Step 32 — Framework configuration: Micronaut](#step-32-framework-configuration-micronaut)
@@ -2198,7 +2198,7 @@ constructs the plugin cannot resolve produce no warning at all.
 
 **Dependencies:** [the repository reader and field model](#step-3-repository-reader-and-field-model-done)
 
-### Step 17: Query syntax and the console bridge
+### Step 17: Query syntax and the console bridge (done)
 
 **Actions:**
 
@@ -2208,8 +2208,13 @@ constructs the plugin cannot resolve produce no warning at all.
 
 **Success criteria:**
 
-- [ ] Query strings render structurally inside Java and Kotlin literals.
-- [ ] The gutter action runs the query; navigation resolves when a configset is present.
+- [x] Query strings render structurally inside Java and Kotlin literals — **as colour, not as a parse
+  tree**. Fields and operators are told apart by the same scan the checks use; there is no grammar, no
+  injected language and no folding. That was the scope chosen deliberately: a parser is larger than
+  this, and larger than the payoff for a string that is usually one clause long. Recorded here rather
+  than left to be inferred from the tick, because "structurally" could be read as promising the parse
+  tree that was not built.
+- [x] The gutter action runs the query; navigation resolves when a configset is present.
 
 **Acceptance:** demo steps
 [45 — *show the query as a language*](../../docs/demo/README.md#step-45-show-the-query-as-a-language)
