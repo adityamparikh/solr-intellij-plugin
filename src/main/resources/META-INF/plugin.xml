@@ -107,6 +107,11 @@
                 language="any"
                 implementationClass="org.apache.solr.ide.code.completion.SolrCodeFieldCompletionContributor"/>
 
+        <!-- The gutter icon that runs a query written in code. Registered without a language: which
+             calls carry a query is the recognizer's question, not a language's. -->
+        <codeInsight.lineMarkerProvider
+                implementationClass="org.apache.solr.ide.code.run.SolrRunQueryLineMarkerProvider"/>
+
         <completion.contributor
                 language="JSON"
                 implementationClass="org.apache.solr.ide.server.indexing.SolrDocumentFieldCompletionContributor"/>

@@ -3,7 +3,9 @@ package org.apache.solr.ide.code.solrj
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.jetbrains.uast.UAnnotation
+import org.apache.solr.ide.model.query.SolrParameters
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElementOfType
 
 /**
@@ -42,6 +44,31 @@ object SolrJFieldPositions {
             element = element.parent
         }
         return false
+    }
+
+    /**
+     * The query written at [position], where one is written there and spelled out.
+     *
+     * **Only `q`, and not the filter queries beside it.** `fq` is a query too and is read for field
+     * names as one, but running it alone answers a different question: a filter narrows a result set
+     * and scores nothing, so a user shown its matches would be shown something their code never
+     * asks Solr for. The main query is the one whose answer the code is about.
+     *
+     * @param position an element inside the argument, or the argument itself
+     * @return the query as the source spells it, or null where this is not one
+     */
+    fun runnableQueryAt(position: PsiElement): String? {
+        var element: PsiElement? = position
+        while (element != null && element !is PsiFile) {
+            val argument = element.toUElementOfType<UExpression>()
+            val call = argument?.uastParent as? UCallExpression
+            if (call != null) {
+                if (fieldNamingMethod(call)?.parameter != SolrParameters.QUERY) return null
+                return SolrJRecognizer.constantTextOf(argument)
+            }
+            element = element.parent
+        }
+        return null
     }
 
     /**

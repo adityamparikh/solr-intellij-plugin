@@ -27,6 +27,7 @@ object SolrCodeFixtures {
             package org.apache.solr.client.solrj;
             public class SolrQuery {
                 public SolrQuery(String q) {}
+                public SolrQuery setQuery(String q) { return this; }
                 public SolrQuery addFilterQuery(String... fq) { return this; }
                 public SolrQuery setFields(String... fields) { return this; }
                 public SolrQuery addField(String field) { return this; }

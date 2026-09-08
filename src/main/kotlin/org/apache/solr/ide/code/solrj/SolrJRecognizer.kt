@@ -257,7 +257,7 @@ object SolrJRecognizer : SolrUsageRecognizer {
      * @param argument one argument of a call already known to name fields
      * @return the string it spells out, or null to say nothing about this call
      */
-    private fun constantTextOf(argument: UExpression): String? {
+    internal fun constantTextOf(argument: UExpression): String? {
         if (argument is ULiteralExpression) return argument.value as? String
         if (argument !is UPolyadicExpression) return null
         // A single unreadable operand discards the whole argument rather than the part: half a field
