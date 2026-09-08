@@ -47,24 +47,49 @@ object SolrJFieldPositions {
     }
 
     /**
-     * The query written at [position], where one is written there and spelled out.
+     * A query expression written at [position], where one is written there and spelled out.
      *
-     * **Only `q`, and not the filter queries beside it.** `fq` is a query too and is read for field
-     * names as one, but running it alone answers a different question: a filter narrows a result set
-     * and scores nothing, so a user shown its matches would be shown something their code never
-     * asks Solr for. The main query is the one whose answer the code is about.
+     * **Both `q` and the filter queries beside it.** A filter is a query and reads as one; what
+     * differs is only what may be *done* with it, which is [runnableQueryAt]'s question rather than
+     * this one. Colour, for instance, claims only that this text is a query, and that is true of an
+     * `fq`.
      *
      * @param position an element inside the argument, or the argument itself
      * @return the query as the source spells it, or null where this is not one
      */
-    fun runnableQueryAt(position: PsiElement): String? {
+    fun queryTextAt(position: PsiElement): String? =
+        queryAt(position)?.takeIf { it.first.shape == SolrJArgumentShape.QUERY_EXPRESSION }?.second
+
+    /**
+     * The query at [position] that it makes sense to run on its own.
+     *
+     * **Only `q`, and not the filter queries beside it.** Running an `fq` alone answers a different
+     * question from the one the code asks: a filter narrows a result set and scores nothing, so a
+     * user shown its matches would be shown something their code never asks Solr for.
+     *
+     * @param position an element inside the argument, or the argument itself
+     * @return the query as the source spells it, or null where running this would answer something
+     *   the code does not ask
+     */
+    fun runnableQueryAt(position: PsiElement): String? =
+        queryAt(position)?.takeIf { it.first.parameter == SolrParameters.QUERY }?.second
+
+    /**
+     * The method and the text at [position], or null where no call spells a query out there.
+     *
+     * One walk for both questions above, because they differ only in what they accept afterwards.
+     * Two walks would be two chances to disagree about *where* a query is, which is not the thing
+     * they are meant to disagree about.
+     */
+    private fun queryAt(position: PsiElement): Pair<SolrJQueryMethod, String>? {
         var element: PsiElement? = position
         while (element != null && element !is PsiFile) {
             val argument = element.toUElementOfType<UExpression>()
             val call = argument?.uastParent as? UCallExpression
             if (call != null) {
-                if (fieldNamingMethod(call)?.parameter != SolrParameters.QUERY) return null
-                return SolrJRecognizer.constantTextOf(argument)
+                val method = fieldNamingMethod(call) ?: return null
+                val text = SolrJRecognizer.constantTextOf(argument) ?: return null
+                return method to text
             }
             element = element.parent
         }

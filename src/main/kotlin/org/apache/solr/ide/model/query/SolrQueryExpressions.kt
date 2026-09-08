@@ -27,8 +27,27 @@ object SolrQueryExpressions {
      * @param query a Solr query expression, as written in `q` or `fq`
      * @return the field names it references, empty where none can be read with confidence
      */
-    fun fieldNamesIn(query: String): List<String> {
-        val names = mutableListOf<String>()
+    fun fieldNamesIn(query: String): List<String> =
+        spansIn(query).filter { it.kind == SolrQuerySpanKind.FIELD }.map { query.substring(it.start, it.end) }
+
+    /**
+     * Everything in [query] worth telling apart, in the order it appears.
+     *
+     * **The same scan that reads the names, because there is only one set of rules.** A highlighter
+     * that found fields by its own reading would colour names the checks never look at, and leave
+     * uncoloured the ones they report — the disagreement visible as a warning on a word that is not
+     * highlighted as a field.
+     *
+     * **No parser, and the exclusions are what stand in for one.** A phrase is opaque, a
+     * local-parameter block declares parameters rather than fields, and an operator is recognized
+     * only in the spelling Solr actually treats as one. Everything else is left alone, which for a
+     * highlighter means uncoloured rather than mis-coloured.
+     *
+     * @param query a Solr query expression, as written in `q` or `fq`
+     * @return the spans, which may be empty
+     */
+    fun spansIn(query: String): List<SolrQuerySpan> {
+        val spans = mutableListOf<SolrQuerySpan>()
         var index = 0
         var quoted = false
         var tokenStart = 0
@@ -51,15 +70,43 @@ object SolrQueryExpressions {
                     tokenStart = index + 1
                 }
                 character == ':' -> {
-                    fieldNameOf(query.substring(tokenStart, index))?.let { names += it }
+                    fieldNameOf(query.substring(tokenStart, index))?.let {
+                        // Trimmed on the way in, so the span covers the name and not the space
+                        // before it.
+                        val start = tokenStart + query.substring(tokenStart, index).indexOf(it)
+                        spans += SolrQuerySpan(start, start + it.length, SolrQuerySpanKind.FIELD)
+                    }
                     tokenStart = index + 1
                 }
-                character in CLAUSE_SEPARATORS -> tokenStart = index + 1
+                character in CLAUSE_SEPARATORS -> {
+                    operatorAt(query, tokenStart, index)?.let { spans += it }
+                    tokenStart = index + 1
+                }
                 else -> Unit
             }
             index++
         }
-        return names
+        // The last token ends at the end of the text rather than at a separator.
+        if (!quoted) operatorAt(query, tokenStart, query.length)?.let { spans += it }
+        return spans.sortedBy { it.start }
+    }
+
+    /**
+     * The operator spanning `[start, end)`, or null where that token is not one.
+     *
+     * **Only the spellings Solr reads as operators.** Lucene's boolean operators are uppercase; a
+     * lowercase `and` is an ordinary term and colouring it would tell a reader their query does
+     * something it does not. The symbolic forms are matched as whole tokens for the same reason a
+     * name may contain a hyphen: a `-` inside `some-field` is part of the name, and only one
+     * standing alone negates.
+     */
+    private fun operatorAt(query: String, start: Int, end: Int): SolrQuerySpan? {
+        if (start >= end || end > query.length) return null
+        val token = query.substring(start, end)
+        val trimmed = token.trim()
+        if (trimmed.isEmpty() || trimmed !in OPERATORS) return null
+        val offset = start + token.indexOf(trimmed)
+        return SolrQuerySpan(offset, offset + trimmed.length, SolrQuerySpanKind.OPERATOR)
     }
 
     /**
@@ -79,6 +126,14 @@ object SolrQueryExpressions {
 
     /** What ends one clause and begins the next, outside a phrase. */
     private val CLAUSE_SEPARATORS = charArrayOf(' ', '\t', '\n', '\r', '(', ')', '+', '-', '!', '^')
+
+    /**
+     * Every spelling Solr reads as a boolean operator.
+     *
+     * `TO` is here because it joins the ends of a range, which is the same kind of thing to a reader
+     * scanning a query even though Lucene's grammar calls it something else.
+     */
+    private val OPERATORS = setOf("AND", "OR", "NOT", "TO", "&&", "||")
 
     /** Characters legal inside a field name besides letters and digits. */
     private val NAME_CHARACTERS = charArrayOf('_', '.', '-')
