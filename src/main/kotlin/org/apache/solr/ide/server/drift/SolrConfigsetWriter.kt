@@ -62,7 +62,7 @@ class SolrConfigsetWriter(private val project: Project) {
 
         val path = "/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
         return SolrHttpTransport.getInstance(project)
-            .post(connection.baseUrl, path, archive, SolrHttpTransport.OCTET_STREAM, credentialFor(connection))
+            .post(connection.baseUrl, path, archive, SolrHttpTransport.OCTET_STREAM, SolrConnectionSettings.getInstance(project).credentialFor(connection))
             .map { }
     }
 
@@ -83,7 +83,7 @@ class SolrConfigsetWriter(private val project: Project) {
             .get(
                 connection.baseUrl,
                 "/admin/collections?action=RELOAD&name=${encode(collection)}",
-                credentialFor(connection),
+                SolrConnectionSettings.getInstance(project).credentialFor(connection),
             )
             .map { }
 
@@ -114,18 +114,9 @@ class SolrConfigsetWriter(private val project: Project) {
                 "/${encode(collection)}/schema",
                 request.toByteArray(),
                 SolrHttpTransport.JSON,
-                credentialFor(connection),
+                SolrConnectionSettings.getInstance(project).credentialFor(connection),
             )
             .map { }
-
-    // Composed by `SolrCredential.of` rather than decided here: which of the three cases a
-    // connection is in is one rule, and this was the third place spelling it out. See the note in
-    // `SolrDocumentIndexer` for what the copies disagreed about.
-    private fun credentialFor(connection: SolrConnection): SolrCredential =
-        SolrCredential.of(
-            username = connection.username,
-            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
-        )
 
     // Names come from a user and from a directory on disk, so they carry whatever characters those
     // allow. Encoded rather than trusted: an unencoded `&` would silently truncate the request into

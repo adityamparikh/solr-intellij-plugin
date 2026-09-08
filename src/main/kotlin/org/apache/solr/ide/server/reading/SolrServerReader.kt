@@ -57,7 +57,7 @@ class SolrServerReader(private val project: Project) {
      * @return the collection's facts and the server's version, or the failure that prevented it
      */
     suspend fun read(connection: SolrConnection, collection: String): SolrResponse<SolrServerRead> {
-        val credential = credentialFor(connection)
+        val credential = SolrConnectionSettings.getInstance(project).credentialFor(connection)
         val transport = SolrHttpTransport.getInstance(project)
 
         val schema = transport.get(connection.baseUrl, "/$collection/schema", credential)
@@ -93,7 +93,7 @@ class SolrServerReader(private val project: Project) {
      * @return its collections or its cores, or the failure that prevented reading either
      */
     suspend fun topology(connection: SolrConnection): SolrResponse<SolrTopology> {
-        val credential = credentialFor(connection)
+        val credential = SolrConnectionSettings.getInstance(project).credentialFor(connection)
         val transport = SolrHttpTransport.getInstance(project)
 
         val systemInfo = transport.get(connection.baseUrl, "/admin/info/system", credential)
@@ -135,7 +135,7 @@ class SolrServerReader(private val project: Project) {
      * @return what its index holds, or the failure that prevented reading it
      */
     suspend fun indexContents(connection: SolrConnection, collection: String): SolrResponse<SolrIndexContents> {
-        val credential = credentialFor(connection)
+        val credential = SolrConnectionSettings.getInstance(project).credentialFor(connection)
         return SolrHttpTransport.getInstance(project)
             .get(connection.baseUrl, "/$collection/admin/luke", credential)
             .map { SolrLukeReader.read(it) }
@@ -157,28 +157,6 @@ class SolrServerReader(private val project: Project) {
             else -> return null
         }
         return SolrServerSchemaReader.solrVersionIn(body)
-    }
-
-    /**
-     * The credential this connection authenticates with, read at the point of use.
-     *
-     * **The username comes from the connection and only the password from `PasswordSafe`**, because
-     * those are the two halves a user edits separately. The dialog's password field opens empty on a
-     * connection that already has a secret, so changing a username alone leaves the secret unwritten
-     * and still filed under the previous user. The stored username is therefore identical to the
-     * connection's in every case where nothing is wrong, and differs only where the user has just
-     * changed it — so preferring it cannot be right anywhere, and is silent where it is wrong: the
-     * connection row shows the new user while every request authenticates as the old one.
-     *
-     * A connection naming a user the stored secret was not filed under is a credential the server
-     * should refuse, which the user can see and correct by re-entering the password.
-     */
-    private fun credentialFor(connection: SolrConnection): SolrCredential {
-        if (connection.username.isNullOrEmpty()) return SolrCredential.None
-        return SolrCredential.of(
-            username = connection.username,
-            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
-        )
     }
 
     /** Service lookup. */

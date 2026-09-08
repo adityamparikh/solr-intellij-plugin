@@ -78,7 +78,7 @@ class SolrDocumentIndexer(private val project: Project) {
                 // user editing a generated document should not have to know which.
                 asDocumentList(document).toByteArray(),
                 SolrHttpTransport.JSON,
-                credentialFor(connection),
+                SolrConnectionSettings.getInstance(project).credentialFor(connection),
             )
             .map { }
     }
@@ -102,12 +102,6 @@ class SolrDocumentIndexer(private val project: Project) {
     // the obvious halves and diverged on the ones that matter -- an empty username, and an empty
     // stored password, which `PasswordSafe` returns for some cleared entries and which reaches a
     // server as the same wrong credential a null would.
-    private fun credentialFor(connection: SolrConnection): SolrCredential =
-        SolrCredential.of(
-            username = connection.username,
-            password = SolrConnectionSettings.getInstance(project).getPassword(connection.id),
-        )
-
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 
     /** Service lookup. */
