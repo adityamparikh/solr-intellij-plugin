@@ -10,6 +10,7 @@ import org.apache.solr.ide.code.SolrRecognizers
 import org.apache.solr.ide.code.solrj.SolrJFieldPositions
 import org.apache.solr.ide.model.query.SolrQueryExpressions
 import org.apache.solr.ide.model.query.SolrQuerySpanKind
+import org.jetbrains.uast.UastFacade
 
 /**
  * Colours the parts of a Solr query written inside a Java or Kotlin string.
@@ -43,6 +44,10 @@ class SolrQueryHighlightAnnotator : Annotator {
      */
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         if (element.firstChild != null) return
+        // A file no JVM language reads can hold no call, and turning it away here is what keeps the
+        // module gate below — an order-entry walk under a read action — off every editor pass in
+        // every Markdown, YAML and JSON file the IDE has open.
+        if (UastFacade.findPlugin(element.language) == null) return
         val query = SolrJFieldPositions.queryTextAt(element) ?: return
         val file = element.containingFile ?: return
         if (!SolrRecognizers.recognizeSolrIn(file)) return
