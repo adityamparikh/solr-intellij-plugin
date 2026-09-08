@@ -12,7 +12,9 @@ import com.intellij.util.ProcessingContext
 import org.apache.solr.ide.code.SolrRecognizers
 import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
 import org.apache.solr.ide.configset.navigation.SolrDeclarationReference
+import org.apache.solr.ide.code.solrj.SolrJFieldPositions
 import org.apache.solr.ide.configset.navigation.SolrSchemaPsi
+import org.jetbrains.uast.UastFacade
 
 /**
  * Makes a Solr field name written in Java or Kotlin navigable to the schema that declares it.
@@ -51,6 +53,18 @@ class SolrCodeFieldReferenceContributor : PsiReferenceContributor() {
 private class SolrCodeFieldReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+        // **Three questions, cheapest first, and the order is the whole of what makes this
+        // affordable.** The provider is offered every element of every file in the project, and the
+        // reading below is a whole-file one: it builds a UAST view and walks it. Asked of every
+        // element it would rebuild that view per element, so what precedes it has to be cheap and
+        // has to refuse almost always.
+        //
+        // A file no JVM language reads holds no call. An element in no field position needs no
+        // reading to rule out — that walk goes up from the caret, not across the file. Only then is
+        // the project asked what configsets it has, and only then is the file read.
+        if (UastFacade.findPlugin(element.language) == null) return PsiReference.EMPTY_ARRAY
+        if (!SolrJFieldPositions.namesAFieldAt(element)) return PsiReference.EMPTY_ARRAY
+
         val file = element.containingFile ?: return PsiReference.EMPTY_ARRAY
         if (SolrProjectConfigsets.getInstance(element.project).all().isEmpty()) return PsiReference.EMPTY_ARRAY
 
