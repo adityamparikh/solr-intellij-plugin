@@ -112,6 +112,12 @@
         <codeInsight.lineMarkerProvider
                 implementationClass="org.apache.solr.ide.code.run.SolrRunQueryLineMarkerProvider"/>
 
+        <!-- Colour for the parts of a query written inside a Java or Kotlin string. Registered
+             without a language: which arguments hold a query is the recognizer's question. -->
+        <annotator
+                language=""
+                implementationClass="org.apache.solr.ide.code.highlighting.SolrQueryHighlightAnnotator"/>
+
         <completion.contributor
                 language="JSON"
                 implementationClass="org.apache.solr.ide.server.indexing.SolrDocumentFieldCompletionContributor"/>
