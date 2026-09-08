@@ -2,13 +2,13 @@ package org.apache.solr.ide.code.run
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
-import java.awt.event.MouseEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,13 +46,13 @@ internal object SolrRunQuery {
     fun from(element: PsiElement, query: String) {
         val project = element.project
         val connection = SolrConnectionSettings.getInstance(project).selectedConnection
-            ?: return tell(project, element, SolrBundle.message("code.runQuery.noConnection"))
+            ?: return tell(element, SolrBundle.message("code.runQuery.noConnection"))
 
         project.service<SolrCollectionsScope>().scope.launch {
             val collections = collectionsOn(project, connection)
             withContext(Dispatchers.EDT) {
                 if (collections.isEmpty()) {
-                    tell(project, element, SolrBundle.message("code.runQuery.noCollections", connection.displayName))
+                    tell(element, SolrBundle.message("code.runQuery.noCollections", connection.displayName))
                 } else {
                     chooseThenRun(project, element, connection, collections, query)
                 }
@@ -82,7 +82,8 @@ internal object SolrRunQuery {
                 return FINAL_CHOICE
             }
         }
-        JBPopupFactory.getInstance().createListPopup(step).show(anchor(element))
+        val anchor = anchor(element) ?: return
+        JBPopupFactory.getInstance().createListPopup(step).show(anchor)
     }
 
     private fun run(
@@ -102,30 +103,28 @@ internal object SolrRunQuery {
                 is SolrResponse.TransportFailure -> answered.description
                 is SolrResponse.Unrecognized -> answered.description
             }
-            withContext(Dispatchers.EDT) { tell(project, element, text) }
+            withContext(Dispatchers.EDT) { tell(element, text) }
         }
     }
 
-    // Shown where the icon is rather than in a tool window: the demo's promise for this gesture is
-    // that a reader never leaves the file, and a result that opens a panel somewhere else is a
-    // different gesture wearing the same icon.
-    private fun tell(project: Project, element: PsiElement, text: String) {
-        JBPopupFactory.getInstance()
-            .createMessage(text)
-            .show(anchor(element))
+    // Shown where the icon is rather than in a tool window: the promise of this gesture is that a
+    // reader never leaves the file, and a result that opens a panel somewhere else is a different
+    // gesture wearing the same icon.
+    private fun tell(element: PsiElement, text: String) {
+        val anchor = anchor(element) ?: return
+        JBPopupFactory.getInstance().createMessage(text).show(anchor)
     }
 
-    private fun anchor(element: PsiElement): RelativePoint =
-        RelativePoint.getNorthEastOf(
-            requireNotNull(
-                com.intellij.openapi.fileEditor.FileEditorManager
-                    .getInstance(element.project)
-                    .selectedTextEditor
-                    ?.component,
-            ),
-        )
-
-    /** Unused; present so the mouse event a marker hands over has somewhere to go. */
-    @Suppress("UNUSED_PARAMETER")
-    private fun ignored(event: MouseEvent) = Unit
+    /**
+     * Where to put a popup, or null where there is nowhere to put one.
+     *
+     * Nullable rather than asserted. A gutter click implies an open editor, so demanding one would
+     * be right almost always — and the exception is a request that outlives the file it started in,
+     * which is ordinary: a server takes a second to answer and the user closes the tab. Throwing
+     * there turns a result nobody is waiting for into an error report.
+     */
+    private fun anchor(element: PsiElement): RelativePoint? =
+        FileEditorManager.getInstance(element.project).selectedTextEditor
+            ?.component
+            ?.let { RelativePoint.getNorthEastOf(it) }
 }

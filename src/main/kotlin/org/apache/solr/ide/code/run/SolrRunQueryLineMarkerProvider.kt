@@ -8,6 +8,7 @@ import com.intellij.psi.PsiElement
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.code.SolrRecognizers
 import org.apache.solr.ide.code.solrj.SolrJFieldPositions
+import org.jetbrains.uast.UastFacade
 
 /**
  * A gutter icon beside a Solr query written in Java or Kotlin, which runs it.
@@ -35,6 +36,11 @@ class SolrRunQueryLineMarkerProvider : LineMarkerProvider {
      */
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         if (element.firstChild != null) return null
+        // **Cheapest question first, and it is what makes registering without a language
+        // affordable.** This runs for every leaf of every file the editor shows — Markdown, YAML,
+        // JSON — and the module gate below walks the module's libraries under a read action. A file
+        // no JVM language reads can hold no call, so it is turned away before that.
+        if (UastFacade.findPlugin(element.language) == null) return null
         val file = element.containingFile ?: return null
         if (!SolrRecognizers.recognizeSolrIn(file)) return null
 
