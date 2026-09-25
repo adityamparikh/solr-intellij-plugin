@@ -46,8 +46,10 @@ silently turns `SRV-12` into a wall of unresolved variables.
 beside the check whose gesture produces it, names the file to save and where, and links to
 [the screenshot catalog](screenshots.md) for the framing and the reason. A screenshot taken during
 a pass is evidence the check passed; one taken outside a pass is a picture of an unverified claim.
-Every image the catalog lists now exists, captured outside a pass at `26284b7`; each entry says what
-its file must show, so a pass that disagrees with one of them is re-shooting it, not adding it.
+Every image the catalog lists now exists, captured outside a pass — the first twenty-five at
+`26284b7`, and the four code-track images at `fbd2968`, against a real Solr on `localhost:8985`
+holding the `products` core. Each entry says what its file must show, so a pass that disagrees with
+one of them is re-shooting it, not adding it.
 
 **Save every image to `docs/images/`, named exactly as the check reads.** The README and the FAQ
 already reference those paths, so a correctly named file lands in the prose with no further edit.
@@ -843,6 +845,9 @@ query and two planted defects, so every check below is one file.*
 - [ ] **CODE-1** — `findBooks` warns on `categry` in `addFilterQuery("categry:books")`, and
       **underlines the name rather than the whole string**. The quotes and `books` are fine; showing
       that is the difference between naming the mistake and pointing at the line.
+- [ ] 📸 **Capture `docs/images/26-code-field-warning.png`** — lines 43–47, holding both this check
+      and CODE-3 below, with `id` and `name` unmarked in the same literal; see
+      [entry 26](screenshots.md).
 - [ ] **CODE-2** — The same warning offers `category` as a fix, closest spelling first. Applying it
       leaves the rest of the string untouched.
 - [ ] **CODE-3** — `price` in `setFields("id,name,price")` warns too. **This is the second defect and
@@ -853,11 +858,15 @@ query and two planted defects, so every check below is one file.*
 - [ ] **CODE-5** — In that same query, `category` and `name` are coloured as fields and `AND` as an
       operator. Change `AND` to lowercase `and`: **the colour goes**, because Solr reads it as a term
       rather than an operator.
+- [ ] 📸 **Capture `docs/images/27-code-query-colour.png`** — lines 37–39 with `AND` still
+      uppercase, default light theme, caret out of frame; see [entry 27](screenshots.md).
 - [ ] **CODE-6** — Put the caret inside `addFilterQuery("` and invoke completion: the demo
       configset's fields are offered, each showing its type and configset, with `*_t` in italics.
 - [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`. It lands on
       `<field name="category">` in `solr/conf/managed-schema.xml`. **This is the boundary nothing
       else in the IDE crosses** — the Java file belongs to no configset.
+- [ ] 📸 **Capture `docs/images/28-code-navigate-to-schema.png`** — both files side by side, via
+      *Window → Editor Tabs → Split and Move Right*; see [entry 28](screenshots.md).
 - [ ] **CODE-8** — <kbd>Ctrl-click</kbd> `categry` in `findBooks`: nothing resolves. The check and
       the navigation are two halves of one answer, and disagreeing here would be the plugin
       contradicting itself.
@@ -865,7 +874,10 @@ query and two planted defects, so every check below is one file.*
       else in the file** — not the `addFilterQuery`, not the `setFields`.
 - [ ] **CODE-10** — Click it with a connection selected. A list of that server's collections appears;
       choosing one runs the query and shows the answer where you are reading. The rendering is the
-      same one the query console prints above a response.
+      same one the query console prints above a response. **The chooser opens at the editor's
+      top-right corner**, not beside the icon.
+- [ ] 📸 **Capture `docs/images/29-code-run-from-gutter.png`** — the chooser open, not the result,
+      framed to hold the gutter icon as well; see [entry 29](screenshots.md).
 - [ ] **CODE-11** — Click it with no connection configured: it says so, and sends nothing.
 - [ ] **CODE-12** — Open a Kotlin file using SolrJ. Everything above behaves identically — one
       recognizer serves both languages, and a difference here is the thing UAST was chosen to

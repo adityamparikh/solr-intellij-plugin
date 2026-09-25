@@ -654,6 +654,104 @@ which is the one thing raw JSON says plainly and a careless reading loses.
 
 **Verifies** [SRV-13 and SRV-14](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
 
+### 26. A field name in code that no configset declares — `26-code-field-warning.png`
+
+**✅ Captured.**
+
+**Shows** both planted defects in `findBooks` at once: `categry` marked inside the filter query, and
+`price` marked inside the comma-separated field list, while `id` and `name` in that same literal are
+left alone.
+
+**The boundaries are the image, not the presence of a mark.** The highlight covers the name and stops
+at the colon — not the string, not the argument, not the line. Marking `"categry:books"` would tell a
+reader the string is wrong; marking `categry` names the field, which is the only thing the plugin
+actually knows. `price` earns the same treatment for the opposite reason: it is spelled correctly and
+has never existed.
+
+**Capture** open `ProductSearch.java` and frame lines 43–47. There is no interaction — the check
+renders itself once the module has SolrJ on its classpath and the project holds a configset. Crop
+tight enough that a reader can see where each highlight starts and ends, and keep `id` and `name`
+unmarked in shot, because the restraint is half the claim.
+
+**Redo when** the inspection's severity changes, the demo schema gains `price` or loses `category`,
+the platform restyles warning highlights, or `ProductSearch.java`'s lines move.
+
+**Verifies** [CODE-1 and CODE-3](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
+
+### 27. The shape of a query, in colour — `27-code-query-colour.png`
+
+**✅ Captured.**
+
+**Shows** `q.setQuery("category:books AND name:solr")` with `category`, `name` and `AND` picked out
+from `books` and `solr`, which keep the editor's ordinary string colour.
+
+**What it is careful not to claim.** This is colour, not a parser — no grammar, no injected language,
+no folding. Read it as *the fields and the operator are told apart*, and nothing further. The scan
+behind it is the same one the check above uses, which is why the two can never disagree about which
+characters are a field.
+
+**Shoot it in the default light theme.** The keys are the platform's own, so what a reader sees is
+their theme's answer to those keys; a custom theme photographs a claim about that theme rather than
+about this plugin.
+
+**Capture** frame lines 37–39 with no interaction, and keep the caret out of frame — a caret line
+adds a lightbulb in the gutter and a band across the row, and both read as part of the feature.
+
+**Redo when** the scan changes which characters it reports, a new operator is recognised, or the
+platform restyles its default palette.
+
+**Verifies** [CODE-5](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
+
+### 28. From Java to the schema that declares the field — `28-code-navigate-to-schema.png`
+
+**✅ Captured.**
+
+**Shows** `ProductSearch.java` left and `managed-schema.xml` right, the caret landed on
+`<field name="category">` after a <kbd>Ctrl-click</kbd> on `category` inside the Java string.
+
+**The split is the point.** Either pane alone is unremarkable; the two together are the one boundary
+nothing else in the IDE crosses. The Java file belongs to no configset, the configset knows nothing
+about Java, and the only thing joining them is a name spelled the same in both — which is exactly the
+join that fails silently in production once the spellings drift apart.
+
+**The reference is silent wherever the check is silent**, because both read the same recognizer.
+Ctrl-clicking `categry` in the method below resolves to nothing, and that agreement is deliberate:
+two different answers about one name would be the plugin contradicting itself.
+
+**Capture** Ctrl-click `category` in `findSolrBooks`, then *Window → Editor Tabs → Split and Move
+Right* to give the schema its own pane, and select `ProductSearch.java` in the left one. Include both
+tab rows, so a reader can name each file without reading the caption.
+
+**Redo when** the demo schema's field block moves, the reference stops resolving, or the demo's
+directory layout changes.
+
+**Verifies** [CODE-7](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
+
+### 29. Running a query from the line that writes it — `29-code-run-from-gutter.png`
+
+**✅ Captured.**
+
+**Shows** the gutter icon beside the `setQuery` in `findSolrBooks` — and beside nothing else in the
+file — with the collection chooser open, listing what the selected connection actually holds.
+
+**The chooser is the subject, not the result.** A query written in code **names no collection**:
+`setQuery("category:books")` says what to match and nothing about where, because the collection was
+chosen when the client was built, usually in another file and often from configuration. So the plugin
+has to ask, and it asks with the list the server answered rather than a box to type into. The result
+popup would show a table and hide the interesting problem.
+
+**The chooser opens at the editor's top-right corner, not beside the icon.** `SolrRunQuery` anchors
+its popups north-east of the editor component, so the gesture and its answer sit at opposite corners
+and the crop has to hold both. Frame accordingly — a tight crop on the gutter loses half the image.
+
+**Capture** start a Solr holding at least one collection, select that connection in the Solr tool
+window, then click the icon; frame from the gutter icon up to the chooser.
+
+**Redo when** the popup's anchor or its title changes, the demo's collection list changes, or the
+icon moves to a different call.
+
+**Verifies** [CODE-9 and CODE-10](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
+
 ## Not yet capturable
 
 These have no gesture that does anything yet, or shipped but has not been captured. An entry moves up
@@ -677,22 +775,13 @@ own "Not yet in the suite" list:
   — needs `solr-core` added to the demo's dependencies first, a fixture change out of scope for a
   screenshot pass
 - Everything server-side: connections, the tool window, the query console, the drift view
-- **Java and Kotlin code — shipped, specified below, never captured.** Four images, all from
-  `demo/src/main/java/com/example/demo/ProductSearch.java`, produced during the
-  [code-track checks](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code):
-  - `code-field-warning.png` — the warning on `categry` in `findBooks`, framed tight enough to show
-    that **the underline covers the name and not the whole string**. That distinction is the image's
-    entire argument; a wider crop showing the method loses it. (`CODE-1`)
-  - `code-query-colour.png` — the `setQuery` line in `findSolrBooks`, with `category` and `name`
-    coloured as fields and `AND` as an operator. Shoot it in the **default light theme**: the colours
-    are the platform's own keys, so a custom theme photographs a claim about that theme rather than
-    about the plugin. (`CODE-5`)
-  - `code-navigate-to-schema.png` — a two-pane split, `ProductSearch.java` left and
-    `managed-schema.xml` right with the caret landed on `<field name="category">`. **The split is the
-    point**: one image showing both ends of a boundary nothing else in the IDE connects. (`CODE-7`)
-  - `code-run-from-gutter.png` — the gutter icon beside the `setQuery`, with the collection chooser
-    open beside it. Not the result popup: the chooser is what shows the thing worth explaining, which
-    is that **a query in code names no collection**. (`CODE-10`)
+- **The code track's remaining gestures.** Entries 26 to 29 above cover the check, the colour, the
+  navigation and the gutter run; what none of them shows is the spelling quick-fix, field completion
+  inside a query string, the *no connection* message, the same file written in Kotlin, and the
+  silence in a module with no Solr client
+  (`CODE-2`, `CODE-6`, `CODE-11`, `CODE-12`, `CODE-13` in
+  [the code-track checks](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code)).
+  The last of those is the awkward one to photograph, since it is an image of nothing happening
 
 The drift view is worth planning a capture for in advance — a side-by-side of repository and server
 disagreeing is the single image that explains why the plugin edits a file Solr's banner says not to.
@@ -706,11 +795,13 @@ Some triggers hit several at once. When one of these lands, re-shoot the images 
 | Catalog gains or loses a column (defaults, required markers, new facts) | 3, 6 |
 | Supported Solr lines change | 2, 3 — the Reference Guide link names the version |
 | Field property vocabulary changes | 2, 5, 11 |
-| Demo configset's fields or types change | 1, 7, 8, 11, 12, 13, 14 |
+| Demo configset's fields or types change | 1, 7, 8, 11, 12, 13, 14, 26, 28 |
 | Demo's `solrconfig.xml` handler parameters change | 8, 13, 14 |
 | Demo schema's declared `version` changes | 16 |
 | Generated `solrconfig.xml` element vocabulary changes | 10 |
 | Generated `solrconfig.xml` parameter catalog changes | 15 |
+| `demo/src/main/java/com/example/demo/ProductSearch.java` changes at all | 26, 27, 28, 29 — every one is a crop of it, addressed by line number |
+| The query scan changes which characters are fields or operators | 26, 27 — the check and the colour read the same scan, so they move together |
 | IntelliJ platform restyles popups, completion or inlays | all of them |
 
 The last row is the one that goes unnoticed. A platform version bump can restyle every popup in this
