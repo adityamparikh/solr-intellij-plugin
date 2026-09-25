@@ -7,10 +7,11 @@
 > **What is already in the deck.** Nothing from this act. The closing "three surfaces" slide will
 > need its wording changed, because there are now three rather than two.
 >
-> **Screenshots.** Four are specified in [the screenshot catalog](../screenshots.md) and none exists
-> yet. They are produced during the
-> [code-track checks](../manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code);
-> an image joins a slide when someone shoots it.
+> **Screenshots.** All four now exist — `26-code-field-warning.png`, `27-code-query-colour.png`,
+> `28-code-navigate-to-schema.png` and `29-code-run-from-gutter.png` in `docs/images/`, entries 26 to
+> 29 of [the screenshot catalog](../screenshots.md). They were shot against a real Solr rather than a
+> fixture, outside a verification pass; the catalog says what each must show, so re-shoot from there
+> rather than re-framing by eye.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it,
 and the Server act keeps that shape while carrying more in words because its claims are mostly about
@@ -38,8 +39,10 @@ deliberately and says so in its own Javadoc.
 
 **Claim.** The name is underlined, and the message names the field rather than the line.
 
-**What to show.** `code-field-warning.png`. Frame it tight: the underline covers `categry` and not
-the whole string, and that distinction is the slide.
+**What to show.** `26-code-field-warning.png`. The mark covers `categry` and stops at the colon, not
+the whole string — that distinction is the slide. The shipped crop carries `price` in the same frame,
+which is a second defect of a different kind: mention it only if the room is quick, because two
+claims on one slide is how this act loses its shape.
 
 **What it costs.** The check runs against every configset in the project, and reports nothing where
 there is none — a service talking to a Solr whose schema lives in another repository is an ordinary
@@ -72,8 +75,9 @@ mostly true, and the exception cost a day.
 **Claim.** <kbd>Ctrl-click</kbd> a field name in Java and land on the `<field>` in XML that declares
 it.
 
-**What to show.** `code-navigate-to-schema.png` — a two-pane split, both ends of the boundary in one
-image. This is the act's strongest single slide; give it the room.
+**What to show.** `28-code-navigate-to-schema.png` — a two-pane split, both ends of the boundary in
+one image. This is the act's strongest single slide; give it the room, and resist cropping to the two
+lines that matter — the point is that they are in *different files*, which only the full split says.
 
 **What makes it true.** The reference is silent under exactly the conditions the check is silent
 under, because both read the same recognizer. Two answers about one name would be worse than one.
@@ -85,7 +89,7 @@ under, because both read the same recognizer. Two answers about one name would b
 **Claim.** The fields and the operators in a query are told apart, so the structure is visible
 without reading it character by character.
 
-**What to show.** `code-query-colour.png`, default light theme.
+**What to show.** `27-code-query-colour.png`, default light theme.
 
 **What to admit, and it is the point of the slide.** This is **colour, not a parser**. There is no
 grammar, no injected language and no folding. The scope was chosen: a parser is larger than this, and
@@ -103,8 +107,13 @@ searches for three.
 **Claim.** A gutter icon beside the query runs it against the selected connection, and the answer
 appears in the file.
 
-**What to show.** `code-run-from-gutter.png` — the collection chooser open, not the result. The
+**What to show.** `29-code-run-from-gutter.png` — the collection chooser open, not the result. The
 chooser is what shows the interesting problem.
+
+**A wrinkle to know before the slide goes up.** The chooser opens at the editor's top-right corner
+rather than beside the icon, so the image has the gesture in one corner and its answer in the other.
+Nobody in the room will ask, but it is why the crop is wide, and it is a fair thing to fix before
+this deck is given.
 
 **The interesting problem.** A query in code **names no collection**. `setQuery("category:books")`
 says what to match and nothing about where; the collection is chosen when the client is built, often

@@ -703,6 +703,12 @@ A Solr field name written in code is a string. `q.addFilterQuery("categry:books"
 and returns nothing — Solr answers a query against a field that does not exist with zero results
 rather than an error, so the typo arrives as an empty page in production.
 
+![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
+each marked, while id and name in the same string are left alone](images/26-code-field-warning.png)
+
+The mark covers the name and stops at the colon — not the string, not the line. `categry` is a typo
+for a field that exists; `price` is spelled correctly and has never existed. Both compile.
+
 The plugin reads four places a name is written and checks each against the configsets in your
 project:
 
@@ -743,6 +749,9 @@ it — from a `.java` file that belongs to no configset, across a boundary nothi
 connects. A field name in code and its declaration in XML are related by convention and by nothing
 the tooling can see.
 
+![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
+declaring category](images/28-code-navigate-to-schema.png)
+
 It works from all four places a name is written: a query-builder call, a field list, a document being
 built, and a `@Field` binding. Where the project holds several configsets it resolves against the
 first that declares the name — two collections declaring `id` is ordinary, and either declaration is
@@ -756,10 +765,8 @@ Solr client on the module, a name the source does not spell out, or no configset
 A query in a string is one colour end to end, so you do the parsing. The field names and the boolean
 operators are now told apart:
 
-```java
-q.setQuery("category:books AND name:solr");
-//          ^^^^^^^^       ^^^     ^^^^      field, operator, field
-```
+![A setQuery call in which category, AND and name are picked out from books and solr, which keep the
+ordinary string colour](images/27-code-query-colour.png)
 
 **This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
 scan that reads field names for the check decides what to colour, so a name the check reports is a
@@ -775,6 +782,9 @@ a local-parameter block, whose names are parameters rather than fields.
 A gutter icon sits beside a query. Click it and the query runs against the connection you have
 selected, and the answer appears where you are reading — the same rendering the
 [query console](#running-a-query) prints above a response.
+
+![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
+against and listing products](images/29-code-run-from-gutter.png)
 
 **A query in code names no collection**, so you are asked which one, from the list the server
 actually holds. `setQuery("category:books")` says what to match and nothing about where; the
