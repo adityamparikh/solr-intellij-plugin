@@ -776,9 +776,12 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       wrote may appear.** The presentation is called for every response the HTTP Client shows, so
       printing over another service's output is the failure worth checking by hand.
 - [ ] **SRV-16** — In `queries.http`, insert *Query with a JSON body* and put the caret inside the
-      `"fields"` array. **With no connection selected**, completion offers the fields declared in
-      this project's configsets, each showing its type and which configset it came from. Dynamic
-      patterns like `*_i` appear in italics.
+      `"fields"` array. **With no connections configured at all**, completion offers the fields
+      declared in this project's configsets, each showing its type and which configset it came from.
+      Dynamic patterns like `*_i` appear in italics. Press it before SRV-1, or remove every
+      connection first: the selector falls back to the first connection whenever one exists, so "no
+      connection selected" is not a state a configured project can reach — an earlier revision of
+      this check asked for it anyway.
 - [ ] **SRV-16b** — Select a connection, make sure the `local` environment names a collection that
       exists, and press <kbd>Ctrl-Space</kbd> in the same position. Completion now offers **that
       collection's** fields, each reading `<collection> · <connection>`, and nothing a configset
