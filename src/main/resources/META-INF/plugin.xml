@@ -5,7 +5,8 @@
     <vendor>Apache Software Foundation</vendor>
     <!-- Shown on the JetBrains Marketplace and in Settings → Plugins, so it is written for someone
          deciding whether to install rather than for someone who already has. Kept honest about the
-         boundary: this release reads files and never opens a socket, and saying so is the feature. -->
+         boundary: the editor reads files and never opens a socket, the server features open one
+         only when asked, and saying so is the feature. -->
     <description><![CDATA[
         <h2>Solr configsets, understood by the IDE</h2>
 
@@ -30,12 +31,18 @@
               meaning, a request parameter's purpose.</li>
           <li><b>Match-capability hints</b> beside each field, stating what it can actually match —
               derived from the real analyzer chain, not guessed from the type's name.</li>
+          <li><b>A live server, when you ask for one</b> — collections, shards and the fields an index
+              actually holds; queries through the IDE's own HTTP Client with a readable summary; and
+              a drift view showing where a configset and a deployed collection disagree, with both
+              sides side by side.</li>
+          <li><b>Field names in Java and Kotlin</b> using SolrJ, checked against your configsets:
+              a typo in a filter query is underlined, Ctrl-click lands on the schema's
+              <code>&lt;field&gt;</code>, and a query runs from the gutter beside it.</li>
         </ul>
 
-        <p><b>Nothing here needs a running Solr.</b> No connection to configure, nothing sent
-        anywhere: every answer comes from the files in your project and from Solr's own jars, read at
-        build time. Talking to a live server — browsing collections, running queries, comparing a
-        configset against what a server is really running — is the next release.</p>
+        <p><b>The editor never needs a running Solr.</b> Every answer while you type comes from the
+        files in your project and from Solr's own jars, read at build time. The server features
+        contact one only when you ask them to, and never write without naming the server first.</p>
 
         <p>Facts come from Solr or are not claimed. Where the plugin cannot be certain, it says
         nothing rather than guessing, and every inspection is checked against the configsets Apache

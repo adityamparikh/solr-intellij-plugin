@@ -4,9 +4,35 @@
 
 ## [Unreleased]
 
-Nothing yet. The Server track — connecting to a live Solr, browsing collections, comparing a
-configset against what a server is actually running — is the next release rather than this one, and
-is specified in [`specs/0002-solr-server-integration.md`](specs/0002-solr-server-integration.md).
+**The plugin now reaches a live Solr, and the Java and Kotlin that call it.** The editor half
+below is unchanged in one respect that matters: it still never contacts a server. Everything here
+that does, does so only when asked.
+
+### Added
+
+- **Connections.** Settings → Tools → Solr Connections, or the `+` in the Solr tool window. The URL
+  and username go to the workspace file; the password to the IDE's password safe, never a project
+  file.
+- **The Solr tool window.** Collections, shards and replicas for SolrCloud, cores for a standalone
+  server — the mode read first rather than guessed — and, per collection, the fields the index
+  actually holds, including those a dynamic pattern created.
+- **Queries through the IDE's HTTP Client.** Starting requests under **Add Request → Solr**, written
+  against `{{solrUrl}}` so a committed `.http` file works on a colleague's machine; a readable
+  summary above each response, with the scoring explanation when asked; and field-name completion in
+  a JSON request body.
+- **The drift view.** A configset compared with a collection: fields not deployed, only on the
+  server, or defined differently, with both sides shown. Upload and reload, and additive Schema API
+  changes — each confirming its target first, and each followed by a fresh read of the server rather
+  than trust in the write's success code. A changed definition is never applied for you, and the
+  request is shown with the reason.
+- **Indexing a test document** into a chosen collection, starting from a document built from its
+  schema, with the two mistakes Solr answers `status: 0` to — a field the schema cannot place, a
+  missing unique key — refused before sending.
+- **Field names in Java and Kotlin using SolrJ.** A name no configset declares is reported, in query
+  builder calls, raw parameter strings, document fields and `@Field` annotations; names complete from
+  the configsets; <kbd>Ctrl-click</kbd> reaches the declaring `<field>`; fields and operators inside
+  a query string are coloured; and a gutter icon runs the query against a chosen collection. Silent
+  in any module without a Solr client, and wherever the name cannot be resolved.
 
 ## [0.1.0] - 2026-08-20
 

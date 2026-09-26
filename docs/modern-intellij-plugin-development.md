@@ -913,9 +913,13 @@ to you, that's the signal to read the platform SDK page for it before touching t
 Two things worth noticing about the list as a whole. First, every inspection is `level="WARNING"`,
 never `ERROR` — the comment beside the block in `plugin.xml` explains why: this plugin's model of a
 half-typed file, mid-edit, isn't authoritative enough to claim a hard error. Second, nothing here is
-an *action* — no menu item, no toolbar button, no `AnAction`. Every capability in this plugin so far
-is something the platform calls on its own, group one from [Part 2](#so-which-lists-are-there); the
-Server track, when it lands, is where actions such as "upload this configset" will show up.
+an *action* — no menu item, no toolbar button, no `AnAction`. Every capability described so far
+is something the platform calls on its own, group one from [Part 2](#so-which-lists-are-there). The
+Server track did bring group two — upload, reload, apply, index a test document — but as toolbar
+buttons created inside its tool window's panels rather than as `<action>` registrations, so none of
+them can be reached from Find Action or bound to a key. That is a choice worth revisiting, and a
+good example of the difference Part 2 draws: an action registered in `plugin.xml` belongs to the IDE;
+one built inside a component belongs only to that component.
 
 ### Why parsing here does not lean on PSI the way Part 3 says
 

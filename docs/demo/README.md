@@ -29,9 +29,12 @@ somewhere else.
 
 ## Step 1. Decide which demos you can actually give
 
-Every demo below needs code that does not exist yet. The implementation plan is the
-authority on what is built and in what order — check its step status before you promise
-anyone a date.
+Most of the demos below now run on shipped code; this runbook was written before any of
+it existed, and a few steps still need code that does not. **Step 35's opening gesture is
+the one to watch**: it has a URL "already offered, and nobody typed it", which is framework
+configuration discovery — unbuilt. Type the connection instead and say so. The
+implementation plan is the authority on what is built and in what order — check its step
+status before you promise anyone a date.
 
 What this section decides is different: given what happens to be ready, which demos add up
 to a talk. Cut from the bottom.
