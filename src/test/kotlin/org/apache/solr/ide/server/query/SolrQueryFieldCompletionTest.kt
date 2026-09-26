@@ -1,6 +1,11 @@
 package org.apache.solr.ide.server.query
 
+import com.intellij.codeInsight.completion.CompletionType
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.util.concurrent.CopyOnWriteArrayList
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
+import org.apache.solr.ide.server.connection.SolrConnection
 
 /**
  * Field names offered inside a Solr query written in an `.http` file.
@@ -167,5 +172,163 @@ class SolrQueryFieldCompletionTest : SolrConfigsetTestCase() {
         val offered = offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
 
         assertContainsElements(offered, "author_s", "director_s")
+    }
+
+    // --- from the server the request is about to be sent to ---------------------------------------
+
+    private var server: HttpServer? = null
+    private val requested = CopyOnWriteArrayList<String>()
+
+    /** A collection whose names no configset above uses, so which source answered is never ambiguous. */
+    private val served = """
+        {"responseHeader":{"status":0},
+         "schema":{"name":"books","version":1.6,"uniqueKey":"id",
+           "fieldTypes":[{"name":"string","class":"solr.StrField"}],
+           "fields":[{"name":"id","type":"string"},{"name":"headline","type":"string"}],
+           "dynamicFields":[{"name":"*_live","type":"string"}]}}
+    """.trimIndent()
+
+    private fun givenASelectedServer(status: Int = 200) {
+        val started = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        started.createContext("/") { exchange ->
+            requested += exchange.requestURI.path
+            val bytes = (if (status == 200) served else """{"error":{"msg":"boom","code":$status}}""").toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(status, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        started.start()
+        server = started
+        connectionSettings.addConnection(
+            SolrConnection(id = "c1", displayName = "local", baseUrl = "http://127.0.0.1:${started.address.port}/solr"),
+        )
+    }
+
+    override fun tearDown() {
+        try {
+            server?.stop(0)
+        } finally {
+            super.tearDown()
+        }
+    }
+
+    /** What the popup that opens while typing offers, as opposed to one the user asked for. */
+    private fun offeredWhileTypingIn(body: String): List<String> {
+        myFixture.configureByText("queries.http", body)
+        myFixture.complete(CompletionType.BASIC, 0)
+        return myFixture.lookupElementStrings.orEmpty()
+    }
+
+    /** The criterion this section exists for: no configset in the project, and completion still answers. */
+    fun testWithNoConfigsetTheQueriedCollectionsFieldsAreOffered() {
+        givenASelectedServer()
+
+        val offered = offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        assertContainsElements(offered, "id", "headline", "*_live")
+        assertEquals(listOf("/solr/books/schema"), requested)
+    }
+
+    /**
+     * The collection's fields replace the configsets' rather than joining them.
+     *
+     * The request is about to go to that collection, so a configset field it does not hold is a field
+     * the query cannot use, however confidently the repository declares it.
+     */
+    fun testTheQueriedCollectionOutranksTheConfigsets() {
+        givenAConfigset()
+        givenASelectedServer()
+
+        val offered = offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        assertContainsElements(offered, "headline")
+        assertDoesntContain(offered, "author_s")
+    }
+
+    fun testTheServerIsAskedOnceAndThenRemembered() {
+        givenASelectedServer()
+        offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        val offered = offeredIn(queryBody("""{"query": "*:*", "sort": "<caret>"}"""))
+
+        assertContainsElements(offered, "headline")
+        assertEquals("one read serves every later popup", 1, requested.size)
+    }
+
+    /** The whole of the rule the fetch trigger was chosen to keep: a keystroke never opens a socket. */
+    fun testThePopupWhileTypingNeverAsksTheServer() {
+        givenAConfigset()
+        givenASelectedServer()
+
+        val offered = offeredWhileTypingIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        assertEquals(emptyList<String>(), requested)
+        assertContainsElements(offered, "author_s")
+    }
+
+    /** What an explicit ask read, the popup while typing may offer: it costs nothing to remember. */
+    fun testThePopupWhileTypingOffersWhatWasAlreadyRead() {
+        givenASelectedServer()
+        offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        val offered = offeredWhileTypingIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        assertContainsElements(offered, "headline")
+        assertEquals(1, requested.size)
+    }
+
+    fun testAServerThatCannotBeReadLeavesTheConfigsets() {
+        givenAConfigset()
+        givenASelectedServer(status = 500)
+
+        val offered = offeredIn(queryBody("""{"query": "*:*", "fields": ["<caret>"]}"""))
+
+        assertContainsElements(offered, "author_s")
+        assertDoesntContain(offered, "headline")
+    }
+
+    /** The shipped templates write the collection as a variable, and the environment file names it. */
+    fun testTheTemplatesCollectionVariableIsReadFromTheEnvironment() {
+        givenASelectedServer()
+        myFixture.addFileToProject(
+            "http-client.env.json",
+            """{"local": {"solrUrl": "http://localhost:8983/solr", "collection": "books"}}""",
+        )
+
+        val offered = offeredIn(
+            """
+            ### Query
+            POST {{solrUrl}}/{{collection}}/query
+            Content-Type: application/json
+
+            {"query": "*:*", "fields": ["<caret>"]}
+            """.trimIndent(),
+        )
+
+        assertContainsElements(offered, "headline")
+        assertEquals(listOf("/solr/books/schema"), requested)
+    }
+
+    /** Two environments naming two collections, and no way to know which is selected: nobody is asked. */
+    fun testACollectionTheEnvironmentsDisagreeOnIsNotGuessed() {
+        givenAConfigset()
+        givenASelectedServer()
+        myFixture.addFileToProject(
+            "http-client.env.json",
+            """{"local": {"collection": "books"}, "staging": {"collection": "films"}}""",
+        )
+
+        val offered = offeredIn(
+            """
+            ### Query
+            POST {{solrUrl}}/{{collection}}/query
+            Content-Type: application/json
+
+            {"query": "*:*", "fields": ["<caret>"]}
+            """.trimIndent(),
+        )
+
+        assertEquals(emptyList<String>(), requested)
+        assertContainsElements(offered, "author_s")
     }
 }

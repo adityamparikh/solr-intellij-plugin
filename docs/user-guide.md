@@ -598,9 +598,24 @@ intact: the nesting is the information, and flattening it would leave a list of 
 saying which produced which.
 
 Inside a JSON request body, **field names complete** in `fields`, `sort` and a facet's `field`, from
-the configsets in this project. They come from the repository rather than the server so that
-completion never waits on a network — the trade is that a field only the deployed server has will not
-be offered.
+**the collection the request is about to query**. The collection is read off the request line —
+`…/books/query` names `books` — and the server is the connection selected in the **Solr** tool window.
+Each entry reads `books · local`, so it is always clear which server answered.
+
+**Only <kbd>Ctrl-Space</kbd> contacts the server.** The first time you ask, the plugin reads that
+collection's schema once and remembers it; every popup after that, including the ones that open while
+you type, answers from what it remembered. A popup that opens by itself never sends a request.
+Refreshing the tool window, or editing a connection, forgets what was read.
+
+Where the collection cannot be known, the project's configsets answer instead, each entry naming the
+configset it came from:
+
+- **No connection is selected**, or the server cannot be read — the reason is shown at the foot of the
+  popup.
+- **The request line writes the collection as a variable** (`{{collection}}`, as the shipped
+  templates do) and your environment files give it different values in different environments. The
+  HTTP Client does not tell plugins which environment its toolbar has selected, so the plugin uses the
+  value only when every environment agrees on it, rather than guess.
 
 ## Indexing a test document
 

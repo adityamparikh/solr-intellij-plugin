@@ -40,6 +40,7 @@ import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.indexing.SolrCommitMode
 import org.apache.solr.ide.server.indexing.SolrDocumentIndexer
 import org.apache.solr.ide.server.indexing.SolrIndexDocumentDialog
+import org.apache.solr.ide.server.query.SolrCollectionFields
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -243,8 +244,12 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
      *
      * The only thing that issues a request, so "on request and on connection change" is a property
      * of who calls this rather than a rule scattered through the panel.
+     *
+     * Also forgets the collection fields completion last read, because a refresh is the user saying
+     * that what the plugin last read from this server is no longer to be trusted.
      */
     internal fun refresh() {
+        SolrCollectionFields.getInstance(project).forget()
         lastReadConnectionId = settings.selectedConnection?.id
         val connection = settings.selectedConnection ?: return render(SolrCollectionsView.NoConnection)
         render(SolrCollectionsView.Loading)

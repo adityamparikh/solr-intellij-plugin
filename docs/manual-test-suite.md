@@ -776,9 +776,20 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       wrote may appear.** The presentation is called for every response the HTTP Client shows, so
       printing over another service's output is the failure worth checking by hand.
 - [ ] **SRV-16** — In `queries.http`, insert *Query with a JSON body* and put the caret inside the
-      `"fields"` array. Completion offers the fields declared in this project's configsets, each
-      showing its type and which configset it came from. Dynamic patterns like `*_i` appear in
-      italics.
+      `"fields"` array. **With no connection selected**, completion offers the fields declared in
+      this project's configsets, each showing its type and which configset it came from. Dynamic
+      patterns like `*_i` appear in italics.
+- [ ] **SRV-16b** — Select a connection, make sure the `local` environment names a collection that
+      exists, and press <kbd>Ctrl-Space</kbd> in the same position. Completion now offers **that
+      collection's** fields, each reading `<collection> · <connection>`, and nothing a configset
+      declares that the collection lacks. Press it again: the list reappears at once, because the
+      schema was read once and remembered. Then add a second environment naming a *different*
+      collection — completion goes back to the configsets, since the plugin cannot know which
+      environment the toolbar has selected and will not guess.
+- [ ] **SRV-16c** — Close the popup, delete the field name and **type** one letter, so the popup
+      opens by itself. With a fresh connection (nothing read yet), it offers configset fields and
+      **sends nothing** — the server's log shows no `/schema` request. A keystroke must never open a
+      socket; only <kbd>Ctrl-Space</kbd> may.
 - [ ] **SRV-17** — The same completion works in `"sort"` and in a facet's `"field"`, and offers
       **nothing** at `"limit"` or inside `"query"`. Query syntax is not handled yet, and offering
       field names inside a phrase or a function call would be worse than offering none.

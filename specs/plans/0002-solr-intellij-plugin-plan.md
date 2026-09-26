@@ -2036,6 +2036,23 @@ Collections, cores and the server's actual fields render, and the selected conne
 - [ ] Queries run and render structurally; completion works with no configset present.
 - [ ] Saved queries round-trip through the project.
 
+**"Completion works with no configset present" was not waiting on a sandbox pass, whatever this step's
+heading implied — it was unbuilt.** Completion in an `.http` body read the project's configsets and
+nothing else, so a project with none got nothing, and no pass could have ticked it. It now reads the
+collection the request line names, on the selected connection, and outranks the configsets rather
+than joining them. **Only an explicit <kbd>Ctrl-Space</kbd> contacts the server**; the read is
+remembered per connection and collection, and a popup that opens while typing answers from memory or
+from the configsets, never from the network. That keeps the rule that nothing on the editor path
+contacts a server unbidden, where fetching on any popup would have broken it on a keystroke.
+
+A collection written as `{{collection}}` is resolved from the environment files only where every
+environment agrees. The HTTP Client does know which environment its toolbar has selected, but records
+it in `HttpClientSelectedEnvironments`, which it does not publish, and
+[FR-18](../0002-solr-server-integration.md#functional) holds this plugin to the extension points it
+does. What is still unbuilt here: the scoring explanation renders as Solr's indented text rather than
+an expandable tree, and the interactive console
+[FR-16](../0002-solr-server-integration.md#functional) keeps as its own surface does not exist.
+
 **Acceptance:** demo steps
 [37 — *run a query*](../../docs/demo/README.md#step-37-run-a-query) and
 [38 — *show why a document scored*](../../docs/demo/README.md#step-38-show-why-a-document-scored). Completion comes from

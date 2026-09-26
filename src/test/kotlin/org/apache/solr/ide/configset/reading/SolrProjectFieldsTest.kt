@@ -55,7 +55,7 @@ class SolrProjectFieldsTest : SolrConfigsetTestCase() {
     fun testEachFieldNamesItsConfigset() {
         givenConfigset("books", "id")
 
-        assertEquals("books", fields().single { it.name == "id" }.configset)
+        assertEquals("books", fields().single { it.name == "id" }.source)
     }
 
     /**
