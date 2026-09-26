@@ -4,8 +4,12 @@
 > content and structure, not a deck — the existing `solr-intellij-plugin.pptx` is a designed
 > artifact with embedded screenshots, and new slides need building by hand in the same template.
 >
-> **What is already in the deck.** Slides 36 and 37 were corrected when the server track shipped:
-> the package layout, and the closing "in one sentence". Everything below is new.
+> **What is already in the deck.** All of it, as Act 4 — slides 40 to 49: a divider carrying S1's
+> framing, one deep dive per slide from S2 to S9 in the deck's own four-part layout, and a recap
+> carrying S10. Three screenshots appear in the deck as crops made for it rather than as the catalog
+> files: S5 and S6 split `25-query-and-results.png` in two, S8 drops the empty band between the table
+> and the payload pane, and S9 stacks the before and after frames. Change a slide here and rebuild
+> the slide there; the two are kept in step by hand.
 >
 > **Screenshots.** All of them now exist — entries 19 to 25 of [the screenshot catalog](../screenshots.md),
 > shot during the 2026-09-26 [manual pass](../manual-test-suite.md#pass-log) against a real SolrCloud.
