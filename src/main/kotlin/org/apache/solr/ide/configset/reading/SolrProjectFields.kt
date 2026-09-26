@@ -12,14 +12,14 @@ import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
  *
  * @property name the field's name
  * @property type the field type it is declared as
- * @property configset the configset that declares it, shown so a user with several can tell which
- *   answer they are being given
+ * @property source where it was learned — a configset's name, or a collection on a server — shown so
+ *   a user with several answers can tell which one they are being given
  * @property dynamic whether this is a pattern like `*_s` rather than a field declared by name
  */
 data class SolrCompletionField(
     val name: String,
     val type: String,
-    val configset: String,
+    val source: String,
     val dynamic: Boolean = false,
 ) {
 
@@ -28,7 +28,7 @@ data class SolrCompletionField(
      *
      * **One renderer, because two surfaces show these and both claim to read alike.** The query
      * console and the code completion offer the same list, and a copy of this chain in each is how
-     * they come to mark a dynamic pattern differently, or show the configset in one and not the
+     * they come to mark a dynamic pattern differently, or show the source in one and not the
      * other — a drift visible only by opening two popups side by side.
      *
      * @return the entry to add to a completion result
@@ -36,7 +36,7 @@ data class SolrCompletionField(
     fun asLookupElement(): LookupElementBuilder =
         LookupElementBuilder.create(name)
             .withTypeText(type)
-            .withTailText("  $configset", true)
+            .withTailText("  $source", true)
             // A pattern is not a field; italics is how the schema completion already marks the same
             // distinction, so every surface reads alike.
             .withItemTextItalic(dynamic)

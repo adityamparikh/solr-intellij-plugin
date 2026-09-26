@@ -58,10 +58,7 @@ class SolrServerReader(private val project: Project) {
      */
     suspend fun read(connection: SolrConnection, collection: String): SolrResponse<SolrServerRead> {
         val credential = SolrConnectionSettings.getInstance(project).credentialFor(connection)
-        val transport = SolrHttpTransport.getInstance(project)
-
-        val schema = transport.get(connection.baseUrl, "/$collection/schema", credential)
-            .map { SolrServerSchemaReader.read(it) }
+        val schema = schemaOf(connection, collection, credential)
 
         // The version is asked for only where a schema arrived. A server that could not answer the
         // question the caller asked will not be asked a second one it did not.
@@ -75,6 +72,28 @@ class SolrServerReader(private val project: Project) {
             else -> schema.map { SolrServerRead(it, null) }
         }
     }
+
+    /**
+     * Reads [collection]'s schema from [connection], and nothing beside it.
+     *
+     * For a caller that wants the fields and has no use for the version [read] asks for alongside
+     * them — completion, which waits on this with a popup open and should wait for one request rather
+     * than two.
+     *
+     * @param connection the server to ask
+     * @param collection the collection whose schema to read
+     * @return the collection's facts, or the failure that prevented reading them
+     */
+    suspend fun schema(connection: SolrConnection, collection: String): SolrResponse<SolrConfigsetFacts> =
+        schemaOf(connection, collection, SolrConnectionSettings.getInstance(project).credentialFor(connection))
+
+    private suspend fun schemaOf(
+        connection: SolrConnection,
+        collection: String,
+        credential: SolrCredential,
+    ): SolrResponse<SolrConfigsetFacts> =
+        SolrHttpTransport.getInstance(project).get(connection.baseUrl, "/$collection/schema", credential)
+            .map { SolrServerSchemaReader.read(it) }
 
     /**
      * What [connection] holds, in whichever vocabulary the server uses.

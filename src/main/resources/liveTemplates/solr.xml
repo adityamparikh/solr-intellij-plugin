@@ -37,7 +37,7 @@
   </template>
   <!-- The JSON Request API rather than URL parameters, because a body is where field completion can
        help - a query written as a URL query string has nowhere for the editor to offer anything. -->
-  <template name="solrjson" value="### Query with a JSON body&#10;# Solr's JSON Request API. Field names complete inside `fields`, `sort` and a&#10;# facet's `field`, from the configsets in this project.&#10;POST {{solrUrl}}/{{collection}}/query&#10;Content-Type: application/json&#10;Accept: application/json&#10;&#10;{&#10;  &quot;query&quot;: &quot;*:*&quot;,&#10;  &quot;fields&quot;: [&quot;id&quot;],&#10;  &quot;limit&quot;: 10&#10;}"
+  <template name="solrjson" value="### Query with a JSON body&#10;# Solr's JSON Request API. Field names complete inside `fields`, `sort` and a&#10;# facet's `field` - Ctrl-Space reads them from {{collection}} on the selected&#10;# connection, or from the project's configsets where it cannot.&#10;POST {{solrUrl}}/{{collection}}/query&#10;Content-Type: application/json&#10;Accept: application/json&#10;&#10;{&#10;  &quot;query&quot;: &quot;*:*&quot;,&#10;  &quot;fields&quot;: [&quot;id&quot;],&#10;  &quot;limit&quot;: 10&#10;}"
             description="Query with a JSON body" toReformat="false" toShortenFQNames="false">
     <context>
       <option name="REQUEST" value="true"/>
