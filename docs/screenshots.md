@@ -531,7 +531,13 @@ discipline.
 
 ### 19. The drift view — three kinds of difference — `19-drift-three-states.png`
 
-**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-19.
+**✅ Captured.** Against a throwaway SolrCloud 10.0.0 container, and **not against the demo's own
+configset, which cannot be deployed**: its planted defects — a tokenizer class that does not exist, a
+field naming a type nobody declared — stop a core starting, which is what they are there to do. The
+capture used a deployable copy at `demo/books/conf`, created for the shot and removed after it.
+**Narrow the State, Kind and Name columns by hand before shooting**: at the default widths the two
+definition columns truncate to the same `type=text_general indexed=true stor…`, and a *Differs* row
+whose two cells read alike shows nothing.
 
 **Shows** the whole claim of the drift view in one frame: a configset compared against a collection,
 with all three states visible at once — a row reading *Not deployed*, one reading *Only on server*,
@@ -552,7 +558,9 @@ field to the collection through the Schema API and not to the configset; change 
 
 ### 20. A refused change, and why — `20-drift-refused-payload.png`
 
-**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-25.
+**✅ Captured.** The frame keeps the empty band between the table and the payload pane, because the
+layout has no splitter to close it. The reason's second sentence runs past the right edge instead of
+wrapping — a defect in the pane rather than in the crop, recorded in the pass log.
 
 **Shows** a *Differs* row selected, with the payload pane below it holding the refusal reason **first**
 and the `replace-field` request underneath. The ordering is the point: a reader who meets the JSON
@@ -571,7 +579,9 @@ the payload pane. Include the toolbar so the disabled state of **Apply Additive 
 
 ### 21. An addition, applied — `21-drift-apply-before.png` / `21-drift-apply-after.png`
 
-**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-26.
+**✅ Captured.** Between the two frames the plugin asks first, naming the collection and the server —
+*Send 1 additive change(s) to books on "local"?* — and after the write it reads the collection back
+by itself, which is what puts the agreeing count in the second frame.
 
 **Shows** a pair. Before: a *Not deployed* row selected, its `add-field` payload in the pane, **Apply
 Additive Changes** enabled. After: the same comparison re-run, with that row gone and the summary
@@ -590,7 +600,7 @@ result without touching the choosers.
 
 ### 22. The connections settings page — `22-connections-settings.png`
 
-**⬜ Not captured.** Needs a sandbox pass; see SRV-1.
+**✅ Captured.**
 
 **Shows** Settings → Tools → Solr Connections with one connection saved, and the editor open on it.
 
@@ -606,7 +616,7 @@ documents something that looks like a bug.
 
 ### 23. The collections tree — `23-collections-topology.png`
 
-**⬜ Not captured.** Needs a running Solr and a sandbox pass; see SRV-4.
+**✅ Captured.** Against a SolrCloud 10.0.0 container started with `SOLR_MODE=solrcloud`, as below.
 
 **Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
 shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
@@ -623,7 +633,7 @@ two are not interchangeable.
 
 ### 24. What the index actually holds — `24-luke-fields.png`
 
-**⬜ Not captured.** Needs a running Solr with indexed documents; see SRV-8 and SRV-9.
+**✅ Captured.**
 
 **Shows** a collection's **Fields** row expanded, with a dynamic instance marked `← *_s` and the
 group's detail naming how many of the fields came from patterns.
@@ -640,7 +650,9 @@ anywhere. Include a point field too, whose document count is absent rather than 
 
 ### 25. A Solr query and its rendered answer — `25-query-and-results.png`
 
-**⬜ Not captured.** Needs a running Solr; see SRV-11 to SRV-14.
+**✅ Captured.** Against a collection of 61 TV shows rather than the demo's books, with
+`q=description:family&rows=3` — a query matching more documents than it returns, which is the only
+kind that shows the summary line doing its job.
 
 **Shows** an `.http` file with a Solr request, run, and the response pane holding the summary line,
 the aligned table, and — if it fits — the start of a scoring explanation.
@@ -752,13 +764,63 @@ icon moves to a different call.
 
 **Verifies** [CODE-9 and CODE-10](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
 
+### 30. Field names from the collection a query is about to reach — `30-completion-live-schema.png`
+
+**✅ Captured.**
+
+**Shows** <kbd>Ctrl-Space</kbd> inside a JSON request body's `"fields"` array, offering the fields of
+the collection the request line names, each reading `books · local` — the collection and the
+connection it was read from — with the dynamic patterns in italics.
+
+**The source label is the image.** Before this completion read the live schema, the same popup offered
+the project's configsets and labelled each entry with a configset's name. A reader comparing the two
+should be able to tell which one answered without being told, and the label is the only thing that
+says so. `subtitle` is in this frame because it had just been added to the server through the drift
+view's Apply, and appears in no file in the project — the plainest evidence the list came from the
+server.
+
+**Capture** select a connection, write a request line naming a collection that exists on it, put the
+caret inside `"fields": [""]`, and press <kbd>Ctrl-Space</kbd> — not a letter: the popup that opens
+while typing never asks the server, so it would show the configsets instead.
+
+**Redo when** the source label's format changes, the popup's renderer changes, or completion starts
+merging the collection's fields with the configsets'.
+
+**Verifies** [SRV-16b](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 31. A test document the plugin refuses to send — `31-index-test-document.png`
+
+**✅ Captured.**
+
+**Shows** the *Index a test document* dialog, its title naming the collection and the connection, a
+field name misspelled in the document, the reason in red below the editor, and **OK disabled**.
+
+**The refusal is the point, not the dialog.** Solr answers a document with an unknown field by
+guessing a type and adding the field to the deployed schema — `status: 0`, no error — so the typo
+becomes a permanent schema change that then shows up as drift. The plugin refuses before sending, and
+the reason says exactly that. A frame with OK enabled shows a form; this one shows a decision.
+
+**The dialog stretches to the width of its message.** The reason does not wrap, so a long one widens
+the whole dialog towards the screen edge. Recorded as a defect in the pass log; crop to the dialog
+regardless.
+
+**Capture** select a collection in the Solr tool window, press **Index a Test Document**, add a line
+naming a field the schema lacks — `"categry": "scifi"` — and press OK once so it greys.
+
+**Redo when** the validation wording changes, the commit-mode chooser changes, or the sample document
+the dialog starts from changes.
+
+**Verifies** [SRV-28 and SRV-29](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
 ## Not yet capturable
 
 These have no gesture that does anything yet, or shipped but has not been captured. An entry moves up
 into the catalog when its feature ships **and** someone shoots it, mirroring the manual test suite's
 own "Not yet in the suite" list:
 
-- *Mark Directory as Solr Configset Root* — shipped, never captured
+- *Mark Directory as Solr Configset Root* — not built. An earlier revision of this line said
+  "shipped, never captured"; the settings page and the action it names are the plan's one unbuilt
+  Foundation step
 - Hover documentation on a factory attribute — owner, value type, default or required marker
   (see [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc))
 - A factory's complete effective configuration, unwritten attributes shown at their defaults
@@ -774,7 +836,12 @@ own "Not yet in the suite" list:
   (see [the checks on navigating to a class outside the project](manual-test-suite.md#4-navigation-and-find-usages-nav))
   — needs `solr-core` added to the demo's dependencies first, a fixture change out of scope for a
   screenshot pass
-- Everything server-side: connections, the tool window, the query console, the drift view
+- **The server track's remaining gestures.** Entries 19 to 25, 30 and 31 cover the drift view's
+  three states, a refused and an applied change, the connections page, the tree, the index's own
+  fields, a query and its answer, live completion and a refused document. What none shows is the
+  inline failure banner when a server is down (`SRV-5`) and Upload and Reload's confirmation
+  (`SRV-22`) — the second cannot be shot against the demo configset at all, whose planted defects stop
+  a core starting
 - **The code track's remaining gestures.** Entries 26 to 29 above cover the check, the colour, the
   navigation and the gutter run; what none of them shows is the spelling quick-fix, field completion
   inside a query string, the *no connection* message, the same file written in Kotlin, and the
@@ -783,8 +850,6 @@ own "Not yet in the suite" list:
   [the code-track checks](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code)).
   The last of those is the awkward one to photograph, since it is an image of nothing happening
 
-The drift view is worth planning a capture for in advance — a side-by-side of repository and server
-disagreeing is the single image that explains why the plugin edits a file Solr's banner says not to.
 
 ## What invalidates images across the board
 
@@ -802,6 +867,11 @@ Some triggers hit several at once. When one of these lands, re-shoot the images 
 | Generated `solrconfig.xml` parameter catalog changes | 15 |
 | `demo/src/main/java/com/example/demo/ProductSearch.java` changes at all | 26, 27, 28, 29 — every one is a crop of it, addressed by line number |
 | The query scan changes which characters are fields or operators | 26, 27 — the check and the colour read the same scan, so they move together |
+| The drift view's states, columns or summary wording change | 19, 20, 21 |
+| The Solr tool window's row detail or toolbar changes | 23, 24 |
+| The query summary, table or explanation rendering changes | 25 |
+| The `.http` completion renderer or its source label changes | 30 |
+| Document validation wording or the index dialog's layout changes | 31 |
 | IntelliJ platform restyles popups, completion or inlays | all of them |
 
 The last row is the one that goes unnoticed. A platform version bump can restyle every popup in this

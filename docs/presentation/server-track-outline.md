@@ -7,9 +7,10 @@
 > **What is already in the deck.** Slides 36 and 37 were corrected when the server track shipped:
 > the package layout, and the closing "in one sentence". Everything below is new.
 >
-> **Screenshots.** Every slide below wants one, and none exists yet. The captures are specified in
-> [the screenshot catalog](../screenshots.md) and produced during a
-> [manual pass](../manual-test-suite.md); an image joins a slide when someone shoots it.
+> **Screenshots.** All of them now exist — entries 19 to 25 of [the screenshot catalog](../screenshots.md),
+> shot during the 2026-09-26 [manual pass](../manual-test-suite.md#pass-log) against a real SolrCloud.
+> Each slide below names its file; the catalog says what each must show, so re-shoot from there rather
+> than re-framing by eye.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it.
 Keep that shape. What changes for this act is where the claims come from: the editor track's claims
@@ -44,7 +45,7 @@ caller was a test that either passed a password or worked on a connection that h
 could tell them apart until a settings page saved an existing connection. The argument's *presence*
 now decides whether the secret is touched.
 
-**Screenshot.** The connections settings page (SRV-1).
+**Screenshot.** `22-connections-settings.png` — the page with a connection open for editing, its password field empty and saying one is stored.
 
 ---
 
@@ -58,7 +59,7 @@ and "Solr instance is not running in SolrCloud mode". A reader that assumed the 
 would report a hard failure against a server that is working perfectly — and catching that 400 would
 swallow the genuinely different one a malformed request produces.
 
-**Screenshot.** The topology tree (SRV-4).
+**Screenshot.** `23-collections-topology.png` — a SolrCloud collection down to its leader replica.
 
 ---
 
@@ -80,7 +81,7 @@ got wrong:
 - A point field reports **no** document count even holding documents, having no inverted index to
   count from. "0 documents" would be false about exactly the field types Solr recommends.
 
-**Screenshot.** An expanded Fields row (SRV-8).
+**Screenshot.** `24-luke-fields.png` — `author_s ← *_s`, and `price_f` with no count.
 
 ---
 
@@ -99,7 +100,7 @@ a colleague clone the repository and point at their own server.
 GET with parameters in the URL. And for a JSON body the HTTP Client already injects JSON, so what
 was needed was a completion contributor over an injection that was already there.
 
-**Screenshot.** A query and its rendered summary (SRV-13).
+**Screenshot.** `25-query-and-results.png`, cropped to the summary line and the table.
 
 ---
 
@@ -116,7 +117,7 @@ showed three.
 *is* the information; re-parsing it to re-render would be work whose best possible outcome is what
 Solr already wrote.
 
-**Screenshot.** A `debugQuery` response (SRV-14).
+**Screenshot.** `25-query-and-results.png` again, cropped to the explanation — one capture holds both slides.
 
 ---
 
@@ -135,7 +136,7 @@ which is indistinguishable from a server that genuinely has none of them. So the
 halves as separate arguments rather than a model, which makes the mistake unspeakable rather than
 merely discouraged.
 
-**Screenshot.** All three states at once (SRV-19).
+**Screenshot.** `19-drift-three-states.png`.
 
 ---
 
@@ -162,7 +163,7 @@ something you read before deciding. So a refused row shows the reason first and 
 it, and the user is left able to run it themselves against a collection they are prepared to
 reindex. That is their call, not the plugin's to prevent.
 
-**Screenshot.** A refused row with its payload pane (SRV-20).
+**Screenshot.** `20-drift-refused-payload.png` (SRV-25 — an earlier revision of this line named SRV-20, which is a different check).
 
 ---
 
@@ -174,7 +175,7 @@ reindex. That is their call, not the plugin's to prevent.
 appears in `action=LIST`, and Solr then refuses to build a collection from it. "The request was
 accepted" and "the server now agrees" are different facts.
 
-**Screenshot.** The before/after pair (SRV-21).
+**Screenshot.** `21-drift-apply-before.png` and `21-drift-apply-after.png`, side by side (SRV-26).
 
 ---
 

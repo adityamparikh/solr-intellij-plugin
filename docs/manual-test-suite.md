@@ -46,10 +46,13 @@ silently turns `SRV-12` into a wall of unresolved variables.
 beside the check whose gesture produces it, names the file to save and where, and links to
 [the screenshot catalog](screenshots.md) for the framing and the reason. A screenshot taken during
 a pass is evidence the check passed; one taken outside a pass is a picture of an unverified claim.
-Every image the catalog lists now exists, captured outside a pass — the first twenty-five at
-`26284b7`, and the four code-track images at `fbd2968`, against a real Solr on `localhost:8985`
-holding the `products` core. Each entry says what its file must show, so a pass that disagrees with
-one of them is re-shooting it, not adding it.
+Every image the catalog lists now exists. The editor-track eighteen were captured outside a pass at
+`26284b7`; the four code-track images at `fbd2968`, against a real Solr on `localhost:8985`; and the
+server-track seven plus entries 30 and 31 on 2026-09-26, during the partial pass logged below, against
+a throwaway SolrCloud 10.0.0 container. **An earlier revision of this paragraph said all of them
+existed when the server-track seven did not** — the catalog marked them *Not captured* the whole
+time, and the sentence was written without reading it. Each entry says what its file must show, so a
+pass that disagrees with one of them is re-shooting it, not adding it.
 
 **Save every image to `docs/images/`, named exactly as the check reads.** The README and the FAQ
 already reference those paths, so a correctly named file lands in the prose with no further edit.
@@ -1019,6 +1022,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **superseded** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application. **INSP-13's green is no longer evidence**: it was measured against a position Solr does not read — see the 2026-08-16 note |
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 | 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
+| 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
 | 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
@@ -1380,3 +1384,66 @@ plugin's behaviour asserts that the plugin is self-consistent. Only a check writ
 behaviour can catch the plugin being confidently wrong, and the earlier note that this rule "asserts
 nothing of its own and quotes Solr instead" was true of the sentence and not of the position it was
 attached to.
+
+### 2026-09-26 — the server track, pressed for the first time
+
+Every server-track check had been written from the code and its fixture tests and none had been
+pressed. This pass pressed twelve of them in full and three in part, **and every one pressed behaved
+as written**. It was a screenshot pass first — the seven server-track captures had never been taken,
+though an earlier revision of this document said they had — so its scope follows the images rather
+than the section's order, and it is recorded as *not completed* for that reason alone.
+
+**Where it ran.** The plugin at `96453c0` (live-schema completion) on `f2bc630` (the code-track
+docs), in the Islands Light theme. Writes went to a throwaway SolrCloud 10.0.0 container holding a
+`books` collection; read-only checks also ran against a user's own SolrCloud 9.10.1 holding 61 TV
+shows. **The demo configset cannot be deployed**, and that is by design: its planted defects — a
+tokenizer class that does not exist, a field whose type nobody declares — stop a core starting. The
+drift checks therefore compared a deployable copy of it, created for the pass and removed after.
+SRV-20 and SRV-22 as written assume a collection built *from the demo configset*, which cannot exist;
+both need rewording to name a deployable one.
+
+**What was pressed, and what it showed:**
+
+- **SRV-1, SRV-3 (in part)** — the form, reached from the tool window's `+`, saved a connection with
+  a username and a password, and the row showed URL and username. Re-opened, the password field was
+  empty and read *A password is stored for this connection. Leave blank to keep it.* The second half
+  of SRV-3 — change the name, confirm the password survives — was not pressed.
+- **SRV-4** — on SolrCloud: `books` → `shard1` → `books_shard1_replica_n1 NRT · active · leader`.
+- **SRV-8, SRV-9** — *10 fields · 2 from dynamic patterns · 4 documents*; `author_s … ← *_s · 4 docs`
+  and `price_f pfloat · ← *_f` with no count. `_root_` read `(unstored field)` on the 9.10.1 server.
+- **SRV-12, SRV-13 (in part), SRV-14** — the template request ran through the `local` environment:
+  *8 documents matched in 39 ms, showing 1 to 3*, an aligned table, *Solr read the query as*, and each
+  document's explanation with Solr's indentation intact. The request named its own `fl`, so SRV-13's
+  hidden-fields line had nothing to hide and was not observed.
+- **SRV-16b** — completion in a JSON body offered the `books` collection's fields as
+  `books · local`, dynamic patterns in italics, including `subtitle`, which existed only on the
+  server because Apply had added it minutes earlier.
+- **SRV-19** — all three states at once, the summary naming both sides and *Resolved against Solr
+  10_0, from the connected server*. **The two definition columns truncate to the same text at their
+  default widths** — `type=text_general indexed=true stor…` in both — so a *Differs* row shows no
+  difference until the other columns are narrowed by hand. The check passes; a reader who does not
+  know to resize would not see it pass.
+- **SRV-25 (in part)** — *This plugin will not send this request.* first, the reason, then
+  `replace-field`. The reason's second sentence runs past the pane's right edge rather than wrapping.
+  Whether **Apply Additive Changes** was disabled was not confirmed from the screen.
+- **SRV-26, SRV-20** — the confirmation read *Send 1 additive change(s) to books on "local"?*, naming
+  the collection and the server; after it the view re-read the server by itself and said *books and
+  books agree, across 22 declarations*.
+- **SRV-28, SRV-29** — the dialog's title named the collection and the server, it opened on
+  `{"id": "example"}` reporting no problems, and `"categry"` produced the refusal with OK greyed.
+  Pressing OK sent nothing: Solr held no `example` document afterwards.
+
+**Found, and named by no check:**
+
+1. **The drift view reads the project's configsets once, when the tool window is built, and never
+   again.** `SolrDriftPanel.reloadConfigsets` has one caller, the constructor. So a configset added
+   after the window opened never appears — and worse, a Solr tool window restored open at startup is
+   built while the IDE is still indexing, when `SolrProjectConfigsets.all()` deliberately answers
+   empty, so its configset chooser reads *No …* and stays disabled until the IDE restarts. Reproduced
+   twice; the workaround used here was to close the tool window, restart, wait for indexing, then
+   open it. **This one is user-visible and belongs in a fix, not a note.**
+2. **Neither long message wraps.** The drift pane's refusal reason runs off its right edge, and the
+   index dialog's validation reason stretches the whole dialog towards the screen's width.
+3. **The index dialog draws its error marker on the first line** — over the `"id"` key's opening
+   quote — rather than on the line that carries the typo.
+4. **"1 additive change(s)"** — the same class of wording `6750888` fixed for *1 documents*.

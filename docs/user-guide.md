@@ -529,6 +529,9 @@ configured at all, and never waits on one.*
 a URL and optionally a username; the password goes to the IDE's password safe and never to a project
 file, so a workspace that leaks is an inventory of hostnames rather than of credentials.
 
+![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
+the text under it saying a password is stored](images/22-connections-settings.png)
+
 Two things worth knowing before you wonder whether something is broken:
 
 - **The password field opens empty even when a password is stored**, and says so underneath. Leaving
@@ -543,6 +546,9 @@ Two things worth knowing before you wonder whether something is broken:
 The **Solr** tool window, docked right, on the **Collections** tab. It shows collections, shards and
 replicas for a SolrCloud server, or cores for a standalone one.
 
+![The Solr tool window on a SolrCloud server: the books collection, its shard, and the shard's
+replica marked as leader, with the connection selector above](images/23-collections-topology.png)
+
 **Which vocabulary you see comes from the mode the server reports**, never from a guess. That matters
 because a standalone Solr answers every `/admin/collections` request with HTTP 400 — a plugin that
 assumed the cloud vocabulary would report a hard failure against a server that is working perfectly.
@@ -554,12 +560,8 @@ a server holding thirty of them would turn opening this window into thirty reque
 **What that row shows is not the schema.** It is what the index actually holds, which includes every
 field a dynamic pattern created at index time:
 
-```
-Fields   9 fields · 5 from dynamic patterns · 3 documents
-  id           string    3 docs
-  author_s     string    ← *_s   3 docs
-  price_f      pfloat    ← *_f
-```
+![A collection's Fields row expanded: 10 fields, 2 from dynamic patterns, 4 documents; author_s marked
+as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields.png)
 
 `author_s` appears in no configset anywhere — the configset declares `*_s`, and the index holds what
 matched it. `price_f` shows no document count because Solr reports none for a point field, having no
@@ -585,14 +587,9 @@ only for whoever wrote it.
 
 Run one and the response gains a readable summary above its raw JSON:
 
-```
-2 documents matched, in 32 ms.
-Solr's internal fields are not shown: _version_, _root_
-
-id  title         author_s       price_f  tags_ss
---  ------------  -------------  -------  --------------
-1   Dune          Frank Herbert  9.99     scifi, classic
-```
+![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
+a table of three TV shows, the parsed query, and the start of each document's scoring
+explanation](images/25-query-and-results.png)
 
 **Matches and returned rows are stated separately** because they routinely differ — conflating them
 is how someone concludes their query found three documents when it found nine thousand and showed
@@ -629,6 +626,9 @@ you:
 - **A document with no unique key.** Solr answers `status: 0` and indexes it under a generated
   identifier, giving you a document that cannot be found again by any id you know.
 
+![The Index a test document dialog for books on local, with categry misspelled in the document, the
+reason in red below it, and OK disabled](images/31-index-test-document.png)
+
 A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
 one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
 never meant.
@@ -652,10 +652,21 @@ Three kinds of difference, and the plugin treats them very differently:
 | **Only on server** | Added through the Schema API and never committed | No |
 | **Differs** | Both have it, defined differently | **No, deliberately** |
 
+![The drift view comparing the books configset with the books collection: isbn only on the server,
+notes differing — stored=false in the configset, stored=true on the server — and subtitle not
+deployed](images/19-drift-three-states.png)
+
+If the two definition columns look identical on a *Differs* row, widen them: at the default column
+widths both truncate to the same `type=… indexed=true stor…`, and the difference is in the part cut
+off.
+
 **Select any row to see the exact Schema API request that would close it.** For an addition, sending
 it is the next button along. For the other two the request is still shown, under the reason it is not
 offered — because "why can this not be applied" deserves a better answer than a greyed-out button,
 and because reading what a tool would do before deciding is the point.
+
+![A Differs row selected, the pane below it saying This plugin will not send this request, then the
+reason, then the replace-field request](images/20-drift-refused-payload.png)
 
 **Why a changed field is never applied for you.** Solr accepts a `replace-field` that changes a
 field's type, and reports success. Every document already indexed keeps the encoding it was written
@@ -681,19 +692,27 @@ here is a difference in what the two sources *say*, not in how they spell it.
 the other is a difference the versions explain, so the comparison says which line it resolved
 against and whether that came from the server, the configset, or a default.
 
-**The summary names the Solr the collection runs.** A field type that exists on one line and not the
-other is a difference the versions explain, so the comparison says which line it resolved against and
-whether that came from the server, the configset, or a default.
-
 **Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
 read back and compared again, and what you see is the result of that read. A `2xx` proves Solr
 accepted the request, not that the server now agrees — the two really do come apart, which is why
 this is worth saying twice.
 
-**Try it.** Add a field to `demo/books/conf/managed-schema.xml`, open **Drift**, choose that
-configset, type your collection, press **Compare**: the new field reads *Not deployed*. Select it to
-see its `add-field` payload, then press **Apply Additive Changes**. (Verified by
+![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
+pane below](images/21-drift-apply-before.png)
+
+![The same comparison after applying: no rows, and the summary saying books and books agree across 22
+declarations](images/21-drift-apply-after.png)
+
+**Try it.** You need a configset in the project *and* a collection on the server that was created
+from it. Add a field to that configset's schema, open **Drift**, choose the configset, type the
+collection, press **Compare**: the new field reads *Not deployed*. Select it to see its `add-field`
+payload, then press **Apply Additive Changes**. (Verified by
 [the drift and apply checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).)
+
+The demo's own configset will not do for this: it cannot be deployed, because the defects planted in
+it for the editor checks — a tokenizer class that does not exist, a field whose type nobody
+declares — stop a Solr core from starting. Use a configset from your own project, or a copy of the
+demo's with those two removed.
 
 ---
 
