@@ -4,8 +4,12 @@
 > content and structure, not a deck — `solr-intellij-plugin.pptx` is a designed artifact with
 > embedded screenshots, and new slides need building by hand in the same template.
 >
-> **What is already in the deck.** Nothing from this act. The closing "three surfaces" slide will
-> need its wording changed, because there are now three rather than two.
+> **What is already in the deck.** All of it, as Act 5 — slides 50 to 55: a divider, four deep dives
+> (C2, C4, C5 and C6, each with its screenshot), and a recap carrying C8. The three slides with no
+> screenshot of their own are folded into those four rather than dropped: C1's failure is C2's
+> *without it*, C3's single implementation is C2's *mechanism*, and C7's sanctioned dependency is C6's.
+> The closing slide now says three surfaces. C4 uses a crop of `28-code-navigate-to-schema.png` from
+> the tabs down to the lines that matter, because the full split is illegible at slide size.
 >
 > **Screenshots.** All four now exist — `26-code-field-warning.png`, `27-code-query-colour.png`,
 > `28-code-navigate-to-schema.png` and `29-code-run-from-gutter.png` in `docs/images/`, entries 26 to
