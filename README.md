@@ -26,17 +26,26 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 
 ## Status
 
-**0.1.0 — the editor half, complete and released.** Configset detection, a parsed field model, and
-everything built on it: eleven inspections with quick-fixes, completion over Solr's own vocabulary,
-cross-file navigation and rename, quick documentation at every caret position, and inline hints
-saying what each field can actually match.
+**All three surfaces are built, and none is published yet.** 0.1.0 is cut in the changelog and
+drafted on GitHub, not released; everything after it is unreleased work on `main`.
 
-**It does not talk to a Solr server.** That is the design rather than a gap in a first release —
-every answer comes from the files in your project and from Solr's own jars, read at build time. The
-server surface exists so far as stored connection settings; browsing collections, running queries and
-comparing a configset against a live one are **0.2.0**, specified in
-[`specs/0002-solr-server-integration.md`](specs/0002-solr-server-integration.md). The Java/Kotlin code
-surface is unbuilt.
+- **The configset editor** — the 0.1.0 content. Configset detection, a parsed field model, and
+  everything built on it: eleven inspections with quick-fixes, completion over Solr's own
+  vocabulary, cross-file navigation and rename, quick documentation at every caret position, and
+  inline hints saying what each field can actually match.
+- **A live server** — connections with their passwords in the IDE's password safe, a tool window
+  showing collections, shards, replicas and the fields an index actually holds, queries run through
+  the IDE's own HTTP Client with a readable summary and field completion, a drift view comparing a
+  configset with a collection — with upload, reload and additive Schema API changes — and a
+  test-document editor that refuses what Solr would silently accept.
+- **Java and Kotlin using SolrJ** — a field name no configset declares is flagged, completed and
+  navigable to its declaration; a query string is coloured by structure; and a query runs from the
+  gutter beside it.
+
+**The editor still never talks to a server**, and that is the design rather than a gap: every
+editor answer comes from the files in your project and from Solr's own jars, read at build time. The
+server features contact one only when you ask. Framework configuration (Spring Boot and the others),
+Apache Camel, and a settings page for configset detection are not built.
 
 **The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
 is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
@@ -229,8 +238,8 @@ declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md]
 
 ## Installing
 
-**Nothing has been released yet**, so building it yourself is the only route today — there is no
-Marketplace listing and no release ZIP. [`docs/installing.md`](docs/installing.md) has the full
+**Nothing has been published yet** — 0.1.0 exists as a draft release on GitHub, not a public one —
+so building it yourself is the only route today: there is no Marketplace listing and no release ZIP. [`docs/installing.md`](docs/installing.md) has the full
 walkthrough; the short version:
 
 ```bash

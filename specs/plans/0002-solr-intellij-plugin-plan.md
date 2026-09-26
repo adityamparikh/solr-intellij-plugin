@@ -77,11 +77,14 @@ claim about observed behaviour — that the topology renders, that an unreachabl
 popup, that a confirmation naming its target server actually appears — and no JVM test discharges a claim of that
 shape. Nothing is left to build there; something is left to watch.
 
-**The Code track has started and is nowhere near finished.**
-[The recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj) has its interface, its SolrJ recognizer
-and its module gate, and reads Kotlin through the same path as Java — two of that step's five criteria, with field
-references in builder calls and the two-module gate fixture still to come. Every step after it is unstarted, so a Java
-or Kotlin file gets some of what the spec promises and not yet the rest.
+**The Code track has its SolrJ half and none of its framework half.**
+[The recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) and
+[query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge-done) are both done: field names
+in Java and Kotlin are checked, completed and navigable, a query string is coloured by structure, and a query runs
+from the gutter. Framework configuration and Apache Camel are unstarted, so a Spring or Quarkus application gets
+the field checks and not yet the connection its configuration already names. An earlier revision of this paragraph
+said the track had met two of Step 16's five criteria, and stood through both steps closing — the third status
+sentence this section has had to correct, for the reason the paragraph above gives.
 
 Neither track is blocked by the other, and neither is blocked by the Editor track.
 [The build order](#build-order) explains what cutting one whole would cost.

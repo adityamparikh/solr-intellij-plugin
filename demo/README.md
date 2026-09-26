@@ -22,6 +22,12 @@ something true to say.
 
 If a build or an IDE offers to clean these up, decline.
 
+**One consequence: this configset cannot be deployed.** A Solr core refuses to start on a tokenizer
+class that does not exist or a field whose type nobody declares, so uploading `solr/conf` to a real
+server fails — which is why `compose.yaml` does not mount it. The drift and upload demos need a
+collection built from a deployable configset; a copy of this one with `custom_text`, `notes` and
+`legacy` removed is enough.
+
 ## Layout
 
 ```
@@ -29,7 +35,7 @@ solr/conf/managed-schema.xml   the schema, with its real "DO NOT EDIT" banner
 solr/conf/solrconfig.xml       handlers; the /select qf names fields from the schema
 src/main/java/com/example/demo Spring Boot app: plain SolrJ, wired by Spring
 src/main/resources/application.yml   dev and staging profiles, each with its own Solr URL
-compose.yaml                   local Solr 10, serving the configset above
+compose.yaml                   local Solr 10 with a products core from Solr's own default configset
 ```
 
 Field names cross every boundary here without anything checking them: `qf` in `solrconfig.xml`

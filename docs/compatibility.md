@@ -3,9 +3,11 @@
 What this plugin runs in, what it understands, and how each of those is decided.
 
 **This page is written from the build rather than beside it.** Every version below is declared in one
-place in `build.gradle.kts` or `gradle.properties`, named in the table's last column, and a test
-asserts the two agree — a matrix promising something the build does not is worse than no matrix,
-because it is believed.
+place in `build.gradle.kts` or `gradle.properties`, named in the table's last column — a matrix
+promising something the build does not is worse than no matrix, because it is believed. **Nothing
+yet checks that the two agree.** An earlier revision of this paragraph said a test did; the plan's
+CI-gates step still lists that check as open, and until it lands, keeping this page in step with the
+build is a reviewer's job.
 
 ## Plugin 0.1.0
 
