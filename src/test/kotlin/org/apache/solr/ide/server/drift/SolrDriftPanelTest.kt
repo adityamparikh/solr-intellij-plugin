@@ -43,6 +43,34 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         return this
     }
 
+    /**
+     * In a narrow tool window the toolbar wraps below the choosers instead of falling off the edge.
+     *
+     * The second sandbox pass found the Drift tab saying *press Compare* with no Compare anywhere on
+     * screen: the choosers and the toolbar shared one left-aligned row, and a flow layout in a border
+     * layout's north slot is given one row's height and never wraps, so the toolbar was laid out past
+     * the right edge. 360 pixels is a tool window docked beside an editor at its default width.
+     */
+    fun testTheToolbarStaysOnScreenInANarrowToolWindow() {
+        val panel = panel()
+        // The toolbar builds its buttons asynchronously; until it has, it has no size to place.
+        com.intellij.testFramework.PlatformTestUtil.waitForFuture(panel.actionToolbar.updateActionsAsync())
+        panel.setSize(360, 600)
+        layOut(panel)
+
+        val row = panel.controlsRow
+        val bar = panel.actionToolbar.component
+        val inRow = javax.swing.SwingUtilities.convertRectangle(bar.parent, bar.bounds, row)
+        assertTrue("toolbar at $inRow, row is ${row.size}", inRow.x >= 0 && inRow.x + inRow.width <= row.width)
+        assertTrue("toolbar at $inRow, row is ${row.size}", inRow.y >= 0 && inRow.y + inRow.height <= row.height)
+        assertTrue("toolbar has no size", inRow.width > 0 && inRow.height > 0)
+    }
+
+    private fun layOut(component: java.awt.Component) {
+        component.doLayout()
+        (component as? java.awt.Container)?.components?.forEach { layOut(it) }
+    }
+
     /** Re-reads the configset list and waits for it, as a user opening the chooser would see it. */
     private fun SolrDriftPanel.awaitConfigsets() {
         reloadConfigsets()

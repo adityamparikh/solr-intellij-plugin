@@ -18,6 +18,7 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import com.intellij.util.ui.WrapLayout
 import java.awt.FlowLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
@@ -273,14 +274,26 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         toolbarActions = actions
         val bar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actions, true)
         bar.targetComponent = this
-        return JPanel(FlowLayout(FlowLayout.LEFT, 4, 2)).apply {
+        actionToolbar = bar
+        // Wrapping rather than flowing: in a border layout's north slot a plain flow layout is given one
+        // row's height and never wraps, so at a tool window's default width the toolbar - Compare
+        // included - was laid out past the right edge and could not be pressed.
+        return JPanel(WrapLayout(FlowLayout.LEFT, 4, 2)).apply {
             add(JBLabel(SolrBundle.message("drift.configset")))
             add(configsetCombo)
             add(JBLabel(SolrBundle.message("drift.collection")))
             add(collectionCombo)
             add(bar.component)
-        }
+        }.also { controlsRow = it }
     }
+
+    /** The row holding the choosers and the toolbar, so a test can lay it out at a given width. */
+    internal lateinit var controlsRow: JComponent
+        private set
+
+    /** The toolbar itself, whose place in [controlsRow] a test checks once its buttons are built. */
+    internal lateinit var actionToolbar: com.intellij.openapi.actionSystem.ActionToolbar
+        private set
 
     /**
      * The most recent re-read of the configset list, so a test can wait for it rather than sleep.
