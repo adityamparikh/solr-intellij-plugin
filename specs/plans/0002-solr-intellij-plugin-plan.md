@@ -2254,6 +2254,16 @@ track. The language and navigation work does not.
 
 ### Step 18: Framework configuration: the shared half, and Spring Boot
 
+**Not in 0.2.0, and when it comes, Ultimate-only.** A first build reached `main` and was reverted before the release:
+0.2.0 ships the editor, code and server tracks for plain Java and Kotlin, and no framework support. The build read
+`application.yml` through the bundled YAML parser and asked the Spring plugin only for the active profile, through a
+plain `<depends>com.intellij.spring</depends>`. That cannot work: `SpringProfilesService` lives in the Spring plugin's
+`intellij.spring` content module, which has its own classloader. In the sandbox the call threw `NoClassDefFoundError`
+and took discovery down with it, while every unit test passed on a classpath that flattens all jars. The next attempt
+should be Ultimate-only, depend on `<module name="intellij.spring"/>` the way the bundled Spring Data plugin does, and
+prefer the Spring plugin's own model to re-parsing configuration files. **It must be verified in a sandbox IDE with the
+Spring plugin loaded before it merges**, since a fixture test cannot see this failure.
+
 **A plain Java application using SolrJ is supported before any framework is, and that is
 [Step 16](#step-16-recognizer-interface-and-solrj-done) rather than a promise made here.** The recognizer interface and the
 SolrJ recognizer come first because a framework recognizer resolves a URL that a SolrJ client then *uses* — the client
