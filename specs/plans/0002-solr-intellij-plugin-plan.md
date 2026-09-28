@@ -170,13 +170,20 @@ whole, and the gutter action goes with the Server track.
 
 ### Server track
 
+**Complete, and shipped in 0.2.0.** Every step is built, and every success criterion has been observed
+in a running IDE against a live SolrCloud — the last of them in the 2026-09-28 sandbox passes.
+
 - [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**
-- [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**; acceptance awaits a sandbox pass
-- [Step 13 — Query console](#step-13-query-console-done) — **done**; acceptance awaits a sandbox pass
-- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**; acceptance awaits a sandbox pass
+- [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**
+- [Step 13 — Query console](#step-13-query-console-done) — **done**
+- [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**
 - [Step 15 — Indexing test documents](#step-15-indexing-test-documents-done) — **done**
 
 ### Code track
+
+**Complete for plain Java and Kotlin using SolrJ, and shipped in 0.2.0**: Steps 16 and 17. The
+framework steps below are the next release's, and they stay one framework per release — Spring Boot
+first, as an Ultimate-only feature, for the reasons Step 18 records.
 
 - [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) — **done**
 - [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge-done) — **done**
@@ -2006,9 +2013,10 @@ it could not close, which are worth reading before the container fixture is writ
   selection still sourced to the server — refusing it would make every future Solr an outage, and
   naming a guide segment for it would invent a page that may not be published.
 - [x] The reader parses what a real Solr of each supported line actually returns.
-- [ ] Server state refreshes only on request or connection change — never on a timer. No scheduler
-  exists and every fetch is reached from an explicit action, but the claim is about observed
-  behaviour and awaits [SRV-6](../../docs/manual-test-suite.md).
+- [x] Server state refreshes only on request or connection change — never on a timer. No scheduler
+  exists and every fetch is reached from an explicit action; observed in the 2026-09-28 sandbox
+  passes, where the tool window sat open for over an hour and fetched only when asked
+  ([SRV-6](../../docs/manual-test-suite.md)).
 
 **Acceptance:**
 [demo step 35 — *connect to a server*](../../docs/demo/README.md#step-35-connect-to-a-server).
@@ -2025,8 +2033,8 @@ it could not close, which are worth reading before the container fixture is writ
 
 **Success criteria:**
 
-- [ ] The topology renders; the selected connection is always visible.
-- [ ] An unreachable server degrades to an inline message, not a popup.
+- [x] The topology renders; the selected connection is always visible. Pressed against SolrCloud 9.10.1 and 10.0.0.
+- [x] An unreachable server degrades to an inline message, not a popup.
 
 **Acceptance:**
 [demo step 36 — *browse what is actually there*](../../docs/demo/README.md#step-36-browse-what-is-actually-there).
@@ -2044,8 +2052,8 @@ Collections, cores and the server's actual fields render, and the selected conne
 
 **Success criteria:**
 
-- [ ] Queries run and render structurally; completion works with no configset present.
-- [ ] Saved queries round-trip through the project.
+- [x] Queries run and render structurally; completion works with no configset present.
+- [x] Saved queries round-trip through the project — an `.http` file is an ordinary project file.
 
 **"Completion works with no configset present" was not waiting on a sandbox pass, whatever this step's
 heading implied — it was unbuilt.** Completion in an `.http` body read the project's configsets and
@@ -2082,8 +2090,9 @@ the live schema, results render as a table, and the scoring explanation expands 
 **Success criteria:**
 
 - [x] All three disagreement categories render correctly.
-- [ ] Upload and reload confirm and name their target server. The confirmation is built and names
-  both; that it *appears* awaits [SRV-22](../../docs/manual-test-suite.md).
+- [x] Upload and reload confirm and name their target server. Pressed on 2026-09-28 against a live
+  SolrCloud: the dialog named the configset, the collection and the server, and *No* uploaded nothing
+  ([SRV-22](../../docs/manual-test-suite.md)).
 - [x] No write occurs without explicit invocation.
 
 **Acceptance:** demo steps

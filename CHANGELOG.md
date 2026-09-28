@@ -4,9 +4,11 @@
 
 ## [Unreleased]
 
-**The plugin now reaches a live Solr, and the Java and Kotlin that call it.** The editor half
-below is unchanged in one respect that matters: it still never contacts a server. Everything here
-that does, does so only when asked.
+**The plugin now reaches a live Solr, and the Java and Kotlin that call it.** With this release the
+editor, server and code tracks are complete for plain Java and Kotlin using SolrJ. The editor half
+is unchanged in one respect that matters: it still never contacts a server. Everything here that
+does, does so only when asked. Framework configuration — Spring Boot first, for IntelliJ IDEA
+Ultimate — is the next release.
 
 ### Added
 
@@ -35,16 +37,26 @@ that does, does so only when asked.
   of the right shape, with the two mistakes Solr answers `status: 0` to — a field the schema cannot place, a
   missing unique key — refused before sending.
 - **Field names in Java and Kotlin using SolrJ.** A name no configset declares is reported, in query
-  builder calls, raw parameter strings, document fields and `@Field` annotations; names complete from
-  the configsets; <kbd>Ctrl-click</kbd> reaches the declaring `<field>`; fields and operators inside
-  a query string are coloured; and a gutter icon runs the query against a chosen collection. Silent
-  in any module without a Solr client, and wherever the name cannot be resolved.
+  builder calls, raw parameter strings, document fields and `@Field` annotations. Names complete
+  from the configsets as you type, offering only the fields that call can use — searchable for a
+  query, sortable for a sort, facetable for a facet — and never a dynamic pattern.
+  <kbd>Ctrl-click</kbd> reaches the declaring `<field>`; fields and operators inside a query string
+  are coloured, with their own entry under *Settings → Editor → Color Scheme → Solr Query*; and a
+  gutter icon runs the query against a chosen collection. Silent in any module without a Solr
+  client, and wherever the name cannot be resolved.
 
 ### Changed
 
 - **The plugin is now called Solr Support, and is published by Aditya Parikh.** It was listed as
   *Apache Solr* from the *Apache Software Foundation*, which its own description contradicted: this
   is an independent project, not the ASF's. Look for *Solr Support* under Settings → Plugins.
+- **A name the configset cannot resolve is underlined as an error** — an undeclared field type, an
+  unknown attribute, a dangling copyField end, a handler parameter naming no field. As warnings they
+  drew only a tinted background in the light schemes, which read as no finding at all.
+- **A restated default is grey text and nothing more**, in every bundled scheme; High Contrast drew
+  it with a wave, which read as a finding.
+- **The Solr tool window** has its own icon, and a SolrCloud collection's health is a coloured dot
+  rather than the word *GREEN*.
 
 ## [0.1.0] - 2026-08-20
 
