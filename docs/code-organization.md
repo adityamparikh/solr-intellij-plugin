@@ -706,9 +706,9 @@ recognizer rather than reading the file itself**:
 | Package | Puts on screen | Registered as |
 |---|---|---|
 | `code.inspection` | A field name no configset declares, underlined at the name | `localInspection` |
-| `code.completion` | Field names where code is naming one | `completion.contributor` |
+| `code.completion` | Field names where code is naming one, opening by itself as one is typed | `completion.contributor`, `completion.confidence`, `typedHandler` |
 | `code.navigation` | <kbd>Ctrl-click</kbd> from a name in code to the schema's `<field>` | `psi.referenceContributor` |
-| `code.highlighting` | Fields and operators inside a query string, coloured | `annotator` |
+| `code.highlighting` | Fields and operators inside a query string, coloured, and the page that tunes the colours | `annotator`, `colorSettingsPage` |
 | `code.run` | A gutter icon that runs the query against a chosen collection | `codeInsight.lineMarkerProvider` |
 
 That is the rule worth keeping when adding a sixth: **two surfaces answering the same question must

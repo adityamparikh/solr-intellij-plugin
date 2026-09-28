@@ -887,9 +887,11 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
 
 *Automated: `SolrJRecognizerTest`, `SolrJBeanFieldTest`, `SolrJDocumentFieldTest`,
 `SolrJModuleGateTest`, `SolrUnknownCodeFieldInspectionTest`, `SolrCodeFieldCompletionTest`,
-`SolrCodeFieldReferenceTest`, `SolrRunQueryLineMarkerTest`, `SolrQueryRunnerTest`,
-`SolrQuerySpansTest`. Manual adds: **that any of it is visible**, which no fixture asserts — a
-gutter icon, a colour and a popup are things a headless test can only assert the existence of.*
+`SolrCodeFieldAutoPopupTest`, `SolrQueryExpressionTokenTest`, `SolrCodeFieldReferenceTest`,
+`SolrRunQueryLineMarkerTest`, `SolrQueryRunnerTest`, `SolrQuerySpansTest`, `SolrQueryHighlightTest`,
+`SolrQueryColorSettingsPageTest`. Manual adds: **that any of it is visible**. A fixture can compare a
+colour against a scheme's string colour and can see a popup open, but a gutter icon, a colour and a
+popup on a real screen are things a headless test can only assert the existence of.*
 
 *The subject is `demo/src/main/java/com/example/demo/ProductSearch.java`. It holds both a correct
 query and two planted defects, so every check below is one file.*
@@ -908,12 +910,20 @@ query and two planted defects, so every check below is one file.*
 - [ ] **CODE-4** — In `findSolrBooks`, nothing warns. Every name there is declared, and a check that
       cannot stay quiet on correct code is worse than no check.
 - [ ] **CODE-5** — In that same query, `category` and `name` are coloured as fields and `AND` as an
-      operator. Change `AND` to lowercase `and`: **the colour goes**, because Solr reads it as a term
-      rather than an operator.
+      operator — **three colours in one string, none of them the string's own green and none the
+      plain-text grey**, in the default light theme and in the default dark one. Change `AND` to
+      lowercase `and`: **the colour goes**, because Solr reads it as a term rather than an operator.
+      Then open *Settings → Editor → Color Scheme → Solr Query*: the preview shows both colours
+      against a string, and changing either repaints the query in the editor.
 - [ ] 📸 **Capture `docs/images/27-code-query-colour.png`** — lines 37–39 with `AND` still
       uppercase, default light theme, caret out of frame; see [entry 27](screenshots.md).
-- [ ] **CODE-6** — Put the caret inside `addFilterQuery("` and invoke completion: the demo
-      configset's fields are offered, each showing its type and configset, with `*_t` in italics.
+- [ ] **CODE-6** — Put the caret inside `addFilterQuery("` and **type `c` without pressing
+      anything else**: the list opens by itself, holding the demo configset's fields that start
+      with `c`, each showing its type and configset. **No `*_t` or other dynamic pattern, and no
+      words or file names** — only fields a filter query can search. Type `ategory:` and then `b`:
+      **nothing opens**, because the caret is in the value. In `setFields("id,name,price")`, type a
+      comma after `id`: the list opens again, for the next name. Type a letter in an ordinary string
+      elsewhere in the file: nothing opens, as before.
 - [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`. It lands on
       `<field name="category">` in `solr/conf/managed-schema.xml`. **This is the boundary nothing
       else in the IDE crosses** — the Java file belongs to no configset.
