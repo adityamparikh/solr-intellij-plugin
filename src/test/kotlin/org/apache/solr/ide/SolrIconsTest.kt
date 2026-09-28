@@ -13,12 +13,19 @@ import javax.xml.parsers.DocumentBuilderFactory
  */
 class SolrIconsTest : BasePlatformTestCase() {
 
-    /** The classic tool window stripe takes 13x13, and the icon registered in `plugin.xml` is that one. */
-    fun testTheToolWindowIconIsThirteenPixelsSquare() {
+    /**
+     * The icon registered in `plugin.xml` loads, square, at one of the sizes shipped.
+     *
+     * **Which size depends on the UI, not on the icon.** The classic stripe takes the 13x13 file; the
+     * new UI swaps in the mapped 16x16 or 20x20 one through `SolrIconMappings.json`. CI runs with the
+     * new UI on and a developer's machine may not, so an assertion of exactly 13 passed locally and
+     * failed there. The files' own sizes are pinned by [testEveryVariantIsPresentAtItsSize].
+     */
+    fun testTheToolWindowIconLoadsSquareAtAShippedSize() {
         val icon = SolrIcons.ToolWindow
 
-        assertEquals(13, icon.iconWidth)
-        assertEquals(13, icon.iconHeight)
+        assertEquals(icon.iconWidth, icon.iconHeight)
+        assertTrue("unexpected size ${icon.iconWidth}", icon.iconWidth in setOf(13, 16, 20))
     }
 
     /**
