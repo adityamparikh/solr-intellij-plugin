@@ -10,6 +10,11 @@ that does, does so only when asked.
 
 ### Added
 
+- **Which configsets are recognised, and a way to change it.** Settings → Languages & Frameworks →
+  Solr Configsets lists every configset the plugin recognises, each marked *detected* or *marked*,
+  and holds the switch that turns recognition off for the project. *Mark Directory as Solr Configset
+  Root*, in the Project view's context menu, is the way in for a configset detection misses; it reads
+  *Unmark* on a marked root. Marked roots travel with the project in `.idea/solr.xml`.
 - **Connections.** Settings → Tools → Solr Connections, or the `+` in the Solr tool window. The URL
   and username go to the workspace file; the password to the IDE's password safe, never a project
   file.
