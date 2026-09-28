@@ -465,7 +465,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         // exists on one line and not the other is a difference the versions explain.
         val line = SolrBundle.message(
             "drift.summary.solrLine",
-            view.drift.solrVersion.guidePathSegment,
+            view.drift.solrVersion.lineName,
             view.drift.solrVersion.describeSource(),
         )
         return listOfNotNull(summary, line, view.warning).joinToString("  ")
