@@ -32,6 +32,23 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         return created
     }
 
+    /** Waits for the configset list's latest background read to reach the screen. */
+    private fun SolrDriftPanel.awaitLoad(): SolrDriftPanel {
+        val load = configsetLoad
+        com.intellij.testFramework.PlatformTestUtil.waitWithEventsDispatching(
+            "the configset list was never read",
+            { load == null || load.isCompleted },
+            10,
+        )
+        return this
+    }
+
+    /** Re-reads the configset list and waits for it, as a user opening the chooser would see it. */
+    private fun SolrDriftPanel.awaitConfigsets() {
+        reloadConfigsets()
+        awaitLoad()
+    }
+
     private fun field(name: String, type: String = "string") = SolrField(name = name, type = type)
 
     private fun drift(repository: List<SolrField>, server: List<SolrField>) =
@@ -275,7 +292,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
     /** With no configset in the project there is nothing to compare, and no request is built. */
     fun testComparingWithNoConfigsetDoesNothing() {
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
 
         page.compare()
 
@@ -317,7 +334,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         myFixture.addFileToProject("books/conf/managed-schema.xml", "<schema name=\"books\"/>")
         myFixture.addFileToProject("books/conf/solrconfig.xml", "<config/>")
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
 
         assertTrue("everything is chosen: a connection, a configset and a collection", page.canAct())
@@ -372,7 +389,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConnection()
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("")
 
         page.compare()
@@ -386,7 +403,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
     fun testEachActionStopsWithNoConnection() {
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
 
         page.compare()
@@ -431,7 +448,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConnection()
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
 
         val enabled = enablementOf(page)
@@ -463,7 +480,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConnection()
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
         TestDialogManager.setTestDialog(TestDialog.NO)
 
@@ -509,7 +526,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConnection()
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
 
         page.render(
@@ -533,7 +550,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConnection()
         givenConfigset()
         val page = panel()
-        page.reloadConfigsets()
+        page.awaitConfigsets()
         page.setCollection("books_prod")
         page.render(
             SolrDriftView.Compared(
@@ -645,6 +662,7 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         givenConfigset("books")
 
         page.configsetChooser.firePopupMenuWillBecomeVisible()
+        page.awaitLoad()
 
         assertEquals(listOf("books"), page.offeredConfigsets)
     }
@@ -664,19 +682,45 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
             page = panel()
             assertEmpty("nothing can be found while indexing", page.offeredConfigsets)
         }
-        com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        page.awaitLoad()
 
         assertEquals(listOf("books"), page.offeredConfigsets)
+    }
+
+    /**
+     * Opening the chooser works from a thread holding no read lock.
+     *
+     * **A click on the chooser is exactly that thread.** In a running 2026.2 IDE a mouse press is
+     * dispatched on the EDT without the implicit read lock a test's EDT holds, so reading the
+     * filename index from the popup listener threw — *Read access is allowed from inside read-action
+     * only* — and Swing abandoned showing the popup. The chooser did nothing when clicked, with a red
+     * error in the corner; the sandbox log of the 2026-09-28 drift report has it twice. A pooled
+     * thread is the nearest a test can get to a lock-free EDT, and the listener must not care which
+     * it is on.
+     */
+    fun testOpeningTheChooserNeedsNoReadLock() {
+        val page = panel()
+        givenConfigset("books")
+
+        val opening = com.intellij.openapi.application.ApplicationManager.getApplication()
+            .executeOnPooledThread { page.configsetChooser.firePopupMenuWillBecomeVisible() }
+        com.intellij.testFramework.PlatformTestUtil.waitForFuture(opening)
+        com.intellij.testFramework.PlatformTestUtil.waitWithEventsDispatching(
+            { "the chooser never offered the configset: ${page.offeredConfigsets}" },
+            { page.offeredConfigsets == listOf("books") },
+            10,
+        )
     }
 
     /** Re-reading the list keeps what was chosen, where it still exists. */
     fun testReopeningTheChooserKeepsTheChosenConfigset() {
         givenConfigset("books")
         givenConfigset("films")
-        val page = panel()
+        val page = panel().awaitLoad()
         page.configsetChooser.selectedIndex = page.offeredConfigsets.indexOf("films")
 
         page.configsetChooser.firePopupMenuWillBecomeVisible()
+        page.awaitLoad()
 
         assertEquals("films", (page.configsetChooser.selectedItem as? org.apache.solr.ide.configset.activation.SolrConfigset)?.name)
     }
