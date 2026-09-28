@@ -449,6 +449,13 @@ types for fields nobody has written yet, and the check correctly reports every o
 That is a true fact about the file rather than a defect in it, which is why it is the one rule a
 *zero findings* gate cannot hold, and why it is drawn dimmed rather than underlined below.
 
+**A name that resolves to nothing is an error; everything else is a warning.** The four checks for a
+dangling copyField, an undeclared field type, an unknown attribute and an undeclared field in a
+handler parameter draw a red wavy underline in every colour scheme. The rest are warnings, and how a
+warning looks is the scheme's choice: *Dark* and *Islands Dark* draw a yellow wave, while *Default*,
+*Darcula* and the *Light* scheme behind the *Islands Light* theme draw a tinted background with no
+line. [The inspection catalog](inspection-catalog.md) lists each check's severity.
+
 What they catch, briefly:
 
 - **A `copyField` naming a field nothing declares** — flagged, with Alt-Enter offering the declared
@@ -478,7 +485,7 @@ What they catch, briefly:
   because it checks knownness before distance.
 - **An unknown attribute, or a value outside a closed set** — `indexed="yes"` instead of `"true"`.
 
-**Try it.** `managed-schema.xml`, untouched, shows exactly two warnings — a planted dangling
+**Try it.** `managed-schema.xml`, untouched, shows exactly two errors — a planted dangling
 `manufacturer` copyField and a planted undeclared field type — and nothing else; `solrconfig.xml`
 shows none. Both are deliberate fixtures and should never be "fixed." (Verified by
 [the zero-false-positive baseline checks](manual-test-suite.md#2-zero-false-positive-baseline-base).)
@@ -492,8 +499,9 @@ notes](images/04-inspection-copyfield-quickfix.png)
 ## Seeing what's already redundant
 
 **What it does.** An attribute whose written value equals what Solr would have supplied anyway
-renders dimmed — the same idiom an IDE uses for any other redundant code, at information severity,
-never reaching the Problems view, because a restated default is correct rather than wrong. An
+renders dimmed — grey text and no underline, the same idiom an IDE uses for any other redundant
+code, at information severity, never reaching the Problems view, because a restated default is
+correct rather than wrong. An
 Alt-Enter [intention](glossary.md#intention) on a dimmed attribute removes it, leaving a schema whose
 resolved properties are
 identical. The comparison covers both field properties (`indexed`, `stored`, and the rest, resolved

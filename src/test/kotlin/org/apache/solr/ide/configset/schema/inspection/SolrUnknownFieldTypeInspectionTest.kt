@@ -25,11 +25,11 @@ class SolrUnknownFieldTypeInspectionTest : SolrConfigsetTestCase() {
     }
 
     fun testAFieldNamingAnUndeclaredTypeIsFlagged() {
-        check("""<field name="sku" type="<warning descr="Solr: no field type named 'stored' is declared in this configset">stored</warning>"/>""")
+        check("""<field name="sku" type="<error descr="Solr: no field type named 'stored' is declared in this configset">stored</error>"/>""")
     }
 
     fun testADynamicFieldNamingAnUndeclaredTypeIsFlagged() {
-        check("""<dynamicField name="*_x" type="<warning descr="Solr: no field type named 'nope' is declared in this configset">nope</warning>"/>""")
+        check("""<dynamicField name="*_x" type="<error descr="Solr: no field type named 'nope' is declared in this configset">nope</error>"/>""")
     }
 
     fun testFieldsNamingDeclaredTypesAreClean() {

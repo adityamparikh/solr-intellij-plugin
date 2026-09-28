@@ -30,11 +30,11 @@ class SolrDanglingCopyFieldInspectionTest : SolrConfigsetTestCase() {
     }
 
     fun testADanglingSourceIsFlagged() {
-        check("""<copyField source="<warning descr="Solr: no field named 'manufacturer' is declared in this configset">manufacturer</warning>" dest="text"/>""")
+        check("""<copyField source="<error descr="Solr: no field named 'manufacturer' is declared in this configset">manufacturer</error>" dest="text"/>""")
     }
 
     fun testADanglingDestinationIsFlagged() {
-        check("""<copyField source="name" dest="<warning descr="Solr: no field named 'missing' is declared in this configset">missing</warning>"/>""")
+        check("""<copyField source="name" dest="<error descr="Solr: no field named 'missing' is declared in this configset">missing</error>"/>""")
     }
 
     fun testACopyFieldBetweenDeclaredFieldsIsClean() {

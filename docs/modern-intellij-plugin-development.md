@@ -910,9 +910,11 @@ to you, that's the signal to read the platform SDK page for it before touching t
 | `localInspection` | inspection | Same shape as [Part 5](#part-5--feature-2-an-inspection-with-a-quick-fix), eleven registrations | `plugin.xml:148-283` |
 | `intentionAction` | [intention](glossary.md#intention) (new) | An Alt+Enter menu item on code that has nothing wrong with it — no underline, never in the Problems view. The distinguishing question, stated in this repo's own [code organization guide](code-organization.md#the-organising-principle): if your change would underline something, it's an inspection; if it wouldn't, it's an intention | Three registrations, `plugin.xml:288-305` |
 
-Two things worth noticing about the list as a whole. First, every inspection is `level="WARNING"`,
-never `ERROR` — the comment beside the block in `plugin.xml` explains why: this plugin's model of a
-half-typed file, mid-edit, isn't authoritative enough to claim a hard error. Second, nothing here is
+Two things worth noticing about the list as a whole. First, inspections default to
+`level="WARNING"` — the comment beside the block in `plugin.xml` explains why: this plugin's model of
+a half-typed file, mid-edit, isn't authoritative enough to claim a hard error. The four that report
+a name resolving to nothing are the exception, at `ERROR`, because the light colour schemes draw a
+warning without any underline and an unresolved name is conventionally an error. Second, nothing here is
 an *action* — no menu item, no toolbar button, no `AnAction`. Every capability described so far
 is something the platform calls on its own, group one from [Part 2](#so-which-lists-are-there). The
 Server track did bring group two — upload, reload, apply, index a test document — but as toolbar

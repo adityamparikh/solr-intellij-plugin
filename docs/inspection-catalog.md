@@ -7,14 +7,14 @@
 > **Read first:** [Glossary](glossary.md) if Solr terms are new ·
 > [User guide](user-guide.md) for the same checks in the order you meet them
 
-The plugin registers **eleven** inspections. All of them appear in the IDE under
+The plugin registers **twelve** inspections. All of them appear in the IDE under
 **Settings → Editor → Inspections → Solr**, and each has a description page there — the same text
 this document is assembled from.
 
 **The description files are the canonical wording.** `src/main/resources/inspectionDescriptions/`
 holds one HTML page per inspection, the IDE shows it, and the Marketplace listing publishes it. What
 follows is derived from those pages and from the registrations in `plugin.xml`; sentences are
-shortened for a reader going through all eleven at once, and nothing here claims more than the page
+shortened for a reader going through all twelve at once, and nothing here claims more than the page
 it came from. Where a page and the code disagree, this document says so rather than choosing.
 
 ## How to read an entry
@@ -22,13 +22,20 @@ it came from. Where a page and the code disagree, this document says so rather t
 - **Reports** — the finding, in the file where the caret is.
 - **Finding** — *defect* means the file is wrong: Solr refuses it, or accepts it and quietly does
   something other than what was written. *Observation* means the file is correct and the finding is a
-  true fact about it. Ten of the eleven are defects; one is an observation, and it is
+  true fact about it. Eleven of the twelve are defects; one is an observation, and it is
   [called out below](#the-one-finding-that-is-not-a-defect).
-- **Severity** — as registered, which is the severity before any user change. **All eleven are
-  registered `level="WARNING"` and `enabledByDefault="true"`**, so severity does not distinguish them
-  and is not repeated per entry. Note that severity and *presentation* are separate: the unused
-  field type is registered at `WARNING` and still renders greyed rather than underlined, because the
-  highlight type decides the drawing.
+- **Severity** — as registered, which is the severity before any user change. All twelve are
+  `enabledByDefault="true"`. **Four are `level="ERROR"`: the checks whose finding is a name that
+  resolves to nothing** — the dangling copyField, the unknown field type, the unknown attribute and
+  the handler parameter naming an undeclared field. Each entry says so. The other eight are
+  `level="WARNING"`.
+- **Presentation** — separate from severity, and decided by the editor's colour scheme. **An error
+  is a red wavy underline in every bundled scheme; a warning is not always underlined.** *Default*,
+  *Darcula* and the *Light* scheme behind the *Islands Light* theme draw a warning as a tinted
+  background with no line at all; only *Dark* and *Islands Dark* draw a yellow wave. That is why the
+  unresolved-name checks are errors: a sandbox pass on *Islands Light* read them as unflagged when
+  they were warnings. The unused field type is registered at `WARNING` and still
+  renders greyed rather than underlined, because its highlight type decides the drawing.
 - **Silent on** — what the rule deliberately declines to report. This is the part the IDE's own
   description page buries in prose and no settings screen shows at all, and it is where most of the
   design of these rules went: Solr configuration is full of syntax that resembles a field name, and a
@@ -78,6 +85,8 @@ deploy time rather than while the file is being edited. Until then nothing in th
 the reference is a bare string in an attribute, connected to the field it names by nothing but
 convention.
 
+**Severity: error** — a name that resolves to nothing, so it is underlined in every scheme.
+
 **Silent on** names containing `*` — a glob source is a pattern over dynamic fields, and whether
 anything matches it is not a question the schema alone can answer — and on the names Solr supplies
 without the schema declaring them (`score`, `_version_`, `_root_`) and on document transformers
@@ -95,6 +104,8 @@ declare.
 **Finding: defect.** Solr refuses to load a core with an unknown field type. The mistake is easy to
 make while editing, because generic word completion will offer any word already present in the file —
 including attribute names such as `stored`.
+
+**Severity: error** — a name that resolves to nothing, so it is underlined in every scheme.
 
 **Silent on** a `type` attribute that is absent or empty. A missing type is a different defect with a
 different message, and reporting it here would put `unknown type ''` in front of the user.
@@ -176,6 +187,11 @@ configset the plugin was told to treat as Solr's.
 in a Solr configuration. A `qf` naming a field that was renamed in the schema is not an error to
 Solr — the parameter is just a string. Queries return fewer results, or none, and nothing reports
 anything.
+
+**Severity: error**, although Solr loads the core. The severity follows what the finding *is* — a
+name that resolves to nothing, which the editor presents as an error wherever it meets one — rather
+than when Solr notices, and it keeps this check drawn the same way as the schema's own unresolved
+names.
 
 **Reads eighteen parameters and no others**: `qf`, `pf`, `pf2`, `pf3`, `bf`, `boost`, `sort`,
 `group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field`,
@@ -310,6 +326,9 @@ underline sits on the attribute *name*, not its value, since the value may well 
 `Invalid field property`, the factory `Unknown parameters` — and a core load may be a production
 reload long after the edit.
 
+**Severity: error** — an attribute name the element cannot resolve, so it is underlined in every
+scheme.
+
 **Fires only where the set of legal attributes is genuinely complete**: on `<field>` and
 `<dynamicField>`, and on an analysis component whose class the generated catalog knows.
 
@@ -374,12 +393,14 @@ Recorded, not decided.
 
 Every count above was checked against the repository rather than counted by eye:
 
-- **Eleven inspections.** `<localInspection>` registrations in `plugin.xml`, and eleven files in
+- **Twelve inspections.** `<localInspection>` registrations in `plugin.xml`, and twelve files in
   `src/main/resources/inspectionDescriptions/`, whose names match the registered short names exactly
   — a correspondence `SolrPluginDescriptorTest` also asserts, since a description file the IDE cannot
   find is a blank page in Settings.
-- **Every severity.** Eleven `level="WARNING"` attributes, read from the registrations rather than
-  inferred from the classes.
+- **Every severity.** Four `level="ERROR"` and eight `level="WARNING"` attributes, read from the
+  registrations rather than inferred from the classes. That the four errors draw an underline in
+  every bundled scheme is asserted by `SolrFindingPresentationTest`, against the schemes' own
+  attributes.
 - **Group sizes.** Six inspection classes under `configset.schema.inspection` and five under
   `configset.solrconfig.inspection` — the two attribute checks in this document's third group sit in
   the first of those packages.

@@ -89,14 +89,14 @@ class SolrUnknownAttributeInspectionTest : SolrConfigsetTestCase() {
 
     fun testAMisspelledFieldPropertyIsFlagged() {
         checkNames(
-            """<field name="sku" type="string" <warning descr="Solr: <field> does not accept an attribute named 'indexd'">indexd</warning>="true"/>""",
+            """<field name="sku" type="string" <error descr="Solr: <field> does not accept an attribute named 'indexd'">indexd</error>="true"/>""",
         )
     }
 
     fun testAMisspelledFactoryAttributeIsFlagged() {
         checkNames(
             """<fieldType name="t" class="solr.TextField"><analyzer>""" +
-                """<filter class="solr.EdgeNGramFilterFactory" <warning descr="Solr: <filter> does not accept an attribute named 'maxGramSiz'">maxGramSiz</warning>="15"/>""" +
+                """<filter class="solr.EdgeNGramFilterFactory" <error descr="Solr: <filter> does not accept an attribute named 'maxGramSiz'">maxGramSiz</error>="15"/>""" +
                 """</analyzer></fieldType>""",
         )
     }
