@@ -109,10 +109,11 @@ be retired from here, not accumulated.
 *Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
 analysis pass over the real demo files, all inspections at once.*
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** warnings: the
-      planted dangling `manufacturer` copyField near the bottom, and the planted undeclared
-      `type="discontinued"` on the `legacy` field. Both are there to demonstrate an inspection,
-      and neither may be fixed. Nothing else in the file is underlined.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** errors, each a red
+      wavy underline: the planted dangling `manufacturer` copyField near the bottom, and the
+      planted undeclared `type="discontinued"` on the `legacy` field. Both are there to
+      demonstrate an inspection, and neither may be fixed. Nothing else in the file is underlined
+      by this plugin; the greyed attributes are [restated defaults](#11-an-attribute-that-restates-its-default-dim).
 - [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
 
 **Count the rows that begin `Solr:`, and read the count in the Problems tool window rather
@@ -396,13 +397,20 @@ side of a boundary again.
 `SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
 `SolrUnusedFieldTypeInspectionTest`, `SolrNonIndexedRelevanceFieldInspectionTest`,
 `SolrMisspelledParameterInspectionTest`, `SolrDiscontinuedElementInspectionTest`,
-`SolrReferenceQuickFixTest`. Manual adds:
+`SolrReferenceQuickFixTest`, `SolrFindingPresentationTest`. Manual adds:
 live reaction to edits, fix application through the real Alt-Enter menu.*
+
+**What "underlined" looks like depends on the colour scheme, and on the check.** A name that resolves
+to nothing — INSP-1 to INSP-5 — is an error, a red wavy underline in every scheme. Every other check
+here is a warning, which *Dark* and *Islands Dark* draw as a yellow wave but *Default*, *Darcula* and
+the *Light* scheme behind *Islands Light* — the theme the sandbox runs on — draw as a tinted
+background with no line. Read "underlined" in a warning check as *marked*, and confirm it by
+hovering or in the Problems tool window.
 
 Every check here ends with **undo until
 [the baseline](#2-zero-false-positive-baseline-base) is clean again**.
 
-- [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: underlined,
+- [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: a red wavy underline,
       and Alt-Enter offers the declared fields, closest spelling first.
 - [ ] 📸 **Capture `docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted*
       `manufacturer` rule at line 92 rather than the edit
@@ -410,7 +418,7 @@ Every check here ends with **undo until
       needs no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
       every item in it rewrites the file.
       [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
-- [ ] **INSP-2** — Change a field's `type` to a bogus value: underlined, fix offers the
+- [ ] **INSP-2** — Change a field's `type` to a bogus value: a red wavy underline, fix offers the
       declared types; applying one produces a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
       without saving or reopening.
@@ -700,8 +708,10 @@ dim is part of the baseline rather than something a gesture produces. That is wo
 dozen greyed attributes in a clean schema is this feature working, not a defect.
 
 - [ ] **DIM-1** — Open `managed-schema.xml` untouched. The `indexed="true"` and `stored="true"` on
-      the field block render greyed, whole-attribute, and **nothing about them appears in the
-      Problems view**. `stored="false"` on `name_prefix` and `text` is **not** greyed.
+      the field block render greyed, whole-attribute, **with no underline, wave or strikeout**, and
+      **nothing about them appears in the Problems view**. `stored="false"` on `name_prefix` and
+      `text` is **not** greyed. (The one bundled exception is a *High Contrast* scheme, which
+      draws all redundant code with a grey wave — the platform's choice, not this plugin's.)
 - [ ] **DIM-2** — Alt-Enter on one of the greyed attributes offers to remove it, and removing leaves
       a schema that still parses and a field whose documentation reports the same effective values as
       before. Undo.

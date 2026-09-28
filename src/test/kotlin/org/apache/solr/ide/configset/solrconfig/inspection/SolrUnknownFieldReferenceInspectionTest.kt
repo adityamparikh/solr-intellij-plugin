@@ -43,7 +43,7 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
 
     fun testAHandlerParameterNamingAnUndeclaredFieldIsFlagged() {
         checkConfig(
-            handler("""<str name="qf">name^3 <warning descr="Solr: no field named 'descriptoin' is declared in the schema">descriptoin</warning></str>"""),
+            handler("""<str name="qf">name^3 <error descr="Solr: no field named 'descriptoin' is declared in the schema">descriptoin</error></str>"""),
         )
     }
 
@@ -125,7 +125,7 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
     /** An `arr` supplies the parameter name to each `str` inside it. */
     fun testABadFieldInsideAnArrIsFlagged() {
         checkConfig(
-            handler("""<arr name="facet.field"><str><warning descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</warning></str><str>id</str></arr>"""),
+            handler("""<arr name="facet.field"><str><error descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</error></str><str>id</str></arr>"""),
         )
     }
 
@@ -144,8 +144,8 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
     fun testFieldNamesInSolrsOtherValueTagsAreRead() {
         checkConfig(
             handler(
-                """<int name="qf"><warning descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</warning></int>""",
-                """<bool name="df"><warning descr="Solr: no field named 'alsomissing' is declared in the schema">alsomissing</warning></bool>""",
+                """<int name="qf"><error descr="Solr: no field named 'nosuchfield' is declared in the schema">nosuchfield</error></int>""",
+                """<bool name="df"><error descr="Solr: no field named 'alsomissing' is declared in the schema">alsomissing</error></bool>""",
             ),
         )
     }
@@ -183,7 +183,7 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
     /** A name at either end of the value has no separator on that side. */
     fun testAFieldAtTheStartAndEndOfAValueIsMatched() {
         checkConfig(
-            handler("""<str name="qf"><warning descr="Solr: no field named 'aaa' is declared in the schema">aaa</warning> name <warning descr="Solr: no field named 'zzz' is declared in the schema">zzz</warning></str>"""),
+            handler("""<str name="qf"><error descr="Solr: no field named 'aaa' is declared in the schema">aaa</error> name <error descr="Solr: no field named 'zzz' is declared in the schema">zzz</error></str>"""),
         )
     }
 
@@ -215,8 +215,8 @@ class SolrUnknownFieldReferenceInspectionTest : SolrConfigsetTestCase() {
     fun testATypoInEitherParameterIsFlagged() {
         checkConfig(
             handler(
-                """<str name="terms.fl"><warning descr="Solr: no field named 'nmae' is declared in the schema">nmae</warning></str>""",
-                """<str name="mlt.fl">name,<warning descr="Solr: no field named 'txet' is declared in the schema">txet</warning></str>""",
+                """<str name="terms.fl"><error descr="Solr: no field named 'nmae' is declared in the schema">nmae</error></str>""",
+                """<str name="mlt.fl">name,<error descr="Solr: no field named 'txet' is declared in the schema">txet</error></str>""",
             ),
         )
     }

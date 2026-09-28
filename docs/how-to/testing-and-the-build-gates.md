@@ -66,7 +66,7 @@ plugin uninstalled.
 Expected messages go inline in the fixture:
 
 ```kotlin
-check("""<field name="sku" type="<warning descr="Solr: no field type named 'stored' is declared in this configset">stored</warning>"/>""")
+check("""<field name="sku" type="<error descr="Solr: no field type named 'stored' is declared in this configset">stored</error>"/>""")
 ```
 
 A message change breaks the test. That is intentional — user-visible strings are behaviour.

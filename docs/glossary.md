@@ -538,9 +538,11 @@ syntax that resembles a field name without being one (`fl` legitimately holds `s
 `[docid]`, `max(price,0)`), and "a warning on a correct file is what gets a plugin uninstalled"
 (`docs/code-organization.md:341-344`). `SolrInspections`
 (`src/main/kotlin/org/apache/solr/ide/configset/editing/SolrInspections.kt`) is the shared helper
-that gives that requirement teeth, and every registration in `plugin.xml` uses `level="WARNING"`
-rather than `ERROR` — the plugin's model of a half-typed file is never treated as authoritative
-enough to claim a hard error (`docs/how-to/add-an-editor-feature.md:181-185`).
+that gives that requirement teeth. Registrations in `plugin.xml` default to `level="WARNING"` — the
+plugin's model of a half-typed file is not treated as authoritative enough to claim a hard error —
+with one exception: the four checks whose finding is a name that resolves to nothing are `ERROR`,
+because a light editor scheme draws a warning with no underline at all
+([the inspection catalog](inspection-catalog.md#how-to-read-an-entry) has the detail).
 
 **The distinction against [intention](#intention) that catches people:** an inspection first claims
 something is *wrong*; an intention offers an improvement to a file that has nothing wrong with it. If

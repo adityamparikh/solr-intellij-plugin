@@ -1,7 +1,9 @@
 package org.apache.solr.ide.configset.schema.annotator
 
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.colors.CodeInsightColors
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
+import org.apache.solr.ide.configset.editing.BundledColorSchemes
 
 /**
  * Dimming an attribute whose value the field would have had anyway.
@@ -39,6 +41,28 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
     fun testAnAttributeRepeatingSolrsDefaultIsDimmed() {
         val dimmed = dimmed("""<field name="sku" type="string" indexed="true"/>""")
         assertEquals(listOf("""indexed="true""""), dimmed)
+    }
+
+    /**
+     * Grey text and nothing else, in every scheme a user meets: no underline, no box, no strikeout,
+     * and nothing that reaches the Problems view.
+     *
+     * The rendering is the claim — a line under a correct attribute reads as *something is wrong
+     * here*, which is exactly what this feature must not say — so it is asserted against the
+     * schemes' own attributes rather than against the key that produces them today.
+     */
+    fun testTheDimIsGreyTextOnlyInEveryBundledScheme() {
+        myFixture.configureByText("managed-schema.xml", schema("""<field name="sku" type="string" indexed="true"/>"""))
+        val dims = myFixture.doHighlighting()
+            .filter { it.forcedTextAttributesKey == CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES }
+        assertEquals(1, dims.size)
+        val dim = dims.single()
+        assertEquals(HighlightSeverity.INFORMATION, dim.severity)
+        assertNull("a dim carries no message, so nothing reaches the Problems view", dim.description)
+        for ((name, scheme) in BundledColorSchemes.all()) {
+            val attributes = BundledColorSchemes.attributesOf(dim, scheme)
+            assertNotNull("$name: the dim draws no colour", attributes?.foregroundColor)
+            assertFalse("$name: the dim draws an effect: $attributes", BundledColorSchemes.drawsAnEffect(attributes))        }
     }
 
     fun testAnAttributeThatDecidesSomethingIsNotDimmed() {

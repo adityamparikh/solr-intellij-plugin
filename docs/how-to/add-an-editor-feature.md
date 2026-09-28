@@ -230,17 +230,23 @@ the configset does not declare.
     groupBundle="messages.SolrBundle"
     groupKey="inspection.group"
     enabledByDefault="true"
-    level="WARNING"
+    level="ERROR"
     implementationClass="org.apache.solr.ide.configset.schema.inspection.SolrUnknownFieldTypeInspection"/>
 ```
 
 `shortName` is the coupling to the HTML file in step 6. `key` and `groupKey` resolve against the
 bundle in step 5.
 
-**`level="WARNING"`, not `ERROR`.** Every inspection here is a warning on purpose: the plugin's model
-of a half-typed file is not authoritative enough to claim a hard error, and an error on a file the
-user is midway through editing is worse than a warning on the same file. If you think yours warrants
-`ERROR`, that is a discussion to have in the PR rather than a default to take.
+**`level="WARNING"` by default; `ERROR` only for a name that resolves to nothing.** Most
+inspections here are warnings on purpose: the plugin's model of a half-typed file is not
+authoritative enough to claim a hard error, and an error on a file the user is midway through
+editing is worse than a warning on the same file. The example above is one of the four exceptions —
+a copyField end, a field's type, an attribute name or a handler parameter's field that names nothing
+the configset declares. Those are `ERROR` because the editor presents an unresolved name as one, and
+because a warning is not guaranteed an underline: the light colour schemes draw it as a pale
+background and nothing else. If you think a new check warrants `ERROR` for any other reason, that is
+a discussion to have in the PR rather than a default to take — and `SolrFindingPresentationTest` is
+where to assert the drawing, since a `<warning>` or `<error>` marker says nothing about it.
 
 Add a comment above the registration if the entry is not self-explanatory. The existing blocks
 explain *why* they are shaped the way they are, and that convention is worth keeping.
@@ -259,7 +265,7 @@ class SolrUnknownFieldTypeInspectionTest : SolrConfigsetTestCase() {
     }
 
     fun testAFieldNamingAnUndeclaredTypeIsFlagged() {
-        check("""<field name="sku" type="<warning descr="Solr: no field type named 'stored' is declared in this configset">stored</warning>"/>""")
+        check("""<field name="sku" type="<error descr="Solr: no field type named 'stored' is declared in this configset">stored</error>"/>""")
     }
 
     fun testFieldsNamingDeclaredTypesAreClean() {
