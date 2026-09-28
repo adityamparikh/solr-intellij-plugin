@@ -84,6 +84,7 @@ Counts are files, to show weight rather than to be kept current.
 ```
 org.apache.solr.ide
 ├── SolrBundle                        every user-visible string, in one place
+├── SolrIcons                         the plugin's own icons, for plugin.xml to name
 │
 ├── model                         (3) what a configset MEANS — no IntelliJ types anywhere in here
 │   ├── schema                    (8)   what a field IS: its type, what it can match, what it can do
@@ -553,8 +554,8 @@ model lookup, and what comes back.
 
 ### `org.apache.solr.ide`
 
-Plugin-wide infrastructure. Currently the localization bundle, `SolrBundle`. Feature code lives in
-subpackages.
+Plugin-wide infrastructure. Currently the localization bundle, `SolrBundle`, and the icon holder,
+`SolrIcons`. Feature code lives in subpackages.
 
 ### `org.apache.solr.ide.model`
 
