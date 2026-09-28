@@ -690,6 +690,12 @@ Three kinds of difference, and the plugin treats them very differently:
 notes differing — stored=false in the configset, stored=true on the server — and subtitle not
 deployed](images/19-drift-three-states.png)
 
+**The collection chooser lists what the selected server holds**, read when you open it, and says
+which configset each collection was built from. Compare a configset against a collection built
+from something else and nearly every row reads *Only on server* — the comparison is right, but it
+is not the one you meant, and the chooser is where that shows before you press anything. A name
+the list does not show, such as an alias, can still be typed.
+
 If the two definition columns look identical on a *Differs* row, widen them: at the default column
 widths both truncate to the same `type=… indexed=true stor…`, and the difference is in the part cut
 off.
@@ -738,7 +744,7 @@ pane below](images/21-drift-apply-before.png)
 declarations](images/21-drift-apply-after.png)
 
 **Try it.** You need a configset in the project *and* a collection on the server that was created
-from it. Add a field to that configset's schema, open **Drift**, choose the configset, type the
+from it. Add a field to that configset's schema, open **Drift**, choose the configset, choose the
 collection, press **Compare**: the new field reads *Not deployed*. Select it to see its `add-field`
 payload, then press **Apply Additive Changes**. (Verified by
 [the drift and apply checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).)
