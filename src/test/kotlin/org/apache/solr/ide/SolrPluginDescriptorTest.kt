@@ -99,15 +99,43 @@ class SolrPluginDescriptorTest {
         // resource or a typo in the attribute scan would otherwise make this test vacuously green.
         assertTrue("expected $name to name at least one of our classes", names.isNotEmpty())
 
-        val loader = javaClass.classLoader
-        val missing = names.filter { (_, fqn) ->
-            runCatching { Class.forName(fqn, false, loader) }.isFailure
-        }
+        val missing = names.filter { (_, fqn) -> !resolves(fqn) }
         assertTrue(
             "$name names classes that do not exist:\n" +
                 missing.joinToString("\n") { (where, fqn) -> "  $where → $fqn" },
             missing.isEmpty(),
         )
+    }
+
+    /**
+     * The tool window names its icon, and the name reaches a field that exists.
+     *
+     * Asserted separately from the general walk because an absent attribute is not a wrong one: a
+     * `<toolWindow>` with no `icon` is valid to the platform, which then draws a generic placeholder
+     * in the stripe — the "circle with four dots" a tester reported, and nothing a build notices.
+     */
+    @Test
+    fun `the tool window names an icon that resolves`() {
+        val icons = SolrDescriptors.attributesOf("plugin.xml", "toolWindow", "icon")
+
+        assertTrue(icons.toString(), icons.isNotEmpty() && icons.all(::resolves))
+    }
+
+    /**
+     * Whether [fqn] names a class of ours, or a static field on one.
+     *
+     * **A field is the other thing a registration can name.** An icon attribute reads
+     * `org.apache.solr.ide.SolrIcons.ToolWindow`, which is a class followed by a field rather than a
+     * nested class, and would otherwise fail here for being exactly what the platform expects. The
+     * field is looked up without initializing its class, for the same reason classes are loaded that
+     * way: this asks whether the name resolves, not whether an icon can be drawn outside an IDE.
+     */
+    private fun resolves(fqn: String): Boolean {
+        val loader = javaClass.classLoader
+        if (runCatching { Class.forName(fqn, false, loader) }.isSuccess) return true
+        val owner = fqn.substringBeforeLast('.')
+        val member = fqn.substringAfterLast('.')
+        return runCatching { Class.forName(owner, false, loader).getField(member) }.isSuccess
     }
 
     private companion object {

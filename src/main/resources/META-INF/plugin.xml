@@ -159,12 +159,21 @@
              where the configset being compared against it lives.
 
              `canCloseContents="false"`: there is one tab and closing it would leave an empty tool
-             window with no way back to it. -->
+             window with no way back to it.
+
+             `icon` is the plugin icon's mark in tool window grey. Without one the stripe shows the
+             platform's generic placeholder, which says nothing about whose window it is. -->
         <toolWindow
                 id="Solr"
                 factoryClass="org.apache.solr.ide.server.topology.SolrCollectionsToolWindowFactory"
+                icon="org.apache.solr.ide.SolrIcons.ToolWindow"
                 anchor="right"
                 canCloseContents="false"/>
+
+        <!-- The new UI draws tool window icons at 20x20 and 16x16 rather than the classic 13x13, and
+             finds those sizes through this mapping: `icons/expui/` beside the classic icon it
+             replaces. -->
+        <iconMapper mappingFile="SolrIconMappings.json"/>
 
         <!-- Which configsets the plugin recognises, and the switch that turns recognition off. Under
              Languages & Frameworks rather than beside the connections page, because this decides how

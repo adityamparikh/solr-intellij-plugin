@@ -750,6 +750,10 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       field being empty must not be read as "no password".
 - [ ] **SRV-4** — The **Solr** tool window opens on the right and lists what the server holds:
       `Cores` → `books` for a standalone server, `Collections` → shards → replicas for a cloud one.
+      Its stripe button shows the plugin icon's sunburst in plain grey, in light and dark themes,
+      rather than the platform's generic placeholder. On a cloud server, `books` and `shard1` each
+      start with a **green dot and the word `GREEN` appears nowhere in the row**; hovering either
+      shows `Health: GREEN`.
 - [ ] **SRV-5** — Stop Solr and press Refresh. The failure appears **inline above the tree, once**,
       and the tree empties. No popup, no dialog, and no stale topology left under the banner.
 - [ ] **SRV-6** — Start Solr again and press Refresh: the banner clears and the tree repopulates.

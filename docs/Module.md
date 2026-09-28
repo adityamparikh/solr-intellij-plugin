@@ -59,7 +59,7 @@ documenting it in the same change.
 # Package org.apache.solr.ide
 
 Plugin-wide infrastructure shared by all feature packages. Currently the
-localization bundle; feature code lives in subpackages.
+localization bundle and the icon holder; feature code lives in subpackages.
 
 # Package org.apache.solr.ide.model
 

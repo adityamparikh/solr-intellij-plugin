@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="2.63 2.63 34.74 34.74">
+  <!--
+    Tool window icon for the new UI in compact mode, 16x16.
+    The plugin icon's own geometry (META-INF/pluginIcon.svg), unchanged: the same disc and the same
+    six rays, in the same 40-unit coordinates. Only the viewBox differs, cropped so the disc spans
+    14px of a 16px icon, and the colour, which is the single tool window grey rather than
+    the plugin icon's red. The rays are cut out of the disc rather than drawn over it (even-odd fill,
+    clipped to the disc) so the icon stays one colour, which is what lets the IDE recolour it white
+    on a selected stripe button.
+  -->
+  <defs>
+    <clipPath id="disc">
+      <circle cx="20" cy="20" r="15.2"/>
+    </clipPath>
+  </defs>
+  <path clip-path="url(#disc)" fill="#6C707E" fill-rule="evenodd"
+        d="M4.8 20 A15.2 15.2 0 1 0 35.2 20 A15.2 15.2 0 1 0 4.8 20 Z
+           M9.4 30.6 L55.06 24.99 L54.22 20.25 Z
+           M9.4 30.6 L52.02 13.29 L49.67 8.37 Z
+           M9.4 30.6 L46.04 2.79 L42.04 -1.81 Z
+           M9.4 30.6 L37.4 -5.89 L32.05 -9.44 Z
+           M9.4 30.6 L26.48 -12.11 L20.68 -13.99 Z
+           M9.4 30.6 L13.97 -15.17 L8.84 -15.4 Z"/>
+</svg>
