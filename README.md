@@ -26,8 +26,9 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 
 ## Status
 
-**All three surfaces are built, and none is published yet.** 0.1.0 is cut in the changelog but was
-never released; 0.2.0, which carries all three, is drafted on GitHub and waiting to be published.
+**The editor, server and code tracks are complete, and 0.2.0 carries all three.** It is drafted on
+GitHub and waiting to be published; 0.1.0 was cut in the changelog but never released. Every feature
+below has been pressed in a running IDE against a live SolrCloud, not only tested.
 
 - **The configset editor** — the 0.1.0 content. Configset detection, a parsed field model, and
   everything built on it: eleven inspections with quick-fixes, completion over Solr's own
@@ -37,15 +38,16 @@ never released; 0.2.0, which carries all three, is drafted on GitHub and waiting
   showing collections, shards, replicas and the fields an index actually holds, queries run through
   the IDE's own HTTP Client with a readable summary and field completion, a drift view comparing a
   configset with a collection — with upload, reload and additive Schema API changes — and a
-  test-document editor that refuses what Solr would silently accept.
-- **Java and Kotlin using SolrJ** — a field name no configset declares is flagged, completed and
-  navigable to its declaration; a query string is coloured by structure; and a query runs from the
-  gutter beside it.
+  test-document editor that opens on every field the collection holds and refuses what Solr would
+  silently accept.
+- **Java and Kotlin using SolrJ** — a field name no configset declares is flagged; completion opens
+  as you type and offers only the fields that call can use; names navigate to their declaration; a
+  query string's fields and operators are coloured; and a query runs from the gutter beside it.
 
 **The editor still never talks to a server**, and that is the design rather than a gap: every
 editor answer comes from the files in your project and from Solr's own jars, read at build time. The
-server features contact one only when you ask. Framework configuration (Spring Boot and the others)
-and Apache Camel are not built.
+server features contact one only when you ask. **Next release:** framework configuration, one
+framework at a time — Spring Boot first, for IntelliJ IDEA Ultimate — and then Apache Camel.
 
 **If a configset does not light up**, right-click its directory and choose *Mark Directory as Solr
 Configset Root*; **Settings → Languages & Frameworks → Solr Configsets** lists every configset the

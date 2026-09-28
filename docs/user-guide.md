@@ -580,8 +580,9 @@ Two things worth knowing before you wonder whether something is broken:
 The **Solr** tool window, docked right, on the **Collections** tab. It shows collections, shards and
 replicas for a SolrCloud server, or cores for a standalone one.
 
-![The Solr tool window on a SolrCloud server: the books collection, its shard, and the shard's
-replica marked as leader, with the connection selector above](images/23-collections-topology.png)
+![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
+health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
+icon on the stripe](images/23-collections-topology.png)
 
 **A collection's and a shard's health is the coloured dot before its name**: green, yellow, orange
 or red, as SolrCloud reports it. Hover the row for the word itself — `Health: GREEN` — so the colour
@@ -693,8 +694,9 @@ you:
 - **A document with no unique key.** Solr answers `status: 0` and indexes it under a generated
   identifier, giving you a document that cannot be found again by any id you know.
 
-![The Index a test document dialog for books on local, with categry misspelled in the document, the
-reason in red below it, and OK disabled](images/31-index-test-document.png)
+![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
+declares with a sample value of each field's type, and saying the document matches the collection's
+schema](images/31-index-test-document.png)
 
 A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
 one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
@@ -719,9 +721,9 @@ Three kinds of difference, and the plugin treats them very differently:
 | **Only on server** | Added through the Schema API and never committed | No |
 | **Differs** | Both have it, defined differently | **No, deliberately** |
 
-![The drift view comparing the books configset with the books collection: isbn only on the server,
-notes differing — stored=false in the configset, stored=true on the server — and subtitle not
-deployed](images/19-drift-three-states.png)
+![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
+only on the server, category not deployed, and description differing, selected, with the reason the
+plugin will not send its replace-field request shown above the request](images/19-drift-three-states.png)
 
 **The collection chooser lists what the selected server holds**, read when you open it, and says
 which configset each collection was built from. Compare a configset against a collection built
@@ -831,6 +833,10 @@ once you type a letter where a field name goes — `addFilterQuery("c` — and a
 list, where the next name starts; <kbd>Ctrl-Space</kbd> still works anywhere it would. Every other
 string in your code keeps the IDE's usual rule of not opening a popup while you write prose.
 
+![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
+on its own, offering description from the solr configset with its type,
+text_general](images/32-code-completion-popup.png)
+
 **Only where a field name goes, not everywhere in the string.** In a query that is before the colon
 of each clause: `setQuery("category:books AND n` offers fields, `setQuery("category:b` does not,
 because the caret is in the value. Inside a phrase, a range or a local-parameter block nothing is
@@ -877,8 +883,8 @@ Solr client on the module, a name the source does not spell out, or no configset
 A query in a string is one colour end to end, so you do the parsing. The field names and the boolean
 operators are now told apart:
 
-![A setQuery call in which category, AND and name are picked out from books and solr, which keep the
-ordinary string colour](images/27-code-query-colour.png)
+![A setQuery call in which category and name are in the field colour and AND in the operator colour,
+picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour.png)
 
 **This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
 scan that reads field names for the check decides what to colour, so a name the check reports is a

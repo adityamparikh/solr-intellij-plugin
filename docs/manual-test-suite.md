@@ -1102,6 +1102,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 | 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
 | 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
+| 2026-09-28 | main at 888e5f5 with #246 and #250 | owner, then Claude | the owner's full pass by the checklist; then Claude re-pressed each finding's fix: BASE-1, INSP-2, DIM-1, SRV-4, SRV-19, SRV-19b, SRV-22, SRV-28, CODE-5, CODE-6 | **not completed** | the first pass run by the owner. Nine findings, each fixed on its own branch and re-pressed on the combined build, and two more found while re-pressing. See the notes below |
 | 2026-09-28 | 53d5592, then this fix | Claude | ACT-3, ACT-4, ACT-5 | **not completed** | the configset settings page and the mark action, pressed for the first time. ACT-5 green at once; ACT-3 and ACT-4 failed first and are green on the fix. Also found the Spring Boot discovery broken in a real IDE, which took it out of 0.2.0. See the notes below |
 | 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
@@ -1562,3 +1563,36 @@ with it.
 
 The drift summary's *Solr 10_0*, recorded verbatim in the server pass above, is fixed to *10.0* in
 the same change, but was not re-pressed: it needs a server.
+
+### 2026-09-28 — the owner's pass, and what re-pressing its fixes found
+
+The owner pressed the suite from [the checklist](manual-test-checklist.md) against their own SolrCloud
+9.10.1, and reported by track. Each finding was fixed on its own branch, the branches combined, and
+the fix re-pressed in a sandbox built from that combination before anything here was written.
+
+- **F-keys did nothing** — not the plugin. A Mac sends F1–F12 as media keys unless fn is held, and the
+  sandbox's keymap was *IntelliJ IDEA Classic*, where F1 opens Help. The checklist and the user guide
+  now name every gesture by action too.
+- **An unknown type or attribute was not underlined** (BASE-1, INSP-2) — the reference inspections were
+  warnings, which the light schemes draw as a tinted background with no line. Now errors: re-pressed,
+  `type="discontinued"` carries a red wave and the file counts ❗2.
+- **Restated defaults were underlined** (DIM-1) — true in High Contrast, which draws the platform's
+  unused-code style with a wave. The first check of this claim covered only three schemes and found
+  nothing; re-pressing in the owner's own scheme found it. The dim now has a grey-only key of its own.
+- **Health read *GREEN*** (SRV-4) — now a coloured dot, with the word in the tooltip; re-pressed.
+- **The Drift tab looked broken** (SRV-19) — it was, twice. Opening the configset chooser threw on the
+  UI thread, so it never opened; and at the tool window's default width the toolbar wrapped under its
+  row and was not drawn, so *press Compare* had no Compare. Both fixed; re-pressed, Compare ran against
+  `shows` and the summary named *Solr 9.10, from the connected server*. **SRV-22** was pressed for the
+  first time against a live server: the confirmation named `solr`, `shows` and `solr-mcp-demo`, and
+  *No* uploaded nothing — the server still held `_default` alone.
+- **The test document held only `id`** (SRV-28) — it now opens on every field `shows` declares, and
+  reports no problems; re-pressed and cancelled, nothing indexed.
+- **`AND` was not coloured** (CODE-5) — it was painted in a key the schemes leave as string colour or
+  plain grey. Re-pressed in High Contrast and Islands Light: fields and `AND` in distinct colours.
+- **Completion did not open by itself, and offered what cannot be used** (CODE-6) — re-pressed: typing
+  `de` after `AND ` opened the list with `description` alone.
+- **The tool window's icon** — now the plugin's own sunburst; re-pressed.
+
+The fresh screenshots — entries 4, 19, 23, 27, 31 and the new 32 in [the catalog](screenshots.md) — were
+taken in this session, in Islands Light, after every re-press above.

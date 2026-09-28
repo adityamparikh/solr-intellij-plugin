@@ -146,8 +146,9 @@ complete-configuration popup put those facts on screen.
 
 ### 4. [Inspection](glossary.md#inspection) and [quick-fix](glossary.md#quick-fix) — `04-inspection-copyfield-quickfix.png`
 
-**✅ Captured.** Reshot after the `*_t` dynamic field joined the demo schema, which changed which
-six names this menu offers.
+**✅ Captured, 2026-09-28.** Retaken when the unresolved-name inspections became errors: the name is
+now a red wavy underline and each fix carries the error icon, where the warning drew only a tinted
+background in the light schemes.
 
 **Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields
 closest in spelling — the plugin catching the failure that would otherwise surface only at core
@@ -531,10 +532,14 @@ discipline.
 
 ### 19. The drift view — three kinds of difference — `19-drift-three-states.png`
 
-**✅ Captured.** Against a throwaway SolrCloud 10.0.0 container, and **not against the demo's own
-configset, which cannot be deployed**: its planted defects — a tokenizer class that does not exist, a
-field naming a type nobody declared — stop a core starting, which is what they are there to do. The
-capture used a deployable copy at `demo/books/conf`, created for the shot and removed after it.
+**✅ Captured, 2026-09-28.** The demo's `solr` configset compared, read-only, against an unrelated
+SolrCloud 9.10.1 collection, `shows`, built from `_default` — so all three states appear without
+editing either side, and the summary names the line it resolved against: *Solr 9.10, from the
+connected server*. The *Differs* row for `description` is selected, so the pane below shows the
+reason first and the refused `replace-field` request under it. Shot with the tool window widened, so
+the definition columns read. The earlier capture used a throwaway SolrCloud 10.0.0 container and a
+deployable copy of the configset, since **the demo's own configset cannot be deployed**: its planted
+defects stop a core starting.
 **Narrow the State, Kind and Name columns by hand before shooting**: at the default widths the two
 definition columns truncate to the same `type=text_general indexed=true stor…`, and a *Differs* row
 whose two cells read alike shows nothing.
@@ -616,10 +621,12 @@ documents something that looks like a bug.
 
 ### 23. The collections tree — `23-collections-topology.png`
 
-**✅ Captured.** Against a SolrCloud 10.0.0 container started with `SOLR_MODE=solrcloud`, as below.
+**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1.
 
 **Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
 shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
+Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip —
+and the stripe button on the right carries the tool window's own icon, the plugin's sunburst.
 
 **A standalone capture would show a different vocabulary and is a separate image**, if anyone wants
 one — the point of this frame is the cloud tree, since the mode check exists precisely because the
@@ -627,7 +634,8 @@ two are not interchangeable.
 
 **Capture** `docker run -e SOLR_MODE=solrcloud solr:10.0.0`, create a collection, expand it.
 
-**Redo when** the row detail changes, or the toolbar gains a control.
+**Redo when** the row detail changes, the toolbar gains a control, or the health colours or the icon
+change.
 
 **Verifies** [SRV-4](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
 
@@ -692,19 +700,21 @@ the platform restyles warning highlights, or `ProductSearch.java`'s lines move.
 
 ### 27. The shape of a query, in colour — `27-code-query-colour.png`
 
-**✅ Captured.**
+**✅ Captured, 2026-09-28.**
 
-**Shows** `q.setQuery("category:books AND name:solr")` with `category`, `name` and `AND` picked out
-from `books` and `solr`, which keep the editor's ordinary string colour.
+**Shows** `q.setQuery("category:books AND name:solr")` with `category` and `name` in the field colour
+and `AND` in the operator colour, both picked out from `books` and `solr`, which keep the editor's
+ordinary string colour. Retaken after the operator was found to render in the string's own colour in
+the light schemes and in plain-text grey in the new dark ones.
 
 **What it is careful not to claim.** This is colour, not a parser — no grammar, no injected language,
 no folding. Read it as *the fields and the operator are told apart*, and nothing further. The scan
 behind it is the same one the check above uses, which is why the two can never disagree about which
 characters are a field.
 
-**Shoot it in the default light theme.** The keys are the platform's own, so what a reader sees is
-their theme's answer to those keys; a custom theme photographs a claim about that theme rather than
-about this plugin.
+**Shoot it in the default light theme.** The plugin's two keys, *Solr Query* in the colour settings,
+fall back to the scheme's instance-field and keyword colours, so a custom theme photographs a claim
+about that theme rather than about this plugin.
 
 **Capture** frame lines 37–39 with no interaction, and keep the caret out of frame — a caret line
 adds a lightbulb in the gutter and a band across the row, and both read as part of the feature.
@@ -788,13 +798,17 @@ merging the collection's fields with the configsets'.
 
 **Verifies** [SRV-16b](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
 
-### 31. A test document the plugin refuses to send — `31-index-test-document.png`
+### 31. A test document, ready to send — `31-index-test-document.png`
 
-**✅ Captured, and due a reshoot.** The capture predates the dialog opening on every field the schema
-declares rather than the unique key alone, so the document in it is shorter than a user now sees.
+**✅ Captured, 2026-09-28**, against the SolrCloud 9.10.1 collection `shows`.
 
-**Shows** the *Index a test document* dialog, its title naming the collection and the connection, a
-field name misspelled in the document, the reason in red below the editor, and **OK disabled**.
+**Shows** the *Index a test document* dialog as it opens: its title naming the collection and the
+connection, and a document carrying every field the collection declares — the unique key first, then
+each field with a value of its type's shape, a list for a multi-valued one — and *The document matches
+the collection's schema* below it. Solr's own fields and copy-field destinations are left out.
+
+**The earlier frame showed the refusal instead**, which is the half of this dialog worth arguing for:
+a misspelt field name, the reason below the editor, and **OK disabled**. SRV-29 still presses that.
 
 **The refusal is the point, not the dialog.** Solr answers a document with an unknown field by
 guessing a type and adding the field to the deployed schema — `status: 0`, no error — so the typo
@@ -805,13 +819,33 @@ the reason says exactly that. A frame with OK enabled shows a form; this one sho
 the whole dialog towards the screen edge. Recorded as a defect in the pass log; crop to the dialog
 regardless.
 
-**Capture** select a collection in the Solr tool window, press **Index a Test Document**, add a line
-naming a field the schema lacks — `"categry": "scifi"` — and press OK once so it greys.
+**Capture** select a collection in the Solr tool window, press **Index a Test Document**, and frame
+the dialog as it opens. Press **Cancel** afterwards — OK writes a document into the collection.
 
 **Redo when** the validation wording changes, the commit-mode chooser changes, or the sample document
 the dialog starts from changes.
 
 **Verifies** [SRV-28 and SRV-29](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
+
+### 32. Field completion as you type, in a query string — `32-code-completion-popup.png`
+
+**✅ Captured, 2026-09-28.**
+
+**Shows** `q.setQuery("category:books AND de…")` with the completion popup open **by itself**, having
+been typed into rather than invoked, offering `description` from the `solr` configset with its type.
+Only fields the call can use are offered — a query position wants searchable fields — and no dynamic
+pattern such as `*_t` appears, since a pattern is not a name anyone can write in a query.
+
+**Why this is its own image.** Inside a Java or Kotlin string the platform suppresses the completion
+popup, so before this the list appeared only on <kbd>Ctrl-Space</kbd>, which nobody presses inside a
+string. A frame of the popup open with no key pressed is the claim.
+
+**Capture** put the caret after `AND ` in `findSolrBooks`, type `de`, and frame the line with the
+popup. Undo the typing afterwards.
+
+**Redo when** the popup's contents or the positions it opens in change.
+
+**Verifies** [CODE-6](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
 
 ## Not yet capturable
 
