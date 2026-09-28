@@ -5,11 +5,10 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAwareAction
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.SimpleToolWindowPanel
@@ -114,27 +113,22 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     /**
      * Re-reads the configset list whenever it could have changed under this view.
      *
-     * **Two moments, because there are two ways the list goes stale.** A view built while the IDE
-     * indexes — a tool window restored open at startup is the ordinary case — reads an empty list,
-     * because configsets are found through the filename index and it answers nothing until indexing
-     * ends; so indexing ending re-reads. And a configset created while the view is open appears in
-     * no event this view hears about; so opening the chooser re-reads, which is the moment a user is
-     * asking what the list holds. Neither costs anything the rest of the time.
+     * **Two ways the list goes stale, and one answer covers both.** A view built while the IDE
+     * indexes — a tool window restored open at startup is the ordinary case — cannot read the list
+     * yet, because configsets are found through the filename index; [reloadConfigsets] waits for
+     * indexing to end rather than reading an empty answer, so no separate listener for that moment is
+     * needed. And a configset created while the view is open appears in no event this view hears
+     * about; so opening the chooser re-reads, which is the moment a user is asking what the list
+     * holds. Neither costs anything the rest of the time.
      */
     private fun watchForConfigsets() {
         configsetCombo.addPopupMenuListener(
             object : javax.swing.event.PopupMenuListener {
-                override fun popupMenuWillBecomeVisible(event: javax.swing.event.PopupMenuEvent) = reloadConfigsets()
+                override fun popupMenuWillBecomeVisible(event: javax.swing.event.PopupMenuEvent) {
+                    reloadConfigsets()
+                }
                 override fun popupMenuWillBecomeInvisible(event: javax.swing.event.PopupMenuEvent) = Unit
                 override fun popupMenuCanceled(event: javax.swing.event.PopupMenuEvent) = Unit
-            },
-        )
-        project.messageBus.connect(this).subscribe(
-            DumbService.DUMB_MODE,
-            object : DumbService.DumbModeListener {
-                override fun exitDumbMode() {
-                    ApplicationManager.getApplication().invokeLater({ reloadConfigsets() }, project.disposed)
-                }
             },
         )
     }
@@ -205,15 +199,48 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     }
 
     /**
+     * The most recent re-read of the configset list, so a test can wait for it rather than sleep.
+     */
+    internal var configsetLoad: Job? = null
+        private set
+
+    /**
      * Rebuilds the configset list from what the project holds, keeping the chosen one where it still
      * exists.
      *
+     * **Read off the EDT, in a smart read action, and shown on it.** The list comes from the filename
+     * index, and every caller of this is on the EDT — a mouse press opening the chooser, the
+     * constructor. In a running 2026.2 IDE a mouse press holds no read lock, so asking
+     * the index there threw, and Swing abandoned the popup: the chooser did nothing when clicked. A
+     * test's EDT holds the lock implicitly, which is how that shipped past a green suite. Where the
+     * lock was held, the same call still tripped the platform's slow-operations check. Reading in the
+     * background answers both, and a popup that opens on the previous list and then refreshes is
+     * indistinguishable from one that opened late.
+     *
+     * **Smart, so a read made during indexing waits instead of answering empty.** A tool window
+     * restored open at startup is built while the IDE indexes, and its list fills when indexing
+     * ends. A newer read cancels an older one still waiting, so reopening the chooser during
+     * indexing does not queue a read per click.
+     *
      * **The chooser stays enabled when the list is empty.** Opening it is what re-reads the list, so
      * a disabled empty chooser could never learn about the project's first configset.
+     *
+     * @return the read, which a test may wait for
      */
-    internal fun reloadConfigsets() {
+    internal fun reloadConfigsets(): Job {
+        configsetLoad?.cancel()
+        val load = project.service<SolrCollectionsScope>().scope.launch {
+            val configsets = smartReadAction(project) { SolrProjectConfigsets.getInstance(project).all() }
+            withContext(Dispatchers.EDT) { showConfigsets(configsets) }
+        }
+        configsetLoad = load
+        return load
+    }
+
+    private fun showConfigsets(configsets: List<SolrConfigset>) {
+        // Left alone when nothing changed, so a popup already open is not rebuilt under the pointer.
+        if (configsets == (0 until configsetCombo.itemCount).map { configsetCombo.getItemAt(it) }) return
         val chosen = configsetCombo.selectedItem as? SolrConfigset
-        val configsets = SolrProjectConfigsets.getInstance(project).all()
         configsetCombo.model = DefaultComboBoxModel(configsets.toTypedArray()).apply {
             if (chosen in configsets) selectedItem = chosen
         }
