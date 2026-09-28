@@ -1,7 +1,0 @@
-<!-- Read by the platform only where the Spring plugin is installed: see the optional <depends> in
-     plugin.xml. Everything that names a Spring class is registered here and nowhere else. -->
-<idea-plugin>
-    <extensions defaultExtensionNs="org.apache.solr.ide">
-        <springActiveProfiles implementation="org.apache.solr.ide.code.spring.SpringPluginActiveProfiles"/>
-    </extensions>
-</idea-plugin>
