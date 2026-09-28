@@ -1,5 +1,7 @@
 package org.apache.solr.ide.configset.activation
 
+import com.intellij.ui.components.JBList
+
 /**
  * The configset settings page, driven through the contract the platform calls.
  *
@@ -130,5 +132,51 @@ class SolrConfigsetsConfigurableTest : SolrConfigsetTestCase() {
         assertFalse(page.isModified)
         assertTrue(page.detectionEnabled)
         assertEmpty(page.rows)
+    }
+
+    /** Marking a directory already marked changes nothing, rather than listing it twice. */
+    fun testMarkingTheSameDirectoryTwiceListsItOnce() {
+        val dir = unrecognisedDirectory("legacy")
+        val page = page()
+
+        page.mark(dir)
+        page.mark(dir)
+
+        assertEquals(1, page.rows.count { it.path == dir.path })
+    }
+
+    /** Asking to unmark a detected row leaves it listed: there is nothing for the page to write. */
+    fun testUnmarkingADetectedRowLeavesItListed() {
+        detectedConfigset("books")
+        val page = page()
+
+        page.unmark(page.rows.single())
+
+        assertFalse(page.isModified)
+        assertEquals(listOf("books"), page.rows.map { it.name })
+    }
+
+    // --- what a row says ----------------------------------------------------------------------------
+
+    /**
+     * Each row names its provenance in words, not only by where it sits in the list.
+     *
+     * Marked roots sort first, but a list of one row has no order to read, and the difference between
+     * "you chose this" and "the plugin found this" is what decides whether remove does anything.
+     */
+    fun testARowSaysWhetherItWasMarkedOrDetected() {
+        assertTrue(rendered(SolrConfigsetRow("/p/legacy", "legacy", marked = true)).endsWith("marked"))
+        assertTrue(rendered(SolrConfigsetRow("/p/books/conf", "books", marked = false)).endsWith("detected"))
+    }
+
+    /** The path is shown beside the name, since two configsets are routinely called the same thing. */
+    fun testARowShowsItsPath() {
+        assertTrue(rendered(SolrConfigsetRow("/p/books/conf", "books", marked = false)).contains("/p/books/conf"))
+    }
+
+    private fun rendered(row: SolrConfigsetRow): String {
+        val renderer = SolrConfigsetRowRenderer()
+        renderer.getListCellRendererComponent(JBList<SolrConfigsetRow>(), row, 0, false, false)
+        return renderer.getCharSequence(false).toString()
     }
 }
