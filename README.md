@@ -7,7 +7,7 @@
 > evaluating whether this plugin is worth trying today.
 > **Read first:** [Glossary](docs/glossary.md) if Solr or IntelliJ Platform terms are new.
 
-IDE tooling for Apache Solr development in IntelliJ IDEA.
+**Solr Support** — IDE tooling for Apache Solr development in IntelliJ IDEA.
 
 Solr developers work across three disconnected surfaces: [configset](docs/glossary.md#configset) XML
 edited with no language support, queries iterated in the Admin UI or curl, and client code that
@@ -26,8 +26,8 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 
 ## Status
 
-**All three surfaces are built, and none is published yet.** 0.1.0 is cut in the changelog and
-drafted on GitHub, not released; everything after it is unreleased work on `main`.
+**All three surfaces are built, and none is published yet.** 0.1.0 is cut in the changelog but was
+never released; 0.2.0, which carries all three, is drafted on GitHub and waiting to be published.
 
 - **The configset editor** — the 0.1.0 content. Configset detection, a parsed field model, and
   everything built on it: eleven inspections with quick-fixes, completion over Solr's own
@@ -243,7 +243,7 @@ declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md]
 
 ## Installing
 
-**Nothing has been published yet** — 0.1.0 exists as a draft release on GitHub, not a public one —
+**Nothing has been published yet** — 0.2.0 exists as a draft release on GitHub, not a public one —
 so building it yourself is the only route today: there is no Marketplace listing and no release ZIP. [`docs/installing.md`](docs/installing.md) has the full
 walkthrough; the short version:
 

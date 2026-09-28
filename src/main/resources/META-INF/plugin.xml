@@ -1,8 +1,13 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>org.apache.solr.ide</id>
-    <name>Apache Solr</name>
-    <vendor>Apache Software Foundation</vendor>
+    <!-- The name describes the relationship rather than claiming the mark, and the vendor is who
+         actually publishes it: the description below says the project is not the ASF's, and the
+         Marketplace shows <vendor> as the publisher, so naming the ASF there contradicted it. The
+         <id> is unchanged; the releasing guide says why it is worth one more look before the first
+         upload, which is the last moment it can change. -->
+    <name>Solr Support</name>
+    <vendor url="https://github.com/adityamparikh/solr-intellij-plugin">Aditya Parikh</vendor>
     <!-- Shown on the JetBrains Marketplace and in Settings → Plugins, so it is written for someone
          deciding whether to install rather than for someone who already has. Kept honest about the
          boundary: the editor reads files and never opens a socket, the server features open one

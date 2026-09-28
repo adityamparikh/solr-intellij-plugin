@@ -88,6 +88,6 @@ If those three work, everything else in [the user guide](user-guide.md) is worki
 
 ## Uninstalling
 
-<kbd>Settings</kbd> → <kbd>Plugins</kbd> → find **Apache Solr** → <kbd>⚙️</kbd> →
+<kbd>Settings</kbd> → <kbd>Plugins</kbd> → find **Solr Support** → <kbd>⚙️</kbd> →
 <kbd>Uninstall</kbd>. It stores nothing outside the IDE's own configuration and touches no file in
 your project unless you invoke a quick-fix or a rename.
