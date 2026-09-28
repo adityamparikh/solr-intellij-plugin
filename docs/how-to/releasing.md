@@ -28,7 +28,7 @@ who is asked it in the moment.
 
 **Support for a framework's configuration is never bundled with another framework's.** Spring Boot,
 Quarkus, Micronaut and MicroProfile each land in their own minor version, in
-[their own plan steps](../../specs/plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot).
+[their own plan steps](../../specs/plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot-done).
 
 Two reasons, and the second is the one that matters:
 

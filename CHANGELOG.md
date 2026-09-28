@@ -18,6 +18,11 @@ that does, does so only when asked.
 - **Connections.** Settings → Tools → Solr Connections, or the `+` in the Solr tool window. The URL
   and username go to the workspace file; the password to the IDE's password safe, never a project
   file.
+- **Servers your project already names, offered as connections.** The same page lists, under
+  *Discovered in project*, every server a SolrJ client is built against — a literal URL as written,
+  and a Spring Boot `@Value("${…}")` followed into `application.yml` or `application.properties`,
+  once per profile with the username beside it, the active profile first. Nothing is connected to
+  until you add it, and a password found beside the URL is stored only if you tick the box to.
 - **The Solr tool window.** Collections, shards and replicas for SolrCloud, cores for a standalone
   server — the mode read first rather than guessed — and, per collection, the fields the index
   actually holds, including those a dynamic pattern created.
