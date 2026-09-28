@@ -24,6 +24,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 import javax.swing.JPanel
 import javax.swing.JTree
+import javax.swing.ToolTipManager
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeSelectionModel
@@ -98,6 +99,9 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
         tree.showsRootHandles = true
         tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
         tree.cellRenderer = SolrTopologyNodeRenderer()
+        // A JTree shows its renderer's tooltip only once registered, and the tooltip is where a
+        // health dot's word lives — without it the colour would be the only way to read it.
+        ToolTipManager.sharedInstance().registerComponent(tree)
         tree.addTreeWillExpandListener(
             object : javax.swing.event.TreeWillExpandListener {
                 override fun treeWillExpand(event: javax.swing.event.TreeExpansionEvent) {
@@ -480,7 +484,11 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     }
 }
 
-/** One row of the topology tree: the server's name for a thing, and what it says about it. */
+/**
+ * One row of the topology tree: the server's name for a thing, and what it says about it.
+ *
+ * A row Solr reported a health for leads with a coloured dot, and names the health on hover.
+ */
 internal class SolrTopologyNodeRenderer : ColoredTreeCellRenderer() {
     override fun customizeCellRenderer(
         tree: JTree,
@@ -491,7 +499,15 @@ internal class SolrTopologyNodeRenderer : ColoredTreeCellRenderer() {
         row: Int,
         hasFocus: Boolean,
     ) {
+        // Cleared on every row, because one renderer draws them all: a replica drawn after its
+        // collection would otherwise inherit the collection's dot and report a health it never had.
+        icon = null
+        toolTipText = null
         val node = (value as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode ?: return
+        node.health?.let {
+            icon = SolrHealthPresentation.iconOf(it)
+            toolTipText = SolrHealthPresentation.tooltipOf(it)
+        }
         append(node.label)
         node.detail?.let { append("  $it", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
     }

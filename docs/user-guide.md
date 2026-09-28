@@ -565,6 +565,12 @@ replicas for a SolrCloud server, or cores for a standalone one.
 ![The Solr tool window on a SolrCloud server: the books collection, its shard, and the shard's
 replica marked as leader, with the connection selector above](images/23-collections-topology.png)
 
+**A collection's and a shard's health is the coloured dot before its name**: green, yellow, orange
+or red, as SolrCloud reports it. Hover the row for the word itself — `Health: GREEN` — so the colour
+is never the only way to read it. A health word the plugin does not recognise, from a newer Solr, is
+written out beside the name instead of being given a colour it may not deserve. Standalone cores
+have no health to report, and carry no dot.
+
 **Which vocabulary you see comes from the mode the server reports**, never from a guess. That matters
 because a standalone Solr answers every `/admin/collections` request with HTTP 400 — a plugin that
 assumed the cloud vocabulary would report a hard failure against a server that is working perfectly.
