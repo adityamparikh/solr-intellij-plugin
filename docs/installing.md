@@ -64,12 +64,13 @@ single most common reason for silence.
 `managed-schema.xml`, `schema.xml`, `solrconfig.xml`, and the resource files an analyzer chain names.
 An arbitrary XML file is not a configset file.
 
-**There is no settings page or menu action to force activation.** *Mark Directory as Solr Configset
-Root* sounds like it should be one, and it is not — it is a leftover string with no action behind it.
-The override exists in code but nothing in the UI reaches it, which is tracked as
-[Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch)
-and genuinely unbuilt. If you have a bare configset repository, adding a Solr client dependency to
-its build file is the only way in today.
+**If a configset does not light up, mark it by hand.** Right-click its directory in the Project view
+and choose *Mark Directory as Solr Configset Root* — the way in for a bare configset repository with
+no Solr client on its build, which the first gate turns away. **Settings → Languages & Frameworks →
+Solr Configsets** lists every configset the plugin recognises, each saying whether detection found it
+or someone marked it, and holds the switch that turns recognition off for the project. A marked root
+is stored in `.idea/solr.xml`, so it reaches your teammates with the project — and a teammate who
+receives one can remove it on that same page.
 
 ## Checking it actually works
 

@@ -161,6 +161,17 @@
                 anchor="right"
                 canCloseContents="false"/>
 
+        <!-- Which configsets the plugin recognises, and the switch that turns recognition off. Under
+             Languages & Frameworks rather than beside the connections page, because this decides how
+             files are read. A project configurable because the marked roots are a fact about the
+             project — they are written to the shared .idea/solr.xml, path-macro collapsed. -->
+        <projectConfigurable
+                parentId="language"
+                id="solr.configsets"
+                bundle="messages.SolrBundle"
+                key="settings.configsets.displayName"
+                instance="org.apache.solr.ide.configset.activation.SolrConfigsetsConfigurable"/>
+
         <projectConfigurable
                 parentId="tools"
                 id="solr.connections"
@@ -459,4 +470,13 @@
             <className>org.apache.solr.ide.configset.schema.intention.SolrRemoveRestatedAttributeIntention</className>
         </intentionAction>
     </extensions>
+
+    <!-- The plugin's first registered action. For a configset detection turns away — Solr XML in a
+         repository with no Solr client, which the dependency gate rejects — marking the directory is
+         the only way the plugin wakes there. Its text toggles to "Unmark" on a marked root. -->
+    <actions>
+        <action id="Solr.MarkConfigsetRoot" class="org.apache.solr.ide.configset.activation.SolrMarkConfigsetRootAction">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
