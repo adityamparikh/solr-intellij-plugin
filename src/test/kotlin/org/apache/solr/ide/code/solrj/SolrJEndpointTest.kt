@@ -241,6 +241,108 @@ class SolrJEndpointTest : SolrConfigsetTestCase() {
         )
     }
 
+    // --- a URL written as a property reference ------------------------------------------------------
+
+    /**
+     * A URL injected from configuration is reported as the reference the source spells.
+     *
+     * The shape the demo uses, and the one most applications do: the client bean takes its URL from
+     * `@Value("${app.solr.url}")`, so the literal lives in a profile file rather than here. What this
+     * file *does* say is which property to follow, and reporting that is what lets a framework reader
+     * resolve it per profile without walking the code a second time.
+     */
+    fun testAnAnnotatedParameterIsReportedAsItsPropertyReference() {
+        givenSolrJClients()
+        val file = myFixture.addFileToProject(
+            "src/Config.java",
+            """
+            import org.apache.solr.client.solrj.impl.*;
+            class Config {
+                Http2SolrClient solrClient(@Value("${'$'}{app.solr.url}") String url) {
+                    return new Http2SolrClient.Builder(url).build();
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("${'$'}{app.solr.url}"), endpoints(file).map { it.url })
+    }
+
+    /** A field injected the same way is followed the same way, and so is the username beside it. */
+    fun testAnAnnotatedFieldAndUsernameAreReportedAsReferences() {
+        givenSolrJClients()
+        val file = myFixture.addFileToProject(
+            "src/FieldConfig.java",
+            """
+            import org.apache.solr.client.solrj.impl.*;
+            class FieldConfig {
+                @Value("${'$'}{search.endpoint}") String url;
+                @Value("${'$'}{search.user}") String user;
+                Http2SolrClient solrClient() {
+                    return new Http2SolrClient.Builder(url).withBasicAuthCredentials(user, "x").build();
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val found = endpoints(file).single()
+        assertEquals("${'$'}{search.endpoint}", found.url)
+        assertEquals("${'$'}{search.user}", found.username)
+    }
+
+    /**
+     * The Kotlin spelling — an escaped dollar in the annotation — reads the same.
+     *
+     * Spring's annotation is stubbed here, as SolrJ's clients are: Kotlin maps a positional
+     * annotation argument to `value` only when it can see the annotation's declaration, which in a
+     * real project it always can.
+     */
+    fun testAnAnnotatedKotlinParameterIsReportedAsItsPropertyReference() {
+        givenSolrJClients()
+        myFixture.addFileToProject(
+            "org/springframework/beans/factory/annotation/Value.java",
+            """
+            package org.springframework.beans.factory.annotation;
+            public @interface Value { String value(); }
+            """.trimIndent(),
+        )
+        val file = myFixture.addFileToProject(
+            "src/KtConfig.kt",
+            """
+            import org.apache.solr.client.solrj.impl.Http2SolrClient
+            import org.springframework.beans.factory.annotation.Value
+            class KtConfig {
+                fun solrClient(@Value("\${'$'}{app.solr.url}") url: String) = Http2SolrClient.Builder(url).build()
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("${'$'}{app.solr.url}"), endpoints(file).map { it.url })
+    }
+
+    /**
+     * An annotation whose value is not a whole property reference is not a URL.
+     *
+     * `@Named("solr")` on the parameter says which bean, not which server, and reporting it would
+     * offer a connection to a server called `solr`.
+     */
+    fun testAnAnnotationThatIsNotAPropertyReferenceIsNotRead() {
+        givenSolrJClients()
+        val file = myFixture.addFileToProject(
+            "src/Named.java",
+            """
+            import org.apache.solr.client.solrj.impl.*;
+            class Named {
+                Http2SolrClient solrClient(@Named("solr") String url) {
+                    return new Http2SolrClient.Builder(url).build();
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEmpty(endpoints(file))
+    }
+
     /** No Solr client on the module, no reading — the same gate the field half passes. */
     fun testAModuleWithNoSolrClientIsNotRead() {
         givenSolrJClients()

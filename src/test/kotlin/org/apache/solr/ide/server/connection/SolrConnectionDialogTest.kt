@@ -142,4 +142,64 @@ class SolrConnectionDialogTest : SolrConfigsetTestCase() {
 
         assertFalse(edited)
     }
+
+    // --- opened from a server the project names ---------------------------------------------------
+
+    private fun <T> withDiscoveredDialog(passwordSource: String?, body: (SolrConnectionDialog) -> T): T {
+        val dialog = SolrConnectionDialog(
+            project,
+            initial = null,
+            hasStoredPassword = false,
+            prefill = connection(username = "dev-user"),
+            discoveredPasswordSource = passwordSource,
+        )
+        return try {
+            body(dialog)
+        } finally {
+            dialog.close(0)
+        }
+    }
+
+    /** A form prefilled from a discovered server is still an add: its own identifier, the add title. */
+    fun testAPrefilledFormIsAnAddNotAnEdit() {
+        withDiscoveredDialog(passwordSource = null) { dialog ->
+            assertEquals(SolrBundle.message("connection.dialog.addTitle"), dialog.title)
+            assertNotSame("a", dialog.connection.id)
+            assertEquals("http://localhost:8983/solr", dialog.connection.baseUrl)
+            assertEquals("dev-user", dialog.connection.username)
+        }
+    }
+
+    /**
+     * A password found in the project's configuration is not stored unless the user says so.
+     *
+     * The plan's rule: a secret from a configuration file reaches the password safe only after the
+     * user confirms. Pressing *Add* opens the form; ticking the box is the confirmation.
+     */
+    fun testADiscoveredPasswordIsNotStoredUnlessAsked() {
+        withDiscoveredDialog(passwordSource = "Spring Boot configuration (dev)") { dialog ->
+            assertFalse(dialog.storeDiscoveredPassword)
+            assertFalse(dialog.passwordEdited)
+        }
+    }
+
+    /** Asking for it counts as a password for validation, so it cannot be stored with no user. */
+    fun testStoringADiscoveredPasswordNeedsAUsername() {
+        val dialog = SolrConnectionDialog(
+            project,
+            initial = null,
+            hasStoredPassword = false,
+            prefill = connection(username = null),
+            discoveredPasswordSource = "Spring Boot configuration",
+        )
+        try {
+            dialog.storeDiscoveredPassword = true
+            assertEquals(
+                SolrBundle.message("connection.problem.passwordWithoutUsername"),
+                problemOn(dialog)?.message,
+            )
+        } finally {
+            dialog.close(0)
+        }
+    }
 }

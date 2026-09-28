@@ -1,5 +1,8 @@
 package org.apache.solr.ide.server.connection
 
+import com.intellij.openapi.util.JDOMUtil
+import com.intellij.util.xmlb.XmlSerializer
+import org.apache.solr.ide.code.SolrEndpointCandidate
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 
 /**
@@ -183,5 +186,101 @@ class SolrConnectionsConfigurableTest : SolrConfigsetTestCase() {
 
         assertEquals(listOf("a"), page.rows.map { it.id })
         assertFalse(page.isModified)
+    }
+
+    // --- servers the project names ------------------------------------------------------------------
+
+    private fun candidate(
+        profile: String? = "dev",
+        url: String = "http://localhost:8983/solr",
+        username: String? = "dev-user",
+        password: String? = null,
+    ) = SolrEndpointCandidate(url, username, password, profile, active = profile == "dev", origin = "Spring Boot configuration")
+
+    /** Discovered servers are listed beneath the connections, the active profile's first. */
+    fun testDiscoveredServersAreListed() {
+        val page = configurable()
+        page.reset()
+
+        page.showDiscovered(listOf(candidate(), candidate(profile = "staging", url = "http://staging:8983/solr")))
+
+        assertEquals(listOf("dev", "staging"), page.discoveredRows.map { it.profile })
+    }
+
+    /**
+     * A server already configured is not offered again.
+     *
+     * Matched on URL and user, and a trailing slash does not make a second server: offering a row the
+     * user has already added would read as though adding it had not worked.
+     */
+    fun testAServerAlreadyConfiguredIsNotOffered() {
+        connectionSettings.addConnection(
+            SolrConnection("a", "Local", "http://localhost:8983/solr/", username = "dev-user"),
+        )
+        val page = configurable()
+        page.reset()
+
+        page.showDiscovered(listOf(candidate(), candidate(profile = "staging", url = "http://staging:8983/solr")))
+
+        assertEquals(listOf("staging"), page.discoveredRows.map { it.profile })
+    }
+
+    /** Adding a discovered server makes it a connection and takes it out of the discovered list. */
+    fun testAddingADiscoveredServerMakesItAConnection() {
+        val page = configurable()
+        page.reset()
+        page.showDiscovered(listOf(candidate()))
+
+        page.adopt(candidate(), page.prefillFor(candidate()), storePassword = false)
+        page.apply()
+
+        assertEquals(listOf("http://localhost:8983/solr"), connectionSettings.connections.map { it.baseUrl })
+        assertEquals("dev-user", connectionSettings.connections.single().username)
+        assertEmpty(page.discoveredRows)
+    }
+
+    /** The profile names the new connection, since two profiles' servers are otherwise told apart only by URL. */
+    fun testADiscoveredServerIsNamedForItsProfile() {
+        assertEquals("Solr (dev)", configurable().prefillFor(candidate()).displayName)
+    }
+
+    /** A password found beside the URL is not stored unless the user ticked the box to store it. */
+    fun testADiscoveredPasswordIsNotStoredWithoutConfirmation() {
+        val page = configurable()
+        page.reset()
+        val found = candidate(password = "SolrRocks")
+
+        page.adopt(found, page.prefillFor(found), storePassword = false)
+        page.apply()
+
+        assertNull(connectionSettings.getPassword(connectionSettings.connections.single().id))
+    }
+
+    /**
+     * Confirmed, the password goes to the password safe and nowhere else.
+     *
+     * The plan's criterion in full: it reaches the password safe, and it never reaches the file the
+     * connections themselves are written to.
+     */
+    fun testAConfirmedPasswordReachesThePasswordSafeAndNoFile() {
+        val page = configurable()
+        page.reset()
+        val found = candidate(password = "SolrRocks")
+
+        page.adopt(found, page.prefillFor(found), storePassword = true)
+        page.apply()
+
+        val id = connectionSettings.connections.single().id
+        assertEquals("SolrRocks", connectionSettings.getPassword(id))
+        val written = JDOMUtil.write(XmlSerializer.serialize(connectionSettings.state))
+        assertFalse(written, "SolrRocks" in written)
+    }
+
+    /** The page builds with its discovered section, and lets go of it when Settings closes. */
+    fun testThePanelBuildsWithItsDiscoveredSection() {
+        val page = configurable()
+        page.reset()
+        assertNotNull(page.createComponent())
+        page.disposeUIResources()
     }
 }

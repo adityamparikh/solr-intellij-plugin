@@ -11,6 +11,9 @@ import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UField
+import org.jetbrains.uast.UParameter
+import org.jetbrains.uast.USimpleNameReferenceExpression
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.ULiteralExpression
 import org.jetbrains.uast.UMethod
@@ -268,6 +271,35 @@ object SolrJRecognizer : SolrUsageRecognizer {
     }
 
     /**
+     * What an endpoint argument spells: a literal, or the property reference it was injected from.
+     *
+     * **A reference is reported as written, `${app.solr.url}`, and not resolved here.** Resolving it
+     * means knowing which files a framework reads and in what order, which is a framework's question
+     * and differs between them; this recognizer's question is only which property the code follows.
+     * Any annotation qualifies whose value is a whole `${…}` reference, because Spring's `@Value` and
+     * Micronaut's share the spelling and neither needs resolving to recognize it. A value that is not
+     * a whole reference — `@Named("solr")` — says which bean, not which server, and is not read.
+     *
+     * A local variable is still not followed, for the reason [constantTextOf] gives about fields.
+     *
+     * @param argument the URL or username argument of a client builder
+     * @return the literal or the reference, or null where the argument is neither
+     */
+    private fun endpointTextOf(argument: UExpression): String? =
+        constantTextOf(argument) ?: propertyReferenceOf(argument)
+
+    private fun propertyReferenceOf(argument: UExpression): String? {
+        val variable = (argument as? USimpleNameReferenceExpression)?.resolve()
+            ?.toUElementOfType<UVariable>() ?: return null
+        if (variable !is UParameter && variable !is UField) return null
+        return variable.uAnnotations.firstNotNullOfOrNull { annotation ->
+            annotation.findDeclaredAttributeValue(VALUE_ATTRIBUTE)
+                ?.let { constantTextOf(it) }
+                ?.takeIf { PROPERTY_REFERENCE.matches(it) }
+        }
+    }
+
+    /**
      * Reads one client construction, or declines to.
      *
      * **Recognized by shape rather than by a list of class names, because the list would be wrong
@@ -287,7 +319,7 @@ object SolrJRecognizer : SolrUsageRecognizer {
         if (!namesAClientBuilder(builder)) return
 
         val argument = call.valueArguments.singleOrNull() ?: return
-        val url = constantTextOf(argument) ?: return
+        val url = endpointTextOf(argument) ?: return
         val anchor = argument.sourcePsi ?: return
         into += SolrEndpointUsage(url, usernameOf(call), anchor)
     }
@@ -319,7 +351,7 @@ object SolrJRecognizer : SolrUsageRecognizer {
         while (node is UQualifiedReferenceExpression) {
             val selector = node.selector as? UCallExpression
             if (selector?.methodName == BASIC_AUTH_METHOD) {
-                return selector.valueArguments.firstOrNull()?.let { constantTextOf(it) }
+                return selector.valueArguments.firstOrNull()?.let { endpointTextOf(it) }
             }
             node = node.uastParent
         }
@@ -345,6 +377,9 @@ object SolrJRecognizer : SolrUsageRecognizer {
 
     /** The builder method that names the user a client connects as. */
     private const val BASIC_AUTH_METHOD = "withBasicAuthCredentials"
+
+    /** A whole `${key}` or `${key:default}` property reference, and nothing around it. */
+    private val PROPERTY_REFERENCE = Regex("""^\$\{[^{}]+}$""")
 
     /**
      * The document classes whose field-naming methods are read.
