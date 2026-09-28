@@ -818,9 +818,9 @@ These have no gesture that does anything yet, or shipped but has not been captur
 into the catalog when its feature ships **and** someone shoots it, mirroring the manual test suite's
 own "Not yet in the suite" list:
 
-- *Mark Directory as Solr Configset Root* — not built. An earlier revision of this line said
-  "shipped, never captured"; the settings page and the action it names are the plan's one unbuilt
-  Foundation step
+- *Mark Directory as Solr Configset Root* and the Solr Configsets settings page — shipped, never
+  captured (see [ACT-3 to ACT-5](manual-test-suite.md#1-activation-act)). The frame worth having is
+  the page with one *marked* and one *detected* row side by side
 - Hover documentation on a factory attribute — owner, value type, default or required marker
   (see [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc))
 - A factory's complete effective configuration, unwritten attributes shown at their defaults

@@ -90,6 +90,16 @@ be retired from here, not accumulated.
       immediately after launch, before the progress bar finishes). Everything is
       [dumb-aware](glossary.md#dumb-mode) by design; a feature that waits for indexing is a
       regression.
+- [ ] **ACT-3** — **Settings → Languages & Frameworks → Solr Configsets** lists the demo's `solr`
+      configset reading *detected*. Nothing is marked, so the remove button is disabled on it — a
+      detected configset is found by rule and has nothing to remove.
+- [ ] **ACT-4** — Create a directory holding a lone `schema.xml` outside any `conf/`, right-click it
+      in the Project view and choose *Mark Directory as Solr Configset Root*. The file lights up
+      without a restart, and the settings page now lists it reading *marked*. Right-click again: the
+      entry reads *Unmark Solr Configset Root*, and choosing it puts the file back to plain XML.
+- [ ] **ACT-5** — Untick *Recognise Solr configsets in this project* and apply. **Every** Solr
+      feature goes quiet, including in the directory marked in ACT-4 — the switch is the plugin's
+      kill switch and says "marked roots included" for that reason. Tick it again before continuing.
 
 ## 2. Zero-false-positive baseline (BASE)
 

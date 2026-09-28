@@ -114,9 +114,9 @@ whole, and the gutter action goes with the Server track.
 - [Step 2 — Overhaul the activation gate](#step-2-overhaul-the-activation-gate-done) — **done**
 - [Step 3 — Repository reader and field model](#step-3-repository-reader-and-field-model-done) — **done**
 - [Step 4 — Match analysis](#step-4-match-analysis-done) — **done**
-- [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
-  — out of numerical order deliberately: added after the rest, belongs here. Its first half needs only the activation
-  gate overhaul; its detected-configset list waits for the repository reader.
+- [Step 22 — Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch-done) — **done**
+  — out of numerical order deliberately: added after the rest, belongs here. With it, Foundation has no step
+  outstanding.
 
 ### Editor track
 
@@ -377,7 +377,7 @@ The spine. Everything else reads this.
    `SolrConfigsetLocator` answers per file, on demand, which is right for the editor path and insufficient here: a model
    of *the project's* configsets has to know what they are. Bound the scan so it does not walk `node_modules` and build
    output.
-   [Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch)
+   [Settings and the detection escape hatch](#step-22-settings-and-the-detection-escape-hatch-done)
    consumes this to show the user what detection found; build it once, here.
 5. Test the model directly, with no IDE fixtures where possible. This is the component that must be exhaustively
    correct.
@@ -466,7 +466,7 @@ which are only ever as good as this.
 
 **Dependencies:** none
 
-### Step 22: Settings and the detection escape hatch
+### Step 22: Settings and the detection escape hatch (done)
 
 Numbered last because it was added last; it belongs *here*, in Foundation. Step numbers in this plan are stable anchors
 that other steps link to, so renumbering to insert one costs more than the out-of-order number does. Read the section it
@@ -500,10 +500,18 @@ UI by the teammate who receives it.
 
 **Success criteria:**
 
-- [ ] Detection can be switched off, and a root marked and unmarked, without editing XML.
-- [ ] The page lists detected configsets and marked ones, distinguishably.
-- [ ] A root marked by one developer is visible and removable in another's checkout — tested by seeding the persisted
-  state directly, as a teammate's commit would.
+- [x] Detection can be switched off, and a root marked and unmarked, without editing XML. From **Settings →
+  Languages & Frameworks → Solr Configsets**, and marking from the Project view's context menu too, where the
+  directory already is. **The switch is the plugin's kill switch, not a detection toggle** — it has always
+  silenced marked roots as well (`testDisablingDetectionSuppressesEverything`), so the checkbox says "marked roots
+  included" rather than promising something narrower than it does.
+- [x] The page lists detected configsets and marked ones, distinguishably — each row says *marked* or *detected*,
+  and only a marked row is removable, since detection is a rule and a removal would have nothing to write.
+- [x] A root marked by one developer is visible and removable in another's checkout — tested by seeding the persisted
+  state directly with a `$PROJECT_DIR$` path, as a teammate's commit would, and removing it from the page.
+
+Action 4, a connections page as a sibling, shipped with the server track under **Tools** instead: connections
+decide nothing about how a file is read, and this page does.
 
 **Acceptance:**
 [demo step 21 — *enable the plugin and reopen*](../../docs/demo/README.md#step-21-enable-the-plugin-and-reopen)

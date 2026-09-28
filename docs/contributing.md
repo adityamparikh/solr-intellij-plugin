@@ -104,22 +104,18 @@ The plugin is gated twice, and silence is the designed behaviour outside a Solr 
 > plugin only wakes up in a project whose dependencies actually include a Solr client, the same way a
 > Spring auto-configuration only activates when a matching class is on the classpath.
 
-**There is no user-facing escape hatch for either gate yet**, and that claim is really three separate
-facts, worth keeping apart rather than reading as one. First, the specification *promises* a manual
-override: a way to mark a directory as a Solr configset root, so that a repository with no build
-file — the one case the outer dependency gate can never pass on its own — can still activate. Second,
-`SolrConfigsetSettings` is where that promise actually lives in code: it carries the manual override,
-and a directory marked through it does bypass the outer gate exactly as promised. Third, and this is
-the part that is actually missing, nothing in [`plugin.xml`](glossary.md#pluginxml) reaches that code:
-there is no registered `<action>`, no settings page, no `Configurable` anywhere in the plugin that a
-user could click to mark a directory. *Mark Directory as Solr Configset Root* looks like it should be
-that action — it reads like a menu item — but it is only a bundle string in `SolrBundle.properties`
-with no action behind it, left over from before the gesture that would use it was built. There is no
-hidden way to reach this from the UI today; the settings page the promise implies simply does not
-exist yet.
-[Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch)
-is where this is tracked, and every one of its success criteria is still unticked — this is not an
-oversight in this guide, it is genuinely unbuilt.
+**Both gates have a user-facing escape hatch.** The specification promises a manual override — a way
+to mark a directory as a Solr configset root, so that a repository with no build file, the one case the
+outer dependency gate can never pass on its own, can still activate — and `SolrConfigsetSettings`
+carries it. Two things in [`plugin.xml`](glossary.md#pluginxml) reach it: *Mark Directory as Solr
+Configset Root* in the Project view's context menu (`SolrMarkConfigsetRootAction`, the plugin's first
+registered `<action>`), and **Settings → Languages & Frameworks → Solr Configsets**
+(`SolrConfigsetsConfigurable`), which lists what detection found beside what was marked and holds the
+switch that turns recognition off. That switch is the whole plugin's kill switch, marked roots
+included, and its label says so. For a long time only the settings class existed and the bundle
+string for the action had no action behind it —
+[Step 22](../specs/plans/0002-solr-intellij-plugin-plan.md#step-22-settings-and-the-detection-escape-hatch-done)
+is where it was built.
 
 > **In Java terms.** `plugin.xml` is this plugin's `META-INF/services` file: a class the platform
 > should call has to be listed there by name, or, as far as the IDE is concerned, it does not exist.

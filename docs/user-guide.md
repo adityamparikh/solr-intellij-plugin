@@ -25,6 +25,7 @@ its checks live.
 | Capability | Gesture | Verified by |
 |---|---|---|
 | [Activation](#following-along) | Open a configset file | `ACT`, `BASE` |
+| [Which configsets are recognised](#when-a-configset-does-not-light-up) | Settings → Languages & Frameworks → Solr Configsets; *Mark Directory as Solr Configset Root* | `ACT-3`–`ACT-5` |
 | [What a field can match](#what-can-this-field-actually-match) | Inlay hint on a field type | `HINT` |
 | [Quick documentation](#getting-documentation-without-leaving-the-file) | Hover, or <kbd>Ctrl-Q</kbd> | `DOC` |
 | [Completion: schema vocabulary](#the-schemas-own-vocabulary) | <kbd>Ctrl-Space</kbd> in `managed-schema.xml` | `COMP` |
@@ -70,6 +71,21 @@ The [sandbox](glossary.md#sandbox) opens `demo/` and activates the plugin immedi
 either is unfamiliar. If nothing below happens when you try it, see
 [when nothing activates](contributing.md#when-nothing-activates) in the contributing guide before
 assuming a feature is broken.
+
+### When a configset does not light up
+
+**Settings → Languages & Frameworks → Solr Configsets** lists every configset the plugin recognises,
+each reading *detected* — found by the rules — or *marked* — pointed at by hand. Seeing the list is the
+quickest way to tell a detection miss from a project the plugin was never going to wake in.
+
+A configset detection misses — typically a bare configset repository with no Solr client in its build,
+or schema files outside a `conf/` directory — can be marked: right-click the directory in the Project
+view and choose *Mark Directory as Solr Configset Root*, or use `+` on the settings page. The same menu
+entry reads *Unmark* on a marked root. Marked roots are stored in `.idea/solr.xml` with
+project-relative paths, so they travel with the project, and a teammate who receives one can remove it
+on that page. **The checkbox at the top is the plugin's off switch for the project**, and it silences
+marked roots too — its label says so. (Verified by
+[ACT-3 to ACT-5](manual-test-suite.md#1-activation-act).)
 
 **Line numbers below name the demo [fixture](glossary.md#fixture) as committed and will drift as the
 demo changes.** Where a
