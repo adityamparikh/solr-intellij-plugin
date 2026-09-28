@@ -78,8 +78,14 @@ while its own description says the project is *"not affiliated with or endorsed 
 Software Foundation."* Both could not be true, and `<vendor>` is the one the Marketplace displays as
 **the publisher**. They now read **Solr Support** and **Aditya Parikh**: a name that describes the
 relationship rather than claiming the mark, which is the shape
-[the ASF trademark policy](https://www.apache.org/foundation/marks/) expects of third-party software,
-and the same decision the plugin icon already made by not being the Solr logo.
+[the ASF trademark policy](https://www.apache.org/foundation/marks/) expects of third-party software.
+
+**The icon has not had the same look, and it is the mark.** Since `34fb335` the plugin icon is the
+sunburst disc from Apache Solr's own logo, and the tool window's icon is the same shape in one grey.
+An earlier revision of this paragraph said the icon was drawn *not* to be the Solr logo; that
+described the angle-bracket icon it replaced. Whether a third-party plugin may carry the mark is the
+same trademark question the name and vendor were changed for, and it is the owner's to settle before
+the first Marketplace upload — keeping it is a decision to make rather than to inherit.
 
 **The plugin ID has not had the same look.** `<id>` is still `org.apache.solr.ide`, a reversed
 domain the project does not own. Nobody installing sees it, but the Marketplace keeps it forever:
