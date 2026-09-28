@@ -5,9 +5,11 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.SimpleToolWindowPanel
@@ -102,7 +104,36 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
             },
         )
         reloadConfigsets()
+        watchForConfigsets()
         render(SolrDriftView.NotCompared)
+    }
+
+    /**
+     * Re-reads the configset list whenever it could have changed under this view.
+     *
+     * **Two moments, because there are two ways the list goes stale.** A view built while the IDE
+     * indexes — a tool window restored open at startup is the ordinary case — reads an empty list,
+     * because configsets are found through the filename index and it answers nothing until indexing
+     * ends; so indexing ending re-reads. And a configset created while the view is open appears in
+     * no event this view hears about; so opening the chooser re-reads, which is the moment a user is
+     * asking what the list holds. Neither costs anything the rest of the time.
+     */
+    private fun watchForConfigsets() {
+        configsetCombo.addPopupMenuListener(
+            object : javax.swing.event.PopupMenuListener {
+                override fun popupMenuWillBecomeVisible(event: javax.swing.event.PopupMenuEvent) = reloadConfigsets()
+                override fun popupMenuWillBecomeInvisible(event: javax.swing.event.PopupMenuEvent) = Unit
+                override fun popupMenuCanceled(event: javax.swing.event.PopupMenuEvent) = Unit
+            },
+        )
+        project.messageBus.connect(this).subscribe(
+            DumbService.DUMB_MODE,
+            object : DumbService.DumbModeListener {
+                override fun exitDumbMode() {
+                    ApplicationManager.getApplication().invokeLater({ reloadConfigsets() }, project.disposed)
+                }
+            },
+        )
     }
 
     /**
@@ -170,11 +201,19 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         }
     }
 
-    /** Rebuilds the configset list from what the project holds. */
+    /**
+     * Rebuilds the configset list from what the project holds, keeping the chosen one where it still
+     * exists.
+     *
+     * **The chooser stays enabled when the list is empty.** Opening it is what re-reads the list, so
+     * a disabled empty chooser could never learn about the project's first configset.
+     */
     internal fun reloadConfigsets() {
+        val chosen = configsetCombo.selectedItem as? SolrConfigset
         val configsets = SolrProjectConfigsets.getInstance(project).all()
-        configsetCombo.model = DefaultComboBoxModel(configsets.toTypedArray())
-        configsetCombo.isEnabled = configsets.isNotEmpty()
+        configsetCombo.model = DefaultComboBoxModel(configsets.toTypedArray()).apply {
+            if (chosen in configsets) selectedItem = chosen
+        }
     }
 
     private fun canCompare(): Boolean =
@@ -465,6 +504,13 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     internal fun setCollection(collection: String) {
         collectionField.text = collection
     }
+
+    /** The configset chooser itself, so a test can open it the way a user does. */
+    internal val configsetChooser: JComboBox<SolrConfigset> get() = configsetCombo
+
+    /** The names the configset chooser currently offers, in order. */
+    internal val offeredConfigsets: List<String>
+        get() = (0 until configsetCombo.itemCount).map { configsetCombo.getItemAt(it).name }
 
     /** What the payload pane is showing for the selected row. */
     internal val payloadText: String get() = payloadArea.text
