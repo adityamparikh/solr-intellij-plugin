@@ -790,7 +790,8 @@ merging the collection's fields with the configsets'.
 
 ### 31. A test document the plugin refuses to send — `31-index-test-document.png`
 
-**✅ Captured.**
+**✅ Captured, and due a reshoot.** The capture predates the dialog opening on every field the schema
+declares rather than the unique key alone, so the document in it is shorter than a user now sees.
 
 **Shows** the *Index a test document* dialog, its title naming the collection and the connection, a
 field name misspelled in the document, the reason in red below the editor, and **OK disabled**.

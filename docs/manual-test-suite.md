@@ -860,7 +860,9 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       of "only additive changes get the second action".
 - [ ] **SRV-28** — Select a collection in the **Solr** window and press **Index a Test Document**.
       The dialog names the collection **and the server** in its title, opens on a document carrying
-      the unique key, and reports no problems.
+      the unique key first and then every other field the collection declares — numbers unquoted,
+      multi-valued fields as arrays — with no `_version_`, `_root_`, `_text_` or copy-field
+      destination among them, and reports no problems. **OK works without an edit.**
 - [ ] **SRV-29** — Change a field name to a typo. The dialog reports it and **OK is refused**. This
       is the check worth engineering: pressing OK anyway against a `_default` collection would add
       the field to the deployed schema, and Solr would report success.

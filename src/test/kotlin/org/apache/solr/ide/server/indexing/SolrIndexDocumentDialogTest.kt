@@ -2,6 +2,7 @@ package org.apache.solr.ide.server.indexing
 
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldType
@@ -24,8 +25,8 @@ class SolrIndexDocumentDialogTest : SolrConfigsetTestCase() {
         uniqueKey = "id",
     )
 
-    private fun <T> withDialog(body: (SolrIndexDocumentDialog) -> T): T {
-        val dialog = SolrIndexDocumentDialog(project, "books", "local", schema)
+    private fun <T> withDialog(facts: SolrConfigsetFacts = schema, body: (SolrIndexDocumentDialog) -> T): T {
+        val dialog = SolrIndexDocumentDialog(project, "books", "local", facts)
         return try {
             body(dialog)
         } finally {
@@ -39,6 +40,50 @@ class SolrIndexDocumentDialogTest : SolrConfigsetTestCase() {
     fun testItOpensOnADocumentTheSchemaAccepts() {
         withDialog { dialog ->
             assertTrue(dialog.document, dialog.document.contains("\"id\""))
+            assertEmpty("a generated document must not open with a complaint", dialog.problems())
+            assertEmpty(dialog.performValidateAll())
+        }
+    }
+
+    /**
+     * It opens on every field a user would fill, and OK works before a key is pressed.
+     *
+     * The schema carries what a real collection does — Solr's internal fields, a copy-field target,
+     * a field that keeps nothing, a dynamic pattern — so the test is that none of it leaks into a
+     * document the dialog would then complain about. A fuller document that opened refused would be
+     * worse than the id-only one it replaced.
+     */
+    fun testItOpensOnEveryFieldAUserWouldFillAndOkWorks() {
+        val facts = SolrConfigsetFacts(
+            fields = listOf(
+                SolrField(name = "_version_", type = "plong", indexed = false, stored = false),
+                SolrField(name = "_root_", type = "string", stored = false),
+                SolrField(name = "_text_", type = "text_general", multiValued = true, stored = false),
+                SolrField(name = "id", type = "string", required = true),
+                SolrField(name = "title", type = "text_general"),
+                SolrField(name = "cast", type = "string", multiValued = true),
+                SolrField(name = "seasons", type = "pint"),
+                SolrField(name = "title_sort", type = "string"),
+                SolrField(name = "dropped", type = "string", indexed = false, stored = false, docValues = false),
+            ),
+            dynamicFields = listOf(SolrDynamicField("*_s", SolrField(name = "*_s", type = "string"))),
+            fieldTypes = listOf(
+                SolrFieldType("string", "solr.StrField"),
+                SolrFieldType("text_general", "solr.TextField"),
+                SolrFieldType("pint", "solr.IntPointField"),
+                SolrFieldType("plong", "solr.LongPointField"),
+            ),
+            copyFields = listOf(SolrCopyField("*", "_text_"), SolrCopyField("title", "title_sort")),
+            uniqueKey = "id",
+        )
+
+        withDialog(facts) { dialog ->
+            listOf("\"id\"", "\"title\"", "\"cast\": [", "\"seasons\": 1").forEach {
+                assertTrue("$it in ${dialog.document}", dialog.document.contains(it))
+            }
+            listOf("_version_", "_root_", "_text_", "title_sort", "dropped", "*_s").forEach {
+                assertFalse("$it in ${dialog.document}", dialog.document.contains(it))
+            }
             assertEmpty("a generated document must not open with a complaint", dialog.problems())
             assertEmpty(dialog.performValidateAll())
         }
