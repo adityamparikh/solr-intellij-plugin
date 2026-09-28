@@ -11,7 +11,7 @@
 [versions]
 asm = "9.10.1"
 junit = "4.13.2"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 changelog = "2.5.0"
 kover = "0.9.9"
 sonarqube = "7.4.0.8496"
