@@ -17,6 +17,7 @@ behind a link. Read the relevant one before designing anything.
 | [`docs/how-to/extend-the-field-model.md`](docs/how-to/extend-the-field-model.md) | Adding to `model` and the parsers that fill it |
 | [`docs/how-to/testing-and-the-build-gates.md`](docs/how-to/testing-and-the-build-gates.md) | Test conventions, and clearing Dokka and Kover |
 | [`docs/manual-test-suite.md`](docs/manual-test-suite.md) | The sandbox verification pass: gesture, expected outcome, pass history — never build status |
+| [`docs/manual-test-checklist.md`](docs/manual-test-checklist.md) | The same pass, one line per check, for pressing in one sitting and reporting by ID |
 | [`docs/presentation/`](docs/presentation/) | Speaker outlines per act; the `.pptx` is built by hand from them |
 | [`docs/platform-mechanisms.md`](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are and what this plugin decided |
 | [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written |

@@ -12,6 +12,9 @@ document owns three things: the **gesture** to make, the **expected outcome**, a
 [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) does, and a feature's checks
 join this suite only when its code has shipped and there is something to press.
 
+**For a pass in one sitting, [the checklist](manual-test-checklist.md) is this page with one line
+per check**, linked back here for the detail. Change a check here and its line there.
+
 **Licence the sandbox before the first pass, or section 14 is untestable and does not say so.**
 The sandbox keeps its own `config/` and inherits no licence from your everyday IDE. Unlicensed,
 IntelliJ IDEA Ultimate disables `com.intellij.modules.ultimate` at every start — it rewrites
