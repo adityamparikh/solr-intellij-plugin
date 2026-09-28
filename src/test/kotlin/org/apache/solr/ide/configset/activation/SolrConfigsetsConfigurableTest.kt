@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.activation
 
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.ui.components.JBList
 
 /**
@@ -72,6 +73,17 @@ class SolrConfigsetsConfigurableTest : SolrConfigsetTestCase() {
 
         assertFalse(settings.isDetectionEnabled)
         assertFalse("applied, so nothing is pending", page.isModified)
+    }
+
+    /** Applying moves the PSI modification count, so inlay hints redraw along with the highlighting. */
+    fun testApplyingMovesThePsiModificationCount() {
+        val page = page()
+        page.detectionEnabled = false
+        val before = PsiModificationTracker.getInstance(project).modificationCount
+
+        page.apply()
+
+        assertTrue(PsiModificationTracker.getInstance(project).modificationCount > before)
     }
 
     /** A directory can be marked and unmarked from the page, and each takes effect on apply. */
@@ -165,17 +177,37 @@ class SolrConfigsetsConfigurableTest : SolrConfigsetTestCase() {
      * "you chose this" and "the plugin found this" is what decides whether remove does anything.
      */
     fun testARowSaysWhetherItWasMarkedOrDetected() {
-        assertTrue(rendered(SolrConfigsetRow("/p/legacy", "legacy", marked = true)).endsWith("marked"))
-        assertTrue(rendered(SolrConfigsetRow("/p/books/conf", "books", marked = false)).endsWith("detected"))
+        assertTrue(rendered(SolrConfigsetRow("/p/legacy", "legacy", marked = true)).contains("marked"))
+        assertTrue(rendered(SolrConfigsetRow("/p/books/conf", "books", marked = false)).contains("detected"))
     }
 
-    /** The path is shown beside the name, since two configsets are routinely called the same thing. */
-    fun testARowShowsItsPath() {
+    /**
+     * The provenance comes before the path, so a long path cannot push it out of sight.
+     *
+     * The sandbox pass found exactly that: a configset in a deep checkout rendered its absolute path
+     * across the whole Settings dialog, and *detected* sat past the right edge, unread.
+     */
+    fun testTheProvenanceIsReadBeforeThePath() {
+        val text = rendered(SolrConfigsetRow("/elsewhere/very/deep/checkout/books/conf", "books", marked = false))
+
+        assertTrue(text, text.indexOf("detected") < text.indexOf("/elsewhere"))
+    }
+
+    /** Inside the project the path is shown relative to it, which is the part that tells two rows apart. */
+    fun testAPathInsideTheProjectIsShownRelativeToIt() {
+        val text = rendered(SolrConfigsetRow("${project.basePath}/solr/conf", "solr", marked = false))
+
+        assertTrue(text, text.contains("solr/conf"))
+        assertFalse(text, text.contains(project.basePath!!))
+    }
+
+    /** Outside the project there is nothing to be relative to, and the whole path is the honest answer. */
+    fun testAPathOutsideTheProjectIsShownWhole() {
         assertTrue(rendered(SolrConfigsetRow("/p/books/conf", "books", marked = false)).contains("/p/books/conf"))
     }
 
     private fun rendered(row: SolrConfigsetRow): String {
-        val renderer = SolrConfigsetRowRenderer()
+        val renderer = SolrConfigsetRowRenderer(project.basePath)
         renderer.getListCellRendererComponent(JBList<SolrConfigsetRow>(), row, 0, false, false)
         return renderer.getCharSequence(false).toString()
     }

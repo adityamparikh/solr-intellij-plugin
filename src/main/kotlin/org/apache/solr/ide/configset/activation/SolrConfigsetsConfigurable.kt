@@ -1,6 +1,5 @@
 package org.apache.solr.ide.configset.activation
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.Configurable
@@ -11,8 +10,8 @@ import com.intellij.ui.CollectionListModel
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
@@ -86,7 +85,7 @@ class SolrConfigsetsConfigurable(private val project: Project) : Configurable {
      */
     override fun createComponent(): JComponent {
         list.selectionMode = ListSelectionModel.SINGLE_SELECTION
-        list.cellRenderer = SolrConfigsetRowRenderer()
+        list.cellRenderer = SolrConfigsetRowRenderer(project.basePath)
         list.emptyText.text = SolrBundle.message("settings.configsets.empty")
         enabledBox.isSelected = draftEnabled
         enabledBox.addActionListener { draftEnabled = enabledBox.isSelected }
@@ -102,9 +101,16 @@ class SolrConfigsetsConfigurable(private val project: Project) : Configurable {
             add(enabledBox, BorderLayout.NORTH)
             add(table, BorderLayout.CENTER)
             add(
-                JBLabel(SolrBundle.message("settings.configsets.hint")).apply {
+                // Wrapped at words rather than left as a one-line label: at the Settings dialog's
+                // default width the sentence ran past its right edge.
+                JBTextArea(SolrBundle.message("settings.configsets.hint")).apply {
+                    isEditable = false
+                    isOpaque = false
+                    lineWrap = true
+                    wrapStyleWord = true
                     border = JBUI.Borders.emptyTop(8)
-                    componentStyle = UIUtil.ComponentStyle.SMALL
+                    font = JBUI.Fonts.smallFont()
+                    foreground = UIUtil.getContextHelpForeground()
                 },
                 BorderLayout.SOUTH,
             )
@@ -132,7 +138,7 @@ class SolrConfigsetsConfigurable(private val project: Project) : Configurable {
         (saved - draftMarked.toSet()).forEach { settings.removeManualRoot(it) }
         (draftMarked.toSet() - saved).forEach { path -> pendingDirectories[path]?.let { settings.addManualRoot(it) } }
         pendingDirectories.clear()
-        DaemonCodeAnalyzer.getInstance(project).restart()
+        SolrActivationRefresh.afterActivationChanged(project)
         refreshRows()
     }
 
@@ -219,8 +225,14 @@ class SolrConfigsetsConfigurable(private val project: Project) : Configurable {
  *
  * The provenance is the point of the row. A marked root reads as a choice someone made and can undo;
  * a detected one reads as a fact about the files, which the page can only report.
+ *
+ * **It is written before the path, and the path relative to the project.** Written last, behind an
+ * absolute path, it sat past the dialog's right edge in any checkout more than a few directories
+ * deep — which is every checkout.
+ *
+ * @param projectDir the project's base directory, which paths inside it are shown relative to
  */
-internal class SolrConfigsetRowRenderer : ColoredListCellRenderer<SolrConfigsetRow>() {
+internal class SolrConfigsetRowRenderer(private val projectDir: String?) : ColoredListCellRenderer<SolrConfigsetRow>() {
     override fun customizeCellRenderer(
         list: JList<out SolrConfigsetRow>,
         value: SolrConfigsetRow?,
@@ -230,10 +242,15 @@ internal class SolrConfigsetRowRenderer : ColoredListCellRenderer<SolrConfigsetR
     ) {
         val row = value ?: return
         append(row.name)
-        append("  ${row.path}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
         append(
             "  " + SolrBundle.message(if (row.marked) "settings.configsets.marked" else "settings.configsets.detected"),
             SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES,
         )
+        append("  ${displayed(row.path)}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+    }
+
+    private fun displayed(path: String): String {
+        val base = projectDir?.trimEnd('/') ?: return path
+        return if (path.startsWith("$base/")) path.removePrefix("$base/") else path
     }
 }

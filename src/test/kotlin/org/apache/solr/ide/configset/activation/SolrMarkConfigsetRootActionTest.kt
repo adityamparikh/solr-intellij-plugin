@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.testFramework.TestActionEvent
 
 /**
@@ -79,6 +80,26 @@ class SolrMarkConfigsetRootActionTest : SolrConfigsetTestCase() {
         action.update(event)
 
         assertFalse(event.presentation.isVisible)
+    }
+
+    /**
+     * Marking moves the PSI modification count, which is what redraws the inlay hints.
+     *
+     * The declarative hints pass skips a file whose PSI modification count has not moved, and a daemon
+     * restart does not move it. The sandbox pass found the consequence: after *Unmark*, a file that
+     * was plain XML again still showed the Solr hint it had while marked, until its tab was switched.
+     */
+    fun testMarkingAndUnmarkingEachMoveThePsiModificationCount() {
+        val dir = directory("legacy")
+        val tracker = PsiModificationTracker.getInstance(project)
+
+        val beforeMark = tracker.modificationCount
+        action.actionPerformed(eventOn(dir))
+        assertTrue("marking", tracker.modificationCount > beforeMark)
+
+        val beforeUnmark = tracker.modificationCount
+        action.actionPerformed(eventOn(dir))
+        assertTrue("unmarking", tracker.modificationCount > beforeUnmark)
     }
 
     /** The update reads settings, so it asks to run off the EDT, where the platform wants updates. */

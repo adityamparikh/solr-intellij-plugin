@@ -154,6 +154,15 @@ data class SolrVersionSelection(
 ) {
 
     /**
+     * The line as a reader writes it — `10.0`, or `latest` — rather than as the guide's URL spells it.
+     *
+     * The URL segment uses an underscore, `10_0`, and a summary that printed it read as a path
+     * leaking into prose.
+     */
+    val lineName: String
+        get() = guidePathSegment.replace('_', '.')
+
+    /**
      * How this selection came about, phrased for a user rather than for a log.
      *
      * Shown beside the link so a reader can tell whether the documentation matches what they run,

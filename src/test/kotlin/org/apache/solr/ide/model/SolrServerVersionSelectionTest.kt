@@ -120,4 +120,25 @@ class SolrServerVersionSelectionTest {
         assertEquals("10.0.0", SolrFieldModel.of(facts, facts, serverVersion = "10.0.0").serverVersion)
         assertNull(SolrFieldModel.of(facts, facts).serverVersion)
     }
+
+    // --- naming the line to a reader -----------------------------------------------------------------
+
+    /**
+     * The line is named as a reader writes it, not as the Reference Guide's URL spells it.
+     *
+     * The drift summary printed *Resolved against Solr 10_0*, which the first server sandbox pass
+     * recorded verbatim without anyone noticing it was a path segment.
+     */
+    @Test
+    fun `a line is named with a dot rather than the guide's underscore`() {
+        val selection = SolrVersionSelection.fromServerVersion("10.0.0")
+
+        assertEquals(selection.guidePathSegment.replace('_', '.'), selection.lineName)
+        assertFalse(selection.lineName.contains('_'))
+    }
+
+    @Test
+    fun `the default is named as the latest release`() {
+        assertEquals("latest", SolrVersionSelection.DEFAULT.lineName)
+    }
 }

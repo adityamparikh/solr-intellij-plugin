@@ -1,6 +1,5 @@
 package org.apache.solr.ide.configset.activation
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -46,7 +45,7 @@ class SolrMarkConfigsetRootAction : DumbAwareAction() {
         val project = event.project ?: return
         val settings = SolrConfigsetSettings.getInstance(project)
         if (dir.path in settings.manualRoots) settings.removeManualRoot(dir.path) else settings.addManualRoot(dir)
-        DaemonCodeAnalyzer.getInstance(project).restart()
+        SolrActivationRefresh.afterActivationChanged(project)
     }
 
     /**
