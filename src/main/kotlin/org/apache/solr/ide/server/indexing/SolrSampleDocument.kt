@@ -3,6 +3,7 @@ package org.apache.solr.ide.server.indexing
 import org.apache.solr.ide.model.SolrConfigsetFacts
 import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.schema.SolrFieldType
+import org.apache.solr.ide.model.schema.SolrGlob
 
 /**
  * A test document written from what a schema declares.
@@ -12,7 +13,8 @@ import org.apache.solr.ide.model.schema.SolrFieldType
  * values look real is one somebody indexes without reading.
  *
  * The unique key comes first and the required fields follow, because those are the two things a
- * document cannot omit and the two a user editing this must not delete by accident.
+ * document cannot omit and the two a user editing this must not delete by accident. Every other
+ * field a user would fill comes after, in the order the schema declares them.
  */
 object SolrSampleDocument {
 
@@ -22,24 +24,39 @@ object SolrSampleDocument {
     /**
      * A document for [facts], as formatted JSON.
      *
-     * Only fields the schema *requires* and the unique key are included. A schema of two hundred
-     * fields would otherwise produce a document nobody reads, and every optional field a user did
-     * not want is one they have to delete before indexing — which is more work than adding the two
-     * they did.
+     * **Every field a user would fill, not only the ones they must.** A document of only an id
+     * tests nothing about a schema, and the names a user needs are exactly the ones they would
+     * otherwise have to look up and spell; deleting a line they did not want is cheaper. Declared
+     * fields only — a dynamic pattern is a rule for names, not a name, and one invented for it is a
+     * field nobody asked for.
      *
-     * Internal fields are left out. `_version_` is Solr's to manage, and a document supplying one
-     * is asserting an optimistic-concurrency check it did not mean to make.
+     * Left out, each because a value supplied for it is not what the user meant:
+     * - **Solr's internal fields**, any name starting and ending with `_`. `_version_` asserts an
+     *   optimistic-concurrency check, `_root_` and `_nest_path_` a nesting decision, and `_text_` is
+     *   a catch-all Solr fills by copying.
+     * - **Copy-field destinations.** Solr fills them from their sources; a value supplied as well is
+     *   added beside the copy rather than replacing it.
+     * - **Fields that keep nothing** — neither indexed, stored nor docValues, as Solr's `ignored`
+     *   type is. Only an explicit `false`, on the field or its type, counts: the Schema API reports
+     *   what was written, and an unset flag inherits a default that is usually `true`.
+     *
+     * The unique key is always kept, whatever else is true of it.
      *
      * @param facts the schema to write a document for
      * @return the document as formatted JSON, ready to be edited
      */
     fun forSchema(facts: SolrConfigsetFacts): String {
         val typesByName = facts.fieldTypes.associateBy { it.name }
+        val candidates = facts.fields.filter { field ->
+            field.name != facts.uniqueKey &&
+                !field.isInternal() &&
+                !field.isCopyDestination(facts) &&
+                !field.keepsNothing(typesByName[field.type])
+        }
         val included = buildList {
             facts.uniqueKey?.let { key -> facts.fields.firstOrNull { it.name == key }?.let(::add) }
-            addAll(
-                facts.fields.filter { it.required == true && it.name != facts.uniqueKey && !it.isInternal() },
-            )
+            addAll(candidates.filter { it.required == true })
+            addAll(candidates.filter { it.required != true })
         }.distinctBy { it.name }
 
         if (included.isEmpty()) return "{\n  \n}"
@@ -84,4 +101,17 @@ object SolrSampleDocument {
     private val FRACTIONAL = listOf("FloatPoint", "DoublePoint", "TrieFloat", "TrieDouble")
 
     private fun SolrField.isInternal() = name.length > 2 && name.startsWith('_') && name.endsWith('_')
+
+    // A destination may be a glob when its source is one (`*` to `*_str`), so it is matched rather
+    // than compared.
+    private fun SolrField.isCopyDestination(facts: SolrConfigsetFacts) =
+        facts.copyFields.any { SolrGlob.matches(it.destination, name) }
+
+    private fun SolrField.keepsNothing(type: SolrFieldType?): Boolean {
+        fun flag(declared: Boolean?, attribute: String) =
+            declared ?: type?.attributes?.get(attribute)?.toBooleanStrictOrNull()
+        return flag(indexed, "indexed") == false &&
+            flag(stored, "stored") == false &&
+            flag(docValues, "docValues") == false
+    }
 }

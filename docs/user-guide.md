@@ -642,8 +642,17 @@ configset it came from:
 collection will do — a shard, a replica, a field — since they all belong to one collection.*
 
 The plugin reads that collection's schema and writes you a starting document from it: the unique key
-and whatever the schema marks required, with placeholder values of the right JSON shape. Edit it,
-choose when it should become findable, and send.
+first, then the required fields, then every other field the schema declares, each with a placeholder
+value of the right JSON shape — a string for text, a number for the numeric types, `true` for a
+boolean, an ISO-8601 instant for a date, and a one-element array for a multi-valued field. Delete
+what you do not need, fill in the rest, choose when it should become findable, and send. It opens
+with no problems reported, so OK works as it stands.
+
+Some declared fields are left out, because a value supplied for them is not what you meant: Solr's
+own fields (`_version_`, `_root_`, `_nest_path_`, `_text_`, anything starting and ending with `_`),
+copy-field destinations, which Solr fills from their sources, and fields that are neither indexed,
+stored nor docValues, which keep nothing they are given. Dynamic patterns such as `*_s` are not
+fields, so none is invented for them — completion offers them instead.
 
 **Field names complete as you type them**, from that collection's schema — not from the project's
 configsets, because the document is going to one named collection and a field it cannot accept is a

@@ -30,8 +30,9 @@ that does, does so only when asked.
   changes — each confirming its target first, and each followed by a fresh read of the server rather
   than trust in the write's success code. A changed definition is never applied for you, and the
   request is shown with the reason.
-- **Indexing a test document** into a chosen collection, starting from a document built from its
-  schema, with the two mistakes Solr answers `status: 0` to — a field the schema cannot place, a
+- **Indexing a test document** into a chosen collection, starting from a document carrying every
+  field its schema declares — less Solr's own fields and copy-field destinations — each with a value
+  of the right shape, with the two mistakes Solr answers `status: 0` to — a field the schema cannot place, a
   missing unique key — refused before sending.
 - **Field names in Java and Kotlin using SolrJ.** A name no configset declares is reported, in query
   builder calls, raw parameter strings, document fields and `@Field` annotations; names complete from
