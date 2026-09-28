@@ -43,7 +43,7 @@ its checks live.
 | [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
 | [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
 | [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | — |
-| [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | <kbd>Ctrl-Space</kbd> in a Solr call | — |
+| [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | Typing a field name in a Solr call | — |
 | [Navigating from code to the schema](#from-a-field-name-in-code-to-its-declaration) | <kbd>Ctrl-click</kbd> a field name in code | — |
 | [Query structure in code](#seeing-the-shape-of-a-query-written-in-code) | Editing a Solr query in a string | — |
 | [Running a query from code](#running-a-query-without-leaving-the-file) | The gutter icon beside a query | — |
@@ -802,9 +802,29 @@ has the full rules.
 
 ## Completing a field name in Java or Kotlin
 
-The same positions offer the project's field names as you type them. Each entry shows its type and
-which configset declared it; a [dynamic field](glossary.md#dynamic-field) pattern such as `*_s` is
-offered in italics, because naming the pattern is how you name the field it will create.
+The same positions offer the project's field names as you type them. **The list opens by itself**
+once you type a letter where a field name goes — `addFilterQuery("c` — and after a comma in a field
+list, where the next name starts; <kbd>Ctrl-Space</kbd> still works anywhere it would. Every other
+string in your code keeps the IDE's usual rule of not opening a popup while you write prose.
+
+**Only where a field name goes, not everywhere in the string.** In a query that is before the colon
+of each clause: `setQuery("category:books AND n` offers fields, `setQuery("category:b` does not,
+because the caret is in the value. Inside a phrase, a range or a local-parameter block nothing is
+offered, and in `setSort("price", …)` only the first argument is a field.
+
+**Only names that call can use.** Each entry shows its type and which configset declared it, and the
+list holds declared fields and nothing else:
+
+- **No [dynamic field](glossary.md#dynamic-field) patterns.** `*_s` is a rule for names rather than
+  a name; inserted into a query it is a wildcard field Solr rejects. The field you mean to create
+  is yours to type, and the check accepts it once typed.
+- **Only fields that can do what the call asks.** A query or filter query is offered fields Solr
+  can search — indexed, or with doc values. A facet is offered fields it can facet. A sort is
+  offered single-valued fields it can sort. A field list, a highlight field or a `@Field` binding
+  asks nothing a schema can refuse, and is offered every declared field. These are the same rules
+  the `solrconfig.xml` inspections apply, so the list never offers what a check would underline.
+  A field of a custom type the plugin cannot classify is offered rather than hidden.
+- **No word or file-path suggestions** the IDE offers inside other strings.
 
 Offered in fewer places than the check reports: the same two conditions — a method that names fields,
 on SolrJ's own class — plus the module gate. Somebody else's `@Field` annotation, of which the JVM
@@ -844,6 +864,12 @@ three.
 
 Nothing inside a phrase is coloured, because a phrase is a value in its entirety; nor is anything in
 a local-parameter block, whose names are parameters rather than fields.
+
+**The colours follow your theme, and you can change them.** A field takes your scheme's instance-field
+colour and an operator its keyword colour, both chosen because every bundled scheme sets them to
+something other than a string's colour — the query is drawn over a string, and a colour the string
+shares is a colour nobody sees. To choose your own, open *Settings → Editor → Color Scheme → Solr
+Query*, which previews both against a string.
 
 ## Running a query without leaving the file
 
