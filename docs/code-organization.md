@@ -493,6 +493,62 @@ platform calls a feature in, and where a null model turns into silence — see t
 *project* contain. It walks content roots and prunes build output and dependency trees, so it is not
 an editor-path operation.
 
+## Tracing one gesture, end to end
+
+The sections above describe the packages one at a time. This follows a single thing a user sees —
+`q.addFilterQuery("categry:books")` underlined at `categry` — from the registration down to the
+model and back, because that is the fastest way to see which layer owns which decision. Every other
+feature is the same shape with different names in it.
+
+```mermaid
+sequenceDiagram
+    participant P as Platform
+    participant I as code.inspection<br/>SolrUnknownCodeFieldInspection
+    participant R as code<br/>SolrRecognizers
+    participant D as configset.activation<br/>SolrProjectDetector
+    participant J as code.solrj<br/>SolrJRecognizer
+    participant C as configset.reading<br/>SolrConfigsetReader
+    participant M as model<br/>SolrFieldModel
+
+    P->>I: checkFile(ProductSearch.java)
+    I->>I: no UAST plugin for this language? stop
+    I->>R: fieldUsagesIn(file)
+    R->>D: moduleDependsOn(module, SolrJ coordinates)
+    Note over D: library names off the project model — no index read
+    R->>J: readFieldUsages(file)
+    Note over J: one UAST walk; a call counts only if its method names fields<br/>AND its receiver resolves to SolrQuery (fieldNamingMethod)
+    J-->>I: SolrFieldUsage("categry", element, range inside the literal)
+    I->>C: modelFor(each configset)
+    Note over C: cached by the platform, invalidated by the files it read
+    C-->>I: SolrFieldModel
+    I->>M: resolve("categry") — declared field or dynamic pattern?
+    M-->>I: null in every configset
+    I-->>P: problem on the range, with closest-spelling fixes
+```
+
+**What each step is there to protect:**
+
+1. **The registration decides who is asked, not the class.** `plugin.xml` registers the inspection
+   *without a language*, so every file the IDE inspects reaches `checkFile`. Turning away a file no
+   JVM language reads is the first line, because everything after it costs something.
+2. **The module gate runs before any reading.** A module without SolrJ is never read at all — and
+   the gate reads library names from the project model, never the index, so it is safe on every file
+   the user opens, including while the IDE is indexing.
+3. **The recognizer is the only thing that knows SolrJ.** It returns plain facts — a name, the
+   element it sits in, and the range of the name inside that element — and the inspection never
+   looks at a `UCallExpression` itself. That is what lets navigation, completion and colour read the
+   same facts and agree.
+4. **The model is asked once per file, not once per finding.** Finding the configsets goes through
+   the filename index; asking per problem made a file with ten typos pay for ten index queries.
+5. **No configsets means no answer, not "every name is wrong".** `configsetModelsIn` returns null
+   rather than an empty list, because an empty list would condemn every name in the project.
+6. **The warning covers the name, not the string.** `rangeInElement` is why `categry` is underlined
+   and the quotes, the colon and `books` are not.
+
+To follow another feature, find its line in `plugin.xml`, open the class it names, and read
+downwards the same way: the guard that turns most callers away, the call into a shared reader, the
+model lookup, and what comes back.
+
 ## The packages
 
 ### `org.apache.solr.ide`
@@ -638,11 +694,30 @@ the cases that decide *not* to offer can be tested without booting an IDE. Those
 the most: an intention offered where it does not apply is acted on, which is worse than one that is
 simply missing.
 
-### `org.apache.solr.ide.code` and `org.apache.solr.ide.code.solrj`
+### `org.apache.solr.ide.code` and the packages under it
 
 What a project's own source says about Solr — which servers it talks to, and which fields it asks
 them for. `code` holds the contract and the two facts it reports; `code.solrj` is the first
 implementation of that contract, and each further library recognized gets a sibling package.
+
+The five packages beside `code.solrj` are the surfaces, one each, and **every one of them reads the
+recognizer rather than reading the file itself**:
+
+| Package | Puts on screen | Registered as |
+|---|---|---|
+| `code.inspection` | A field name no configset declares, underlined at the name | `localInspection` |
+| `code.completion` | Field names where code is naming one | `completion.contributor` |
+| `code.navigation` | <kbd>Ctrl-click</kbd> from a name in code to the schema's `<field>` | `psi.referenceContributor` |
+| `code.highlighting` | Fields and operators inside a query string, coloured | `annotator` |
+| `code.run` | A gutter icon that runs the query against a chosen collection | `codeInsight.lineMarkerProvider` |
+
+That is the rule worth keeping when adding a sixth: **two surfaces answering the same question must
+not answer it twice.** The check and the navigation are silent in exactly the same places because
+both call `SolrRecognizers.fieldUsagesIn`, and completion offers names in exactly the positions the
+check examines because both call `SolrJFieldPositions.fieldNamingMethod`. A surface that re-derived
+either would be a second rule able to drift from the first — the shape of every defect this track
+shipped and then fixed. `code.run` is the one package here that reaches a server, and
+`SolrServerBoundaryContractTest` names it in its allowlist for that reason.
 
 **A recognizer never asks whether its library is present.** It declares the coordinates it needs and
 `SolrRecognizers` answers, once, for all of them — against the *module*, so a repository where one
@@ -656,7 +731,7 @@ the note in [`docs/Module.md`](Module.md) on why a Kotlin string is not a litera
 
 ### The server surface
 
-Six packages, and one rule that applies to all of them: **nothing on the editor path may import any
+Seven packages, and one rule that applies to all of them: **nothing on the editor path may import any
 of them.** That is not a convention — `SolrServerBoundaryContractTest` walks the source tree and
 fails on any package outside `org.apache.solr.ide.server` that names one, which is why the rule is
 stated as an allowlist of server consumers rather than a list of editor packages to forbid. A list of
@@ -670,6 +745,7 @@ flowchart TD
         Topology["topology<br/>collections tool window"]
         Drift["drift<br/>configset vs collection"]
         Query["query<br/>.http files"]
+        Indexing["indexing<br/>a test document"]
     end
     Reading["reading<br/>responses → facts<br/><i>pure, tested against captured bodies</i>"]
     Transport["transport<br/>one HTTP call, classified five ways"]
@@ -678,14 +754,26 @@ flowchart TD
     Topology --> Reading
     Drift --> Reading
     Drift --> Transport
-    Query -.->|"reads configsets, never a server"| Reading
+    Query -->|"schema, on an explicit Ctrl-Space only"| Reading
+    Topology -->|"reads the schema, opens the dialog"| Indexing
+    Indexing --> Transport
     Reading --> Transport
     Transport --> Connection
 ```
 
-`query` is the odd one. Field completion inside an `.http` file reads the *project's configsets*, not
-a server — an `.http` file resolves to no configset of its own, so the names have to come from
-somewhere chosen, and the repository is the one that costs nothing and never makes the editor wait.
+`query` is the odd one, because it contributes to somebody else's editor — the IDE's HTTP Client —
+rather than owning a view. Field completion inside an `.http` body reads **the collection the
+request line names, on the selected connection**, and it contacts the server only when the user
+presses <kbd>Ctrl-Space</kbd>: the popup that opens while typing answers from what an explicit ask
+already read, or from the project's configsets, and never opens a socket on a keystroke. The read is
+remembered per connection and collection in `SolrCollectionFields` until the connection list changes
+or the tool window refreshes.
+
+**Every write names its target before it happens.** Upload and reload, an additive Schema API change
+and indexing a test document each confirm first, naming the collection **and the server** — so a
+dialog appearing means something is about to change, and says where. The server integration spec
+owns the rule as its confirmation requirement for writes; it is repeated here because it is the one
+a new write path is most likely to skip.
 
 #### `server.connection`
 
@@ -724,9 +812,18 @@ index holds is a third answer to a different question, and a field a dynamic pat
 time appears in no configset anywhere. Merging it would make the model's symmetry false and break
 drift first.
 
+#### `server.indexing`
+
+A test document written for one named collection and sent there. The document is edited in a real
+editor over an in-memory JSON file that carries the collection's schema, which is how completion
+inside it offers that collection's fields — a document written for a collection belongs to no
+configset any rule over its location could find. `SolrDocumentValidation` refuses the two mistakes
+Solr answers `status: 0` to and then acts on: a field the schema cannot place, which it would add to
+the deployed schema, and a missing unique key, which it would replace with a generated one.
+
 #### `server.topology`, `server.query`, `server.drift`
 
-The three surfaces. Each keeps its decisions in pure code and its Swing thin, so that what the view
+The three surfaces with views of their own. Each keeps its decisions in pure code and its Swing thin, so that what the view
 *says* can be read in a test: `SolrTopologyNodes` and `SolrCollectionsView` for the tool window,
 `SolrQueryResultReader` and `SolrQueryResultRenderer` for query answers, `SolrDrift` and
 `SolrSchemaApi` for comparison and what may be applied.
