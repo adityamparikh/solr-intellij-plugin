@@ -44,6 +44,12 @@ that does, does so only when asked.
   a query string are coloured; and a gutter icon runs the query against a chosen collection. Silent
   in any module without a Solr client, and wherever the name cannot be resolved.
 
+### Changed
+
+- **The plugin is now called Solr Support, and is published by Aditya Parikh.** It was listed as
+  *Apache Solr* from the *Apache Software Foundation*, which its own description contradicted: this
+  is an independent project, not the ASF's. Look for *Solr Support* under Settings → Plugins.
+
 ## [0.1.0] - 2026-08-20
 
 **The first release, and it is the editor half of the plugin.** Everything below works against the

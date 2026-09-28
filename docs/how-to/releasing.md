@@ -5,9 +5,10 @@
 > **Read first:** [Contributing](../contributing.md) for the build and CI ·
 > [Compatibility](../compatibility.md) for what a version claims to support.
 
-**Nothing here has been done yet.** Version 0.1.0 exists in `gradle.properties` and in
-[the changelog](../../CHANGELOG.md), and a draft release is waiting on GitHub — but no tag has been
-pushed, no release published, and nothing uploaded to the Marketplace. The
+**Nothing here has been done yet.** 0.1.0 was cut in [the changelog](../../CHANGELOG.md) and never
+published. `gradle.properties` now says 0.2.0, and the draft release waiting on GitHub is that
+version — but no tag has been pushed, no release published, and nothing uploaded to the
+Marketplace. The
 [preflight](#preflight-what-must-be-true-before-a-marketplace-release) below is the list of what is
 still missing, and it is written from what the repository actually contains rather than from what a
 release usually needs.
@@ -62,34 +63,30 @@ cannot be reused.
 
 **A version can only be published to the Marketplace by hand the first time.** This is JetBrains'
 rule, not this project's — *"The first plugin publication must always be uploaded manually."*
-`publishPlugin` works for every version after that. So the first 0.1.0 upload is a person on
+`publishPlugin` works for every version after that. So the first upload — 0.2.0, as things stand — is a person on
 [the Marketplace upload page](https://plugins.jetbrains.com/plugin/add), whatever the workflow says.
 
 ## Preflight: what must be true before a Marketplace release
 
-Four things are missing today. The first two are repository content and are somebody's decision; the
-last two are credentials.
+Three things are missing today, all of them accounts and credentials. A fourth — who the listing says published
+the plugin — was repository content, and is settled.
 
-### 1. `plugin.xml` names the Apache Software Foundation as the vendor
+### Settled: the name and the vendor
 
-```xml
-<vendor>Apache Software Foundation</vendor>
-```
+`plugin.xml` used to read `<name>Apache Solr</name>` and `<vendor>Apache Software Foundation</vendor>`,
+while its own description says the project is *"not affiliated with or endorsed by the Apache
+Software Foundation."* Both could not be true, and `<vendor>` is the one the Marketplace displays as
+**the publisher**. They now read **Solr Support** and **Aditya Parikh**: a name that describes the
+relationship rather than claiming the mark, which is the shape
+[the ASF trademark policy](https://www.apache.org/foundation/marks/) expects of third-party software,
+and the same decision the plugin icon already made by not being the Solr logo.
 
-…while the description four dozen lines below it reads *"An independent open-source project. Not
-affiliated with or endorsed by the Apache Software Foundation."* Both cannot be true, and
-`<vendor>` is the one the Marketplace displays as **the publisher**. A listing that names the ASF as
-publishing a plugin the ASF did not publish is the problem to fix before anyone sees the page, not
-after.
+**The plugin ID has not had the same look.** `<id>` is still `org.apache.solr.ide`, a reversed
+domain the project does not own. Nobody installing sees it, but the Marketplace keeps it forever:
+the first upload claims it, and after that it cannot change without publishing a different plugin.
+Changing it is one line; deciding to is the owner's call, and the first upload is the deadline.
 
-`<name>Apache Solr</name>` deserves the same look. The project has already decided this question
-once in the other direction — the plugin icon was drawn specifically so as *not* to be the Solr
-trademark — and the name and vendor fields are where that decision has the most consequence.
-[The ASF trademark policy](https://www.apache.org/foundation/marks/) governs what third-party
-software may call itself; the usual shape is a name that describes the relationship rather than
-claiming the mark.
-
-### 2. There is no signing configuration
+### 1. There is no signing configuration
 
 `build.gradle.kts` has no `signing` block, and the JetBrains documentation is explicit that a plugin
 must be signed before publication. Signing needs a certificate chain and a private key, which the
@@ -97,7 +94,7 @@ IntelliJ Platform Gradle Plugin reads from the `CERTIFICATE_CHAIN`, `PRIVATE_KEY
 `PRIVATE_KEY_PASSWORD` properties. [JetBrains' signing guide](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
 covers generating them.
 
-### 3. The publish secrets do not exist
+### 2. The publish secrets do not exist
 
 `release.yml` reads four repository secrets. Only `SONAR_TOKEN` is configured today, so the publish
 step would fail on an empty token:
@@ -109,19 +106,19 @@ step would fail on an empty token:
 | `PRIVATE_KEY` | signing |
 | `PRIVATE_KEY_PASSWORD` | signing |
 
-### 4. A JetBrains account owns the plugin ID
+### 3. A JetBrains account owns the plugin ID
 
 `org.apache.solr.ide` has to be registered to the account that will publish it. That happens as part
 of the manual first upload.
 
-**Until all four are settled, publishing the draft produces a real GitHub release and a failed
+**Until all three are settled, publishing the draft produces a real GitHub release and a failed
 `release.yml` run.** That is not harmful — the release page and its ZIP are genuine and installable —
 but the red run on the repository means the Marketplace step did not happen, and anyone reading the
 Actions tab should know why.
 
 ## Cutting a GitHub-only release
 
-This is available today and needs none of the four above.
+This is available today and needs none of the three above.
 
 1. **Decide the version.** `version` in `gradle.properties`. The changelog's top section must match
    it, and [the compatibility matrix](../compatibility.md) names the version in its heading.

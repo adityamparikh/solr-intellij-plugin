@@ -9,7 +9,7 @@ yet checks that the two agree.** An earlier revision of this paragraph said a te
 CI-gates step still lists that check as open, and until it lands, keeping this page in step with the
 build is a reviewer's job.
 
-## Plugin 0.1.0
+## Plugin 0.2.0
 
 | What | Supported | Declared in |
 |---|---|---|
@@ -56,10 +56,16 @@ Both are exercised on every build: the catalogs are generated per line, and ever
 the `_default` and `sample_techproducts_configs` configsets **from both lines** and must report
 nothing.
 
-### What a server's version does *not* affect
+### What a server's version affects, and what it does not
 
-Nothing here yet. Reading a version from a connected server belongs to the Server track, which is not
-in 0.1.0 — see [the release notes](../CHANGELOG.md) for what this release does and does not contain.
+**One thing reads it: the drift view.** A collection reports the Solr it runs, and the comparison
+resolves each side's defaults against that line, and the summary under the table names the line and
+says it came from the connected server. A field type that exists on one line and not the other is a difference the
+versions explain, which is why the summary names it.
+
+**The editor never sees it.** Nothing on the editor path contacts a server, so inspections,
+completion and quick documentation answer from the configset alone, whatever a connected server
+happens to run.
 
 ## Changing any of this
 
