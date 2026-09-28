@@ -162,6 +162,26 @@ username beside its URL because wherever a server is named the identity is named
 beside it, and it carries no password because what a source file holds in that
 position is usually a placeholder — the IDE's password safe holds the real one.
 
+`SolrEndpointDiscovery` turns those usages into `SolrEndpointCandidate`s, the rows
+the connections page offers: a literal URL as it stands, and a `${…}` reference
+resolved through the configuration of a framework the module actually carries. A
+candidate does carry a password, where one is written as a literal beside the URL,
+and it goes no further than the form until the user ticks the box to store it.
+
+# Package org.apache.solr.ide.code.spring
+
+A Spring Boot application's configuration, read into the Solr servers it would talk
+to — one per profile, each with the username and password beside its URL.
+
+`SpringConfigFiles` reads `application.yml` and `application.properties`, and their
+profile variants, through the IDE's own YAML and properties parsers rather than the
+Spring plugin's model, which is undocumented and needs indexes. `SpringBootEndpoints`
+is the part Spring defines — profile precedence, `${…}` references — and is plain
+functions over parsed properties, testable without a fixture. `SpringActiveProfiles`
+is the one seam to the Spring plugin: an extension point whose only implementation is
+registered from `solr-spring.xml`, so the plugin loads without Spring and no class
+outside that file links against it.
+
 # Package org.apache.solr.ide.code.solrj
 
 Reading Solr usage out of Java and Kotlin, and the facts about SolrJ's API that

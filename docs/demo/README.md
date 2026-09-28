@@ -30,11 +30,9 @@ somewhere else.
 ## Step 1. Decide which demos you can actually give
 
 Most of the demos below now run on shipped code; this runbook was written before any of
-it existed, and a few steps still need code that does not. **Step 35's opening gesture is
-the one to watch**: it has a URL "already offered, and nobody typed it", which is framework
-configuration discovery — unbuilt. Type the connection instead and say so. The
-implementation plan is the authority on what is built and in what order — check its step
-status before you promise anyone a date.
+it existed, and a few steps still need code that does not. The implementation plan is the
+authority on what is built and in what order — check its step status before you promise
+anyone a date.
 
 What this section decides is different: given what happens to be ready, which demos add up
 to a talk. Cut from the bottom.
@@ -208,7 +206,21 @@ spring:
 app:
   solr:
     url: http://localhost:8983/solr
+    username: dev-reader
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+app:
+  solr:
+    url: http://solr-staging.internal:8983/solr
+    username: staging-reader
 ```
+
+Two profiles, each with its own URL and user, because the discovery step's point is that
+switching the profile moves both together. The usernames are there to be read, not sent:
+the local Solr runs without authentication, and `SolrConfig` does not pass them on.
 
 ## Step 3. Stand up a local Solr, if you are doing the server demos
 
@@ -504,22 +516,29 @@ configuration files now behave like a language rather than like text.
 
 ### Step 35. Connect to a server
 
-Open the connections list. Point out that `http://localhost:8983/solr` is already
-offered, and that nobody typed it.
+Open <kbd>Settings</kbd> → <kbd>Tools</kbd> → <kbd>Solr Connections</kbd>. Under
+**Discovered in project**, point out that `http://localhost:8983/solr` is already offered
+as the `dev` row, with `dev-reader` beside it and marked *active profile*, and that nobody
+typed it. `staging` is the row below.
 
 Show where it came from, because the chain is the interesting part. The bean in
 `SolrConfig.java` does not contain a URL — it contains `${app.solr.url}`. That property
 is defined in the `dev` profile, and `dev` is the active one. The plugin followed the
 property reference from the SolrJ client construction back into the profile that supplies
-it.
+it, and took the username written beside it.
+
+Select the row and press **Add as Connection…**. The form opens filled in; pressing OK is
+the first moment the plugin knows about this server as a connection.
 
 Say two things. First: this is plain SolrJ wired by Spring, which is what real services
 look like — the plugin does not require, and does not support, Spring Data Solr, which is
 unmaintained upstream. Second: the plugin **offers** this and never connects on its own.
-An endpoint found in a configuration file is a suggestion, not an instruction.
+An endpoint found in a configuration file is a suggestion, not an instruction. A password
+written beside it would be offered as a checkbox, unticked, never copied without asking.
 
-Worth adding if the room is a Spring room: change the active profile and the offered
-connection changes with it.
+Worth adding if the room is a Spring room: make `staging` the module's active profile in
+the Spring plugin, reopen the page, and `staging` is the row offered first — URL and
+username together. Rehearse where your IDE puts that control before the day.
 
 ### Step 36. Browse what is actually there
 

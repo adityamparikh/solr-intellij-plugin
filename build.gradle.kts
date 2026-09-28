@@ -81,6 +81,17 @@ dependencies {
         // `verifiedIdeBuilds` is the gate that makes such a change fail a pull request raising the
         // target rather than a user's editor. If that gate is weakened, this dependency is revisited.
         bundledPlugin("com.jetbrains.restClient")
+
+        // Properties and YAML PSI, for reading a Spring Boot application's own configuration files
+        // when looking for the Solr server it talks to. Hard dependencies on the same argument as the
+        // two above: both ship in the unified distribution and are not separately licensed.
+        bundledPlugin("com.intellij.properties")
+        bundledPlugin("org.jetbrains.plugins.yaml")
+
+        // Spring, for one question only — which profile the user made active in the IDE. Optional in
+        // `plugin.xml`, with its single registration in `solr-spring.xml`, so the plugin loads and
+        // discovers endpoints without it and merely cannot say which profile is the current one.
+        bundledPlugin("com.intellij.spring")
         testFramework(TestFrameworkType.Platform)
 
         // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this

@@ -1,5 +1,6 @@
 package org.apache.solr.ide.code
 
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiFile
 import org.apache.solr.ide.code.solrj.SolrJRecognizer
@@ -69,9 +70,21 @@ object SolrRecognizers {
      * The module is resolved once and each recognizer's own coordinates are asked about separately,
      * so a module carrying Camel's Solr component but not SolrJ runs the Camel recognizer alone.
      */
-    private fun applicableTo(file: PsiFile): List<SolrUsageRecognizer> {
-        val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return emptyList()
-        val detector = SolrProjectDetector.getInstance(file.project)
+    /**
+     * Whether any recognized Solr library is on [module] — the same gate, asked of a whole module.
+     *
+     * What discovery needs, since it starts from modules rather than from a file a caret is in.
+     *
+     * @param module the module asked about
+     * @return true where at least one recognizer would run on its files
+     */
+    fun recognizeSolrIn(module: Module): Boolean = applicableTo(module).isNotEmpty()
+
+    private fun applicableTo(file: PsiFile): List<SolrUsageRecognizer> =
+        ModuleUtilCore.findModuleForPsiElement(file)?.let(::applicableTo).orEmpty()
+
+    private fun applicableTo(module: Module): List<SolrUsageRecognizer> {
+        val detector = SolrProjectDetector.getInstance(module.project)
         return registered.filter { detector.moduleDependsOn(module, it.libraryCoordinates) }
     }
 }
