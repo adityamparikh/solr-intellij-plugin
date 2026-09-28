@@ -223,6 +223,12 @@
         <annotator
                 language="XML"
                 implementationClass="org.apache.solr.ide.configset.schema.annotator.SolrRestatedDefaultAnnotator"/>
+        <!-- Its colour: grey only. The platform's unused-code key underlines in High Contrast, and a
+             restated default is not a finding. Every bundled scheme inherits from Default or Darcula;
+             High Contrast gets its own brighter grey. -->
+        <additionalTextAttributes scheme="Default" file="colorSchemes/SolrDefault.xml"/>
+        <additionalTextAttributes scheme="Darcula" file="colorSchemes/SolrDarcula.xml"/>
+        <additionalTextAttributes scheme="High contrast" file="colorSchemes/SolrHighContrast.xml"/>
 
         <!-- Element descriptors for schema files. A schema has no XSD, so without these the
              platform guesses: attribute completion echoes whatever same-named sibling tags carry.

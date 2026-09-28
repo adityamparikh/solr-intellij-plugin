@@ -27,7 +27,15 @@ internal object BundledColorSchemes {
     fun all(): Map<String, EditorColorsScheme> = linkedMapOf(
         "Default" to named("Default"),
         "Darcula" to named("Darcula"),
-        "Light" to light(),
+        "Light" to fromResource(LIGHT_SCHEME, parent = "Default"),
+        // The dark schemes a fresh 2026.2 install opens in. The second sandbox pass met the restated
+        // default drawn with a grey wave in one of these, after a first check of this very claim
+        // covered only the three above and found nothing.
+        "New UI Dark" to fromResource(DARK_SCHEME, parent = "Darcula"),
+        "Islands Dark" to fromResource(ISLANDS_DARK_SCHEME, parent = "Darcula"),
+        // The scheme the second sandbox pass actually ran in: it draws unused code with a grey wave.
+        "High contrast" to fromResource(HIGH_CONTRAST_SCHEME, parent = "Darcula"),
+        "Islands High contrast" to fromResource(ISLANDS_HIGH_CONTRAST_SCHEME, parent = "Darcula"),
     )
 
     /** Whether [attributes] draw a visible line under the text: an effect of an underline kind, in a colour. */
@@ -45,14 +53,18 @@ internal object BundledColorSchemes {
     private fun named(name: String): EditorColorsScheme =
         checkNotNull(EditorColorsManager.getInstance().getScheme(name)) { "no bundled scheme named $name" }
 
-    private fun light(): EditorColorsScheme {
-        val stream = checkNotNull(javaClass.classLoader.getResourceAsStream(LIGHT_SCHEME)) {
-            "$LIGHT_SCHEME is not on the test classpath"
+    private fun fromResource(resource: String, parent: String): EditorColorsScheme {
+        val stream = checkNotNull(javaClass.classLoader.getResourceAsStream(resource)) {
+            "$resource is not on the test classpath"
         }
-        return EditorColorsSchemeImpl(named("Default")).apply { readExternal(stream.use(JDOMUtil::load)) }
+        return EditorColorsSchemeImpl(named(parent)).apply { readExternal(stream.use(JDOMUtil::load)) }
     }
 
     private const val LIGHT_SCHEME = "themes/expUI/expUI_lightScheme.xml"
+    private const val DARK_SCHEME = "themes/expUI/expUI_darkScheme.xml"
+    private const val ISLANDS_DARK_SCHEME = "themes/islands/IslandSchemeDark.xml"
+    private const val HIGH_CONTRAST_SCHEME = "themes/highContrastScheme.xml"
+    private const val ISLANDS_HIGH_CONTRAST_SCHEME = "themes/islands/highContrastScheme.xml"
 
     private val UNDERLINES = setOf(
         EffectType.LINE_UNDERSCORE,

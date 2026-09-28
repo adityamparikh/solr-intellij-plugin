@@ -1,0 +1,8 @@
+<list>
+  <!-- A restated default: High Contrast's own unused-code grey, without the wave it draws under it. -->
+  <option name="SOLR_RESTATED_DEFAULT">
+    <value>
+      <option name="FOREGROUND" value="B3B3B3"/>
+    </value>
+  </option>
+</list>

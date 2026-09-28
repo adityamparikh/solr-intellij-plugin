@@ -715,8 +715,9 @@ dozen greyed attributes in a clean schema is this feature working, not a defect.
 - [ ] **DIM-1** — Open `managed-schema.xml` untouched. The `indexed="true"` and `stored="true"` on
       the field block render greyed, whole-attribute, **with no underline, wave or strikeout**, and
       **nothing about them appears in the Problems view**. `stored="false"` on `name_prefix` and
-      `text` is **not** greyed. (The one bundled exception is a *High Contrast* scheme, which
-      draws all redundant code with a grey wave — the platform's choice, not this plugin's.)
+      `text` is **not** greyed. **Check it in High Contrast too**: that scheme draws the
+      platform's unused-code style with a grey wave, which is what the second sandbox pass met here,
+      and the dim now uses a key of its own that stays grey text only.
 - [ ] **DIM-2** — Alt-Enter on one of the greyed attributes offers to remove it, and removing leaves
       a schema that still parses and a field whose documentation reports the same effective values as
       before. Undo.
