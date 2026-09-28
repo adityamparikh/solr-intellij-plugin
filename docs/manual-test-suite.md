@@ -800,6 +800,11 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       completion inside a string. **No Solr field names may appear.** The contributor is registered
       against JSON, so every JSON file in every project reaches it, and this is the failure worth
       checking by hand.
+- [ ] **SRV-19a** — Close the IDE with the **Drift** tab showing and reopen it: once indexing ends,
+      the configset chooser lists the project's configsets. Then copy a configset directory to a new
+      name and open the chooser — the copy is offered, and the configset already chosen is still
+      chosen. **This is the check the first server pass had no name for**: the list used to be read
+      once, while the IDE was still indexing, and stay empty until a restart.
 - [ ] **SRV-19** — In the **Drift** tab, choose a configset and type a collection that exists, then
       press Compare. A field present in the configset and not on the server reads *Not deployed*;
       one added through the Schema API reads *Only on server*; one defined differently in each reads
@@ -1455,7 +1460,9 @@ both need rewording to name a deployable one.
    built while the IDE is still indexing, when `SolrProjectConfigsets.all()` deliberately answers
    empty, so its configset chooser reads *No …* and stays disabled until the IDE restarts. Reproduced
    twice; the workaround used here was to close the tool window, restart, wait for indexing, then
-   open it. **This one is user-visible and belongs in a fix, not a note.**
+   open it. **This one is user-visible and belongs in a fix, not a note.** Fixed since: the list is
+   re-read when indexing ends and whenever the chooser opens, the chooser stays enabled while empty
+   so it can be opened, and a re-read keeps the chosen configset. SRV-19a presses it.
 2. **Neither long message wraps.** The drift pane's refusal reason runs off its right edge, and the
    index dialog's validation reason stretches the whole dialog towards the screen's width.
 3. **The index dialog draws its error marker on the first line** — over the `"id"` key's opening

@@ -631,6 +631,68 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         assertTrue(summary, summary.contains("connected server"))
     }
 
+    // --- the configset list stays current -----------------------------------------------------------
+
+    /**
+     * A configset added after the view was built is offered the next time the chooser opens.
+     *
+     * The list was read once, in the constructor, and never again — so a configset created while the
+     * tool window was open did not exist as far as this view was concerned until the IDE restarted.
+     * Found by the 2026-09-26 sandbox pass rather than by any check.
+     */
+    fun testAConfigsetAddedLaterIsOfferedWhenTheChooserOpens() {
+        val page = panel()
+        givenConfigset("books")
+
+        page.configsetChooser.firePopupMenuWillBecomeVisible()
+
+        assertEquals(listOf("books"), page.offeredConfigsets)
+    }
+
+    /**
+     * A view built while the IDE indexes offers the project's configsets once indexing ends.
+     *
+     * Configsets are found through the filename index, which answers nothing during indexing — so a
+     * Solr tool window restored open at startup was built with an empty list and kept it. The sandbox
+     * showed this as a disabled chooser reading "No …" on a project holding two configsets.
+     */
+    fun testAViewBuiltWhileIndexingOffersConfigsetsOnceIndexingEnds() {
+        givenConfigset("books")
+        lateinit var page: SolrDriftPanel
+
+        com.intellij.testFramework.DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            page = panel()
+            assertEmpty("nothing can be found while indexing", page.offeredConfigsets)
+        }
+        com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(listOf("books"), page.offeredConfigsets)
+    }
+
+    /** Re-reading the list keeps what was chosen, where it still exists. */
+    fun testReopeningTheChooserKeepsTheChosenConfigset() {
+        givenConfigset("books")
+        givenConfigset("films")
+        val page = panel()
+        page.configsetChooser.selectedIndex = page.offeredConfigsets.indexOf("films")
+
+        page.configsetChooser.firePopupMenuWillBecomeVisible()
+
+        assertEquals("films", (page.configsetChooser.selectedItem as? org.apache.solr.ide.configset.activation.SolrConfigset)?.name)
+    }
+
+    /**
+     * An empty chooser can still be opened.
+     *
+     * Disabled while empty, it could never be opened, and opening it is now what refreshes it — so a
+     * project that gains its first configset later would have had no way to reach it.
+     */
+    fun testAnEmptyChooserCanStillBeOpened() {
+        val page = panel()
+
+        assertTrue(page.configsetChooser.isEnabled)
+    }
+
     /** With no version from the server, the summary says where the line did come from. */
     fun testTheSummaryStillNamesASourceWithNoServerVersion() {
         val page = panel()
