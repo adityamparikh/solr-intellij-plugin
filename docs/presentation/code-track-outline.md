@@ -4,18 +4,25 @@
 > content and structure, not a deck — `solr-intellij-plugin.pptx` is a designed artifact with
 > embedded screenshots, and new slides need building by hand in the same template.
 >
-> **What is already in the deck.** All of it, as Act 5 — slides 50 to 55: a divider, four deep dives
-> (C2, C4, C5 and C6, each with its screenshot), and a recap carrying C8. The three slides with no
-> screenshot of their own are folded into those four rather than dropped: C1's failure is C2's
+> **What is already in the deck.** All of it, as Act 5 — slides 56 to 62: a divider, five deep dives
+> (C2, C2a, C4, C5 and C6, each with its screenshot), and a recap carrying C8. The three sections with
+> no screenshot of their own are folded into those five rather than dropped: C1's failure is C2's
 > *without it*, C3's single implementation is C2's *mechanism*, and C7's sanctioned dependency is C6's.
-> The closing slide now says three surfaces. C4 uses a crop of `28-code-navigate-to-schema.png` from
-> the tabs down to the lines that matter, because the full split is illegible at slide size.
+> The closing slide says three surfaces. C4 embeds `28-code-navigate-to-schema.png` itself and crops
+> it in the slide, from the tabs down to the lines that matter, because the full split is illegible at
+> slide size — the file in the deck stays the catalog's, so a reshoot replaces it in one place.
 >
-> **Screenshots.** All four now exist — `26-code-field-warning.png`, `27-code-query-colour.png`,
-> `28-code-navigate-to-schema.png` and `29-code-run-from-gutter.png` in `docs/images/`, entries 26 to
-> 29 of [the screenshot catalog](../screenshots.md). They were shot against a real Solr rather than a
-> fixture, outside a verification pass; the catalog says what each must show, so re-shoot from there
-> rather than re-framing by eye.
+> **Screenshots.** All five exist — `26-code-field-warning.png`, `27-code-query-colour.png`,
+> `28-code-navigate-to-schema.png` and `29-code-run-from-gutter.png`, entries 26 to 29 of
+> [the screenshot catalog](../screenshots.md), and `32-code-completion-popup.png`. 27 and 32 were shot
+> on 2026-09-28 on the final 0.2.0 build, in the default light theme; the rest against a real Solr
+> rather than a fixture, outside a verification pass. The catalog says what each must show, so
+> re-shoot from there rather than re-framing by eye.
+>
+> **Status.** Release 0.2.0 ships this track complete for plain Java and Kotlin with SolrJ: field
+> checks, completion, navigation, query colouring and running a query from the gutter. Framework
+> support is the next release — Spring Boot first, in IntelliJ IDEA Ultimate only, then Quarkus,
+> Micronaut, MicroProfile and Apache Camel.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it,
 and the Server act keeps that shape while carrying more in words because its claims are mostly about
@@ -57,6 +64,30 @@ deployment, and a check that cannot see must not accuse.
 
 ---
 
+## C2a · The half that prevents the mistake
+
+**Claim.** Field names are offered while they are typed inside a SolrJ string — and only the names
+the call can use.
+
+**What to show.** `32-code-completion-popup.png`: `de` typed inside `setQuery`, the popup open without
+<kbd>Ctrl-Space</kbd>, offering `description` from the `solr` configset and nothing else.
+
+**Why it did not open before.** Typing a letter always schedules the popup; inside a string the Java
+and Kotlin plugins cancel it, because a string is usually prose. That is right for a log message and
+wrong for `addFilterQuery("cat`. The plugin answers "do not skip" exactly where a field name goes and
+stays out of every other string — including the value half of a clause, where after `category:`
+there is nothing to offer.
+
+**What it leaves out.** Dynamic patterns, since `*_t` inserted into a query is a wildcard field Solr
+rejects; and of the declared fields, those that cannot do what the call asks — a sort is offered
+sortable fields, a facet facetable ones, a query searchable ones. What is left out is exactly what C2's
+check would underline once written. In a field position it also stops the contributors after it,
+which would otherwise fill the popup with the words and file paths the platform offers in any string.
+
+**Source.** `SolrCodeFieldCompletionContributor`, `SolrCodeFieldCompletionConfidence`.
+
+---
+
 ## C3 · One implementation, two languages
 
 **Claim.** Java and Kotlin are read by one recognizer, because it is written against UAST rather
@@ -93,7 +124,8 @@ under, because both read the same recognizer. Two answers about one name would b
 **Claim.** The fields and the operators in a query are told apart, so the structure is visible
 without reading it character by character.
 
-**What to show.** `27-code-query-colour.png`, default light theme.
+**What to show.** `27-code-query-colour.png`, default light theme — the two fields in one colour,
+`AND` in another, and the terms left in the editor's ordinary string colour.
 
 **What to admit, and it is the point of the slide.** This is **colour, not a parser**. There is no
 grammar, no injected language and no folding. The scope was chosen: a parser is larger than this, and
@@ -156,5 +188,8 @@ other, and the only party that disagreed was the platform, which nothing in the 
 And a field name scanner where `-` was both a separator and a legal name character, so a hyphenated
 field was reported undeclared; Solr settled it in one query.
 
-**The close.** Three surfaces now: the files you edit, the server you talk to, and the code that
-names fields. One model underneath, and one question asked four ways — *does this field exist?*
+**The close.** Three surfaces, all shipping in 0.2.0: the files you edit, the server you talk to, and
+the code that names fields. One model underneath, and one question asked five ways — the check,
+completion, navigation, colour and the gutter run — *does this field exist?* What the code track
+cannot yet see is a client a framework builds for you, from configuration rather than a constructor
+call; that is the next release.
