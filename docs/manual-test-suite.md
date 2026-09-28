@@ -1058,6 +1058,7 @@ the reason this list is worth as little as its last row.
 | 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
 | 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
 | 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
+| 2026-09-28 | 53d5592, then this fix | Claude | ACT-3, ACT-4, ACT-5 | **not completed** | the configset settings page and the mark action, pressed for the first time. ACT-5 green at once; ACT-3 and ACT-4 failed first and are green on the fix. Also found the Spring Boot discovery broken in a real IDE, which took it out of 0.2.0. See the notes below |
 | 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
@@ -1488,3 +1489,32 @@ both need rewording to name a deployable one.
    now names the reason, so the icon sits beside the sentence that explains it.*
 4. **"1 additive change(s)"** — the same class of wording `6750888` fixed for *1 documents*. *Fixed
    since.* SRV-20 and SRV-22 now say that the configset they compare or upload must be deployable.
+
+### 2026-09-28 — the configset settings page, and the discovery that never reached the release
+
+Driven the same way as the server pass above, against `demo/` with a directory holding a lone
+`schema.xml` created for ACT-4 and deleted afterwards.
+
+- **ACT-5** — green on the first press. With recognition off, the *marked* directory went quiet too:
+  no underline, no dimming.
+- **ACT-3** — failed, then green. The row was written name, absolute path, provenance, so in a
+  checkout a few directories deep *detected* sat past the Settings dialog's right edge. The hint
+  under the list ran off the same edge. Re-pressed on the fix: `solr  detected  solr/conf`, and the
+  hint wraps.
+- **ACT-4** — failed, then green. Marking lit the file up without a restart and the menu then read
+  *Unmark Solr Configset Root*, as written. But the inlay hints ran one state behind in both
+  directions: none appeared on marking, and after unmarking, a file that was plain XML again still
+  showed the Solr hint it had while marked, until its tab was switched. The hints pass skips a file
+  whose PSI modification count has not moved, and a daemon restart does not move it. Re-pressed on
+  the fix: marking brings the warning, the dimming and the hint together, and unmarking takes all
+  three away together.
+
+**Found, and named by no check:** the Spring Boot discovery that #240 added crashed in the sandbox
+with `NoClassDefFoundError` on the Spring plugin's `SpringProfilesService`, so the connections page
+offered nothing. Every unit test had passed, because a test classpath flattens every jar and a real
+IDE gives the Spring plugin's `intellij.spring` module its own classloader. It was reverted out of
+0.2.0 rather than patched; the plan's Step 18 says what the next attempt must do. SRV-3a–3d went
+with it.
+
+The drift summary's *Solr 10_0*, recorded verbatim in the server pass above, is fixed to *10.0* in
+the same change, but was not re-pressed: it needs a server.
