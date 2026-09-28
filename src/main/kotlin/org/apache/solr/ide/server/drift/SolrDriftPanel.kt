@@ -76,7 +76,10 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     private val shownEntries = mutableListOf<SolrDriftEntry>()
     private val payloadArea = com.intellij.ui.components.JBTextArea().apply {
         isEditable = false
-        lineWrap = false
+        // A refusal leads with a sentence that must be readable to its end; the JSON under it is
+        // short-lined and wraps harmlessly.
+        lineWrap = true
+        wrapStyleWord = true
         emptyText.text = SolrBundle.message("drift.payload.none")
     }
     private val collectionField = com.intellij.ui.components.JBTextField(20)
@@ -511,6 +514,9 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     /** The names the configset chooser currently offers, in order. */
     internal val offeredConfigsets: List<String>
         get() = (0 until configsetCombo.itemCount).map { configsetCombo.getItemAt(it).name }
+
+    /** Whether the payload pane wraps long lines. */
+    internal val payloadWraps: Boolean get() = payloadArea.lineWrap && payloadArea.wrapStyleWord
 
     /** What the payload pane is showing for the selected row. */
     internal val payloadText: String get() = payloadArea.text

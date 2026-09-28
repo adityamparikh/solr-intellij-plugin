@@ -693,6 +693,30 @@ class SolrDriftPanelTest : SolrConfigsetTestCase() {
         assertTrue(page.configsetChooser.isEnabled)
     }
 
+    // --- found by the first server sandbox pass -----------------------------------------------------
+
+    /**
+     * The payload pane wraps, so a refusal's reason can be read to its end.
+     *
+     * The reason is a sentence and ran past the pane's right edge, cut off mid-clause. The JSON under
+     * it is short-lined and wraps harmlessly.
+     */
+    fun testThePayloadPaneWraps() {
+        val page = panel()
+
+        assertTrue(page.payloadWraps)
+    }
+
+    /** One addition is one change, not "1 additive change(s)". */
+    fun testOneAdditionIsNotWordedAsPlural() {
+        val one = org.apache.solr.ide.SolrBundle.message("drift.confirmApply.message", 1, "books", "local")
+        val two = org.apache.solr.ide.SolrBundle.message("drift.confirmApply.message", 2, "books", "local")
+
+        assertTrue(one, one.startsWith("Send 1 additive change to books"))
+        assertTrue(two, two.startsWith("Send 2 additive changes to books"))
+        assertFalse(one, one.contains("(s)"))
+    }
+
     /** With no version from the server, the summary says where the line did come from. */
     fun testTheSummaryStillNamesASourceWithNoServerVersion() {
         val page = panel()

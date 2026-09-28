@@ -78,7 +78,14 @@ class SolrIndexDocumentDialog(
         }
     }
     private val commitCombo = JComboBox(DefaultComboBoxModel(SolrCommitMode.entries.toTypedArray()))
-    private val problemsLabel = JBLabel()
+    private val problemsLabel = com.intellij.ui.components.JBTextArea().apply {
+        isEditable = false
+        isOpaque = false
+        // Sentences, some long: wrap them at words within a width rather than let one widen the dialog.
+        lineWrap = true
+        wrapStyleWord = true
+        columns = 60
+    }
 
     init {
         title = SolrBundle.message("indexing.dialog.title", collection, server)
@@ -120,7 +127,10 @@ class SolrIndexDocumentDialog(
      */
     override fun doValidate(): ValidationInfo? =
         problems().firstOrNull { it.severity == SolrDocumentSeverity.ERROR }
-            ?.let { ValidationInfo(it.message, documentArea) }
+            ?.let { ValidationInfo(it.message, problemsLabel) }
+
+    /** Where the document's problems are written, so a test can ask how it is laid out. */
+    internal val problemsComponent: com.intellij.ui.components.JBTextArea get() = problemsLabel
 
     /** Replaces the document, as typing into it would. */
     internal fun setDocument(text: String) {
