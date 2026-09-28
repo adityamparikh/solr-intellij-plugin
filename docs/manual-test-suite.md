@@ -745,6 +745,20 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       and says a password is stored. Change only the display name and press OK. Re-open: the
       password is still stored. **This is the regression the overload exists to prevent** — the
       field being empty must not be read as "no password".
+- [ ] **SRV-3a** — With no connections, open Settings → Tools → **Solr Connections** on `demo/` once
+      indexing has finished. **Discovered in project** lists `dev` with `http://localhost:8983/solr`
+      and `dev-reader`, marked *active profile*, then `staging`. Nothing is in the connection list
+      above it: **offered, not added**.
+- [ ] **SRV-3b** — Select `dev` and press **Add as Connection…**: the form opens as *Add*, filled with
+      the URL and `dev-reader`, named *Solr (dev)*. OK adds it above and the `dev` row leaves the
+      discovered list.
+- [ ] **SRV-3c** — Add `app.solr.password: example` under the `dev` profile in `application.yml` and
+      add the row again: the form's password field is **empty**, and an unticked box offers to store
+      the password from *Spring Boot configuration (dev)*. OK without ticking stores no password.
+      Revert the file afterwards.
+- [ ] **SRV-3d** — Make `staging` the module's active profile in the Spring plugin and
+      reopen the page: `staging` is first and marked active, with `staging-reader`. Needs the Spring
+      plugin; without it, the row order follows `spring.profiles.active` alone.
 - [ ] **SRV-4** — The **Solr** tool window opens on the right and lists what the server holds:
       `Cores` → `books` for a standalone server, `Collections` → shards → replicas for a cloud one.
 - [ ] **SRV-5** — Stop Solr and press Refresh. The failure appears **inline above the tree, once**,

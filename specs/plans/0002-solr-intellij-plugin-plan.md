@@ -180,7 +180,7 @@ whole, and the gutter action goes with the Server track.
 
 - [Step 16 — Recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) — **done**
 - [Step 17 — Query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge-done) — **done**
-- [Step 18 — Framework configuration: the shared half, and Spring Boot](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+- [Step 18 — Framework configuration: the shared half, and Spring Boot](#step-18-framework-configuration-the-shared-half-and-spring-boot-done) — **done**
 - [Step 31 — Framework configuration: Quarkus](#step-31-framework-configuration-quarkus)
 - [Step 32 — Framework configuration: Micronaut](#step-32-framework-configuration-micronaut)
 - [Step 33 — Framework configuration: MicroProfile](#step-33-framework-configuration-microprofile)
@@ -2172,7 +2172,7 @@ onto this one.
 **Actions:**
 
 1. Define the recognizer interface: reports endpoints and field references. Keep it
-   minimal — [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot) and
+   minimal — [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot-done) and
    [Apache Camel](#step-19-apache-camel) depend on it being right. An endpoint is a URL *and* the credential that goes
    with it, since framework configuration resolves both from the same profile; a reported endpoint that cannot carry a
    username forces that step to bolt one on afterwards.
@@ -2252,7 +2252,26 @@ and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-
 additionally needs [the query console](#step-13-query-console-done), which is the Code track's one dependency on the Server
 track. The language and navigation work does not.
 
-### Step 18: Framework configuration: the shared half, and Spring Boot
+### Step 18: Framework configuration: the shared half, and Spring Boot (done)
+
+**The survey's answer: read the files, and ask Spring one question.** The Spring plugin's own resolver,
+`SpringBootConfigValueSearcher`, would bring `spring.config.import`, `@PropertySource` and relaxed binding for
+free, but it is undocumented, needs indexes, is absent without a Spring licence and cannot be set up in a light test.
+The bundled YAML and properties parsers can do what this step asks: profile files, `on-profile` documents, a `.properties`
+file's `#---` documents, and `${…}` references. So configuration is read through them in `code.spring`, and the Spring
+plugin is an optional dependency asked only which profile the user made active — through an extension point whose one
+implementation is registered from `solr-spring.xml`, so nothing outside that file links against Spring. The later
+framework steps inherit this answer: prefer a bundled parser over a framework plugin's internals.
+
+**The SolrJ recognizer reports a reference as written, not resolved.** `@Value("${app.solr.url}")` on the builder's
+argument becomes an endpoint whose URL is `${app.solr.url}`, so the per-framework half — which files, which profile
+wins — never has to walk code, and Quarkus's `@ConfigProperty` is a later step's to read rather than this one's to
+half-read. A key naming Solr with a URL value is offered only where no client bean names a property: with a reference
+to follow, guessing as well offered the pieces a URL is built from as servers of their own.
+
+**A found password is a checkbox, not a filled field.** The connection form already refuses to put a stored secret into
+a live Swing component; a secret read from `application.yml` gets the same treatment. The box names where it was read,
+starts unticked, and ticking it is the confirmation.
 
 **A plain Java application using SolrJ is supported before any framework is, and that is
 [Step 16](#step-16-recognizer-interface-and-solrj-done) rather than a promise made here.** The recognizer interface and the
@@ -2294,17 +2313,21 @@ where it first binds.
 
 **Success criteria:**
 
-- [ ] Spring Boot profile files resolve correctly, including a URL reached by following a property reference from a
-  client bean.
-- [ ] The plugin loads and functions with no framework support present.
-- [ ] Discovered endpoints are offered, never adopted silently.
-- [ ] Switching the active profile changes the offered username as well as the URL, asserted on the demo fixture, which
-  carries a `dev` and a `staging` profile.
-- [ ] A secret from a configuration file reaches PasswordSafe only after the user confirms, and never reaches the shared
-  project file.
-- [ ] No Quarkus, Micronaut or MicroProfile resolution ships in this step — a project using one of them behaves exactly
+- [x] Spring Boot profile files resolve correctly, including a URL reached by following a property reference from a
+  client bean — `SpringConfigFilesTest` for the files, `SpringBootEndpointsTest` for precedence and references, and a
+  deliberately unguessable `search.endpoint` key for the following.
+- [x] The plugin loads and functions with no framework support present. Spring is an optional `<depends>`; without it
+  the active profile is read from `spring.profiles.active`.
+- [x] Discovered endpoints are offered, never adopted silently — a *Discovered in project* section on the connections
+  page, each row added only through the connection form.
+- [x] Switching the active profile changes the offered username as well as the URL, asserted on the demo fixture, which
+  carries a `dev` and a `staging` profile — `SolrEndpointDiscoveryTest` reads `demo/` from disk and switches the profile
+  through the Spring plugin.
+- [x] A secret from a configuration file reaches PasswordSafe only after the user confirms, and never reaches the shared
+  project file — asserted by serialising the connection settings' state and finding no secret in it.
+- [x] No Quarkus, Micronaut or MicroProfile resolution ships in this step — a project using one of them behaves exactly
   as a project with no framework support does, which is the assertion that keeps this step honest about what it
-  released.
+  released. Spring files are read only on a module carrying Spring Boot, and a `%dev.` key is never read as a key.
 
 **Scope of the demo.** Only Spring gets a demo step, here and in the steps that follow. Each additional framework would
 need its own fixture project and its own runtime on stage to show what the Spring fixture already shows, and the
@@ -2327,7 +2350,7 @@ automatically.
    makes Quarkus worth its own step rather than a second case in a shared resolver — a resolver written against Spring's
    shape and extended to Quarkus tends to look for files that do not exist and find nothing, silently.
 2. Declare the optional dependency for Quarkus support, on the pattern
-   [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot) establishes.
+   [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot-done) establishes.
 3. **A real Quarkus fixture project**, carrying at least two profiles in one file.
 
 **Success criteria:**
@@ -2338,7 +2361,7 @@ automatically.
 
 **Acceptance:** fixture tests in this step. No demo step — see Step 18's scope note.
 
-**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot-done)
 
 ### Step 32: Framework configuration: Micronaut
 
@@ -2356,7 +2379,7 @@ automatically.
 
 **Acceptance:** fixture tests in this step.
 
-**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot-done)
 
 ### Step 33: Framework configuration: MicroProfile
 
@@ -2377,7 +2400,7 @@ automatically.
 
 **Acceptance:** fixture tests in this step.
 
-**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot)
+**Dependencies:** [Step 18](#step-18-framework-configuration-the-shared-half-and-spring-boot-done)
 
 ### Step 19: Apache Camel
 
@@ -2565,7 +2588,7 @@ Mitigations live in the steps; only the first entry states one, because it belon
 - **Code analysis produces false positives** —
   [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done).
 - **Framework configuration works only on the author's machine** —
-  [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot).
+  [framework configuration](#step-18-framework-configuration-the-shared-half-and-spring-boot-done).
 - **A server version the plugin has never seen** —
   [the server reader](#step-11-http-client-connections-and-the-server-reader-done).
 - **Reference resolution edge cases cause dangling renames** —

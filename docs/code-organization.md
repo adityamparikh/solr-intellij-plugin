@@ -114,6 +114,15 @@ org.apache.solr.ide
 │       ├── descriptor            (1)     the structure completion replacing the schema-less guess
 │       └── documentation         (2)     the two positions the schema provider declines
 │
+├── code                          (4) what the project's own Java and Kotlin say about Solr
+│   ├── solrj                     (3)   reading SolrJ calls: field names, and the servers clients name
+│   ├── spring                    (3)   a Spring Boot app's profiles, resolving `${…}` to a server
+│   ├── inspection                (1)
+│   ├── completion                (1)
+│   ├── navigation                (1)
+│   ├── highlighting              (1)
+│   └── run                       (2)   the one code surface that reaches a server, on a click
+│
 └── server                             nothing on the editor path may import any of this
     ├── connection                (5)   how to reach a running Solr, and remembering it
     ├── transport                 (3)   the HTTP call, the credential, and how an answer is classified
@@ -700,6 +709,13 @@ What a project's own source says about Solr — which servers it talks to, and w
 them for. `code` holds the contract and the two facts it reports; `code.solrj` is the first
 implementation of that contract, and each further library recognized gets a sibling package.
 
+`code.spring` is the first *framework* package, and a different kind of sibling: it reads no code.
+The SolrJ recognizer reports an injected URL as the `${app.solr.url}` it was written as, and
+`code.spring` resolves that reference per profile from `application.yml` and
+`application.properties`. `SolrEndpointDiscovery`, in `code`, joins the two into the candidates
+the connections page offers. Each later framework gets a package beside `code.spring`, reading its
+own files, and needs no change to the recognizer.
+
 The five packages beside `code.solrj` are the surfaces, one each, and **every one of them reads the
 recognizer rather than reading the file itself**:
 
@@ -788,6 +804,11 @@ never to a file that could be committed.
 never in the serialized object cannot leak into the serialized file. `addConnection` comes in two
 forms for the same reason — the presence of the password argument decides whether the secret is
 touched, because a default made "save this connection" and "forget its password" the same call.
+
+The page also lists **servers the project already names**, from `code.SolrEndpointDiscovery`, beneath
+the connections. That is the one place `server` reads from `code`, and it runs in the background once
+indexing is done, so it never slows the page or touches the editor path. A discovered password is the
+user's to confirm: the form offers it as an unticked checkbox and never puts it in its password field.
 
 #### `server.transport`
 

@@ -750,7 +750,7 @@ revision was reaching for: `http-client.env.json` committed beside the requests,
 same queries, and selects their own environment.
 
 This also settles how a discovered profile reaches a query. A Spring or Quarkus profile resolved by
-[Step 18](../plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot)
+[Step 18](../plans/0002-solr-intellij-plugin-plan.md#step-18-framework-configuration-the-shared-half-and-spring-boot-done)
 becomes an environment rather than a separate mechanism, which is the point of environments existing.
 
 **What this plugin adds is Solr's knowledge, through the extension points the HTTP Client publishes**
