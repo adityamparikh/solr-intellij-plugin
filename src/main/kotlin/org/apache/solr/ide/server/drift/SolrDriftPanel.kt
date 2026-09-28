@@ -274,7 +274,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         toolbarActions = actions
         val bar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actions, true)
         bar.targetComponent = this
-        actionToolbar = bar
+        builtToolbar = bar
         // Wrapping rather than flowing: in a border layout's north slot a plain flow layout is given one
         // row's height and never wraps, so at a tool window's default width the toolbar - Compare
         // included - was laid out past the right edge and could not be pressed.
@@ -284,16 +284,17 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
             add(JBLabel(SolrBundle.message("drift.collection")))
             add(collectionCombo)
             add(bar.component)
-        }.also { controlsRow = it }
+        }.also { row = it }
     }
 
+    private lateinit var row: JComponent
+    private lateinit var builtToolbar: com.intellij.openapi.actionSystem.ActionToolbar
+
     /** The row holding the choosers and the toolbar, so a test can lay it out at a given width. */
-    internal lateinit var controlsRow: JComponent
-        private set
+    internal val controlsRow: JComponent get() = row
 
     /** The toolbar itself, whose place in [controlsRow] a test checks once its buttons are built. */
-    internal lateinit var actionToolbar: com.intellij.openapi.actionSystem.ActionToolbar
-        private set
+    internal val actionToolbar: com.intellij.openapi.actionSystem.ActionToolbar get() = builtToolbar
 
     /**
      * The most recent re-read of the configset list, so a test can wait for it rather than sleep.
