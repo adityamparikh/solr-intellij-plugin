@@ -4,9 +4,22 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.jetbrains.uast.UAnnotation
 import org.apache.solr.ide.model.query.SolrParameters
+import org.apache.solr.ide.model.query.SolrQueryExpressions
+import org.apache.solr.ide.model.query.SolrQueryFields
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.toUElementOfType
+
+/**
+ * A field name being typed in code, and what the call it is typed into will ask of the field.
+ *
+ * @property prefix the part of the name typed so far, possibly empty
+ * @property operation what the call asks of the field — a sort sorts, a facet facets — or null where
+ *   it asks nothing a schema can refuse, as `fl` and a `@Field` binding do
+ */
+data class SolrJFieldSlot(val prefix: String, val operation: SolrFieldOperation?)
 
 /**
  * Whether a caret sits somewhere a Solr field name belongs.
@@ -45,6 +58,82 @@ object SolrJFieldPositions {
         }
         return false
     }
+
+    /**
+     * The field name being typed at [caretOffset], and what the call will ask of it — or null where
+     * the caret is not somewhere a field name goes.
+     *
+     * **Finer than [namesAFieldAt], and completion needs the difference.** That answers for a whole
+     * argument; this answers for the caret inside it. `setQuery("category:bo|")` is an argument that
+     * names fields, and the caret is in a *value*: a field offered there completes to
+     * `category:category`. So the text up to the caret is read with the grammar of the argument's
+     * shape — a query, a field list, or one whole name — and only a field position answers.
+     *
+     * **Only a string written out as a literal**, since only its text up to the caret is knowable
+     * while it is being typed; a constant or a concatenation declines. And only the argument that
+     * holds a field: `setSort("id", |)` is a call that names fields and a caret that is not in one.
+     *
+     * @param position the element at or just before the caret — during completion a leaf of the
+     *   copied file, while typing a leaf of the real one
+     * @param caretOffset the caret's offset in [position]'s file
+     * @return the partial name and the operation asked of it, or null where no field name goes here
+     */
+    fun fieldSlotAt(position: PsiElement, caretOffset: Int): SolrJFieldSlot? {
+        var element: PsiElement? = position
+        while (element != null && element !is PsiFile) {
+            element.toUElementOfType<UAnnotation>()?.let { annotation ->
+                if (annotation.qualifiedName != SolrJQueryMethods.BEAN_FIELD_ANNOTATION) return null
+                val literal = stringLiteralAround(position) ?: return null
+                return typedIn(literal, caretOffset)?.let { SolrJFieldSlot(it, operation = null) }
+            }
+            val argument = element.toUElementOfType<UExpression>()
+            val call = argument?.uastParent as? UCallExpression
+            if (call != null) {
+                val method = fieldNamingMethod(call) ?: return null
+                if (argument !is UInjectionHost) return null
+                if (method.readsOnlyFirstArgument && call.valueArguments.firstOrNull()?.sourcePsi != element) return null
+                val typed = typedIn(element, caretOffset) ?: return null
+                val prefix = when (method.shape) {
+                    SolrJArgumentShape.QUERY_EXPRESSION -> SolrQueryExpressions.tokenAt(typed, typed.length)
+                    SolrJArgumentShape.FIELD_LIST -> SolrQueryFields.tokenAt(method.parameter, typed, typed.length)
+                    SolrJArgumentShape.FIELD_NAME -> typed
+                } ?: return null
+                return SolrJFieldSlot(prefix, method.operation)
+            }
+            element = element.parent
+        }
+        return null
+    }
+
+    /** The string literal [position] sits in, as the one PSI element spanning its quotes. */
+    private fun stringLiteralAround(position: PsiElement): PsiElement? {
+        var element: PsiElement? = position
+        while (element != null && element !is PsiFile) {
+            if (element.toUElementOfType<UExpression>() is UInjectionHost) return element
+            element = element.parent
+        }
+        return null
+    }
+
+    /**
+     * The text of [literal] from after its opening quote up to [caretOffset], or null where the
+     * caret is not inside the quotes.
+     *
+     * Read from the source rather than from the evaluated value, because the value is not yet a
+     * value — during completion it carries the platform's placeholder at the caret, and while typing
+     * the closing quote may not exist. Escapes are left as written; a query's grammar reads a `\"` as
+     * a character inside a token, which is what an escaped quote is.
+     */
+    private fun typedIn(literal: PsiElement, caretOffset: Int): String? {
+        val text = literal.text
+        val quote = QUOTES.firstOrNull { text.startsWith(it) } ?: return null
+        val end = caretOffset - literal.textRange.startOffset
+        if (end < quote.length || end > text.length) return null
+        return text.substring(quote.length, end)
+    }
+
+    /** The opening delimiters of a string in Java and Kotlin, longest first so a text block wins. */
+    private val QUOTES = listOf("\"\"\"", "\"")
 
     /**
      * A query expression written at [position], where one is written there and spelled out.

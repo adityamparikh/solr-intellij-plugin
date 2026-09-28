@@ -6,6 +6,8 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import org.apache.solr.ide.configset.activation.SolrConfigset
 import org.apache.solr.ide.configset.activation.SolrProjectConfigsets
+import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 
 /**
  * One field code could name, and where the plugin learned about it.
@@ -27,9 +29,9 @@ data class SolrCompletionField(
      * How this field is offered in a completion popup.
      *
      * **One renderer, because two surfaces show these and both claim to read alike.** The query
-     * console and the code completion offer the same list, and a copy of this chain in each is how
-     * they come to mark a dynamic pattern differently, or show the source in one and not the
-     * other — a drift visible only by opening two popups side by side.
+     * console and the code completion offer fields from the same source — code a narrower selection
+     * of them — and a copy of this chain in each is how they come to show the source in one and not
+     * the other, a drift visible only by opening two popups side by side.
      *
      * @return the entry to add to a completion result
      */
@@ -64,6 +66,10 @@ class SolrProjectFields(private val project: Project) {
     /**
      * Every field and dynamic pattern the project's configsets declare.
      *
+     * What the query console's fallback offers, where a JSON field list may name a pattern. Code
+     * asks [declaredServing] instead, which leaves the patterns out and filters by what the call
+     * asks of a field.
+     *
      * Empty during indexing, because the configsets it reads are — see
      * [SolrProjectConfigsets.all]. Completion that offers nothing is understood as "not ready";
      * completion that offers half is understood as the truth.
@@ -73,14 +79,36 @@ class SolrProjectFields(private val project: Project) {
     fun all(): List<SolrCompletionField> =
         SolrProjectConfigsets.getInstance(project).all().flatMap { fieldsIn(it) }.distinctBy { it.name }
 
+    /**
+     * The declared fields that can serve [operation], without the dynamic patterns.
+     *
+     * **For code, where what is inserted must be a name the call can use.** A pattern like `*_t` is a
+     * rule for names rather than a name, and inserted into `addFilterQuery("…")` it is a wildcard
+     * field Solr rejects; so this offers only fields that exist, and of those only the ones that can
+     * do what the call asks — a sort offered a multi-valued field is a sort Solr refuses at runtime.
+     * Which fields can serve is the model's answer, [SolrFieldModel.mayServe], shared with the
+     * `solrconfig.xml` completion so the two never disagree.
+     *
+     * @param operation what the position asks of a field, or null where it asks nothing a schema can
+     *   refuse
+     * @return the fields, in configset order then declaration order, without duplicates by name
+     */
+    fun declaredServing(operation: SolrFieldOperation?): List<SolrCompletionField> =
+        SolrProjectConfigsets.getInstance(project).all().flatMap { configset ->
+            val model = SolrConfigsetReader.getInstance(project).modelFor(configset)
+            model.fields.values.map { it.effective }
+                .filter(model.mayServe(operation))
+                .map { SolrCompletionField(it.name, it.type, configset.name) }
+        }.distinctBy { it.name }
+
     private fun fieldsIn(configset: SolrConfigset): List<SolrCompletionField> {
         val model = SolrConfigsetReader.getInstance(project).modelFor(configset)
         val declared = model.fields.values.map { it.effective }.map { field ->
             SolrCompletionField(field.name, field.type, configset.name)
         }
-        // Offered too, and marked, because a pattern is what a user names when they mean the field
-        // it will create — `*_s` is a legitimate thing to type into a field list, and hiding it
-        // would leave the most common way of naming a dynamic field unavailable.
+        // Offered too, and marked, for the console: there a pattern is what a user names when they
+        // mean the field it will create, and hiding it would leave the most common way of naming a
+        // dynamic field unavailable. Code does not take this list — see [declaredServing].
         val patterns = model.dynamicFields.values.map { it.effective }.map { pattern ->
             SolrCompletionField(pattern.pattern, pattern.field.type, configset.name, dynamic = true)
         }

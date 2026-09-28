@@ -32,6 +32,9 @@ object SolrCodeFixtures {
                 public SolrQuery setFields(String... fields) { return this; }
                 public SolrQuery addField(String field) { return this; }
                 public SolrQuery setRows(Integer rows) { return this; }
+                public enum ORDER { desc, asc }
+                public SolrQuery setSort(String field, ORDER order) { return this; }
+                public SolrQuery addFacetField(String... fields) { return this; }
             }
             """.trimIndent(),
         )
@@ -67,6 +70,37 @@ object SolrCodeFixtures {
             add("  <uniqueKey>id</uniqueKey>")
             add("</schema>")
         }
+        fixture.addFileToProject("solr/conf/managed-schema.xml", lines.joinToString("\n"))
+    }
+
+    /**
+     * A configset whose fields differ in what they can do, for asserting what each position offers.
+     *
+     * Schema version 1.7 deliberately, where an indexed field is no longer un-inverted by default — so
+     * a text field is searchable and cannot be faceted or sorted, which is the distinction worth
+     * testing. `docValues` is written out rather than left to the type's default, so the expectations
+     * rest on this file rather than on the default table.
+     *
+     * - `id`, `sku`: single-valued strings with doc values — every operation
+     * - `title`: analysed text — searched, never faceted or sorted
+     * - `tags`: multi-valued with doc values — faceted, never sorted
+     * - `payload`: stored only — returned in `fl`, and nothing else
+     */
+    fun givenConfigsetOfCapabilities(fixture: CodeInsightTestFixture) {
+        val lines = listOf(
+            """<?xml version="1.0" encoding="UTF-8"?>""",
+            """<schema name="test" version="1.7">""",
+            """  <fieldType name="string" class="solr.StrField"/>""",
+            """  <fieldType name="text" class="solr.TextField"/>""",
+            """  <field name="id" type="string" indexed="true" stored="true" docValues="true"/>""",
+            """  <field name="sku" type="string" indexed="true" stored="true" docValues="true"/>""",
+            """  <field name="title" type="text" indexed="true" stored="true"/>""",
+            """  <field name="tags" type="string" indexed="true" stored="true" docValues="true" multiValued="true"/>""",
+            """  <field name="payload" type="string" indexed="false" stored="true" docValues="false"/>""",
+            """  <dynamicField name="*_s" type="string" indexed="true" stored="true" docValues="true"/>""",
+            "  <uniqueKey>id</uniqueKey>",
+            "</schema>",
+        )
         fixture.addFileToProject("solr/conf/managed-schema.xml", lines.joinToString("\n"))
     }
 }

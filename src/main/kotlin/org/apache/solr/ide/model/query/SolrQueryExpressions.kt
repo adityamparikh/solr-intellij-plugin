@@ -97,6 +97,98 @@ object SolrQueryExpressions {
     }
 
     /**
+     * The partial field name at [caretOffset] in [query], or null where a field name cannot go there.
+     *
+     * **The query-expression sibling of [SolrQueryFields.tokenAt]**, and for the same reason: the
+     * completion that asks needs the grammar, and the grammar is here. It answers the one question
+     * the scan above never had to — whether the caret is before a colon or after one. In
+     * `category:bo` the caret is in a *value*, and a field name offered there would complete to
+     * `category:category`.
+     *
+     * The same separators and the same name rule as [spansIn], read up to the caret, with three more
+     * places that hold values rather than names: a range (`[1 TO 9]`), a group opened straight after
+     * a colon (`category:(books OR music)`), and a boost (`dune^2`). A phrase and an unclosed
+     * local-parameter block are what they are in the scan: not names.
+     *
+     * An empty return is a real answer — a clause may start here and nothing has been typed.
+     *
+     * @param query the query as written, or as far as it has been written
+     * @param caretOffset an offset within [query]
+     * @return the name being typed, possibly empty, or null where the caret is not in a field position
+     */
+    fun tokenAt(query: String, caretOffset: Int): String? {
+        val typed = query.substring(0, caretOffset.coerceIn(0, query.length))
+        var index = 0
+        var quoted = false
+        var tokenStart = 0
+        // The current token follows a colon or a boost, so it is a value whatever it looks like.
+        var inValue = false
+        var rangeDepth = 0
+        // One entry per open parenthesis: true where it opened a group of values after a colon.
+        val groups = ArrayDeque<Boolean>()
+
+        while (index < typed.length) {
+            val character = typed[index]
+            when {
+                character == '"' -> {
+                    quoted = !quoted
+                    tokenStart = index + 1
+                }
+                quoted -> Unit
+                character == '{' -> {
+                    val close = typed.indexOf('}', index)
+                    if (close < 0) return null
+                    index = close
+                    tokenStart = index + 1
+                    inValue = false
+                }
+                character == '[' -> {
+                    rangeDepth++
+                    tokenStart = index + 1
+                }
+                character == ']' -> {
+                    rangeDepth = (rangeDepth - 1).coerceAtLeast(0)
+                    tokenStart = index + 1
+                }
+                character == ':' -> {
+                    inValue = true
+                    tokenStart = index + 1
+                }
+                character == '(' -> {
+                    groups.addLast(inValue && index == tokenStart)
+                    inValue = false
+                    tokenStart = index + 1
+                }
+                character == ')' -> {
+                    groups.removeLastOrNull()
+                    inValue = false
+                    tokenStart = index + 1
+                }
+                // A boost is a number, not the start of another clause.
+                character == '^' -> {
+                    inValue = true
+                    tokenStart = index + 1
+                }
+                character in PREFIX_OPERATORS && index > tokenStart -> Unit
+                character in CLAUSE_SEPARATORS -> {
+                    inValue = false
+                    tokenStart = index + 1
+                }
+                else -> Unit
+            }
+            index++
+        }
+
+        if (quoted || inValue || rangeDepth > 0 || groups.any { it }) return null
+        val token = typed.substring(tokenStart)
+        if (token.isEmpty()) return token
+        // The rule [fieldNameOf] applies to a finished name, applied to the part typed so far.
+        if (!token.first().isLetter() && token.first() != '_') return null
+        if (token.any { !it.isLetterOrDigit() && it !in NAME_CHARACTERS }) return null
+        return token
+    }
+
+    /**
      * The operator spanning `[start, end)`, or null where that token is not one.
      *
      * **Only the spellings Solr reads as operators.** Lucene's boolean operators are uppercase; a

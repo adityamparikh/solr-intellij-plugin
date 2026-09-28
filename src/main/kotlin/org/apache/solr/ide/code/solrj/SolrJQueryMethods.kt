@@ -1,6 +1,8 @@
 package org.apache.solr.ide.code.solrj
 
 import org.apache.solr.ide.model.query.SolrParameters
+import org.apache.solr.ide.model.query.SolrQueryFields
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 
 /**
  * What kind of text a `SolrQuery` argument holds.
@@ -33,7 +35,25 @@ data class SolrJQueryMethod(
     val parameter: String,
     val shape: SolrJArgumentShape,
     val readsOnlyFirstArgument: Boolean = false,
-)
+) {
+
+    /**
+     * What this call asks of the field it names, or null where it asks nothing a schema can refuse.
+     *
+     * **Mapped here, by the caller, which is where [SolrFieldOperation] says the mapping belongs.**
+     * The list parameters answer through [SolrQueryFields.operationFor], so a `facet.field` means the
+     * same in a SolrJ call as in `solrconfig.xml`. `q` and `fq` are not in that table and should not
+     * be — it covers only parameters whose value is a *list* of names, and a query is not one — so
+     * the two query shapes are answered here: a field clause in `q` is searched, and one in `fq`
+     * filters.
+     */
+    val operation: SolrFieldOperation?
+        get() = when {
+            shape != SolrJArgumentShape.QUERY_EXPRESSION -> SolrQueryFields.operationFor(parameter)
+            parameter == SolrParameters.FILTER_QUERY -> SolrFieldOperation.FILTER
+            else -> SolrFieldOperation.SEARCH
+        }
+}
 
 /**
  * The `SolrQuery` builder calls that carry field names.

@@ -14,9 +14,6 @@ import org.apache.solr.ide.configset.reading.SolrConfigsetReader
 import org.apache.solr.ide.configset.solrconfig.SolrConfigParameters
 import org.apache.solr.ide.configset.solrconfig.parsing.SolrConfigParser
 import org.apache.solr.ide.model.SolrFieldModel
-import org.apache.solr.ide.model.schema.SolrField
-import org.apache.solr.ide.model.schema.SolrFieldOperations
-import org.apache.solr.ide.model.schema.SolrTypeTrait
 
 /**
  * Offers the schema's field names inside a `solrconfig.xml` parameter that holds them.
@@ -73,25 +70,9 @@ internal class SolrParameterFieldCompletionProvider : CompletionProvider<Complet
      * is not mistaken for a field that exists.
      */
     private fun fieldNames(parameterName: String, model: SolrFieldModel): List<LookupElement> {
-        val operation = SolrConfigParser.operationFor(parameterName)
-
-        // Traits are memoised by type name because resolving them scans the generated catalog
-        // linearly, and this runs per field on every keystroke: a schema with two hundred fields
-        // typically names a dozen types, so the difference is two hundred scans against twelve.
-        val traitsByType = HashMap<String, Set<SolrTypeTrait>?>()
-
-        fun serves(field: SolrField): Boolean {
-            val wanted = operation ?: return true
-            val type = model.typeOf(field)
-            val traits = traitsByType.getOrPut(field.type) { model.traitsOf(type) }
-            return SolrFieldOperations.supports(
-                wanted,
-                field,
-                type,
-                model.schemaVersion,
-                traits,
-            ) != false
-        }
+        // The model's own test, shared with completion in code, so the two surfaces cannot come to
+        // disagree about which fields can serve a parameter.
+        val serves = model.mayServe(SolrConfigParser.operationFor(parameterName))
 
         return model.fields.values.map { it.effective }
             .filter { serves(it) }

@@ -3,6 +3,8 @@ package org.apache.solr.ide.model
 import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldOperation
+import org.apache.solr.ide.model.schema.SolrFieldOperations
 import org.apache.solr.ide.model.schema.SolrFieldReference
 import org.apache.solr.ide.model.schema.SolrFieldType
 import org.apache.solr.ide.model.schema.SolrGlob
@@ -146,6 +148,35 @@ class SolrFieldModel(
         return SolrClassCatalog.find(className, solrVersion)
             ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
             ?.traits
+    }
+
+    /**
+     * A test of whether a field in this model may be offered where [operation] is asked of it.
+     *
+     * **For a caller building a list to offer, which is why only a definite no excludes.** A field
+     * whose capability is undetermined — a custom type the catalog has never seen — is kept, on the
+     * reasoning that keeps the inspections quiet about it: nothing can say it cannot serve, and
+     * leaving it out would be a list claiming a *no* the schema never stated. What is left out is
+     * exactly what an inspection would underline once written, so an offer and a warning never argue
+     * about the same field.
+     *
+     * One test for every surface that offers field names — the `solrconfig.xml` parameters and a
+     * SolrJ call in code — because both answer "which of these fields can do this", and two copies
+     * of that loop are two chances to answer it differently.
+     *
+     * @param operation what the position asks of a field, or null where it asks nothing a schema can
+     *   refuse — `fl`, for one — so that every field passes
+     * @return the test, holding its own memo of each type's traits: resolving them scans the
+     *   generated catalog, and this runs per field on every keystroke
+     */
+    fun mayServe(operation: SolrFieldOperation?): (SolrField) -> Boolean {
+        if (operation == null) return { true }
+        val traitsByType = HashMap<String, Set<SolrTypeTrait>?>()
+        return { field ->
+            val type = typeOf(field)
+            val traits = traitsByType.getOrPut(field.type) { traitsOf(type) }
+            SolrFieldOperations.supports(operation, field, type, schemaVersion, traits) != false
+        }
     }
 
     /**

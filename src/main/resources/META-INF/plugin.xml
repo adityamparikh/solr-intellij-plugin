@@ -115,9 +115,24 @@
         <!-- Field names where Java or Kotlin names one. Registered without a `language` so both
              reach it; the recognizers' module gate and the position check are what keep it quiet
              everywhere else. -->
+        <!-- First, because in a field position it stops the contributors after it: the words and
+             file paths the platform offers in any string are noise beside a list of fields. -->
         <completion.contributor
                 language="any"
+                order="first"
                 implementationClass="org.apache.solr.ide.code.completion.SolrCodeFieldCompletionContributor"/>
+
+        <!-- The popup opening by itself while a field name is typed. Java and Kotlin each cancel
+             auto-popup inside strings; this answers first where a field name goes, and says nothing
+             anywhere else. The two ids are those languages' string rules, and an id absent from an
+             IDE is ignored by the ordering. The platform's own URL-path completion registers the
+             same way, for the same reason. -->
+        <completion.confidence
+                language="any"
+                id="solrCodeFieldNames"
+                order="before javaSkipAutopopupInStrings, before kotlinSkipAutopopupInStrings"
+                implementationClass="org.apache.solr.ide.code.completion.SolrCodeFieldCompletionConfidence"/>
+        <typedHandler implementation="org.apache.solr.ide.code.completion.SolrCodeFieldTypedHandler"/>
 
         <!-- The gutter icon that runs a query written in code. Registered without a language: which
              calls carry a query is the recognizer's question, not a language's. -->

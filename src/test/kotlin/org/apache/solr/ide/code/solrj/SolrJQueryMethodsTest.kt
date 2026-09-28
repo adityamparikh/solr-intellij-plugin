@@ -1,5 +1,6 @@
 package org.apache.solr.ide.code.solrj
 
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -96,6 +97,30 @@ class SolrJQueryMethodsTest {
         for (name in listOf("setRows", "setStart", "setFacetLimit", "setHighlight", "toString")) {
             assertNull(name, SolrJQueryMethods.forMethod(name))
         }
+    }
+
+    // --- what the call asks of the field ----------------------------------------------------------
+
+    /**
+     * Each call asks its field to do something, and completion offers only fields that can.
+     *
+     * `q` and `fq` search and filter; a sort sorts and a facet facets. `fl` and `hl.fl` ask nothing a
+     * schema can refuse, so every declared field serves them.
+     */
+    @Test
+    fun `each method asks its field for the operation its parameter does`() {
+        fun operationOf(name: String) = SolrJQueryMethods.forMethod(name)?.operation
+        assertEquals(SolrFieldOperation.SEARCH, operationOf("setQuery"))
+        assertEquals(SolrFieldOperation.FILTER, operationOf("addFilterQuery"))
+        assertEquals(SolrFieldOperation.FILTER, operationOf("setFilterQueries"))
+        assertEquals(SolrFieldOperation.SORT, operationOf("setSort"))
+        assertEquals(SolrFieldOperation.SORT, operationOf("addSort"))
+        assertEquals(SolrFieldOperation.FACET, operationOf("addFacetField"))
+        assertEquals(SolrFieldOperation.FACET, operationOf("addFacetPivotField"))
+        assertEquals(SolrFieldOperation.SIMILARITY, operationOf("setMoreLikeThisFields"))
+        assertNull(operationOf("setFields"))
+        assertNull(operationOf("addField"))
+        assertNull(operationOf("addHighlightField"))
     }
 
     // --- the class the call must sit on -----------------------------------------------------------
