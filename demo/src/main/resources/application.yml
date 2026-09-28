@@ -10,6 +10,7 @@ spring:
 app:
   solr:
     url: http://localhost:8983/solr
+    username: dev-reader
 
 ---
 spring:
@@ -19,3 +20,4 @@ spring:
 app:
   solr:
     url: http://solr-staging.internal:8983/solr
+    username: staging-reader
