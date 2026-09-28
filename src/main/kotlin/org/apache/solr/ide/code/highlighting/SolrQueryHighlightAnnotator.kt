@@ -3,7 +3,6 @@ package org.apache.solr.ide.code.highlighting
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import org.apache.solr.ide.code.SolrRecognizers
@@ -26,10 +25,9 @@ import org.jetbrains.uast.UastFacade
  * larger than this, and larger than the payoff for a string that is usually one clause long. What is
  * here is a scan, sharing the rules the checks already use.
  *
- * **The colours come from the platform's own palette rather than a scheme this plugin defines.** A
- * field is a keyword and an operator is an operator in every language the IDE highlights; using
- * those keys means the query follows a reader's theme, including themes this plugin has never seen,
- * and adds no colour settings page to maintain.
+ * **The colours are this plugin's own keys, falling back to the platform's** — see [SolrQueryColors]
+ * for why the fallback has to be one a string literal cannot swallow, and why a key that is a colour
+ * in the abstract was invisible here in practice.
  */
 class SolrQueryHighlightAnnotator : Annotator {
 
@@ -69,8 +67,7 @@ class SolrQueryHighlightAnnotator : Annotator {
     }
 
     private fun colourOf(kind: SolrQuerySpanKind) = when (kind) {
-        // The field is the thing a clause is *about*, which is what a keyword is in a language.
-        SolrQuerySpanKind.FIELD -> DefaultLanguageHighlighterColors.KEYWORD
-        SolrQuerySpanKind.OPERATOR -> DefaultLanguageHighlighterColors.OPERATION_SIGN
+        SolrQuerySpanKind.FIELD -> SolrQueryColors.FIELD
+        SolrQuerySpanKind.OPERATOR -> SolrQueryColors.OPERATOR
     }
 }
