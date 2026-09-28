@@ -52,6 +52,15 @@ Every capability above works on a configset the plugin can see, and nothing on t
 contacts a server. The server rows are the exception by definition, and they move data only when
 asked — on a refresh, or on a connection change.
 
+### Function keys on a Mac
+
+**macOS sends brightness and media controls from the top row unless you hold fn** — or turn on
+*Use F1, F2, etc. keys as standard function keys* in System Settings → Keyboard. So Find Usages is
+fn-⌥F7 and Rename is fn-⇧F6. Quick documentation is F1 or ⌃J on the *macOS* keymap, but only ⌃J on
+the legacy *Mac OS X* keymap, where F1 opens the IDE's Help instead; hovering works on either. Any of
+these is also reachable by name through Find Action (⇧⌘A): *Quick Documentation*, *Find Usages*,
+*Rename*. The plugin binds no keys of its own, so none of this is the plugin's to change.
+
 ## Following along
 
 Every gesture here is reproducible against the committed demo project, which is also what the
@@ -236,9 +245,10 @@ expensive on a large index, rather than the explicit failure the same query woul
 breaking already-deployed schemas, and this is the popup that makes the boundary visible rather than
 silent.
 
-**Try it.** Hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`. **F1 does not
-raise Quick Documentation on the default macOS keymap** — it opens the platform's own Help page
-instead, which has nothing to do with this plugin; Ctrl+J is the reliable gesture. (Verified by
+**Try it.** Hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`. **On a Mac, F1
+may not raise Quick Documentation** — without fn it is a media key, and on the legacy *Mac OS X*
+keymap it opens the platform's own Help page ([function keys on a Mac](#function-keys-on-a-mac));
+hover or ⌃J is the reliable gesture. (Verified by
 [the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation on the schema's version attribute: the general rule, then what this

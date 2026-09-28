@@ -39,6 +39,11 @@ silently turns `SRV-12` into a wall of unresolved variables.
    every later "break it" check ends by restoring that baseline.
 4. Record the pass in the log with the commit you ran it at.
 
+**On a Mac, hold fn for every F-key below** (⌥F7, ⇧F6, F1), or macOS sends a media key and nothing
+happens. The sandbox has been found on the legacy *Mac OS X* keymap, where F1 opens Help rather than
+Quick Documentation — use ⌃J or hover there. A dead F-key is a keyboard setting, not a failed check;
+[the user guide](user-guide.md#function-keys-on-a-mac) has the detail.
+
 > **In Java terms.** `./gradlew runIde` does not run tests — it launches a second, disposable
 > IntelliJ instance with the plugin installed, closer to starting your Spring Boot app on a
 > scratch profile to click through by hand than to running its test suite. Nothing typed there
