@@ -817,8 +817,17 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       the configset chooser lists the project's configsets. Then copy a configset directory to a new
       name and open the chooser — the copy is offered, and the configset already chosen is still
       chosen. **This is the check the first server pass had no name for**: the list used to be read
-      once, while the IDE was still indexing, and stay empty until a restart.
-- [ ] **SRV-19** — In the **Drift** tab, choose a configset and type a collection that exists, then
+      once, while the IDE was still indexing, and stay empty until a restart. **Click the chooser
+      itself, with the mouse**: the list must open, and `idea.log` must gain no *Read access is
+      allowed from inside read-action only* from `SolrDriftPanel`. The fix for the stale list first
+      read the index inside that click, which throws in a running IDE and never in a test, so the
+      chooser silently refused to open.
+- [ ] **SRV-19b** — Open the **Collection** chooser in the **Drift** tab. It lists the selected
+      server's collections, each followed by *built from configset …* as the server reports it.
+      Type a name the list does not show and open the chooser again: the typed name survives. With
+      the connection pointed at a server that is down, opening the chooser lists nothing and raises
+      no error — Compare is what reports the failure.
+- [ ] **SRV-19** — In the **Drift** tab, choose a configset and a collection that exists, then
       press Compare. A field present in the configset and not on the server reads *Not deployed*;
       one added through the Schema API reads *Only on server*; one defined differently in each reads
       *Differs* and **shows both definitions side by side**. A view that showed one side would hide

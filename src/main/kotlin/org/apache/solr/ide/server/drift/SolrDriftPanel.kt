@@ -39,6 +39,7 @@ import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.topology.SolrCollectionsScope
 import org.apache.solr.ide.server.topology.failureMessageFor
+import org.apache.solr.ide.server.topology.valueIn
 
 /**
  * The drift view: what a configset and a collection do not agree about.
@@ -81,12 +82,24 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         wrapStyleWord = true
         emptyText.text = SolrBundle.message("drift.payload.none")
     }
-    private val collectionField = com.intellij.ui.components.JBTextField(20)
+
+    // Editable: the list is what the server said it holds, and a name it did not list — an alias, a
+    // collection created a moment ago — is still worth comparing.
+    private val collectionCombo = com.intellij.openapi.ui.ComboBox<String>(DefaultComboBoxModel(), COLLECTION_CHOOSER_WIDTH)
+        .apply { isEditable = true }
+
+    // The configset each offered collection was built from, by name, for the chooser's renderer.
+    private val collectionSources = mutableMapOf<String, String?>()
+
+    // Set while a popup is re-shown to fit a list that changed under it, so re-showing does not
+    // count as the user opening it again and ask the server a second time.
+    private var refittingPopup = false
 
     init {
         banner.border = JBUI.Borders.empty(4, 8)
         table.emptyText.text = SolrBundle.message("drift.empty.notCompared")
         configsetCombo.renderer = SolrConfigsetComboRenderer()
+        collectionCombo.renderer = SolrCollectionComboRenderer { collectionSources[it] }
 
         toolbar = buildToolbar()
         // Selecting a row shows the request that would close it. Reading what a tool would do
@@ -120,18 +133,89 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      * needed. And a configset created while the view is open appears in no event this view hears
      * about; so opening the chooser re-reads, which is the moment a user is asking what the list
      * holds. Neither costs anything the rest of the time.
+     *
+     * The collection chooser is re-read the same way, on opening, from the server rather than the
+     * index — see [loadCollections].
      */
     private fun watchForConfigsets() {
-        configsetCombo.addPopupMenuListener(
-            object : javax.swing.event.PopupMenuListener {
-                override fun popupMenuWillBecomeVisible(event: javax.swing.event.PopupMenuEvent) {
-                    reloadConfigsets()
-                }
-                override fun popupMenuWillBecomeInvisible(event: javax.swing.event.PopupMenuEvent) = Unit
-                override fun popupMenuCanceled(event: javax.swing.event.PopupMenuEvent) = Unit
-            },
-        )
+        configsetCombo.addPopupMenuListener(whenOpened { reloadConfigsets() })
+        collectionCombo.addPopupMenuListener(whenOpened { loadCollections() })
     }
+
+    private fun whenOpened(read: () -> Unit) = object : javax.swing.event.PopupMenuListener {
+        override fun popupMenuWillBecomeVisible(event: javax.swing.event.PopupMenuEvent) {
+            if (!refittingPopup) read()
+        }
+        override fun popupMenuWillBecomeInvisible(event: javax.swing.event.PopupMenuEvent) = Unit
+        override fun popupMenuCanceled(event: javax.swing.event.PopupMenuEvent) = Unit
+    }
+
+    /**
+     * Re-shows [combo]'s popup where it is open, so it is sized for the list that just arrived.
+     *
+     * A Swing popup measures its list once, when shown. Both lists here arrive after the popup has
+     * opened — they are read in the background — so without this, a chooser opened on an empty list
+     * would stay a sliver however many entries then filled it.
+     */
+    private fun refitPopup(combo: JComboBox<*>) {
+        if (!combo.isPopupVisible) return
+        refittingPopup = true
+        try {
+            combo.hidePopup()
+            combo.showPopup()
+        } finally {
+            refittingPopup = false
+        }
+    }
+
+    /** The most recent read of the server's collections, so a test can wait for it. */
+    internal var collectionLoad: Job? = null
+        private set
+
+    /**
+     * Asks the selected server what it holds, and offers that in the collection chooser.
+     *
+     * **Only when the chooser is opened**, which is a request, and never otherwise: server data
+     * moves on request. A server that cannot be read leaves the chooser as it was — Compare is what
+     * reports a failure, in the banner, naming what went wrong — and whatever was typed survives
+     * either way.
+     *
+     * @return the read, or null where there is no connection to ask
+     */
+    internal fun loadCollections(): Job? {
+        val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return null
+        collectionLoad?.cancel()
+        val load = project.service<SolrCollectionsScope>().scope.launch {
+            val topology = valueIn(SolrServerReader.getInstance(project).topology(connection)) ?: return@launch
+            val choices = collectionChoicesIn(topology)
+            withContext(Dispatchers.EDT) { showCollections(choices) }
+        }
+        collectionLoad = load
+        return load
+    }
+
+    private fun showCollections(choices: List<SolrCollectionChoice>) {
+        collectionSources.clear()
+        choices.forEach { collectionSources[it.name] = it.configset }
+        val names = choices.map { it.name }
+        if (names == offeredCollections) return
+        val typed = collectionText()
+        collectionCombo.model = DefaultComboBoxModel(names.toTypedArray()).apply {
+            // A new model selects its first entry, which in an editable chooser replaces what the
+            // user typed. What they typed is kept, and nothing is chosen for them.
+            selectedItem = typed.ifEmpty { null }
+        }
+        refitPopup(collectionCombo)
+    }
+
+    /**
+     * The collection named in the chooser, typed or picked.
+     *
+     * Read from the editor rather than the selection: an editable combo commits typed text to its
+     * selection only on Enter or focus loss, and a Compare pressed straight after typing must
+     * compare what is on screen.
+     */
+    internal fun collectionText(): String = collectionCombo.editor.item?.toString()?.trim().orEmpty()
 
     /**
      * The toolbar's actions, so a test can ask each one whether it would be enabled.
@@ -193,7 +277,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
             add(JBLabel(SolrBundle.message("drift.configset")))
             add(configsetCombo)
             add(JBLabel(SolrBundle.message("drift.collection")))
-            add(collectionField)
+            add(collectionCombo)
             add(bar.component)
         }
     }
@@ -244,11 +328,12 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
         configsetCombo.model = DefaultComboBoxModel(configsets.toTypedArray()).apply {
             if (chosen in configsets) selectedItem = chosen
         }
+        refitPopup(configsetCombo)
     }
 
     private fun canCompare(): Boolean =
         configsetCombo.selectedItem != null &&
-            collectionField.text.isNotBlank() &&
+            collectionText().isNotEmpty() &&
             SolrConnectionSettings.getInstance(project).selectedConnection != null
 
     /**
@@ -259,7 +344,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      */
     internal fun compare(): Job? {
         val configset = configsetCombo.selectedItem as? SolrConfigset ?: return null
-        val collection = collectionField.text.trim().ifEmpty { return null }
+        val collection = collectionText().ifEmpty { return null }
         val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return null
 
         val repository = SolrConfigsetReader.getInstance(project).factsFor(configset)
@@ -289,7 +374,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      */
     internal fun uploadAndReload(): Job? {
         val configset = configsetCombo.selectedItem as? SolrConfigset ?: return null
-        val collection = collectionField.text.trim().ifEmpty { return null }
+        val collection = collectionText().ifEmpty { return null }
         val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return null
         if (!confirmed(configset.name, collection, connection.displayName)) return null
 
@@ -357,7 +442,7 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
      */
     internal fun applyAdditive() {
         val configset = configsetCombo.selectedItem as? SolrConfigset ?: return
-        val collection = collectionField.text.trim().ifEmpty { return }
+        val collection = collectionText().ifEmpty { return }
         val connection = SolrConnectionSettings.getInstance(project).selectedConnection ?: return
         val request = SolrSchemaApi.requestFor(applicableChanges()) ?: return
         if (!confirmedApply(applicableChanges().size, collection, connection.displayName)) return
@@ -530,9 +615,23 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
     /** Whether the toolbar's actions have everything they need — a connection, a configset, a collection. */
     internal fun canAct(): Boolean = canCompare()
 
-    /** Sets the collection field, so a test can choose one without typing. */
+    /** Types [collection] into the collection chooser, as a user would. */
     internal fun setCollection(collection: String) {
-        collectionField.text = collection
+        collectionCombo.editor.item = collection
+    }
+
+    /** The collection chooser itself, so a test can open it the way a user does. */
+    internal val collectionChooser: JComboBox<String> get() = collectionCombo
+
+    /** The collections the chooser currently offers, in order. */
+    internal val offeredCollections: List<String>
+        get() = (0 until collectionCombo.itemCount).map { collectionCombo.getItemAt(it) }
+
+    /** What the chooser's list shows for [name], as its renderer draws it. */
+    internal fun renderedCollection(name: String): String {
+        val list = javax.swing.JList<String>()
+        val rendered = collectionCombo.renderer.getListCellRendererComponent(list, name, 0, false, false)
+        return (rendered as? com.intellij.ui.SimpleColoredComponent)?.getCharSequence(false)?.toString().orEmpty()
     }
 
     /** The configset chooser itself, so a test can open it the way a user does. */
@@ -561,6 +660,30 @@ class SolrDriftPanel(private val project: Project) : SimpleToolWindowPanel(true,
 
     private companion object {
         const val TOOLBAR_PLACE = "SolrDriftToolWindow"
+
+        // Wide enough for a typical collection name; the chooser's list grows to fit its entries.
+        const val COLLECTION_CHOOSER_WIDTH = 180
+    }
+}
+
+/**
+ * A collection in the chooser, with the configset the server says built it.
+ *
+ * @param sourceOf the configset a collection was built from, or null where the server did not say
+ */
+internal class SolrCollectionComboRenderer(
+    private val sourceOf: (String) -> String?,
+) : com.intellij.ui.ColoredListCellRenderer<String>() {
+    override fun customizeCellRenderer(
+        list: javax.swing.JList<out String>,
+        value: String?,
+        index: Int,
+        selected: Boolean,
+        hasFocus: Boolean,
+    ) {
+        append(value.orEmpty())
+        val source = value?.let(sourceOf) ?: return
+        append("  " + SolrBundle.message("drift.collection.source", source), com.intellij.ui.SimpleTextAttributes.GRAYED_ATTRIBUTES)
     }
 }
 

@@ -1,7 +1,9 @@
 package org.apache.solr.ide.server.drift
 
 import org.apache.solr.ide.model.SolrConfigsetFacts
+import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrServerRead
+import org.apache.solr.ide.server.reading.SolrTopology
 import org.apache.solr.ide.server.topology.failureMessageFor
 import org.apache.solr.ide.server.topology.valueIn
 import org.apache.solr.ide.server.topology.warningFor
@@ -98,3 +100,29 @@ fun driftViewFor(
 // but stated rather than asserted, because the alternative to a message here is comparing against
 // facts that do not exist, which is the one outcome this function is built to prevent.
 private const val NO_FACTS = "The server answered without a schema."
+
+/**
+ * A collection the drift view offers to compare against.
+ *
+ * @property name what the schema endpoint is addressed by — a collection on SolrCloud, a core on a
+ *   standalone server
+ * @property configset the configset the server says it was built from, or null where it did not say.
+ *   Shown beside the name because the comparison most often run by mistake is against a collection
+ *   never built from the configset chosen, and that reads as a wall of *Only on server* rows
+ */
+data class SolrCollectionChoice(val name: String, val configset: String?)
+
+/**
+ * What the collection chooser offers for [topology], in name order.
+ *
+ * A server of unknown mode offers nothing rather than a guess: its schema endpoint may still answer,
+ * and a typed name is still accepted, but a list is a claim about what exists.
+ *
+ * @param topology what the selected server reported holding
+ * @return its collections or cores, each with the configset it came from
+ */
+fun collectionChoicesIn(topology: SolrTopology): List<SolrCollectionChoice> = when (topology.mode) {
+    SolrServerMode.SOLR_CLOUD -> topology.collections.map { SolrCollectionChoice(it.name, it.configName) }
+    SolrServerMode.STANDALONE -> topology.cores.map { SolrCollectionChoice(it.name, it.configSet) }
+    SolrServerMode.UNKNOWN -> emptyList()
+}.sortedBy { it.name }
