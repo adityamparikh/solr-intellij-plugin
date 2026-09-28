@@ -130,6 +130,11 @@
                 language=""
                 implementationClass="org.apache.solr.ide.code.highlighting.SolrQueryHighlightAnnotator"/>
 
+        <!-- Settings → Editor → Color Scheme → Solr Query: where the two colours above are tuned.
+             They fall back to the platform's field and keyword colours, which a theme may make
+             collide with a string's; this is the remedy when one does. -->
+        <colorSettingsPage implementation="org.apache.solr.ide.code.highlighting.SolrQueryColorSettingsPage"/>
+
         <completion.contributor
                 language="JSON"
                 implementationClass="org.apache.solr.ide.server.indexing.SolrDocumentFieldCompletionContributor"/>
