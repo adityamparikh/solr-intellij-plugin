@@ -77,7 +77,48 @@ class SolrTopologyNodesTest {
         val books = rootsOf(cloud()).single().children.single()
 
         assertTrue(books.detail, books.detail!!.contains("books_config"))
-        assertTrue(books.detail, books.detail!!.contains("GREEN"))
+        assertEquals(SolrHealth.GREEN, books.health)
+    }
+
+    /**
+     * A recognised health is carried as a value and kept out of the text.
+     *
+     * The tree draws it as a coloured dot. Leaving the word in the detail as well would put `GREEN`
+     * back on screen beside the dot that replaced it, which is the thing a tester asked to be rid of.
+     */
+    @Test
+    fun `a recognised health is not spelled out in the detail`() {
+        val books = rootsOf(cloud()).single().children.single()
+        val shard = shardsOf(books).single()
+
+        assertFalse(books.detail, books.detail!!.contains("GREEN"))
+        assertFalse(shard.detail, shard.detail!!.contains("GREEN"))
+        assertEquals(SolrHealth.GREEN, shard.health)
+    }
+
+    /**
+     * A health word this plugin does not know stays as the word.
+     *
+     * A newer Solr may report a value nobody has drawn a colour for, and hiding it would lose the one
+     * thing the server said about the collection's state.
+     */
+    @Test
+    fun `an unrecognised health is spelled out instead`() {
+        val odd = SolrCollection(name = "books", configName = "books_config", health = "PURPLE", shards = emptyList())
+        val books = rootsOf(cloud(collections = listOf(odd))).single().children.single()
+
+        assertNull(books.health)
+        assertTrue(books.detail, books.detail!!.contains("PURPLE"))
+    }
+
+    /** An older line reports no health at all, and that says nothing rather than something wrong. */
+    @Test
+    fun `no reported health means no health`() {
+        val quiet = SolrCollection(name = "books", configName = "books_config", health = null, shards = emptyList())
+        val books = rootsOf(cloud(collections = listOf(quiet))).single().children.single()
+
+        assertNull(books.health)
+        assertEquals("books_config", books.detail)
     }
 
     @Test

@@ -66,6 +66,9 @@ enum class SolrTopologyNodeKind {
  *   null where the row stands for no request. Carried rather than read back out of [label], because
  *   a label is what the row *says* and is free to change — a fetch keyed on display text breaks the
  *   moment someone rewords a heading
+ * @property health how healthy Solr says the thing is, or null where it said nothing this plugin
+ *   recognises. Carried apart from [detail] because it is drawn rather than written — as a coloured
+ *   dot — and a health word nobody has a colour for stays in [detail] instead, as the word
  */
 data class SolrTopologyNode(
     val label: String,
@@ -73,6 +76,7 @@ data class SolrTopologyNode(
     val kind: SolrTopologyNodeKind,
     val children: List<SolrTopologyNode> = emptyList(),
     val collection: String? = null,
+    val health: SolrHealth? = null,
 )
 
 /**
@@ -169,8 +173,9 @@ object SolrTopologyNodes {
 
     private fun collectionNode(collection: SolrCollection) = SolrTopologyNode(
         label = collection.name,
-        detail = detailOf(collection.health, collection.configName),
+        detail = detailOf(unrecognised(collection.health), collection.configName),
         kind = SolrTopologyNodeKind.COLLECTION,
+        health = SolrHealth.of(collection.health),
         // The fields row comes first because it is what most questions are about, and it is a
         // promise rather than an answer — the request behind it is made when it is expanded.
         children = listOf(fieldsPlaceholder(collection.name)) + collection.shards.map(::shardNode),
@@ -193,8 +198,9 @@ object SolrTopologyNodes {
 
     private fun shardNode(shard: SolrShard) = SolrTopologyNode(
         label = shard.name,
-        detail = detailOf(shard.health, shard.state, shard.range),
+        detail = detailOf(unrecognised(shard.health), shard.state, shard.range),
         kind = SolrTopologyNodeKind.SHARD,
+        health = SolrHealth.of(shard.health),
         children = shard.replicas.map(::replicaNode),
     )
 
@@ -224,6 +230,10 @@ object SolrTopologyNodes {
     // create from one, and all three are ordinary rather than faults.
     private fun detailOf(vararg parts: String?): String? =
         parts.filter { !it.isNullOrBlank() }.joinToString(SEPARATOR).takeIf { it.isNotEmpty() }
+
+    // A health word is written out only where it cannot be drawn: one this plugin recognises becomes
+    // the row's dot, and spelling it beside the dot as well is the `GREEN` a tester asked to be rid of.
+    private fun unrecognised(health: String?): String? = health.takeIf { SolrHealth.of(it) == null }
 
     private const val SEPARATOR = " · "
 
