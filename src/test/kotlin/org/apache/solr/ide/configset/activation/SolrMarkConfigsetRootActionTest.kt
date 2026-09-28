@@ -1,5 +1,6 @@
 package org.apache.solr.ide.configset.activation
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.vfs.VirtualFile
@@ -66,5 +67,22 @@ class SolrMarkConfigsetRootActionTest : SolrConfigsetTestCase() {
         action.update(event)
 
         assertFalse(event.presentation.isVisible)
+    }
+
+    /** With no project in the event there is nothing to mark against, so the entry is hidden. */
+    fun testIsHiddenWithoutAProject() {
+        val event = TestActionEvent.createTestEvent(
+            action,
+            SimpleDataContext.builder().add(CommonDataKeys.VIRTUAL_FILE_ARRAY, arrayOf(directory("legacy"))).build(),
+        )
+
+        action.update(event)
+
+        assertFalse(event.presentation.isVisible)
+    }
+
+    /** The update reads settings, so it asks to run off the EDT, where the platform wants updates. */
+    fun testUpdatesOnABackgroundThread() {
+        assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
     }
 }
