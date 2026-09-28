@@ -75,6 +75,36 @@ class SolrIndexDocumentDialogTest : SolrConfigsetTestCase() {
         }
     }
 
+    /**
+     * The refusal is marked beside its reason, not in the corner of the document.
+     *
+     * A validation's component is where the platform draws its error icon. Anchored to the editor,
+     * the icon landed on the document's first line — over the `"id"` key, the one line that was
+     * right — while the reason sat below. Found by the 2026-09-26 sandbox pass.
+     */
+    fun testTheRefusalIsMarkedBesideItsReason() {
+        withDialog { dialog ->
+            dialog.setDocument("""{"id": "1", "titel": "typo"}""")
+
+            val refusal = dialog.performValidateAll().single()
+            assertSame(dialog.problemsComponent, refusal.component)
+        }
+    }
+
+    /**
+     * A long reason wraps rather than widening the dialog.
+     *
+     * The reasons here are sentences, and the longest ran on one line to the edge of the screen,
+     * stretching the whole dialog with it.
+     */
+    fun testALongReasonWrapsWithinTheDialog() {
+        withDialog { dialog ->
+            assertTrue("the reason must wrap", dialog.problemsComponent.lineWrap)
+            assertTrue("and wrap at word boundaries", dialog.problemsComponent.wrapStyleWord)
+            assertTrue("within a width, or wrapping has nothing to wrap against", dialog.problemsComponent.columns > 0)
+        }
+    }
+
     /** A document with no unique key stops the send, though Solr would index it under a UUID. */
     fun testADocumentWithNoUniqueKeyIsRefused() {
         withDialog { dialog ->

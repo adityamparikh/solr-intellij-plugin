@@ -812,14 +812,20 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       the disagreement in the place it exists to be shown.
 - [ ] **SRV-20** — Compare a configset against a collection created from it. The table is empty and
       the line above it says the two agree **and how many declarations agreed**. That count is the
-      only thing distinguishing this from a comparison that never ran.
+      only thing distinguishing this from a comparison that never ran. **The configset has to be
+      deployable, and the demo's `solr/conf` is not**: its planted defects stop a core starting, so
+      no collection can be created from it. Use a copy with `custom_text`, `notes` and `legacy`
+      removed — `demo/README.md` says why.
 - [ ] **SRV-21** — Stop Solr and press Compare. The table stays empty and the failure is reported.
       **No field may be listed as not deployed** — treating an unreachable server as an empty one
       would report an entire schema as undeployed, in the view a user opens precisely when they are
       unsure what is deployed.
 - [ ] **SRV-22** — With a drifted comparison on screen, press **Upload and Reload**. A confirmation
       names the configset, the collection **and the server** before anything is written. Cancel:
-      nothing is uploaded. Confirm: the table is re-read and the difference clears.
+      nothing is uploaded. Confirm: the table is re-read and the difference clears. **Upload a
+      deployable configset**, as in SRV-20: uploading the demo's own `solr/conf` fails at the reload,
+      correctly, because a core cannot start on it — a real failure worth seeing once, but not this
+      check.
 - [ ] **SRV-23** — Point the connection at a **standalone** Solr and press Upload and Reload.
       It refuses, saying the server is not running in SolrCloud mode, and **sends no upload** —
       `/admin/configs` answers every action with HTTP 400 there, so trying anyway would report a
@@ -1464,7 +1470,11 @@ both need rewording to name a deployable one.
    re-read when indexing ends and whenever the chooser opens, the chooser stays enabled while empty
    so it can be opened, and a re-read keeps the chosen configset. SRV-19a presses it.
 2. **Neither long message wraps.** The drift pane's refusal reason runs off its right edge, and the
-   index dialog's validation reason stretches the whole dialog towards the screen's width.
+   index dialog's validation reason stretches the whole dialog towards the screen's width. *Fixed
+   since: both wrap at words.*
 3. **The index dialog draws its error marker on the first line** — over the `"id"` key's opening
-   quote — rather than on the line that carries the typo.
-4. **"1 additive change(s)"** — the same class of wording `6750888` fixed for *1 documents*.
+   quote — rather than on the line that carries the typo. *Fixed since: the marker is the
+   platform's validation icon, drawn at the corner of whatever component the validation names; it
+   now names the reason, so the icon sits beside the sentence that explains it.*
+4. **"1 additive change(s)"** — the same class of wording `6750888` fixed for *1 documents*. *Fixed
+   since.* SRV-20 and SRV-22 now say that the configset they compare or upload must be deployable.
