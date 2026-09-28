@@ -1,0 +1,13 @@
+{
+    "responseHeader": {
+        "status": 0,
+        "QTime": 36
+    },
+    "mode": "solrcloud",
+    "lucene": {
+        "solr-spec-version": "9.10.1",
+        "solr-impl-version": "9.10.1 c135e6335c7158fa26e96b0dc386f825255b47c0 - gerlowskija - 2026-01-15 09:36:55",
+        "lucene-spec-version": "9.12.3",
+        "lucene-impl-version": "9.12.3 f965e930673c1f5cb478dc6a8907f5fc4ef7b539 - 2025-09-24 07:44:31"
+    }
+}
