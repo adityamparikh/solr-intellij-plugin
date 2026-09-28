@@ -1,7 +1,6 @@
 package org.apache.solr.ide.configset.schema.annotator
 
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.editor.colors.CodeInsightColors
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.editing.BundledColorSchemes
 
@@ -34,7 +33,7 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
     private fun dimmed(body: String): List<String> {
         myFixture.configureByText("managed-schema.xml", schema(body))
         return myFixture.doHighlighting()
-            .filter { it.forcedTextAttributesKey == CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES }
+            .filter { it.forcedTextAttributesKey == SolrRestatedDefaultAnnotator.RESTATED_DEFAULT }
             .map { myFixture.file.text.substring(it.startOffset, it.endOffset) }
     }
 
@@ -54,7 +53,7 @@ class SolrRestatedDefaultAnnotatorTest : SolrConfigsetTestCase() {
     fun testTheDimIsGreyTextOnlyInEveryBundledScheme() {
         myFixture.configureByText("managed-schema.xml", schema("""<field name="sku" type="string" indexed="true"/>"""))
         val dims = myFixture.doHighlighting()
-            .filter { it.forcedTextAttributesKey == CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES }
+            .filter { it.forcedTextAttributesKey == SolrRestatedDefaultAnnotator.RESTATED_DEFAULT }
         assertEquals(1, dims.size)
         val dim = dims.single()
         assertEquals(HighlightSeverity.INFORMATION, dim.severity)
