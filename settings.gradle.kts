@@ -8,7 +8,7 @@ rootProject.name = "solr-intellij-plugin"
 // governs the unversioned `org.jetbrains.intellij.platform` id the build script applies.
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
-    id("org.jetbrains.intellij.platform.settings") version "2.18.1"
+    id("org.jetbrains.intellij.platform.settings") version "2.19.0"
 }
 
 @Suppress("UnstableApiUsage")
