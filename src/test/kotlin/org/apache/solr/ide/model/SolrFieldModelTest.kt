@@ -3,6 +3,7 @@ package org.apache.solr.ide.model
 import org.apache.solr.ide.model.schema.SolrCopyField
 import org.apache.solr.ide.model.schema.SolrDynamicField
 import org.apache.solr.ide.model.schema.SolrField
+import org.apache.solr.ide.model.schema.SolrFieldOperation
 import org.apache.solr.ide.model.schema.SolrFieldReference
 import org.apache.solr.ide.model.schema.SolrFieldType
 import org.junit.Assert.assertEquals
@@ -253,5 +254,54 @@ class SolrFieldModelTest {
     fun `a class that is in the catalog but is not a field type yields null`() {
         val model = SolrFieldModel(luceneMatchVersion = "10.0.0")
         assertNull(model.traitsOf(SolrFieldType("wrong", "solr.StandardTokenizerFactory")))
+    }
+
+    // --- which fields a caller may offer --------------------------------------------------------
+
+    private val string = SolrFieldType("string", "solr.StrField")
+    private val single = SolrField("sku", "string", attributes = mapOf("docValues" to "true"))
+    private val multi = SolrField("tags", "string", attributes = mapOf("docValues" to "true", "multiValued" to "true"))
+    private val custom = SolrField("shape", "geo")
+    private val stored = SolrField("blob", "string", attributes = mapOf("indexed" to "false", "docValues" to "false"))
+
+    private fun offerable(operation: SolrFieldOperation?): List<String> {
+        val model = SolrFieldModel.of(
+            SolrConfigsetFacts(
+                fields = listOf(single, multi, custom, stored),
+                fieldTypes = listOf(string, SolrFieldType("geo", "com.example.CustomGeoField")),
+                schemaVersion = "1.7",
+            ),
+        )
+        val serves = model.mayServe(operation)
+        return model.fields.values.map { it.effective }.filter(serves).map { it.name }
+    }
+
+    /** A sort needs one value per document, so a multiValued field is not offered for one. */
+    @Test
+    fun `a sort is offered only fields that can be sorted`() {
+        assertEquals(listOf("sku", "shape"), offerable(SolrFieldOperation.SORT))
+    }
+
+    /** A field with neither an index nor doc values cannot be searched, and is not offered. */
+    @Test
+    fun `a query is offered only fields that can be searched`() {
+        assertEquals(listOf("sku", "tags", "shape"), offerable(SolrFieldOperation.SEARCH))
+    }
+
+    /**
+     * A type whose class the catalog has never seen is offered, since nothing can say it cannot serve.
+     *
+     * The same reasoning that keeps the inspections quiet about it: a custom type is undetermined, and
+     * leaving it out of a list would be the list claiming a *no* the schema never stated.
+     */
+    @Test
+    fun `an undetermined field is offered`() {
+        assertTrue("shape" in offerable(SolrFieldOperation.SORT))
+    }
+
+    /** A parameter asking nothing a schema can refuse — `fl` — is offered every field. */
+    @Test
+    fun `no operation offers every field`() {
+        assertEquals(listOf("sku", "tags", "shape", "blob"), offerable(null))
     }
 }
