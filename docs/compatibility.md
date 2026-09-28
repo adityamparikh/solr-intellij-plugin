@@ -29,13 +29,6 @@ An earlier revision took that dependency *optionally*, so the plugin would load 
 and simply lack class navigation. Nothing verified that arrangement and nothing needed to; it was
 removed rather than left as a claim.
 
-**Spring is the one optional dependency, and it is verified.** Discovering the servers a Spring Boot
-application names reads its configuration through the bundled YAML and properties plugins, which are
-hard dependencies on the same argument as Java. The Spring plugin is asked only which profile is
-active; without it the plugin loads, discovers the same servers, and orders them by
-`spring.profiles.active` instead. Its one registration sits in `solr-spring.xml`, which the
-Plugin Verifier checks alongside the rest.
-
 ### "2026.2 and later" is a claim about the past, not the future
 
 The descriptor sets `since-build="262"` with **no upper bound**, so the plugin declares itself

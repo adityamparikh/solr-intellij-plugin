@@ -80,27 +80,7 @@
          machine for reasons nobody can reconstruct. -->
     <depends>com.jetbrains.restClient</depends>
 
-    <!-- The properties and YAML parsers, for reading a Spring Boot application's own configuration
-         when offering the Solr server it talks to as a connection. Hard, on the argument above: both
-         ship in the unified distribution and are not separately licensed. -->
-    <depends>com.intellij.properties</depends>
-    <depends>org.jetbrains.plugins.yaml</depends>
-
-    <!-- Spring, for one question: which profile the user made active in the IDE. Optional, so the
-         plugin loads without it and reads `spring.profiles.active` from the configuration instead;
-         its single registration lives in `solr-spring.xml`. -->
-    <depends optional="true" config-file="solr-spring.xml">com.intellij.spring</depends>
-
     <resource-bundle>messages.SolrBundle</resource-bundle>
-
-    <!-- The plugin's one extension point, and it exists for its own optional dependency rather than
-         for anyone else: it is how `solr-spring.xml` supplies the Spring plugin's active profiles
-         without any class outside that file naming Spring. -->
-    <extensionPoints>
-        <extensionPoint qualifiedName="org.apache.solr.ide.springActiveProfiles"
-                        interface="org.apache.solr.ide.code.spring.SpringActiveProfiles"
-                        dynamic="true"/>
-    </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Associate the extensionless `managed-schema` (and newer `managed-schema.xml`) with the

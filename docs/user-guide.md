@@ -38,7 +38,6 @@ its checks live.
 | [Restated defaults](#seeing-whats-already-redundant) | An attribute set to Solr's own default | `DIM` |
 | [Companion-field intentions](#fixing-a-missing-capability-automatically) | <kbd>Alt-Enter</kbd> on a field | `INT` |
 | [Connections](#pointing-the-plugin-at-a-solr-server) | Settings → Tools → Solr Connections | `SRV-1`–`SRV-3` |
-| [Servers your project names](#servers-your-project-already-names) | *Discovered in project*, on the same page | `SRV-3a`–`SRV-3d` |
 | [Browsing a server](#browsing-what-a-server-holds) | The **Solr** tool window | `SRV-4`–`SRV-10` |
 | [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr | `SRV-11`–`SRV-18` |
 | [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
@@ -557,36 +556,6 @@ Two things worth knowing before you wonder whether something is broken:
 - **The URL only has to be an `http` or `https` address of some host.** No `/solr` suffix is
   required, because a reverse proxy or a servlet context path can put Solr anywhere and rejecting
   those would be the plugin having an opinion about your deployment.
-
-### Servers your project already names
-
-Beneath the connections, **Discovered in project** lists the Solr servers your own code talks to, so
-you seldom type a URL at all. Select one and press **Add as Connection…** — or double-click it — and
-the form opens filled in. Nothing is connected to until you press OK there.
-
-Where they come from:
-
-- **A SolrJ client built from a literal URL** — `new Http2SolrClient.Builder("http://…")` — is listed
-  as it stands, named for the file it is in.
-- **A client whose URL is injected** — `@Value("${app.solr.url}")` on the builder's argument — is
-  followed into your Spring Boot `application.yml` or `application.properties`, and listed **once per
-  profile**, each with the username written beside the URL (`app.solr.username`). The active profile
-  is listed first and marked: the one made active for the module in the Spring plugin, or else
-  `spring.profiles.active`.
-- **Where no client names a property**, a Spring Boot key that mentions Solr and holds an `http` URL
-  is offered instead, since there is no standard property name to look for.
-
-Worth knowing:
-
-- **A password written beside the URL is never copied without asking.** The form's password field
-  stays empty, and a checkbox, unticked, offers to store the one it found. Ticking it sends it to
-  the IDE's password safe, the same place a typed one goes.
-- **A URL that depends on something the IDE cannot see** — an environment variable such as
-  `${SOLR_URL}` with no default — is not offered, rather than offered with a hole in it.
-- **Only Spring Boot's configuration is read today.** A Quarkus or Micronaut project still has its
-  literal SolrJ URLs listed, and nothing from its configuration files.
-- The list fills in once the IDE has finished indexing, and leaves out any server already listed as
-  a connection.
 
 ## Browsing what a server holds
 

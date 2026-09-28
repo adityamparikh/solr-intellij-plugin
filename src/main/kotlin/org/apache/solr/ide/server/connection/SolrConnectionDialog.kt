@@ -25,48 +25,21 @@ import org.apache.solr.ide.SolrBundle
  * Every rule about what may be entered lives in [SolrConnectionValidation], so the rules can be
  * exercised without a dialog. What is here is the binding.
  *
- * **A password found in the project's configuration is offered as a checkbox, not typed in.** The
- * same reasoning applies: the discovered secret never enters the password field. The box says where
- * it was read, starts unticked, and ticking it is the confirmation the plan requires before a secret
- * from a configuration file reaches the password safe.
- *
  * @param project the project the connection belongs to
  * @param initial the connection being edited, or null when adding a new one
  * @param hasStoredPassword whether a secret is already stored — the value itself is never read
- * @param prefill what a new connection's fields start with, where the project already names the
- *   server; ignored when editing
- * @param discoveredPasswordSource where a password beside the prefilled server was read, in words,
- *   or null where none was found
  */
 class SolrConnectionDialog(
     project: Project,
     private val initial: SolrConnection?,
     private val hasStoredPassword: Boolean,
-    prefill: SolrConnection? = null,
-    discoveredPasswordSource: String? = null,
 ) : DialogWrapper(project) {
 
-    private val startingWith = initial ?: prefill
-    private val nameField = JBTextField(startingWith?.displayName.orEmpty())
-    private val urlField = JBTextField(startingWith?.baseUrl.orEmpty())
-    private val usernameField = JBTextField(startingWith?.username.orEmpty())
+    private val nameField = JBTextField(initial?.displayName.orEmpty())
+    private val urlField = JBTextField(initial?.baseUrl.orEmpty())
+    private val usernameField = JBTextField(initial?.username.orEmpty())
     private val passwordField = JBPasswordField()
     private val forgetPasswordBox = JBCheckBox(SolrBundle.message("connection.dialog.forgetPassword"))
-    private val storeDiscoveredBox = discoveredPasswordSource?.let {
-        JBCheckBox(SolrBundle.message("connection.dialog.storeDiscoveredPassword", it))
-    }
-
-    /**
-     * Whether the password found in the project's configuration should be stored.
-     *
-     * False until the user ticks the box, and always false where nothing was found. Read by the page
-     * that opened the form, which holds the secret itself; the form only asks.
-     */
-    var storeDiscoveredPassword: Boolean
-        get() = storeDiscoveredBox?.isSelected == true
-        set(value) {
-            storeDiscoveredBox?.isSelected = value
-        }
 
     init {
         title = SolrBundle.message(if (initial == null) "connection.dialog.addTitle" else "connection.dialog.editTitle")
@@ -96,7 +69,6 @@ class SolrConnectionDialog(
         if (hasStoredPassword) {
             row("") { cell(forgetPasswordBox) }
         }
-        storeDiscoveredBox?.let { box -> row("") { cell(box) } }
     }
 
     /**
@@ -117,9 +89,7 @@ class SolrConnectionDialog(
             username = usernameField.text,
             // A secret already stored counts: it is what would be sent, so a username cleared away
             // from underneath it is the same mistake as typing one with no user.
-            hasPassword = passwordField.password.isNotEmpty() ||
-                (hasStoredPassword && !forgetPasswordBox.isSelected) ||
-                storeDiscoveredPassword,
+            hasPassword = passwordField.password.isNotEmpty() || (hasStoredPassword && !forgetPasswordBox.isSelected),
         ) ?: return null
         return ValidationInfo(messageFor(problem), fieldFor(problem))
     }

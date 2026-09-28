@@ -33,8 +33,7 @@ never released; 0.2.0, which carries all three, is drafted on GitHub and waiting
   everything built on it: eleven inspections with quick-fixes, completion over Solr's own
   vocabulary, cross-file navigation and rename, quick documentation at every caret position, and
   inline hints saying what each field can actually match.
-- **A live server** — connections with their passwords in the IDE's password safe, offered from the
-  servers your SolrJ clients and Spring Boot profiles already name, a tool window
+- **A live server** — connections with their passwords in the IDE's password safe, a tool window
   showing collections, shards, replicas and the fields an index actually holds, queries run through
   the IDE's own HTTP Client with a readable summary and field completion, a drift view comparing a
   configset with a collection — with upload, reload and additive Schema API changes — and a
