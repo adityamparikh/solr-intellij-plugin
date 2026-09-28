@@ -44,8 +44,12 @@ drafted on GitHub, not released; everything after it is unreleased work on `main
 
 **The editor still never talks to a server**, and that is the design rather than a gap: every
 editor answer comes from the files in your project and from Solr's own jars, read at build time. The
-server features contact one only when you ask. Framework configuration (Spring Boot and the others),
-Apache Camel, and a settings page for configset detection are not built.
+server features contact one only when you ask. Framework configuration (Spring Boot and the others)
+and Apache Camel are not built.
+
+**If a configset does not light up**, right-click its directory and choose *Mark Directory as Solr
+Configset Root*; **Settings → Languages & Frameworks → Solr Configsets** lists every configset the
+plugin recognises and how it found each one.
 
 **The [implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on what
 is done**, step by step. The [specification](specs/0002-solr-intellij-plugin.md) describes intent,
