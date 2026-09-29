@@ -3,3 +3,42 @@
 # file works for everyone who clones the repository.
 GET {{solrUrl}}/{{collection}}/select?q=*:*&rows=10
 Accept: application/json
+
+### Index the sample products
+# Ten products in three categories, committed at once so the searches below find them.
+# Run it again at any time: documents with the same id are replaced, not duplicated.
+POST {{solrUrl}}/{{collection}}/update?commit=true
+Content-Type: application/json
+
+< ./sample-products.json
+
+### Search for "solr" across the fields the /select handler weighs
+# The handler's defaults do the work: edismax over name^3, description and category.
+GET {{solrUrl}}/{{collection}}/select?q=solr&fl=id,name,score
+Accept: application/json
+
+### The query ProductSearch.java sends, as a JSON body
+# The demo's solrconfig.xml declares /select and not /query, and Solr takes a JSON body at either.
+POST {{solrUrl}}/{{collection}}/select
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "category:books AND name:solr",
+  "fields": ["id", "name", "manufacturer"],
+  "limit": 10
+}
+
+### Count products by manufacturer
+# manufacturer is declared on the server and not in solr/conf, which the drift view reports.
+POST {{solrUrl}}/{{collection}}/select
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "*:*",
+  "limit": 0,
+  "facet": {
+    "manufacturers": { "type": "terms", "field": "manufacturer" }
+  }
+}
