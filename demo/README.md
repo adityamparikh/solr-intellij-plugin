@@ -62,7 +62,8 @@ The core is created from Solr's **default** configset; `solr/conf` here is delib
 into the container, so the repository and the server genuinely differ. That is what gives the drift
 comparison something to find, and it makes uploading the configset a real step rather than a no-op.
 
-The application (needs the Solr above, since the client is constructed eagerly):
+The application. It starts without Solr, since building the client opens no connection, and nothing
+queries at startup; it keeps running until stopped, because the client's threads hold the JVM open:
 
 ```bash
 cd demo && ./gradlew bootRun
