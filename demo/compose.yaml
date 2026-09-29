@@ -7,10 +7,13 @@
 #   docker compose -f demo/compose.yaml up -d
 #   docker compose -f demo/compose.yaml down -v
 #
-# The configset in ./solr/conf is deliberately NOT mounted. Bind-mounting it would make the server
-# and the repository identical by construction, and the drift comparison — repository versus what is
-# actually deployed — would have nothing to show. The core is created from Solr's default configset
-# instead, and getting your configset onto the server is itself a demo step: upload, then reload.
+# Solr runs in SolrCloud mode, which is Solr 10's default, so the drift view's Upload and Reload
+# works against it. On first start, solr/run-with-products.sh creates the `products` collection from
+# a copy of ./solr/conf that repairs the planted defects and differs from the repository in four
+# deliberate places, so the drift view has one of each kind of row to show. The script says which.
+#
+# ./solr/conf is mounted read-only and only copied. Solr never serves the repository's files, so the
+# server and the repository stay two things that can disagree, which is what the drift view is for.
 services:
   solr:
     # Pinned to the exact release the catalog is generated from — `supportedSolrLines` in
@@ -20,16 +23,22 @@ services:
     container_name: solr-demo
     ports:
       - "8983:8983"
+    environment:
+      # The name the node registers under in SolrCloud. Left alone it is the container's IP address,
+      # which can change whenever the container is recreated, stranding the collection's replica on
+      # a node that no longer exists. Solr 10 reads SOLR_HOST_ADVERTISE; the older SOLR_HOST is ignored.
+      SOLR_HOST_ADVERTISE: localhost
     volumes:
       - solr-data:/var/solr
+      - ./solr/conf:/demo/conf:ro
+      - ./solr/run-with-products.sh:/demo/run-with-products.sh:ro
     command:
-      - solr-precreate
-      - products
+      - /demo/run-with-products.sh
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8983/solr/admin/info/system || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
 
 volumes:
   solr-data:

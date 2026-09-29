@@ -22,11 +22,13 @@ something true to say.
 
 If a build or an IDE offers to clean these up, decline.
 
-**One consequence: this configset cannot be deployed.** A Solr core refuses to start on a tokenizer
-class that does not exist or a field whose type nobody declares, so uploading `solr/conf` to a real
-server fails — which is why `compose.yaml` does not mount it. The drift and upload demos need a
-collection built from a deployable configset; a copy of this one with `custom_text`, `notes` and
-`legacy` removed is enough.
+**One consequence: this configset cannot be deployed as written.** A Solr core refuses to start on
+a tokenizer class that does not exist or a field whose type nobody declares, and SolrCloud also
+requires a `_version_` field this schema lacks, so uploading `solr/conf` to a real server fails.
+`compose.yaml` deploys a copy instead: `solr/run-with-products.sh` repairs the defects the way a
+real server might have, and changes a few more things, so the drift view has one row of each kind to
+show. The script lists each edit and the row it produces, and stops if the schema no longer matches
+it.
 
 ## Layout
 
@@ -35,9 +37,11 @@ solr/conf/managed-schema.xml   the schema, with its real "DO NOT EDIT" banner
 solr/conf/solrconfig.xml       handlers; the /select qf names fields from the schema
 src/main/java/com/example/demo Spring Boot app: plain SolrJ, wired by Spring
 src/main/resources/application.yml   dev and staging profiles, each with its own Solr URL
-compose.yaml                   local Solr 10 with a products core from Solr's own default configset
-queries.http                   a Solr request naming no host; the environment supplies it
-http-client.env.json           the "local" environment: the Solr above and its products core
+solr/run-with-products.sh      creates the products collection from a repaired copy of solr/conf
+compose.yaml                   local SolrCloud 10, running the script above on first start
+sample-products.json           ten products to index, from queries.http
+queries.http                   Solr requests naming no host: index the samples, then search them
+http-client.env.json           the "local" environment: the Solr above and its products collection
 ```
 
 Field names cross every boundary here without anything checking them: `qf` in `solrconfig.xml`
@@ -60,9 +64,13 @@ docker compose -f demo/compose.yaml up -d   # http://localhost:8983
 docker compose -f demo/compose.yaml down -v
 ```
 
-The core is created from Solr's **default** configset; `solr/conf` here is deliberately not mounted
-into the container, so the repository and the server genuinely differ. That is what gives the drift
-comparison something to find, and it makes uploading the configset a real step rather than a no-op.
+On first start it creates the `products` collection from the repaired copy described above; later
+starts reuse it, and `down -v` starts over. Solr never serves `solr/conf` itself, so the repository
+and the server stay two things that can disagree, which is what the drift view compares.
+
+Then, in the sandbox, open `queries.http`, pick the **local** environment, and run *Index the sample
+products*. The requests below it search what that indexed, including the query `ProductSearch`
+sends.
 
 The application. It starts without Solr, since building the client opens no connection, and nothing
 queries at startup; it keeps running until stopped, because the client's threads hold the JVM open:
@@ -92,6 +100,6 @@ Declaration on `body_t` lands on `<dynamicField name="*_t">`, and Find Usages on
 the `pf`.
 
 The rest of what the plugin does is in [the user guide](../docs/user-guide.md), which uses this
-project for its examples. Its server features need the Solr above. In the drift view, the
-container's `products` core was built from Solr's default configset, not from `solr/conf`, so
-comparing the two finds real differences.
+project for its examples. Its server features need the Solr above. In the drift view, `solr`
+against `products` shows `sku` *Not deployed*, `legacy` and `custom_text` *Differs*, and
+`manufacturer`, `_version_` and `plong` *Only on server*; Apply sends `sku` alone.

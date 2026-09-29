@@ -1,0 +1,82 @@
+[
+  {
+    "id": "book-1",
+    "name": "Solr Search in Practice",
+    "category": "books",
+    "manufacturer": "Lucid Press",
+    "description": "Schema design, analyzers and relevance tuning for Apache Solr, from a first collection to a production cluster.",
+    "body_t": "A practical guide to building search with Solr"
+  },
+  {
+    "id": "book-2",
+    "name": "Relevance Tuning with Solr",
+    "category": "books",
+    "manufacturer": "Lucid Press",
+    "description": "Boosts, function queries and the edismax parser, explained through worked examples.",
+    "body_t": "Tuning relevance with boosts and phrase fields"
+  },
+  {
+    "id": "book-3",
+    "name": "Designing Data Pipelines",
+    "category": "books",
+    "manufacturer": "Northwind Books",
+    "description": "Moving and transforming data between services, queues and search indexes.",
+    "body_t": "Pipelines that feed a search index"
+  },
+  {
+    "id": "book-4",
+    "name": "The Lucene Handbook",
+    "category": "books",
+    "manufacturer": "Northwind Books",
+    "description": "Inverted indexes, postings and scoring, the library underneath Solr.",
+    "body_t": "How an inverted index answers a query"
+  },
+  {
+    "id": "elec-1",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "electronics",
+    "manufacturer": "Acoustica",
+    "description": "Over-ear headphones with thirty hours of battery and a folding case.",
+    "body_t": "Quiet headphones for long flights"
+  },
+  {
+    "id": "elec-2",
+    "name": "Mechanical Keyboard",
+    "category": "electronics",
+    "manufacturer": "Keysmith",
+    "description": "A tenkeyless keyboard with hot-swappable switches and a braided cable.",
+    "body_t": "A keyboard for people who type all day"
+  },
+  {
+    "id": "elec-3",
+    "name": "4K Monitor, 27 inch",
+    "category": "electronics",
+    "manufacturer": "Viewline",
+    "description": "An IPS panel with USB-C power delivery, sized for a code editor and a terminal side by side.",
+    "body_t": "A sharp monitor for reading code"
+  },
+  {
+    "id": "kitchen-1",
+    "name": "Cast Iron Skillet",
+    "category": "kitchen",
+    "manufacturer": "Hearthware",
+    "description": "A pre-seasoned ten-inch skillet that goes from the stove to the oven.",
+    "body_t": "A skillet that lasts for decades"
+  },
+  {
+    "id": "kitchen-2",
+    "name": "Pour-Over Coffee Kettle",
+    "category": "kitchen",
+    "manufacturer": "Hearthware",
+    "description": "A gooseneck kettle with a built-in thermometer for slow, even pouring.",
+    "body_t": "A kettle for pour-over coffee"
+  },
+  {
+    "id": "kitchen-3",
+    "name": "Chef's Knife",
+    "category": "kitchen",
+    "manufacturer": "Edgecraft",
+    "description": "An eight-inch knife forged from a single piece of stainless steel.",
+    "body_t": "A knife for everyday cooking"
+  }
+]

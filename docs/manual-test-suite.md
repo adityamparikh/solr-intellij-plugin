@@ -752,7 +752,12 @@ as a schema rather than as a diff.*
 `SolrCollectionsViewTest`, `SolrCollectionsPanelTest`. Manual adds: **that any of it appears at
 all**. The headless test environment registers no tool windows — not this plugin's, not any — so
 whether the registration takes effect is a question only a running IDE can answer. Everything below
-needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enough for all of them.*
+needs a Solr. `docker compose -f demo/compose.yaml up -d` starts the demo's: SolrCloud, with a
+`products` collection built from a repaired copy of `solr/conf` that differs from it by one drift row
+of each kind, and a request in `queries.http` indexes ten sample products into it. Three checks want
+a different server: SRV-8 and SRV-9 read the `*_s` and `*_f` patterns Solr's `_default` configset
+declares, and SRV-23 needs a standalone Solr. `docker run -p 8983:8983 solr:10.0.0 solr-precreate
+books` gives both, with the demo's stopped first, since both use port 8983.*
 
 - [ ] **SRV-1** — Settings → Tools → **Solr Connections** exists, and `+` opens a form. Saving
       `http://localhost:8983/solr` adds a row showing that URL.
@@ -797,7 +802,8 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       Client's own response viewer. **The point of the check is that the committed file names no
       host** — the environment does, which is what lets a colleague clone the repository and use their
       own server.
-- [ ] **SRV-13** — Run *Query a Solr collection* against a collection holding documents. Above the
+- [ ] **SRV-13** — Run *Query a Solr collection* against a collection holding documents; on the
+      demo's `products`, run *Index the sample products* in `queries.http` first. Above the
       raw JSON the response shows how many matched, how long it took, and a table of the returned
       documents with columns lined up. `_version_` is **not** a column, and the line above the table
       says which internal fields were left out.
@@ -851,7 +857,10 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       press Compare. A field present in the configset and not on the server reads *Not deployed*;
       one added through the Schema API reads *Only on server*; one defined differently in each reads
       *Differs* and **shows both definitions side by side**. A view that showed one side would hide
-      the disagreement in the place it exists to be shown.
+      the disagreement in the place it exists to be shown. The demo's `solr` configset against its
+      `products` collection shows all three without editing either side: `sku` *Not deployed*,
+      `legacy` and `custom_text` *Differs*, and `manufacturer`, `_version_` and `plong` *Only on
+      server*.
 - [ ] **SRV-20** — Compare a configset against a collection created from it. The table is empty and
       the line above it says the two agree **and how many declarations agreed**. That count is the
       only thing distinguishing this from a comparison that never ran. **The configset has to be
@@ -867,7 +876,8 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
       nothing is uploaded. Confirm: the table is re-read and the difference clears. **Upload a
       deployable configset**, as in SRV-20: uploading the demo's own `solr/conf` fails at the reload,
       correctly, because a core cannot start on it — a real failure worth seeing once, but not this
-      check.
+      check. Done against the demo's `products`, it leaves that collection on the broken configset;
+      `docker compose -f demo/compose.yaml down -v` and `up -d` rebuild it.
 - [ ] **SRV-23** — Point the connection at a **standalone** Solr and press Upload and Reload.
       It refuses, saying the server is not running in SolrCloud mode, and **sends no upload** —
       `/admin/configs` answers every action with HTTP 400 there, so trying anyway would report a
@@ -883,7 +893,10 @@ needs a Solr; `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enou
 - [ ] **SRV-26** — Produce a **Not deployed** row, select it to see its `add-field` payload, and
       press **Apply Additive Changes**. Confirm names the count, the collection and the server. After
       applying, the row is gone and the summary says the two agree **and how many declarations
-      agreed** — that count is what distinguishes a comparison that ran from one that did not.
+      agreed** — that count is what distinguishes a comparison that ran from one that did not. On the
+      demo's `products`, `sku` is already such a row. Applying it removes only that row: the
+      *Differs* and *Only on server* rows stay, because Apply never sends them. The summary goes from
+      *1 not deployed, 3 only on the server, 2 differing; 16 agree* to *0 not deployed, …; 17 agree*.
 - [ ] **SRV-27** — Make the only difference a **Differs** row. **Apply Additive Changes is disabled**
       — a comparison with nothing additive in it offers no button at all, which is the honest reading
       of "only additive changes get the second action".

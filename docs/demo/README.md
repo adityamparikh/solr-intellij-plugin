@@ -213,22 +213,19 @@ app:
 ## Step 3. Stand up a local Solr, if you are doing the server demos
 
 ```bash
-docker compose -f demo/compose.yaml up -d      # Solr 10 on :8983, core `products`
+docker compose -f demo/compose.yaml up -d      # SolrCloud 10 on :8983, collection `products`
 docker compose -f demo/compose.yaml down -v    # afterwards, including the data volume
 ```
 
-Equivalent to `docker run -d -p 8983:8983 --name solr-demo solr:10` followed by
-`docker exec solr-demo solr create -c products`, which also works if you prefer it.
+On first start, `demo/solr/run-with-products.sh` creates `products` from a copy of
+`demo/solr/conf`. The repository's copy cannot be deployed, because its planted defects stop a
+core starting, so the deployed copy repairs them and differs in a few more places. The
+drift demo is set up by construction: `sku` is in the repository and not on the server,
+`legacy` and `custom_text` are defined differently on each side, and `manufacturer` exists
+only on the server. Nothing has to be edited on stage to show it.
 
-The core is created from Solr's **default** configset, and `demo/solr/conf` is deliberately
-not mounted into the container. That is what makes the drift demo possible: bind-mounting
-the configset would make the server and the repository identical by construction, and the
-comparison would have nothing to show. Getting your configset onto the server is itself a
-demo step.
-
-Then index a handful of documents so queries return something. Deliberately **do not**
-deploy the `sku` field to the server — you will add it to the repository copy on stage
-and let the comparison catch the difference.
+Then index the sample products so queries return something: open `demo/queries.http`, pick
+the **local** environment, and run *Index the sample products*.
 
 ## Step 4. Record a backup
 
@@ -538,18 +535,26 @@ blob, and that relevance debugging is most of the job.
 
 ### Step 39. The drift demo
 
-Add the `sku` field to the schema in your repository. Do not deploy it. Open the
-comparison.
+Open the **Drift** tab, choose the `solr` configset and the `products` collection, and press
+Compare.
 
-Your repository has `sku`. The server does not. The plugin says so.
+Your repository has `sku`. The server does not. The plugin says so. It also shows the server
+holding a `manufacturer` field nobody committed, and two declarations the two sides define
+differently.
 
 Say: this is the drift the banner was warning about, and it is why the plugin does not
 try to stop you editing files. Editing is fine. Not knowing is the problem.
 
 ### Step 40. Resolve it
 
-Upload the configuration set, reload the collection, and show the comparison come clean.
-Note that the plugin named the server it was about to touch and asked first.
+Select `sku`, show the `add-field` request it would send, and press **Apply Additive
+Changes**. Note that the plugin named the server it was about to touch and asked first. The
+`sku` row goes, and the comparison is read again rather than assumed.
+
+Then select a *Differs* row. The plugin shows the `replace-field` request and refuses to send
+it: changing a field's definition under indexed documents needs a reindex, which Solr will
+not tell you. Say: the plugin will add what is missing, and will not pretend a change is
+safe when it is not.
 
 ### Step 41. Return to the opening bug
 

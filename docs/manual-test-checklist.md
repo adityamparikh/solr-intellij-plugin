@@ -17,8 +17,11 @@
   Everywhere) → *Quick Documentation*, *Find Usages*, *Rename*. Hovering also opens quick
   documentation.
 - **The server checks need a Solr**, and the ones that write need a collection you can spare.
-  `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` is enough for all of them. Never point
-  the writing checks — SRV-22, 24, 26 and 28–31 — at a collection you care about.
+  `docker compose -f demo/compose.yaml up -d` starts the demo's, with a `products` collection that
+  already drifts from `solr/conf` one row of each kind; *Index the sample products* in `queries.http`
+  fills it. SRV-8, SRV-9 and SRV-23 want `docker run -p 8983:8983 solr:10.0.0 solr-precreate books`
+  instead, with the demo's stopped. Never point the writing checks — SRV-22, 24, 26 and 28–31 — at a
+  collection you care about.
 - **Close the sandbox, never kill it.** A hard kill can disable the plugin at the next start.
 - **Every edit ends in Undo**, so the demo is back at its baseline for the next check.
 
