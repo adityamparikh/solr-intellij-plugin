@@ -36,6 +36,8 @@ solr/conf/solrconfig.xml       handlers; the /select qf names fields from the sc
 src/main/java/com/example/demo Spring Boot app: plain SolrJ, wired by Spring
 src/main/resources/application.yml   dev and staging profiles, each with its own Solr URL
 compose.yaml                   local Solr 10 with a products core from Solr's own default configset
+queries.http                   a Solr request naming no host; the environment supplies it
+http-client.env.json           the "local" environment: the Solr above and its products core
 ```
 
 Field names cross every boundary here without anything checking them: `qf` in `solrconfig.xml`
