@@ -217,9 +217,9 @@ docker compose -f demo/compose.yaml up -d      # SolrCloud 10 on :8983, collecti
 docker compose -f demo/compose.yaml down -v    # afterwards, including the data volume
 ```
 
-On first start, `demo/solr/run-with-products.sh` creates `products` from a copy of
-`demo/solr/conf`. The repository's copy cannot be deployed, because its planted defects stop a
-core starting, so the deployed copy repairs them and differs in a few more places. The
+On first start, compose creates `products` from `demo-server/products`, a configset standing
+for what the server runs. `demo/solr/conf` cannot be deployed, because its planted defects stop
+a core starting, so the server's has them repaired and differs in a few more places. The
 drift demo is set up by construction: `sku` is in the repository and not on the server,
 `legacy` and `custom_text` are defined differently on each side, and `manufacturer` exists
 only on the server. Nothing has to be edited on stage to show it.

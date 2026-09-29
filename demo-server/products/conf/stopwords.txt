@@ -1,0 +1,7 @@
+# Stopwords for the demo configset. The stop filter in managed-schema.xml names this file,
+# which is the resource-reference demo: Cmd+Click on words="stopwords.txt" lands here.
+a
+an
+and
+of
+the

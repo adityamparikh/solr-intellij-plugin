@@ -25,10 +25,11 @@ If a build or an IDE offers to clean these up, decline.
 **One consequence: this configset cannot be deployed as written.** A Solr core refuses to start on
 a tokenizer class that does not exist or a field whose type nobody declares, and SolrCloud also
 requires a `_version_` field this schema lacks, so uploading `solr/conf` to a real server fails.
-`compose.yaml` deploys a copy instead: `solr/run-with-products.sh` repairs the defects the way a
-real server might have, and changes a few more things, so the drift view has one row of each kind to
-show. The script lists each edit and the row it produces, and stops if the schema no longer matches
-it.
+`compose.yaml` deploys `../demo-server/products` instead: a ready configset standing for what the
+server runs, with the defects repaired the way a real server might have them and a few more
+differences, so the drift view has one row of each kind to show. Its header lists each difference.
+It lives beside this project rather than in it because the plugin would otherwise read it as a
+second configset of the project.
 
 ## Layout
 
@@ -37,8 +38,7 @@ solr/conf/managed-schema.xml   the schema, with its real "DO NOT EDIT" banner
 solr/conf/solrconfig.xml       handlers; the /select qf names fields from the schema
 src/main/java/com/example/demo Spring Boot app: plain SolrJ, wired by Spring
 src/main/resources/application.yml   dev and staging profiles, each with its own Solr URL
-solr/run-with-products.sh      creates the products collection from a repaired copy of solr/conf
-compose.yaml                   local SolrCloud 10, running the script above on first start
+compose.yaml                   local SolrCloud 10; creates products from ../demo-server/products
 sample-products.json           ten products to index, from queries.http
 queries.http                   Solr requests naming no host: index the samples, then search them
 http-client.env.json           the "local" environment: the Solr above and its products collection
@@ -64,8 +64,8 @@ docker compose -f demo/compose.yaml up -d   # http://localhost:8983
 docker compose -f demo/compose.yaml down -v
 ```
 
-On first start it creates the `products` collection from the repaired copy described above; later
-starts reuse it, and `down -v` starts over. Solr never serves `solr/conf` itself, so the repository
+On first start it creates the `products` collection from `../demo-server/products`; later starts
+reuse it, and `down -v` starts over. Solr never serves `solr/conf` itself, so the repository
 and the server stay two things that can disagree, which is what the drift view compares.
 
 Then, in the sandbox, open `queries.http`, pick the **local** environment, and run *Index the sample
