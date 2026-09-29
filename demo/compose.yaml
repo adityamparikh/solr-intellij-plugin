@@ -8,12 +8,9 @@
 #   docker compose -f demo/compose.yaml down -v
 #
 # Solr runs in SolrCloud mode, which is Solr 10's default, so the drift view's Upload and Reload
-# works against it. On first start, solr/run-with-products.sh creates the `products` collection from
-# a copy of ./solr/conf that repairs the planted defects and differs from the repository in four
-# deliberate places, so the drift view has one of each kind of row to show. The script says which.
-#
-# ./solr/conf is mounted read-only and only copied. Solr never serves the repository's files, so the
-# server and the repository stay two things that can disagree, which is what the drift view is for.
+# works against it. On first start, solr-init creates the `products` collection from
+# ../demo-server/products: a ready configset standing for what the server runs. It differs from
+# ./solr/conf on purpose, so the drift view has one row of each kind to show; its header says how.
 services:
   solr:
     # Pinned to the exact release the catalog is generated from — `supportedSolrLines` in
@@ -30,15 +27,33 @@ services:
       SOLR_HOST_ADVERTISE: localhost
     volumes:
       - solr-data:/var/solr
-      - ./solr/conf:/demo/conf:ro
-      - ./solr/run-with-products.sh:/demo/run-with-products.sh:ro
-    command:
-      - /demo/run-with-products.sh
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8983/solr/admin/info/system || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 30
+
+  # Runs once and exits. Creating a collection that already exists is skipped, so `up` is safe to
+  # repeat; `down -v` starts over.
+  solr-init:
+    image: solr:10.0.0
+    depends_on:
+      solr:
+        condition: service_healthy
+    volumes:
+      - ../demo-server/products:/configsets/products:ro
+    command:
+      - bash
+      - -c
+      - |
+        if curl -sf "http://solr:8983/solr/admin/collections?action=LIST" | grep -q '"products"'; then
+          echo "products already exists"
+        else
+          # Two steps, not `solr create`: that routes its request to the node's advertised address,
+          # localhost, which from this container is the wrong machine.
+          solr zk upconfig -n products -d /configsets/products/conf -z solr:9983 &&
+          curl -sf "http://solr:8983/solr/admin/collections?action=CREATE&name=products&collection.configName=products&numShards=1&replicationFactor=1"
+        fi
 
 volumes:
   solr-data:

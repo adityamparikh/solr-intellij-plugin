@@ -785,9 +785,10 @@ payload, then press **Apply Additive Changes**. (Verified by
 [the drift and apply checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).)
 
 **The demo project is set up for this.** `docker compose -f demo/compose.yaml up -d` creates a
-`products` collection from a copy of the demo's `solr` configset. The repository's own
-copy cannot be deployed, because the defects planted in it for the editor checks stop a Solr core
-from starting, so the deployed copy repairs them and differs in a few more places. Comparing the two
+`products` collection from `demo-server/products`, a configset standing for what the server runs.
+The demo's own `solr` configset cannot be deployed, because the defects planted in it for the editor
+checks stop a Solr core from starting, so the server's has them repaired and differs in a few more
+places. Comparing the two
 shows one row of each kind: `sku` is *Not deployed*, `legacy` and `custom_text` *Differ*, and
 `manufacturer` is *Only on server*, along with `_version_` and its type, which SolrCloud requires.
 Apply sends `sku` alone.

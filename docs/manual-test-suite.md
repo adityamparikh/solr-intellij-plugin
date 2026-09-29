@@ -753,8 +753,8 @@ as a schema rather than as a diff.*
 all**. The headless test environment registers no tool windows — not this plugin's, not any — so
 whether the registration takes effect is a question only a running IDE can answer. Everything below
 needs a Solr. `docker compose -f demo/compose.yaml up -d` starts the demo's: SolrCloud, with a
-`products` collection built from a repaired copy of `solr/conf` that differs from it by one drift row
-of each kind, and a request in `queries.http` indexes ten sample products into it. Three checks want
+`products` collection built from `demo-server/products`, which differs from `solr/conf` by one drift
+row of each kind, and a request in `queries.http` indexes ten sample products into it. Three checks want
 a different server: SRV-8 and SRV-9 read the `*_s` and `*_f` patterns Solr's `_default` configset
 declares, and SRV-23 needs a standalone Solr. `docker run -p 8983:8983 solr:10.0.0 solr-precreate
 books` gives both, with the demo's stopped first, since both use port 8983.*
