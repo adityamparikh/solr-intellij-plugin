@@ -73,10 +73,23 @@ This is a **standalone Gradle build**. The plugin's `settings.gradle.kts` does n
 purpose — it would otherwise be compiled by the plugin's build, counted against its coverage floor,
 and scanned by its documentation gate.
 
-## What the plugin currently does with it
+## What the plugin shows for each defect
 
-Very little, so far. Opening `managed-schema.xml` gets XML highlighting rather than plain text,
-which is the one user-visible behaviour the activation gate produces. Everything in the table above
-is caught by features that have not been built yet; the implementation plan
-([specs/plans/0002-solr-intellij-plugin-plan.md](../specs/plans/0002-solr-intellij-plugin-plan.md))
-owns what has landed.
+Each defect in the table above is there for one thing the plugin says about it:
+
+| Defect | What you see |
+|---|---|
+| `copyField source="manufacturer"` | A red wavy underline, an error. Alt-Enter offers the declared fields as replacements, closest spelling first. |
+| `legacy`'s `type="discontinued"` | A red wavy underline, an error. The field also gets no inlay hint, because nothing can be said about a type nobody declares. |
+| `notes`'s `custom_text` | No error, on purpose. The inlay hint keeps what the field stores and drops what it matches, because the analyzer names a factory the plugin does not recognise. |
+| `categry:books`, `price` in `setFields` | A warning on the name alone, stopping at the colon. `id` and `name` beside `price` stay unmarked. |
+| `@Field("prce")` | The same warning, read from the annotation. |
+
+The `pf` naming `body_t` is the reverse case: it is correct, and nothing is reported on it. Go to
+Declaration on `body_t` lands on `<dynamicField name="*_t">`, and Find Usages on that pattern finds
+the `pf`.
+
+The rest of what the plugin does is in [the user guide](../docs/user-guide.md), which uses this
+project for its examples. Its server features need the Solr above. In the drift view, the
+container's `products` core was built from Solr's default configset, not from `solr/conf`, so
+comparing the two finds real differences.
