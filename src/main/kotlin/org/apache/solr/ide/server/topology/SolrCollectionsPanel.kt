@@ -1,17 +1,26 @@
 package org.apache.solr.ide.server.topology
 
+import com.intellij.httpClient.http.request.HttpRequestLanguage
+import com.intellij.ide.scratch.ScratchFileService
+import com.intellij.ide.scratch.ScratchRootType
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ColoredTreeCellRenderer
+import com.intellij.ui.PopupHandler
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -94,6 +103,19 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     // it would read has actually moved. Null means nothing has been read.
     private var lastReadConnectionId: String? = null
 
+    /**
+     * The right-click menu: the queries the selected row offers, each named for what it asks.
+     *
+     * Built on each opening from the row, so a field offers only what its flags can answer and a
+     * shard offers nothing. [SolrTreeQueries] decides; this only turns its answer into menu items.
+     */
+    internal val queryMenu: ActionGroup = object : ActionGroup(), DumbAware {
+        override fun getChildren(event: AnActionEvent?): Array<AnAction> =
+            offeredQueries().map { queryAction(it) }.toTypedArray()
+
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+    }
+
     init {
         tree.isRootVisible = false
         tree.showsRootHandles = true
@@ -111,6 +133,10 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
                 override fun treeWillCollapse(event: javax.swing.event.TreeExpansionEvent) = Unit
             },
         )
+
+        // Selecting the row under the pointer before the menu opens, so the menu is always about the
+        // row the user right-clicked rather than whichever one happened to be selected before.
+        PopupHandler.installFollowingSelectionTreePopup(tree, queryMenu, POPUP_PLACE)
 
         banner.isVisible = false
         banner.border = JBUI.Borders.empty(4, 8)
@@ -336,6 +362,54 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
         return null
     }
 
+    private fun offeredQueries(): List<SolrTreeQuery> {
+        val row = (tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode
+            ?: return emptyList()
+        return SolrTreeQueries.offeredFor(row, selectedCollection())
+    }
+
+    private fun queryAction(query: SolrTreeQuery): AnAction {
+        val label = when (query.kind) {
+            SolrTreeQueryKind.QUERY -> SolrBundle.message("collections.query.query", query.collection)
+            SolrTreeQueryKind.EXPLAIN -> SolrBundle.message("collections.query.explain", query.collection)
+            SolrTreeQueryKind.FIND_WITH_FIELD -> SolrBundle.message("collections.query.find", query.field.orEmpty())
+            SolrTreeQueryKind.COUNT_VALUES -> SolrBundle.message("collections.query.count", query.field.orEmpty())
+        }
+        return object : DumbAwareAction(label) {
+            override fun actionPerformed(event: AnActionEvent) {
+                openQuery(query)
+            }
+
+            override fun update(event: AnActionEvent) {
+                event.presentation.isEnabled = settings.selectedConnection != null
+            }
+
+            override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        }
+    }
+
+    /**
+     * Opens [query] as an HTTP Client request in a new scratch file, and runs nothing.
+     *
+     * A scratch file rather than a project file, so choosing a query changes nothing in the
+     * repository; and a new one each time, so a request the user edited is never overwritten.
+     *
+     * @param query the query to open
+     * @return the file opened, or null where there is no connection to address it to
+     */
+    internal fun openQuery(query: SolrTreeQuery): VirtualFile? {
+        val connection = settings.selectedConnection ?: return null
+        val file = ScratchRootType.getInstance().createScratchFile(
+            project,
+            SolrTreeQueries.scratchFileName(query),
+            HttpRequestLanguage.INSTANCE,
+            SolrTreeQueries.requestText(query, connection),
+            ScratchFileService.Option.create_new_always,
+        ) ?: return null
+        FileEditorManager.getInstance(project).openFile(file, true)
+        return file
+    }
+
     /**
      * Reads the collection's schema, then offers a document to index into it.
      *
@@ -481,6 +555,7 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
 
     private companion object {
         const val TOOLBAR_PLACE = "SolrCollectionsToolWindow"
+        const val POPUP_PLACE = "SolrCollectionsToolWindowPopup"
     }
 }
 

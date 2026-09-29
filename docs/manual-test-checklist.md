@@ -210,6 +210,8 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
 - [ ] **SRV-9** — `price_f` has no document count, `author_s` has one; `_root_` reads
   `(unstored field)`.
 - [ ] **SRV-10** — Collapsing and expanding **Fields** does not reach the server; only Refresh does.
+- [ ] **SRV-10a** — Right-clicking a collection or field offers queries it can answer; choosing one
+  opens a scratch `.http` request that runs only when you press run, and holds no password.
 
 ### [Queries in the HTTP Client](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
 - [ ] **SRV-11** — In an `.http` file, *Add Request* → **Solr** offers five requests with proper

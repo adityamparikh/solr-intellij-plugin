@@ -69,6 +69,9 @@ enum class SolrTopologyNodeKind {
  * @property health how healthy Solr says the thing is, or null where it said nothing this plugin
  *   recognises. Carried apart from [detail] because it is drawn rather than written — as a coloured
  *   dot — and a health word nobody has a colour for stays in [detail] instead, as the word
+ * @property field what the index says about the field a [SolrTopologyNodeKind.FIELD] row stands for,
+ *   or null on every other row. Carried whole because what can be asked of a field — searched for,
+ *   counted — depends on its flags, which the row's [detail] does not show
  */
 data class SolrTopologyNode(
     val label: String,
@@ -77,6 +80,7 @@ data class SolrTopologyNode(
     val children: List<SolrTopologyNode> = emptyList(),
     val collection: String? = null,
     val health: SolrHealth? = null,
+    val field: SolrIndexField? = null,
 )
 
 /**
@@ -166,6 +170,7 @@ object SolrTopologyNodes {
             field.indexNote,
         ),
         kind = SolrTopologyNodeKind.FIELD,
+        field = field,
     )
 
     private fun group(label: String, children: List<SolrTopologyNode>) =
