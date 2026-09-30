@@ -39,7 +39,7 @@ its checks live.
 | [Companion-field intentions](#fixing-a-missing-capability-automatically) | <kbd>Alt-Enter</kbd> on a field | `INT` |
 | [Connections](#pointing-the-plugin-at-a-solr-server) | Settings → Tools → Solr Connections | `SRV-1`–`SRV-3` |
 | [Browsing a server](#browsing-what-a-server-holds) | The **Solr** tool window | `SRV-4`–`SRV-10` |
-| [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr | `SRV-11`–`SRV-18` |
+| [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr; or right-click a row in the **Solr** tool window | `SRV-10a`, `SRV-11`–`SRV-18` |
 | [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
 | [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
 | [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | — |
@@ -620,6 +620,14 @@ knowledge to the HTTP Client's.
 In any `.http` file, **Add Request** offers a **Solr** group — query a collection, query with a field
 list and sort, explain why documents scored, read the schema, list what the index holds, and a POST
 using Solr's JSON Request API.
+
+**Or right-click a row in the Solr tool window.** A collection or core offers *Query* and *Explain
+Scoring*. A field offers *Find Documents with* it and, where it can be counted, *Count Values of* it;
+a tokenized text field offers only the first, because counting it would count its words. Choosing one
+opens the request in a new scratch `.http` file, addressed to the selected connection's server, and
+runs nothing: press the HTTP Client's run button, and the response gets the same summary as any other
+query here. A scratch file is never committed, so it names the server outright. It never holds a
+password: a connection that signs in gets a comment naming the header to add.
 
 **Every template addresses `{{solrUrl}}` rather than a host**, which is the whole reason saved
 queries live in `.http` files. Define the variables in `http-client.env.json` beside the requests and

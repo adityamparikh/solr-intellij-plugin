@@ -792,6 +792,15 @@ books` gives both, with the demo's stopped first, since both use port 8983.*
       would be false. `_root_` shows `(unstored field)` rather than decoded flags.
 - [ ] **SRV-10** — Collapsing and re-expanding a **Fields** row does not re-read the server; only
       Refresh does. Watch Solr's request log to confirm rather than inferring it from the screen.
+- [ ] **SRV-10a** — Right-click `products`: the menu offers *Query products* and *Explain Scoring in
+      products*, and **right-clicking selects the row first**, so the menu is about the row under the
+      pointer. Choose *Query products*: a new scratch `solr-products.http` opens holding a `GET` to
+      the connection's server, and **nothing runs until you press the run button**, which then
+      shows the same summary as SRV-13. Expand **Fields** and right-click `category`: *Find
+      Documents with category* and *Count Values of category*. Right-click `description`: only
+      *Find Documents with description*, since counting a tokenized field would count its words.
+      A shard offers nothing. With a connection that names a user, the scratch file carries a
+      comment naming the `Authorization` header to add, and **no password**.
 - [ ] **SRV-11** — Open `queries.http`. Press **Add Request** (the `+` in the gutter, or
       Alt-Insert): a **Solr** group offers five starting requests. Insert *Query a Solr collection*.
       **The menu labels must read as labels** — a whole request body appearing where a label belongs

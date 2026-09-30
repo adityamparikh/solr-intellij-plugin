@@ -26,7 +26,8 @@ Ultimate — is the next release.
 - **Queries through the IDE's HTTP Client.** Starting requests under **Add Request → Solr**, written
   against `{{solrUrl}}` so a committed `.http` file works on a colleague's machine; a readable
   summary above each response, with the scoring explanation when asked; and field-name completion in
-  a JSON request body.
+  a JSON request body. Right-click a collection, core or field in the Solr tool window to open a
+  ready-to-run request for it in a scratch file.
 - **The drift view.** A configset compared with a collection: fields not deployed, only on the
   server, or defined differently, with both sides shown. Upload and reload, and additive Schema API
   changes — each confirming its target first, and each followed by a fresh read of the server rather

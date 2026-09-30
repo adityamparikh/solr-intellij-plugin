@@ -825,7 +825,8 @@ the deployed schema, and a missing unique key, which it would replace with a gen
 #### `server.topology`, `server.query`, `server.drift`
 
 The three surfaces with views of their own. Each keeps its decisions in pure code and its Swing thin, so that what the view
-*says* can be read in a test: `SolrTopologyNodes` and `SolrCollectionsView` for the tool window,
+*says* can be read in a test: `SolrTopologyNodes` and `SolrCollectionsView` for the tool window, `SolrTreeQueries` for
+the queries its right-click menu offers and the request each one opens,
 `SolrQueryResultReader` and `SolrQueryResultRenderer` for query answers, `SolrDrift` and
 `SolrSchemaApi` for comparison and what may be applied.
 

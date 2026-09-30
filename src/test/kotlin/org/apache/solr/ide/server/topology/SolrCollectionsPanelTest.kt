@@ -436,4 +436,99 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
 
         assertFalse("rendering must not expand the fields row", page.isExpandedRow(fields))
     }
+
+    // --- queries from the tree's context menu -----------------------------------------------------
+
+    private val flaggedFields = SolrIndexContents(
+        fields = listOf(
+            SolrIndexField(
+                name = "category",
+                type = "string",
+                schemaProperties = listOf("Indexed", "Stored", "DocValues", "UnInvertible"),
+            ),
+            SolrIndexField(name = "description", type = "text_general", schemaProperties = listOf("Indexed", "Tokenized", "Stored")),
+        ),
+    )
+
+    private fun booksRowIn(page: SolrCollectionsPanel): DefaultMutableTreeNode {
+        page.render(SolrCollectionsView.Loaded(cloudRoots))
+        val collections = page.treeRoot.getChildAt(0) as DefaultMutableTreeNode
+        return collections.getChildAt(0) as DefaultMutableTreeNode
+    }
+
+    private fun menuLabels(page: SolrCollectionsPanel): List<String?> {
+        val event = com.intellij.testFramework.TestActionEvent.createTestEvent()
+        return page.queryMenu.getChildren(event).map { action ->
+            val update = com.intellij.testFramework.TestActionEvent.createTestEvent(action)
+            action.update(update)
+            update.presentation.text
+        }
+    }
+
+    /** Right-clicking a collection offers to query it, named, so the user knows what they are choosing. */
+    fun testACollectionRowOffersToQueryIt() {
+        val page = panel()
+        page.selectPath(javax.swing.tree.TreePath(booksRowIn(page).path))
+
+        assertEquals(listOf("Query books", "Explain Scoring in books"), menuLabels(page))
+    }
+
+    /** A field offers what its flags can answer: the doc-values string both, the tokenized text finding only. */
+    fun testAFieldRowOffersWhatItsFlagsAllow() {
+        val page = panel()
+        val fields = fieldsRowUnderTheCollection(page)
+        page.fillFields(fields, SolrResponse.Success(flaggedFields))
+
+        page.selectPath(javax.swing.tree.TreePath((fields.getChildAt(0) as DefaultMutableTreeNode).path))
+        assertEquals(listOf("Find Documents with category", "Count Values of category"), menuLabels(page))
+
+        page.selectPath(javax.swing.tree.TreePath((fields.getChildAt(1) as DefaultMutableTreeNode).path))
+        assertEquals(listOf("Find Documents with description"), menuLabels(page))
+    }
+
+    /** A shard is not something a query is addressed to, so its menu is empty rather than guessing. */
+    fun testAShardRowOffersNothing() {
+        val page = panel()
+        val shard = booksRowIn(page).getChildAt(1) as DefaultMutableTreeNode
+        assertEquals("shard1", (shard.userObject as SolrTopologyNode).label)
+
+        page.selectPath(javax.swing.tree.TreePath(shard.path))
+
+        assertEquals(emptyList<String>(), menuLabels(page))
+    }
+
+    /**
+     * Choosing a query opens it as an HTTP Client request, ready to run, and runs nothing.
+     *
+     * The request is the one [SolrTreeQueries] writes for the selected connection, in a scratch file
+     * rather than a project file, so nothing in the repository changes.
+     */
+    fun testChoosingAQueryOpensItAsAScratchRequest() {
+        val local = connection().copy(baseUrl = "http://localhost:8983/solr")
+        connectionSettings.addConnection(local)
+        connectionSettings.selectedConnectionId = local.id
+        val page = panel()
+        val query = SolrTreeQuery(SolrTreeQueryKind.QUERY, "books")
+
+        val opened = checkNotNull(page.openQuery(query)) { "no scratch file was opened" }
+        try {
+            assertTrue(opened.name, opened.name.startsWith("solr-books") && opened.name.endsWith(".http"))
+            assertEquals(SolrTreeQueries.requestText(query, local), com.intellij.openapi.vfs.VfsUtilCore.loadText(opened))
+            assertTrue(
+                "the request must be open in an editor",
+                opened in com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project).openFiles,
+            )
+            assertFalse("a scratch is not a project file", com.intellij.openapi.roots.ProjectFileIndex.getInstance(project).isInContent(opened))
+        } finally {
+            com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project).closeFile(opened)
+            com.intellij.openapi.application.WriteAction.run<Throwable> { opened.delete(this) }
+        }
+    }
+
+    /** With no connection there is no server to address, so nothing opens. */
+    fun testChoosingAQueryWithNoConnectionOpensNothing() {
+        val page = panel()
+
+        assertNull(page.openQuery(SolrTreeQuery(SolrTreeQueryKind.QUERY, "books")))
+    }
 }
