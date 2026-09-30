@@ -478,6 +478,22 @@ class SolrHttpTransportTest {
         assertTrue("cancelling must interrupt the request, not wait for it; took ${elapsed}ms", elapsed < 5_000)
     }
 
+    /** The console's own method must honour a longer timeout, or every console query stops at the default. */
+    @Test
+    fun `a form post honours a longer timeout for its call`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500))
+                .postForm(url, "/solr/products/select", listOf("q" to "*:*"), timeout = Duration.ofSeconds(5))
+        }
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+    }
+
     @Test
     fun `form encoding escapes keys and values and keeps order`() {
         assertEquals(
