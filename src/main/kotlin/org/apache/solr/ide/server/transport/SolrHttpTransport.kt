@@ -85,9 +85,8 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         baseUrl: String,
         path: String,
         credential: SolrCredential = SolrCredential.None,
-    ): SolrResponse<JsonNode> {
-        return send(baseUrl, path, credential) { it.GET() }
-    }
+    ): SolrResponse<JsonNode> =
+        exchange(baseUrl, path, credential, timeout) { it.GET() }.classified()
 
     /**
      * POSTs [body] to [path] and classifies the answer.
@@ -112,33 +111,34 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         body: ByteArray,
         contentType: String = OCTET_STREAM,
         credential: SolrCredential = SolrCredential.None,
-    ): SolrResponse<JsonNode> {
-        return send(baseUrl, path, credential) {
+    ): SolrResponse<JsonNode> =
+        exchange(baseUrl, path, credential, timeout) {
             it.header("Content-Type", contentType)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-        }
-    }
+        }.classified()
 
     /**
-     * Builds a request, authenticates it, sends it, and classifies the answer.
+     * Builds a request, authenticates it, sends it, and returns the answer as it arrived.
      *
-     * **Separated from [get] so that a verb is the only thing a caller adds.** The configset upload
-     * and document indexing this specification also requires are POSTs with a body, and everything
-     * around the verb — the URI, the credential, the timeout, the classification — is identical.
-     * Written into [get] instead, each of those would arrive as a near-copy free to drift on auth or
-     * on what counts as a failure.
+     * **Separated from the public methods so that a verb is the only thing a caller adds.** The
+     * configset upload, document indexing and the console's form POST are all requests with a body,
+     * and everything around the verb — the URI, the credential, the timeout — is identical. Written
+     * into each method instead, those would arrive as near-copies free to drift on auth.
      *
-     * It is also what makes the client's configuration testable: a caller can build a request
-     * without sending one.
+     * **Nothing is concluded here.** Whether a 404 is a failure, or a 200 is partial, is [classify]'s
+     * to say, so a caller that must show what the server sent can have it untouched.
      *
+     * @param timeout how long this one request may take
      * @param method applies the verb, and the body where there is one
+     * @return the answer, or a [SolrResponse.TransportFailure] where none arrived
      */
-    private suspend fun send(
+    private suspend fun exchange(
         baseUrl: String,
         path: String,
         credential: SolrCredential,
+        timeout: Duration,
         method: (HttpRequest.Builder) -> HttpRequest.Builder,
-    ): SolrResponse<JsonNode> {
+    ): SolrResponse<SolrRawAnswer> {
         // An incomplete credential is refused before anything is sent. Solr would reject `user:` as
         // a *wrong* password rather than a missing one, so asking would turn a cleared PasswordSafe
         // entry into an authentication failure against a server that was never properly asked.
@@ -164,58 +164,37 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         // which is a request nobody is waiting for still holding a connection. `runInterruptible`
         // interrupts the thread, and `HttpClient.send` answers an interrupt by throwing.
         return runInterruptible(Dispatchers.IO) {
-            runCatching { classify(client.send(request, HttpResponse.BodyHandlers.ofString())) }
-                .getOrElse { failure ->
-                    // A cancelled caller must cancel the request rather than be told it failed, so
-                    // the exception that carries cancellation is rethrown rather than described.
-                    if (failure is InterruptedException || failure is CancellationException) throw failure
-                    // Otherwise described rather than rethrown, in the plugin's words: Solr never
-                    // spoke, so it has no words to quote here.
-                    val cause = generateSequence(failure) { it.cause }.last()
-                    SolrResponse.TransportFailure(cause.message ?: cause::class.java.simpleName)
-                }
+            runCatching {
+                val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                SolrResponse.Success(
+                    SolrRawAnswer(
+                        status = response.statusCode(),
+                        contentType = response.headers().firstValue("Content-Type").orElse(null),
+                        body = response.body(),
+                    ),
+                )
+            }.getOrElse { failure ->
+                // A cancelled caller must cancel the request rather than be told it failed, so
+                // the exception that carries cancellation is rethrown rather than described.
+                if (failure is InterruptedException || failure is CancellationException) throw failure
+                // Otherwise described rather than rethrown, in the plugin's words: Solr never
+                // spoke, so it has no words to quote here.
+                val cause = generateSequence(failure) { it.cause }.last()
+                SolrResponse.TransportFailure(cause.message ?: cause::class.java.simpleName)
+            }
         }
     }
 
-    /**
-     * Turns one HTTP response into an outcome.
-     *
-     * **The status decides, and the body is only consulted for what it can add.** Solr mirrors its
-     * error code into the status line, so a failure is knowable whether or not the body parsed —
-     * which matters because a failing response is not always JSON. A mistyped collection is answered
-     * by the servlet container with an HTML error page, and a transport that required a parsed body
-     * before it would report a failure would turn the most common user mistake into a parse error.
-     */
-    private fun classify(response: HttpResponse<String>): SolrResponse<JsonNode> {
-        val body = SolrJsonDocuments.treeOf(response.body())
-
-        if (response.statusCode() !in 200..299) {
-            // Solr's own words where it gave any, and null rather than a substitute where it did not.
-            return SolrResponse.SolrError(response.statusCode(), solrMessage(body))
-        }
-
-        if (body == null) {
-            return SolrResponse.Unrecognized("the response was not JSON")
-        }
-
-        val header = body.path("responseHeader")
-        // A non-zero status inside a 200 has not been observed, and is classified rather than
-        // trusted: Solr mirroring its code into the status line is what the wire-format pass found,
-        // not a guarantee it published.
-        header.path("status").takeIf { it.isNumber && it.asInt() != 0 }?.let {
-            return SolrResponse.SolrError(it.asInt(), solrMessage(body))
-        }
-
-        if (header.path("partialResults").takeIf { it.isBoolean }?.asBoolean() == true) {
-            return SolrResponse.Partial(
-                body,
-                header.path("partialResultsDetails").asString("").takeIf { it.isNotEmpty() },
-            )
-        }
-        return SolrResponse.Success(body)
+    // A raw answer classified; a request that got none passes its failure through.
+    private fun SolrResponse<SolrRawAnswer>.classified(): SolrResponse<JsonNode> = when (this) {
+        is SolrResponse.Success -> classify(value)
+        is SolrResponse.Partial -> classify(value)
+        is SolrResponse.SolrError -> this
+        is SolrResponse.TransportFailure -> this
+        is SolrResponse.Unrecognized -> this
     }
 
-    /** Service lookup. */
+    /** Service lookup, and the pure functions a caller holding a raw answer needs. */
     companion object {
 
         /** An opaque body, which is what a configset archive is. */
@@ -231,15 +210,56 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
          * @return the project-level service
          */
         fun getInstance(project: Project): SolrHttpTransport = project.service()
+
+        /**
+         * Turns one answer into an outcome.
+         *
+         * **The status decides, and the body is only consulted for what it can add.** Solr mirrors
+         * its error code into the status line, so a failure is knowable whether or not the body
+         * parsed — which matters because a failing response is not always JSON. A mistyped
+         * collection is answered by the servlet container with an HTML error page, and a transport
+         * that required a parsed body before it would report a failure would turn the most common
+         * user mistake into a parse error.
+         *
+         * @param answer what arrived
+         * @return the outcome it amounts to
+         */
+        fun classify(answer: SolrRawAnswer): SolrResponse<JsonNode> {
+            val body = SolrJsonDocuments.treeOf(answer.body)
+
+            if (answer.status !in 200..299) {
+                // Solr's own words where it gave any, and null rather than a substitute where it did not.
+                return SolrResponse.SolrError(answer.status, solrMessage(body))
+            }
+
+            if (body == null) {
+                return SolrResponse.Unrecognized("the response was not JSON")
+            }
+
+            val header = body.path("responseHeader")
+            // A non-zero status inside a 200 has not been observed, and is classified rather than
+            // trusted: Solr mirroring its code into the status line is what the wire-format pass
+            // found, not a guarantee it published.
+            header.path("status").takeIf { it.isNumber && it.asInt() != 0 }?.let {
+                return SolrResponse.SolrError(it.asInt(), solrMessage(body))
+            }
+
+            if (header.path("partialResults").takeIf { it.isBoolean }?.asBoolean() == true) {
+                return SolrResponse.Partial(
+                    body,
+                    header.path("partialResultsDetails").asString("").takeIf { it.isNotEmpty() },
+                )
+            }
+            return SolrResponse.Success(body)
+        }
+
+        /**
+         * Solr's own message, or null where it gave none.
+         *
+         * Null rather than a substitute: a mistyped collection is answered by the servlet container
+         * with no Solr message at all, and inventing one would put words in Solr's mouth.
+         */
+        private fun solrMessage(body: JsonNode?): String? =
+            body?.path("error")?.path("msg")?.asString("")?.takeIf { it.isNotEmpty() }
     }
-
-    /**
-     * Solr's own message, or null where it gave none.
-     *
-     * Null rather than a substitute: a mistyped collection is answered by the servlet container with
-     * no Solr message at all, and inventing one would put words in Solr's mouth.
-     */
-    private fun solrMessage(body: JsonNode?): String? =
-        body?.path("error")?.path("msg")?.asString("")?.takeIf { it.isNotEmpty() }
-
 }
