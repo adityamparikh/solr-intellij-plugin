@@ -51,7 +51,9 @@ import tools.jackson.databind.JsonNode
  * transport that is never closed is a plugin that cannot be unloaded. Being a project service makes
  * the platform responsible for both: one instance, disposed with the project.
  *
- * @property timeout how long one request may take before it becomes a [SolrResponse.TransportFailure]
+ * @property timeout how long one request may take before it becomes a [SolrResponse.TransportFailure],
+ *   unless its caller asks for another. Also the time allowed to connect, which is the client's and
+ *   the same for every request
  */
 @Service(Service.Level.PROJECT)
 class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) : Disposable {
@@ -77,6 +79,8 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
      * @param baseUrl the server's base URL, as a connection records it
      * @param path the path to request, beginning with a slash
      * @param credential what to authenticate as
+     * @param timeout how long this request may take; the transport's own unless a caller has reason
+     *   to wait longer
      * @return the outcome, which never completes exceptionally — every failure is a
      *   [SolrResponse] case, because a caller that must catch to find out what happened will
      *   eventually catch too much
@@ -85,6 +89,7 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         baseUrl: String,
         path: String,
         credential: SolrCredential = SolrCredential.None,
+        timeout: Duration = this.timeout,
     ): SolrResponse<JsonNode> =
         exchange(baseUrl, path, credential, timeout) { it.GET() }.classified()
 
@@ -103,6 +108,7 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
      * @param contentType what the body is. A configset upload is opaque bytes; a Schema API request
      *   is JSON, and telling Solr which is which is cheaper than relying on it to work that out
      * @param credential what to authenticate as
+     * @param timeout how long this request may take
      * @return the outcome, classified exactly as [get]'s is
      */
     suspend fun post(
@@ -111,6 +117,7 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         body: ByteArray,
         contentType: String = OCTET_STREAM,
         credential: SolrCredential = SolrCredential.None,
+        timeout: Duration = this.timeout,
     ): SolrResponse<JsonNode> =
         exchange(baseUrl, path, credential, timeout) {
             it.header("Content-Type", contentType)

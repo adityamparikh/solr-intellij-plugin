@@ -94,6 +94,40 @@ class SolrHttpTransportTest {
         assertTrue(result.toString(), result is SolrResponse.TransportFailure)
     }
 
+    /**
+     * A caller that asks for longer gets longer.
+     *
+     * NFR-3's "overridable per call for the console's potentially slower queries". The transport
+     * here defaults to half a second; the server takes one and a half.
+     */
+    @Test
+    fun `a longer timeout for one call lets a slow answer arrive`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500))
+                .get(url, "/solr/products/select", timeout = Duration.ofSeconds(5))
+        }
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+    }
+
+    /** The default still applies wherever a caller did not ask for another. */
+    @Test
+    fun `the transport's own timeout still cuts off a call that asked for none`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking { SolrHttpTransport(timeout = Duration.ofMillis(500)).get(url, "/solr/products/select") }
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+    }
+
     /** Nothing is listening: the same outcome, and still not an exception. */
     @Test
     fun `a refused connection is a transport failure`() {
