@@ -117,10 +117,11 @@ completion offered names at a position no reference would ever resolve.
 One request to Solr, and what came back, classified into outcomes a caller cannot
 confuse.
 
-The plugin's own traffic — a schema fetch, a cluster status — rather than a query
-somebody typed, which the IDE's HTTP Client runs instead. Asynchronous and
-timeout-bounded, on the JDK's `HttpClient` with no proxy and no SSL context set, so
-the ones the IDE configured are what reach the wire.
+Mostly the plugin's own traffic — a schema fetch, a cluster status. The exception is
+`postForm`, for the query console, which returns the answer as the server sent it
+(`SolrRawAnswer`) for the caller to show and to classify. Asynchronous, with a timeout
+a caller may lengthen for one request, on the JDK's `HttpClient` with no proxy and no
+SSL context set, so the ones the IDE configured are what reach the wire.
 
 Nothing here completes exceptionally. A refused connection, a Solr error, a body
 that will not parse and a response that arrived incomplete are four different
