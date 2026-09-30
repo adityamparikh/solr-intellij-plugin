@@ -5,9 +5,11 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import java.net.URI
+import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,10 +31,10 @@ import tools.jackson.databind.JsonNode
  * blocking `send` runs on [Dispatchers.IO] instead, so a caller that goes away takes its request with
  * it rather than detaching from one that carries on running.
  *
- * **This carries the plugin's own traffic, not the user's.** Fetching a schema or a cluster status is
- * nobody's authored request — it is a tool window calling out on its own initiative, which is why
- * this is a function returning a result rather than an editor. A query somebody typed is run by the
- * IDE's HTTP Client instead.
+ * **Mostly the plugin's own traffic.** Fetching a schema or a cluster status is nobody's authored
+ * request — it is a tool window calling out on its own initiative, which is why this is a function
+ * returning a result rather than an editor. [postForm] is the exception, for the query console, and
+ * it returns what the server sent rather than what the plugin concluded from it.
  *
  * **The client sets no proxy and no SSL context, deliberately.** Both are inherited from the JVM the
  * IDE configured, which is what makes a corporate proxy and a private certificate authority work
@@ -125,6 +127,39 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
         }.classified()
 
     /**
+     * POSTs [parameters] form-encoded to [path], and returns the answer as it arrived.
+     *
+     * **For the query console, and the one method here that does not classify.** A console shows
+     * what Solr sent — an XML answer, a CSV one, the error page behind a failure — and says what it
+     * meant with [classify] itself. Classifying here would throw away exactly the part it shows.
+     *
+     * **A form body rather than a query string**, because a query does not fit in a URL for long:
+     * several filter queries, a JSON facet or a large boost query pass Jetty's 8 KB request-line
+     * limit as a GET. Every Solr search handler reads a form POST as it reads a GET. Each key and
+     * value is encoded on its own, which is what lets a value hold `&`, `+`, `#` or `%` and arrive
+     * as typed.
+     *
+     * @param baseUrl the server root
+     * @param path the handler to send to, beginning with a slash
+     * @param parameters the parameters in the order given; a name may repeat, as `fq` does
+     * @param credential what to authenticate as
+     * @param timeout how long this request may take
+     * @return the answer, or a [SolrResponse.TransportFailure] where none arrived. Never a
+     *   [SolrResponse.SolrError]: a status is part of the answer, for the caller to classify
+     */
+    suspend fun postForm(
+        baseUrl: String,
+        path: String,
+        parameters: List<Pair<String, String>>,
+        credential: SolrCredential = SolrCredential.None,
+        timeout: Duration = this.timeout,
+    ): SolrResponse<SolrRawAnswer> =
+        exchange(baseUrl, path, credential, timeout) {
+            it.header("Content-Type", FORM)
+                .POST(HttpRequest.BodyPublishers.ofString(formEncoded(parameters), StandardCharsets.UTF_8))
+        }
+
+    /**
      * Builds a request, authenticates it, sends it, and returns the answer as it arrived.
      *
      * **Separated from the public methods so that a verb is the only thing a caller adds.** The
@@ -209,6 +244,20 @@ class SolrHttpTransport(private val timeout: Duration = Duration.ofSeconds(10)) 
 
         /** A JSON body, which is what a Schema API request is. */
         const val JSON: String = "application/json"
+
+        /** A form body, which is what a query from the console is. */
+        const val FORM: String = "application/x-www-form-urlencoded; charset=UTF-8"
+
+        /**
+         * [parameters] as a form body: each key and value encoded on its own, joined in order.
+         *
+         * @param parameters the parameters; a name may repeat
+         * @return the body, in UTF-8's form encoding
+         */
+        fun formEncoded(parameters: List<Pair<String, String>>): String =
+            parameters.joinToString("&") { (key, value) ->
+                URLEncoder.encode(key, StandardCharsets.UTF_8) + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8)
+            }
 
         /**
          * The transport for [project].

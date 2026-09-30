@@ -796,6 +796,11 @@ One HTTP call, and the five outcomes a caller must be able to tell apart: comple
 error, a transport failure, and an answer that could not be understood. Nothing here throws; a caller
 that had to catch to find out what happened would eventually catch too much.
 
+**The answer is kept as well as classified.** `SolrRawAnswer` is status, content type and body as
+they arrived, and `SolrHttpTransport.classify` turns one into an outcome. The plugin's own reads get
+the outcome; the query console's form POST gets the answer, because it shows what Solr sent — an XML
+answer, or the page behind a failure — as well as what that meant.
+
 **Partial is the outcome that does not look like one.** A response can arrive with HTTP 200 and
 `responseHeader.status` 0 and still be incomplete, saying so only through a `partialResults` flag.
 Folded into success, a drift comparison built on one would report fields as missing from a server
