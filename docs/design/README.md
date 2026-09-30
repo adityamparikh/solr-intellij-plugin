@@ -5,8 +5,7 @@ overall spec and plan in `specs/`, which cover the whole plugin.
 
 - **`pending/`** — a design that has been written but not yet folded into
   `specs/plans/0002-solr-intellij-plugin-plan.md` as a step. Not started. The directory does not
-  exist while nothing is pending, which is the state today; create it with the first record that
-  needs it.
+  exist while nothing is pending; create it with the first record that needs it.
 - **`archive/<feature-name>/`** — a design (`design.md`) and, if the feature was
   large enough to need one, an implementation plan (`plan.md`), kept together once the
   feature has shipped. Historical record, not living documentation — if the described
