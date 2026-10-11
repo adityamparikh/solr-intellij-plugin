@@ -1,6 +1,9 @@
 package org.apache.solr.ide.server.topology
 
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import org.apache.solr.ide.server.connection.SolrConnection
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenSpec
 import org.apache.solr.ide.server.reading.SolrIndexField
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -207,5 +210,36 @@ class SolrTreeQueriesTest {
     @Test
     fun `the scratch file is named for the collection`() {
         assertEquals("solr-products.http", SolrTreeQueries.scratchFileName(SolrTreeQuery(SolrTreeQueryKind.QUERY, "products")))
+    }
+
+    // --- the same query, in the console ---------------------------------------------------------------
+
+    private fun requestParameters(query: SolrTreeQuery): List<Pair<String, String>> {
+        val line = SolrTreeQueries.requestText(query, local).lines().single { it.startsWith("GET ") }
+        return line.substringAfter('?').split('&').map { pair ->
+            val (name, value) = pair.split('=', limit = 2)
+            URLDecoder.decode(name, StandardCharsets.UTF_8) to URLDecoder.decode(value, StandardCharsets.UTF_8)
+        }
+    }
+
+    /**
+     * Every query fills the console with what its `.http` request sends.
+     *
+     * The setting changes where a query lands and nothing about what it asks, so the two are held to
+     * each other here rather than each to a copy of the rules.
+     */
+    @Test
+    fun `the console is filled with what the request sends`() {
+        val queries = listOf(
+            SolrTreeQuery(SolrTreeQueryKind.QUERY, "products"),
+            SolrTreeQuery(SolrTreeQueryKind.EXPLAIN, "products"),
+            SolrTreeQuery(SolrTreeQueryKind.FIND_WITH_FIELD, "products", "category"),
+            SolrTreeQuery(SolrTreeQueryKind.COUNT_VALUES, "products", "category"),
+        )
+        queries.forEach { query ->
+            val sent = SolrTreeQueries.consoleState(query, SolrQueryScreenSpec.bundled).parameters()
+            val missing = requestParameters(query).filterNot { it in sent }
+            assertTrue("$query: the console would not send $missing; it sends $sent", missing.isEmpty())
+        }
     }
 }

@@ -1,6 +1,8 @@
 package org.apache.solr.ide.server.topology
 
 import org.apache.solr.ide.server.connection.SolrConnection
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenSpec
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenState
 import org.apache.solr.ide.server.reading.SolrIndexField
 
 /** What a query offered from the collections tree asks. */
@@ -33,12 +35,12 @@ data class SolrTreeQuery(
 )
 
 /**
- * The queries a row of the collections tree offers, and the HTTP Client request each one opens.
+ * The queries a row of the collections tree offers, and what each one opens: an HTTP Client request,
+ * or the query console's form filled in, as the *Open queries in* setting says.
  *
- * **A request to open, not a query to run.** Queries in this plugin live in the IDE's HTTP Client,
- * where the plugin adds a readable summary above each response, so choosing one of these writes the
- * request into a scratch file and stops. The user sees what will be sent, can change it, and runs it
- * with the HTTP Client's own button.
+ * **A request to open, not a query to run.** Choosing one writes the request into a scratch file, or
+ * fills the console's form, and stops. The user sees what will be sent, can change it, and runs it
+ * with the HTTP Client's button or the console's Execute.
  *
  * **The server's real address is written out**, where the committed request templates write
  * `{{solrUrl}}`. The templates say that for a file a team shares; a scratch file is one developer's
@@ -117,6 +119,29 @@ object SolrTreeQueries {
             }
             append("GET ${connection.baseUrl.trimEnd('/')}/${encode(collection)}/select?$parameters\n")
             append("Accept: application/json\n")
+        }
+    }
+
+    /**
+     * What the query console's form holds for [query]: the same query [requestText] writes.
+     *
+     * **The same rules, so the setting changes where a query lands and nothing about what it asks.**
+     * Counting values sends its facet parameters as raw ones, because the console has no facet
+     * section yet; they arrive at Solr exactly as the `.http` request sends them.
+     *
+     * @param query what to ask
+     * @param spec the console's form
+     * @return the form filled in
+     */
+    fun consoleState(query: SolrTreeQuery, spec: SolrQueryScreenSpec): SolrQueryScreenState {
+        val field = query.field.orEmpty()
+        val blank = SolrQueryScreenState(spec)
+        return when (query.kind) {
+            SolrTreeQueryKind.QUERY -> blank.with("q", "*:*").with("rows", "10")
+            SolrTreeQueryKind.EXPLAIN -> blank.with("q", "*:*").with("rows", "5").with("debugQuery", "true")
+            SolrTreeQueryKind.FIND_WITH_FIELD -> blank.with("q", "$field:*").with("fl", "id,$field").with("rows", "10")
+            SolrTreeQueryKind.COUNT_VALUES -> blank.with("q", "*:*").with("rows", "0")
+                .withLines("raw", listOf("facet=true", "facet.field=$field", "facet.limit=20"))
         }
     }
 

@@ -200,4 +200,29 @@ class SolrConnectionsEditorModelTest : SolrConfigsetTestCase() {
         assertEquals(listOf("a"), editor.connections.map { it.id })
         assertFalse(editor.isModified())
     }
+
+    // --- where queries open ---------------------------------------------------------------------------
+
+    fun testChoosingTheConsoleIsAChangeAndApplies() {
+        val editor = model
+        editor.reset()
+
+        editor.openQueriesIn = SolrQueryDestination.CONSOLE
+
+        assertTrue(editor.isModified())
+        editor.apply()
+        assertEquals(SolrQueryDestination.CONSOLE, connectionSettings.openQueriesIn)
+        assertFalse(editor.isModified())
+    }
+
+    fun testResetRestoresWhereQueriesOpen() {
+        connectionSettings.openQueriesIn = SolrQueryDestination.CONSOLE
+        val editor = model
+        editor.openQueriesIn = SolrQueryDestination.HTTP_CLIENT
+
+        editor.reset()
+
+        assertEquals(SolrQueryDestination.CONSOLE, editor.openQueriesIn)
+        assertFalse(editor.isModified())
+    }
 }

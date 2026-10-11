@@ -7,13 +7,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.EditorTextField
-import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.TextFieldWithAutoCompletion
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -117,8 +117,8 @@ internal class SolrQueryScreenForm(
     private fun choice(field: SolrQueryScreenField, state: SolrQueryScreenState): JComponent =
         ComboBox(field.choices.toTypedArray()).also { box ->
             box.selectedItem = state.value(field.name).takeIf { it in field.choices } ?: field.choices.first()
-            box.renderer = SimpleListCellRenderer.create("") { value: String ->
-                value.ifEmpty { SolrBundle.message("queryScreen.choice.default") }
+            box.renderer = textListCellRenderer { value: String? ->
+                value.orEmpty().ifEmpty { SolrBundle.message("queryScreen.choice.default") }
             }
             box.toolTipText = field.tooltip
             box.addItemListener { event ->
