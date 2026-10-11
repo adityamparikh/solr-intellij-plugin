@@ -848,6 +848,45 @@ books` gives both, with the demo's stopped first, since both use port 8983.*
       completion inside a string. **No Solr field names may appear.** The contributor is registered
       against JSON, so every JSON file in every project reaches it, and this is the failure worth
       checking by hand.
+
+**The query console.** Against the demo's `products`, with *Index the sample products* run. Every
+check from SRV-33 on starts with Settings → Tools → **Solr Connections** → *Open queries from the
+Solr tool window in* set to **Query console**, and SRV-40 ends by setting it back.
+
+- [ ] **SRV-32** — Settings → Tools → **Solr Connections**: below the list, *Open queries from the
+      Solr tool window in* reads **HTTP Client (a scratch .http file)** on a fresh sandbox. Right-click
+      `products` → *Query products*: a scratch `solr-products.http` opens, exactly as SRV-10a says.
+      **The default must change nothing.**
+- [ ] **SRV-33** — Choose **Query console** and press OK. Right-click `products` → *Query products*:
+      a tab **Query: products** opens with the Admin's form — `common`, `debugQuery`, `defType`,
+      *Raw Query Parameters* — `q` holding `*:*` and `rows` `10`, and **nothing has run**. Right-click
+      *Query products* again: the same tab comes forward, not a second one.
+- [ ] **SRV-34** — Press **Execute** (or <kbd>⌘Enter</kbd>): the request line shows
+      `…/products/select?q=*%3A*&rows=10&indent=true`, the **Results** tab the same summary and table
+      as SRV-13, and **Response** the JSON as sent. Click the request line: a scratch `.http` file
+      opens with `POST {{solrUrl}}/{{collection}}/select` and the form body, and no host. Run it
+      through the `local` environment: it matches the console's numbers.
+- [ ] **SRV-35** — Set `q` to `name:"usb & cable"`, or any value holding `&` and `+`, and execute:
+      Solr receives it whole — the summary is a real match count, not a 400 about a parameter named
+      `cable"`. **This is the reason the console exists.**
+- [ ] **SRV-36** — Choose `wt` **xml** and execute: no table, **Response** in front, holding XML
+      highlighted as XML. Set the handler to `/nosuch` and execute: *Solr answered 404* and the error
+      page under **Response**. Set the handler to `dismax`: **nothing is sent**, and the status says
+      a handler is a path and names `handleSelect`.
+- [ ] **SRV-37** — `defType` starts at *(handler default)*. Choose **dismax**: `q.alt`, `qf` … `bf`
+      appear and `pf2` does not; choose **edismax**: `uf` … `lowercaseOperators` appear too. Type
+      `name^2` into `qf`, switch back to *(handler default)* and execute: the request line has no
+      `qf` and no `defType`.
+- [ ] **SRV-38** — In `fl`, type `na` and press <kbd>⌃Space</kbd>: the collection's fields, each
+      reading `products · local`, with `score`, `*` and `[docid]` beside them. Type a letter in `sort`
+      and let the popup open by itself: it offers fields **without a request reaching Solr** (watch
+      `docker compose -f demo/compose.yaml logs -f solr`).
+- [ ] **SRV-39** — Right-click `category` → *Find Documents with category*: the open tab's form now
+      holds `q` `category:*` and `fl` `id,category`. *Count Values of category*: `rows` `0` and the
+      three facet lines under *Raw Query Parameters*; execute, and **Response** holds
+      `facet_counts`.
+- [ ] **SRV-40** — With the tab open, remove the `local` connection in Settings: the tab closes. Add
+      it back, set *Open queries in* back to **HTTP Client**, and confirm SRV-32's scratch file again.
 - [ ] **SRV-19a** — Close the IDE with the **Drift** tab showing and reopen it: once indexing ends,
       the configset chooser lists the project's configsets. Then copy a configset directory to a new
       name and open the chooser — the copy is offered, and the configset already chosen is still

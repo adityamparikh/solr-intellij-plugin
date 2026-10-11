@@ -149,6 +149,25 @@ class SolrQueryResultReaderTest {
         assertEquals(listOf("a", "b", "c"), result!!.columns)
     }
 
+    /**
+     * A structured explanation is read, in Solr's flat format.
+     *
+     * The query console offers `debug.explain.structured`, which answers with objects. Reading only
+     * strings would show a query that asked for its explanation as one that had none.
+     */
+    @Test
+    fun `a structured explanation reads as solr's flat text`() {
+        val result = SolrQueryResultReader.read(
+            """
+            {"responseHeader":{"status":0},"response":{"docs":[{"id":"1"}]},
+             "debug":{"explain":{"1":{"match":true,"value":1.5,"description":"sum of:",
+               "details":[{"match":true,"value":1.5,"description":"weight(title:dune)","details":[]}]}}}}
+            """.trimIndent(),
+        )
+
+        assertEquals("1.5 = sum of:\n  1.5 = weight(title:dune)", result!!.explanations["1"])
+    }
+
     // --- the cells --------------------------------------------------------------------------------
 
     /**

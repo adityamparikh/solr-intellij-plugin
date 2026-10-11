@@ -225,4 +225,29 @@ class SolrConnectionSettingsTest : SolrConfigsetTestCase() {
 
         assertEquals("local", connectionSettings.selectedConnectionId)
     }
+
+    // --- where the tool window's queries open --------------------------------------------------------
+
+    /** Nothing changes for anyone who never chose: the HTTP Client is the default, and is not written. */
+    fun testQueriesOpenInTheHttpClientByDefault() {
+        assertEquals(SolrQueryDestination.HTTP_CLIENT, connectionSettings.openQueriesIn)
+        assertNull(connectionSettings.state.openQueriesIn)
+    }
+
+    fun testTheConsoleChoiceIsKept() {
+        connectionSettings.openQueriesIn = SolrQueryDestination.CONSOLE
+
+        assertEquals("CONSOLE", connectionSettings.state.openQueriesIn)
+        assertEquals(SolrQueryDestination.CONSOLE, connectionSettings.openQueriesIn)
+
+        connectionSettings.openQueriesIn = SolrQueryDestination.HTTP_CLIENT
+        assertNull("the default is not written", connectionSettings.state.openQueriesIn)
+    }
+
+    /** A workspace file written by another version may name a choice this one lacks. */
+    fun testAnUnknownChoiceReadsAsTheDefault() {
+        connectionSettings.state.openQueriesIn = "SOMETHING_NEWER"
+
+        assertEquals(SolrQueryDestination.HTTP_CLIENT, connectionSettings.openQueriesIn)
+    }
 }

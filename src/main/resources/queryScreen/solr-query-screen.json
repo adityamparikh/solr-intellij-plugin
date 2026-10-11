@@ -1,0 +1,62 @@
+{
+  "source": "Solr 10.0.0 Admin UI, server/solr-webapp/webapp/partials/query.html and js/angular/controllers/query.js; identical on 9.10 for these sections. Three departures: q.op defaults to the handler's own default rather than OR, so a handler's solrconfig.xml default survives; the request handler is a path, never a qt parameter; and a raw parameter is one name=value per line with an & kept in its value, where the Admin UI also splits on &.",
+  "sections": [
+    {
+      "id": "common",
+      "label": "common",
+      "fields": [
+        { "name": "qt", "label": "Request-Handler (qt)", "kind": "handler", "default": "/select", "tooltip": "Request handler in solrconfig.xml." },
+        { "name": "q", "label": "q", "kind": "text", "default": "*:*", "tooltip": "The query string." },
+        { "name": "q.op", "label": "q.op", "kind": "choice", "choices": ["", "AND", "OR"], "tooltip": "The query operator." },
+        { "name": "fq", "label": "fq", "kind": "repeated", "tooltip": "Filter query. One per line." },
+        { "name": "sort", "label": "sort", "kind": "text", "completes": "fields", "also": ["score"], "tooltip": "Sort field or function with asc|desc." },
+        { "name": "start", "label": "start", "kind": "text", "tooltip": "Number of leading documents to skip. (Integer)" },
+        { "name": "rows", "label": "rows", "kind": "text", "tooltip": "Number of documents to return after 'start'. (Integer)" },
+        { "name": "fl", "label": "fl", "kind": "text", "completes": "fields", "also": ["*", "score", "[docid]"], "tooltip": "Field list, comma separated." },
+        { "name": "df", "label": "df", "kind": "text", "completes": "fields", "tooltip": "Default search field" },
+        { "name": "useParams", "label": "paramset(s)", "kind": "text", "tooltip": "The paramsets to apply to the query." },
+        { "name": "wt", "label": "wt", "kind": "choice", "choices": ["", "json", "xml", "python", "ruby", "php", "csv"], "tooltip": "The writer type (response format)." },
+        { "name": "indent", "label": "indent on", "kind": "checkbox", "default": "true", "tooltip": "Enable indenting of results." }
+      ]
+    },
+    {
+      "id": "debugQuery",
+      "label": "debugQuery",
+      "toggle": "debugQuery",
+      "fields": [
+        { "name": "debug.explain.structured", "label": "debug.explain.structured", "kind": "checkbox", "tooltip": "Show Score explanations as nested structures." }
+      ]
+    },
+    {
+      "id": "defType",
+      "label": "defType",
+      "fields": [
+        { "name": "defType", "label": "defType", "kind": "choice", "choices": ["", "lucene", "dismax", "edismax"], "tooltip": "Choose defType" },
+        { "name": "q.alt", "label": "q.alt", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Alternate query when 'q' is absent." },
+        { "name": "qf", "label": "qf", "kind": "text", "completes": "fields", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Query fields with optional boosts." },
+        { "name": "mm", "label": "mm", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Min-should-match expression." },
+        { "name": "pf", "label": "pf", "kind": "text", "completes": "fields", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Phrase boosted fields." },
+        { "name": "ps", "label": "ps", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Phrase boost slop." },
+        { "name": "qs", "label": "qs", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Query string phrase slop." },
+        { "name": "tie", "label": "tie", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Score tie-breaker. Try 0.1." },
+        { "name": "bq", "label": "bq", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Boost query." },
+        { "name": "bf", "label": "bf", "kind": "text", "showWhen": { "defType": ["dismax", "edismax"] }, "tooltip": "Boost function (added)." },
+        { "name": "uf", "label": "uf", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "User Fields" },
+        { "name": "pf2", "label": "pf2", "kind": "text", "completes": "fields", "showWhen": { "defType": ["edismax"] }, "tooltip": "bigram phrase boost fields" },
+        { "name": "pf3", "label": "pf3", "kind": "text", "completes": "fields", "showWhen": { "defType": ["edismax"] }, "tooltip": "trigram phrase boost fields" },
+        { "name": "ps2", "label": "ps2", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "phrase slop for bigram phrases" },
+        { "name": "ps3", "label": "ps3", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "phrase slop for trigram phrases" },
+        { "name": "boost", "label": "boost", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "multiplicative boost function" },
+        { "name": "stopwords", "label": "stopwords", "kind": "checkbox", "showWhen": { "defType": ["edismax"] }, "tooltip": "remove stopwords from mandatory 'matching' component" },
+        { "name": "lowercaseOperators", "label": "lowercaseOperators", "kind": "checkbox", "showWhen": { "defType": ["edismax"] }, "tooltip": "Enable lower-case 'and' and 'or' as operators" }
+      ]
+    },
+    {
+      "id": "raw",
+      "label": "Raw Query Parameters",
+      "fields": [
+        { "name": "raw", "label": "key=value", "kind": "raw", "tooltip": "Raw param query. One name=value per line; an & is part of the value." }
+      ]
+    }
+  ]
+}

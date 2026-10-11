@@ -184,4 +184,18 @@ class SolrConnectionsConfigurableTest : SolrConfigsetTestCase() {
         assertEquals(listOf("a"), page.rows.map { it.id })
         assertFalse(page.isModified)
     }
+
+    /** The page shows where queries open, and choosing the console is applied like any other edit. */
+    fun testThePageChoosesWhereQueriesOpen() {
+        val page = configurable()
+        page.createComponent()
+        page.reset()
+        assertEquals(SolrQueryDestination.HTTP_CLIENT, page.destination)
+
+        page.destination = SolrQueryDestination.CONSOLE
+
+        assertTrue(page.isModified)
+        page.apply()
+        assertEquals(SolrQueryDestination.CONSOLE, connectionSettings.openQueriesIn)
+    }
 }

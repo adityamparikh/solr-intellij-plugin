@@ -149,5 +149,6 @@ abstract class SolrConfigsetTestCase : BasePlatformTestCase() {
     private fun resetConnectionSettings() {
         connectionSettings.connections.forEach { connectionSettings.removeConnection(it.id) }
         connectionSettings.state.connections.clear()
+        connectionSettings.state.openQueriesIn = null
     }
 }

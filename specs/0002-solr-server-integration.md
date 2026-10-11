@@ -228,10 +228,17 @@ caution applies to a JDK API used inside a plugin classloader for the first time
 **This governs the plugin's own traffic, not the user's.** Fetching a schema, a cluster status or a
 Luke response is nobody's authored request — it is a tool window and a drift view calling out on their
 own initiative, which is why the rest of this section is about timeouts, cancellation and a result type
-that separates a Solr error from a transport failure. A query somebody typed is a different thing
+that separates a Solr error from a transport failure. A query somebody *saves* is a different thing
 entirely and is run by the IDE's HTTP Client, per [FR-16](#requirements). The two are not competing
 transports; they are traffic with different authors, and Database Tools makes the same split between
 the introspection it issues itself and the statements a user runs in a console.
+
+**The query console is the one exception, and it is bounded like the rest.** A query run from the
+console's form is sent by this transport as a form POST — each parameter encoded on its own, which is
+what lets a value hold `&`, `+`, `#` or `%` — with a timeout longer than the default, one run per tab,
+and cancellation when a new run starts or the tab closes, per [NFR-3](#requirements). It sits beside
+the HTTP Client rather than replacing it: which of the two the Solr tool window's queries open is the
+user's setting, the HTTP Client by default, and the console's *Open as .http* hands a query across.
 
 **FR-2 — JSON handling: Jackson 3's tree model, referenced from the platform and not declared.**
 Solr's wire format is JSON, and the parent specification already commits to "hand-written request and
@@ -757,6 +764,12 @@ becomes an environment rather than a separate mechanism, which is the point of e
 — see [FR-18](#requirements). Field completion inside the query, results rendered as a table rather
 than raw JSON, the scoring explanation as a tree. Those are Step 13's actual value, and they are
 contributions to somebody else's editor rather than an editor of our own.
+
+**The interactive console is a surface of its own, beside this rather than instead of it.** Solr
+Admin's query form, in an editor tab per connection and collection, is where a query is worked on;
+an `.http` file is where one is kept. *Open as .http* writes the console's query as a request with
+`{{solrUrl}}` and `{{collection}}` and never a host or a credential, so a saved query is still an
+`.http` file and this requirement is unchanged in substance.
 
 **The interactive console remains its own surface, and that is not a contradiction.** Database Tools
 ships both committed `.sql` files and a console, because a file you keep and a scratch you iterate in
