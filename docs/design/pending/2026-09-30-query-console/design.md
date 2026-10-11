@@ -9,7 +9,8 @@ the collections tree (#259) makes a starting request, but the result is still a 
 file.
 
 Solr's Admin UI has a query screen that does not have this problem: every parameter has its own
-input, and each is encoded on its own. The owner asked for that screen in the IDE.
+input, and each is encoded on its own. The owner asked for that screen in the IDE, as an option beside
+the `.http` route rather than in place of it.
 
 The specification already plans for it. Its *Querying* section wants "a console where field names
 complete from the model, results render as a table … History is kept", and the plan's Step 13 records
@@ -59,6 +60,11 @@ line, which the plugin also supports; the file says which line it was taken from
 
 A **query console in an editor tab**, `Query: <collection>`, whose form is drawn from the metadata
 file and whose queries are run by the plugin's own transport, with the results in the same tab.
+
+**It sits beside the `.http` route, not in place of it.** Both stay: a request in an `.http` file run
+by the HTTP Client, and the form. A per-user setting decides which one the right-click menu opens
+(see *The right-click menu*), and its default is the `.http` route, so nothing changes for anyone who
+does not ask for the form.
 
 It is FR-16's console, not a replacement for the Admin UI. The specification's non-goal ("Replacing
 the Solr Admin UI … the plugin wins where it can see things the Admin UI cannot") still holds,
@@ -154,11 +160,21 @@ unchanged.
 
 ### The right-click menu
 
-#259's items open the console instead of a scratch file, filled in by the same rules:
-*Query products* fills `q=*:*`; *Explain Scoring* ticks `debugQuery`; *Find Documents with category*
-fills `q=category:*` and `fl=id,category`; *Count Values of category* sends `facet=true` and
-`facet.field=category` through raw parameters until the facet section exists. `SolrTreeQueries`
-already decides which items a row offers, from the field's Luke flags.
+#259's items stay as they are, and follow a setting. **Tools → Solr Connections** gains *Open queries
+in*: **HTTP Client** (the default, and #259's behaviour, a scratch `.http` file) or **Query console**.
+The menu is unchanged; only where an item lands depends on the setting. It is stored with the
+connections in the workspace file, because which surface a developer prefers is theirs, like the
+connections themselves.
+
+With *Query console* chosen, each item fills the form by the same rules it uses for the `.http`
+request: *Query products* fills `q=*:*`; *Explain Scoring* ticks `debugQuery`; *Find Documents with
+category* fills `q=category:*` and `fl=id,category`; *Count Values of category* sends `facet=true`
+and `facet.field=category` through raw parameters until the facet section exists. `SolrTreeQueries`
+already decides which items a row offers, from the field's Luke flags, and it keeps deciding that for
+both surfaces; the setting changes only the destination.
+
+Both directions stay open whichever is chosen: **Open as .http** takes a query from the console to the
+HTTP Client.
 
 ### Query history
 
@@ -174,7 +190,8 @@ the form. Per project, in the workspace file: history is one developer's, like c
   the console as the interactive surface its text already anticipates.
 - **Plan, Step 13.** The console becomes the step's remaining work, delivered in the order below.
 - **User guide.** *Running a query* no longer says there is "no query console of this plugin's own"
-  (line 616), and the link at line 912 to a query console that does not exist becomes true.
+  (line 616), and the link at line 912 to a query console that does not exist becomes true. It
+  names the *Open queries in* setting and says which surface is for what.
 - **Code organization.** `server.query` is described as "queries in `.http` files" (lines 124 and
   351); it gains the console.
 - **Manual suite.** New checks for the tab, Execute, the raw response, cancellation, completion, and
@@ -185,10 +202,12 @@ the form. Per project, in the workspace file: history is one developer's, like c
 | PR | Contents | Visible |
 |---|---|---|
 | 1 | Transport: raw answer, per-call timeout, caller cancellation | Nothing; every existing view behaves the same |
-| 2 | The console: metadata (common, debugQuery, defType with dismax/edismax, raw parameters), pure model, editor, Execute, results, completion, Open as .http; the specification and docs changes above | The `Query: <collection>` tab |
-| 3 | The right-click menu opens the console | Right-click → the tab, filled in |
-| 4 | Query history | A history list in the tab |
-| 5+ | Facet, then highlighting, then spellcheck, each with its display | One section each |
+| 2 | The console: metadata (common, debugQuery, defType with dismax/edismax, raw parameters), pure model, editor, Execute, results, completion, Open as .http; the *Open queries in* setting, and the right-click menu following it; the specification and docs changes above | With *Query console* chosen, right-click → the `Query: <collection>` tab, filled in. With the default, nothing changes |
+| 3 | Query history | A history list in the tab |
+| 4+ | Facet, then highlighting, then spellcheck, each with its display | One section each |
+
+The setting arrives with the console rather than after it, because it is the console's only way in:
+a console PR without it would ship a tab nothing opens.
 
 Spatial and the method-specific highlighting parameters wait until someone needs them; raw
 parameters carry them until then.
@@ -202,7 +221,9 @@ parameters carry them until then.
 - **Platform tests**, in `SolrConfigsetTestCase` because the tab reads connection settings: the tab
   opens once per connection and collection; state survives a second editor; Execute renders a
   JSON answer as a table and an XML answer raw, through a fake transport; a second Execute cancels
-  the first; removing the connection closes the tab; the provider in the dumb-mode contract.
+  the first; removing the connection closes the tab; the provider in the dumb-mode contract; the
+  setting persists, defaults to the HTTP Client, and decides where each right-click item lands, with
+  the default writing exactly the `.http` request it does today.
 - **Manual:** the new checks above, in a sandbox against the demo's `products`.
 - **Gates:** the IDE classes are `internal`, so the documentation gate's surface stays the public
   model; the Swing class stays thin so coverage holds.
@@ -211,7 +232,10 @@ parameters carry them until then.
 
 - The plugin runs queries a user typed, which it deliberately did not before. The transport work in
   PR 1 is what makes that honest: raw answers, a timeout the user can wait out, and cancellation.
-- Two ways to query exist: the console for working interactively, `.http` files for what is saved
-  and shared. **Open as .http** is the bridge, and the guide says which is for what.
+- Two ways to query exist, by the owner's choice: the console for working interactively, `.http`
+  files for what is saved and shared. **Open as .http** is the bridge, and the guide says which is
+  for what.
+- Because the default keeps the `.http` route, the console is found through the setting. The guide
+  and the settings page are where it is discovered, not the menu.
 - The metadata file is one more thing a new Solr line may change. Adopting a line means reading its
   query page against the file, the way the class catalog is regenerated.
