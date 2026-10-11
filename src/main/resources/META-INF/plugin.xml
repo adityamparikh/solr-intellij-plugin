@@ -173,6 +173,12 @@
         <httpClient.addRequestTemplateProvider
                 implementation="org.apache.solr.ide.server.query.SolrRequestTemplateProvider"/>
 
+        <!-- The query console: Solr Admin's query form in an editor tab, run by the plugin's own
+             transport. Its `accept` is a bare check of the file's class, because it runs for every
+             file the IDE opens; and it is dumb-aware, since the console reads no index. -->
+        <fileEditorProvider
+                implementation="org.apache.solr.ide.server.query.screen.SolrQueryScreenEditorProvider"/>
+
         <!-- What the selected server actually holds. Under `toolWindow` rather than a dialog because
              browsing a topology is something a developer does alongside editing a configset, not
              instead of it. `anchor="right"` keeps it out of the way of the Project view, which is
