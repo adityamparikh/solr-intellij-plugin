@@ -11,6 +11,8 @@ import kotlinx.coroutines.runBlocking
 import kotlin.system.measureTimeMillis
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -90,6 +92,40 @@ class SolrHttpTransportTest {
     fun `a server that never answers is a transport failure`() {
         val url = given { Thread.sleep(5_000) }
         val result = get(url)
+
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+    }
+
+    /**
+     * A caller that asks for longer gets longer.
+     *
+     * NFR-3's "overridable per call for the console's potentially slower queries". The transport
+     * here defaults to half a second; the server takes one and a half.
+     */
+    @Test
+    fun `a longer timeout for one call lets a slow answer arrive`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500))
+                .get(url, "/solr/products/select", timeout = Duration.ofSeconds(5))
+        }
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+    }
+
+    /** The default still applies wherever a caller did not ask for another. */
+    @Test
+    fun `the transport's own timeout still cuts off a call that asked for none`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking { SolrHttpTransport(timeout = Duration.ofMillis(500)).get(url, "/solr/products/select") }
 
         assertTrue(result.toString(), result is SolrResponse.TransportFailure)
     }
@@ -292,5 +328,177 @@ class SolrHttpTransportTest {
         }
         get(url, credential)
         return seen
+    }
+
+    // --- the console's form POST -------------------------------------------------------------------
+
+    private class Seen {
+        var body: String? = null
+        var contentType: String? = null
+        var authorization: String? = null
+    }
+
+    private fun postForm(
+        parameters: List<Pair<String, String>>,
+        credential: SolrCredential = SolrCredential.None,
+        handler: (HttpExchange) -> Unit = { respond(it, 200, """{"responseHeader":{"status":0}}""") },
+    ): Pair<SolrResponse<SolrRawAnswer>, Seen> {
+        val seen = Seen()
+        val url = given { exchange ->
+            seen.body = exchange.requestBody.readAllBytes().toString(StandardCharsets.UTF_8)
+            seen.contentType = exchange.requestHeaders.getFirst("Content-Type")
+            seen.authorization = exchange.requestHeaders.getFirst("Authorization")
+            handler(exchange)
+        }
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500)).postForm(url, "/solr/products/select", parameters, credential)
+        }
+        return result to seen
+    }
+
+    private fun decoded(body: String): List<Pair<String, String>> =
+        body.split('&').map { pair ->
+            val (key, value) = pair.split('=', limit = 2)
+            URLDecoder.decode(key, StandardCharsets.UTF_8) to URLDecoder.decode(value, StandardCharsets.UTF_8)
+        }
+
+    /** The reason the console exists: a value no URL can carry as typed reaches Solr exactly. */
+    @Test
+    fun `a form value with url-significant characters arrives exactly`() {
+        val value = """name:"A & B" +x #1 100% a=b é"""
+
+        val (_, seen) = postForm(listOf("q" to value))
+
+        assertEquals("application/x-www-form-urlencoded; charset=UTF-8", seen.contentType)
+        assertEquals(listOf("q" to value), decoded(checkNotNull(seen.body)))
+    }
+
+    @Test
+    fun `repeated parameter names arrive as separate values in order`() {
+        val parameters = listOf("q" to "*:*", "fq" to "category:books", "fq" to "manufacturer:\"Lucid Press\"")
+
+        val (_, seen) = postForm(parameters)
+
+        assertEquals(parameters, decoded(checkNotNull(seen.body)))
+    }
+
+    @Test
+    fun `a form post answers with what the server sent`() {
+        val (result, _) = postForm(listOf("q" to "*:*", "wt" to "xml")) {
+            respond(it, 200, "<response><lst name=\"responseHeader\"/></response>", contentType = "application/xml")
+        }
+
+        assertEquals(
+            SolrResponse.Success(SolrRawAnswer(200, "application/xml", "<response><lst name=\"responseHeader\"/></response>")),
+            result,
+        )
+    }
+
+    /** A failure is still an answer here: the console shows the page and says what it meant. */
+    @Test
+    fun `an html error comes back raw with its body and content type`() {
+        val page = "<html><body><p>Searching for Solr?</p></body></html>"
+
+        val (result, _) = postForm(listOf("q" to "*:*")) { respond(it, 404, page, contentType = "text/html") }
+
+        assertEquals(SolrResponse.Success(SolrRawAnswer(404, "text/html", page)), result)
+        assertEquals(
+            SolrResponse.SolrError(404, null),
+            SolrHttpTransport.classify((result as SolrResponse.Success).value),
+        )
+    }
+
+    @Test
+    fun `an answer without a content type is still answered`() {
+        val (result, _) = postForm(listOf("q" to "*:*")) { exchange ->
+            val bytes = "{}".toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+
+        assertEquals(SolrResponse.Success(SolrRawAnswer(200, null, "{}")), result)
+    }
+
+    /** `wt=javabin` is binary; a console can only show it, and must not fail trying. */
+    @Test
+    fun `a body that is not utf-8 is still answered`() {
+        val (result, _) = postForm(listOf("q" to "*:*", "wt" to "javabin")) { exchange ->
+            val bytes = byteArrayOf(0x02, 0xA2.toByte(), 0xE0.toByte(), 0x2E, 0xFF.toByte())
+            exchange.responseHeaders.add("Content-Type", "application/octet-stream")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+        assertEquals(200, (result as SolrResponse.Success).value.status)
+    }
+
+    @Test
+    fun `a form post sends the credential preemptively`() {
+        val (_, seen) = postForm(listOf("q" to "*:*"), SolrCredential.Resolved("solr", "SolrRocks"))
+
+        assertTrue("expected a Basic header, got ${seen.authorization}", seen.authorization?.startsWith("Basic ") == true)
+    }
+
+    @Test
+    fun `a form post with no stored password never reaches the wire`() {
+        var reached = false
+        val url = given { exchange ->
+            reached = true
+            respond(exchange, 200, "{}")
+        }
+
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500))
+                .postForm(url, "/solr/products/select", listOf("q" to "*:*"), SolrCredential.Missing("solr"))
+        }
+
+        assertFalse("no request may be sent for an incomplete credential", reached)
+        assertTrue(result.toString(), result is SolrResponse.TransportFailure)
+    }
+
+    /** The console cancels a run it no longer wants; the request must stop, not finish unheard. */
+    @Test
+    fun `cancelling a form post cancels the request`() {
+        val url = given { Thread.sleep(30_000) }
+        var completed = false
+
+        val elapsed = measureTimeMillis {
+            runBlocking {
+                val job = launch(Dispatchers.IO) {
+                    SolrHttpTransport(timeout = Duration.ofSeconds(30)).postForm(url, "/solr/products/select", listOf("q" to "*:*"))
+                    completed = true
+                }
+                delay(300)
+                job.cancelAndJoin()
+            }
+        }
+
+        assertFalse("the request should have been cancelled, not completed", completed)
+        assertTrue("cancelling must interrupt the request, not wait for it; took ${elapsed}ms", elapsed < 5_000)
+    }
+
+    /** The console's own method must honour a longer timeout, or every console query stops at the default. */
+    @Test
+    fun `a form post honours a longer timeout for its call`() {
+        val url = given {
+            Thread.sleep(1_500)
+            respond(it, 200, """{"responseHeader":{"status":0}}""")
+        }
+
+        val result = runBlocking {
+            SolrHttpTransport(timeout = Duration.ofMillis(500))
+                .postForm(url, "/solr/products/select", listOf("q" to "*:*"), timeout = Duration.ofSeconds(5))
+        }
+
+        assertTrue(result.toString(), result is SolrResponse.Success)
+    }
+
+    @Test
+    fun `form encoding escapes keys and values and keeps order`() {
+        assertEquals(
+            "q=a+%26+b&fq=x%3D1&fq=%C3%A9",
+            SolrHttpTransport.formEncoded(listOf("q" to "a & b", "fq" to "x=1", "fq" to "é")),
+        )
     }
 }
