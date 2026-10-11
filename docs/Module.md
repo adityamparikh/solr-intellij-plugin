@@ -128,6 +128,18 @@ that will not parse and a response that arrived incomplete are four different
 things a user needs told apart, and a caller that has to catch in order to find out
 which will eventually catch too much.
 
+# Package org.apache.solr.ide.server.query.screen
+
+The query console: Solr Admin's query form in an editor tab, run by the plugin's own
+transport. The form is read from a definition transcribed from Solr's query page
+(`SolrQueryScreenSpec`); what it holds decides what is sent (`SolrQueryScreenState`),
+which becomes a form POST or a refusal (`SolrQueryScreenRequest`); and an answer is
+classified for display (`SolrQueryScreenAnswer`). All four are pure. The tab, its form
+and its results are internal.
+
+Beside the HTTP Client rather than instead of it: a query is worked on here and kept
+in an `.http` file, and *Open as .http* hands one across.
+
 # Package org.apache.solr.ide.server.reading
 
 Turning what a Solr server returns into the same facts a configset parser
