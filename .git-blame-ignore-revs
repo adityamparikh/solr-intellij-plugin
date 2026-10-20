@@ -1,0 +1,6 @@
+# Commits that `git blame` should look through: mechanical rewrites that changed every line's
+# author without changing what any line does. GitHub's blame view reads this file by name. Locally,
+# run once: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# build: format in Google style, and check it as part of check (#275)
+f337d68a90daa34617fa508803e5a55b9884cf03

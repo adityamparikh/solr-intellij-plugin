@@ -225,7 +225,9 @@ All three fire on `./gradlew build` locally, so CI should not be the first place
   `.editorconfig` brings the IDE's own formatter close: it sets the indent, the continuation indent
   and the line length, puts imports in the order ktfmt and google-java-format sort them, and stops
   *Optimize Imports* collapsing them into wildcards. It does not make IntelliJ wrap lines as ktfmt
-  does, so run `spotlessApply` before committing either way.
+  does, so run `spotlessApply` before committing either way. The commit that first reformatted the
+  tree is listed in `.git-blame-ignore-revs`. GitHub's blame view reads that file without being
+  asked; for local `git blame`, run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
 
 - **Documentation.** [Dokka](glossary.md#dokka) with `reportUndocumented` and `failOnWarning`. Any
   public class, function or property in `src/main/kotlin` without KDoc fails the build, naming the
