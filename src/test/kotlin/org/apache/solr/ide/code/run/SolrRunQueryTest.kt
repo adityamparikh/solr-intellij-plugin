@@ -1,8 +1,13 @@
 package org.apache.solr.ide.code.run
 
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.psi.PsiElement
+import com.intellij.testFramework.PlatformTestUtil
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
+import java.util.Collections
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
@@ -23,6 +28,9 @@ import org.apache.solr.ide.server.connection.SolrConnectionSettings
 class SolrRunQueryTest : SolrConfigsetTestCase() {
 
     private var server: HttpServer? = null
+
+    // Every path the stub server was asked for, in order, so a test can say what the gesture sent.
+    private val requested: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
     private fun systemInfo(mode: String) = """{"responseHeader":{"status":0},"mode":"$mode"}"""
 
@@ -46,6 +54,7 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
         val started = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         started.createContext("/") { exchange ->
             val path = exchange.requestURI.path
+            requested += path
             when {
                 path.endsWith("/admin/collections") -> collections(exchange)
                 path.endsWith("/admin/cores") -> cores(exchange)
@@ -83,6 +92,29 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
 
     private fun answer(connection: SolrConnection, collection: String = "books") = runBlocking {
         SolrRunQuery.answerFor(project, connection, collection, "category:books")
+    }
+
+    /**
+     * A leaf in a file that is on disk but shown in no editor — the state a gutter click is in when
+     * the user closes the tab before the server answers.
+     */
+    private fun leafInAClosedFile(): PsiElement {
+        val file = myFixture.addFileToProject("src/Search.java", "class Search {}")
+        val editors = FileEditorManager.getInstance(project)
+        editors.openFiles.forEach(editors::closeFile)
+        assertNull("the gesture must find no editor to anchor to", editors.selectedTextEditor)
+        return file.firstChild
+    }
+
+    /**
+     * Clicks the icon and waits for the gesture to finish, pumping the event queue meanwhile.
+     *
+     * The gesture hops to the EDT to show its popup, so blocking the EDT here would deadlock it.
+     */
+    private fun click(element: PsiElement): Job {
+        val job = SolrRunQuery.from(element, "category:books")
+        PlatformTestUtil.waitWithEventsDispatching("the run gesture never finished", { job.isCompleted }, 10)
+        return job
     }
 
     // --- what the chooser offers --------------------------------------------------------------------
@@ -255,5 +287,42 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
         val text = answer(connection)
 
         assertTrue(text, text.contains("not JSON"))
+    }
+
+    // --- the click itself, with nowhere to show a popup ----------------------------------------------
+
+    /**
+     * A refusal is decided and then dropped quietly when the file has been closed.
+     *
+     * With no connection selected there is nothing to ask, so no request goes anywhere; and with no
+     * editor open there is nowhere to show the sentence, which must end the gesture rather than
+     * throw — a result nobody is waiting for is not an error.
+     */
+    fun testARefusalWithNoEditorOpenEndsQuietlyAndAsksNothing() {
+        givenServer()
+        val element = leafInAClosedFile()
+
+        val job = click(element)
+
+        assertFalse("the gesture failed rather than ending", job.isCancelled)
+        assertEquals(emptyList<String>(), requested.toList())
+    }
+
+    /**
+     * An offer reads the topology, then stops where the chooser would show, sending no query.
+     *
+     * The query runs only once a collection is chosen; with no editor to anchor the chooser to,
+     * none can be, so the server must see the topology read and never a `select`.
+     */
+    fun testAnOfferWithNoEditorOpenReadsTheTopologyButRunsNoQuery() {
+        connectedTo(givenServer())
+        val element = leafInAClosedFile()
+
+        val job = click(element)
+
+        assertFalse("the gesture failed rather than ending", job.isCancelled)
+        val paths = requested.toList()
+        assertTrue(paths.toString(), paths.any { it.endsWith("/admin/collections") })
+        assertFalse(paths.toString(), paths.any { it.endsWith("/select") })
     }
 }

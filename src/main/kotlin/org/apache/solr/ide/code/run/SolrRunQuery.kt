@@ -10,6 +10,7 @@ import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.solr.ide.SolrBundle
@@ -43,10 +44,12 @@ internal object SolrRunQuery {
      *
      * @param element the leaf the icon sits on, which anchors the popups
      * @param query the query as the source spells it
+     * @return the request in flight, up to the chooser or the refusal being shown; the gutter click
+     *   ignores it, and a test waits on it to drive the gesture through without a popup to press
      */
-    fun from(element: PsiElement, query: String) {
+    fun from(element: PsiElement, query: String): Job {
         val project = element.project
-        project.service<SolrCollectionsScope>().scope.launch {
+        return project.service<SolrCollectionsScope>().scope.launch {
             val choices = choicesFor(project)
             withContext(Dispatchers.EDT) {
                 when (choices) {
