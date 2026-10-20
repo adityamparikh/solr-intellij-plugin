@@ -126,11 +126,12 @@ org.apache.solr.ide
 │
 └── server                             nothing on the editor path may import any of this
     ├── connection                (5)   how to reach a running Solr, and remembering it
-    ├── transport                 (3)   the HTTP call, the credential, and how an answer is classified
-    ├── reading                   (7)   a Solr response turned into facts
-    ├── topology                  (4)   the collections tool window
-    ├── query                     (5)   queries in `.http` files, and what their answers say
-    └── drift                     (6)   configset against collection, and the writes that close a gap
+    ├── transport                 (4)   the HTTP call, the credential, and how an answer is classified
+    ├── reading                   (8)   a Solr response turned into facts
+    ├── topology                  (7)   the collections tool window
+    ├── query                    (12)   queries in `.http` files, and what their answers say
+    ├── drift                     (6)   configset against collection, and the writes that close a gap
+    └── indexing                  (5)   a test document written for one collection, and sent there
 ```
 
 ### If you have not written an IntelliJ plugin before

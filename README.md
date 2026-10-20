@@ -27,9 +27,7 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 ## Status
 
 **The editor, server and code tracks are complete, and 0.2.0 carries all three.** It is drafted on
-GitHub and waiting to be published; 0.1.0 was cut in the changelog but never released. Every feature
-below has been pressed in a running IDE against a live SolrCloud, not only tested — apart from the tool
-window's right-click queries, which were added after that pass and so far are only tested.
+GitHub and waiting to be published; 0.1.0 was cut in the changelog but never released.
 
 - **The configset editor** — the 0.1.0 content. Configset detection, a parsed field model, and
   everything built on it: eleven inspections with quick-fixes, completion over Solr's own

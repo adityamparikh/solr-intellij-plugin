@@ -527,10 +527,11 @@ connection changes with it.
 Show collections, and the fields the server actually has. Note that this list is not the
 same as the schema file's list, and that difference is the next demo.
 
-Then right-click the `products` collection: *Query* and *Explain Scoring*. Right-click one of
-its fields: *Find Documents with* it and *Count Values of* it. Each opens a ready-to-run
-request in a scratch file, already addressed to this server — which is how the next two
-steps begin.
+Then right-click the `products` collection: *Query* and *Explain Scoring*. Right-click a
+field whose values can be counted — `category`, which has doc values — and choose *Find
+Documents with* it and *Count Values of* it. A tokenized text field such as `name` offers
+only the first, because counting it would count its words. Each opens a ready-to-run request
+in a scratch file, already addressed to this server — which is how the next two steps begin.
 
 ### Step 37. Run a query
 

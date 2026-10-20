@@ -997,8 +997,8 @@ Checks join a section above when their feature ships; **which features those are
 list below is what the suite does not yet cover, and says nothing about what is built —
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
-- An interactive query console of the plugin's own. Queries run through the IDE's HTTP Client
-  today, and section 13 covers that route
+- An interactive query console of the plugin's own. Running a query through the IDE's HTTP
+  Client is a separate route, and section 13 covers it
 - Framework configuration, and any Solr client that is not SolrJ — Spring Data, Camel
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a

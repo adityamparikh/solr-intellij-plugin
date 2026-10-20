@@ -10,71 +10,44 @@ spec-file: specs/0002-solr-intellij-plugin.md
 Deliver the plugin described in the spec: configuration intelligence, a live Solr connection, and Java/Kotlin code
 support, unified by one field model.
 
-**Current state.** The build, CI and documentation tooling are complete and stay as they are. Foundation is built,
-settings page included. Of the three tracks the work then splits into, the Editor one is finished, and what it built
-is real rather than scaffolding: a configset parses into a field model, and that model reaches the screen as
-match-capability inlay hints, quick documentation on schema elements, field types and
-`class` values, inspections over both configuration files — several of them offering the valid names rather than only reporting the invalid one —
-and completion for both the schema's own vocabulary and the catalog's classes and factory attributes. Two Alt-Enter
-intentions now *write* rather than only describe — the `_prefix` and `_exact` companion patterns, generated from the
-field that lacks them — which is the first time the plugin edits a configset rather than explaining one. The generated
-catalog now carries each class's attributes with their value types — and, where the bytecode proves them, their literal
-defaults and required markers — and covers the field-type classes as well as the factories. On the schema side, a
-field's effective properties resolve against the
-`version` attribute on the schema's own root element, which is what decides several of Solr's defaults and is a third
-version number beside the Solr line and `luceneMatchVersion`.
+**The shape of the work.** Foundation comes first — the activation gate, the repository reader that parses a
+configset into a field model, match analysis, and the settings page with its detection escape hatch — and everything
+after it reads what it produces. The work then splits into three tracks, each putting the same field model to use in a
+different place. The build, CI and documentation tooling sit beneath all of it.
 
-**`solrconfig.xml` stopped being a file the plugin merely read for field names.** Six merged pull requests under
-[step 25](#step-25-solrconfigxml-as-a-first-class-surface-done) gave it parameter-name completion and
-documentation over 340 generated parameter names, the closed set `defType` accepts, completion and quick
-documentation and Ctrl-click on the classes it names, schema field names offered inside the sixteen parameters
-known to hold them, and two inspections that fire where a *broken* configuration would previously have passed
-silently — a `facet.field` or `sort` naming a field that cannot serve it. Eleven inspection classes over the
-configset were registered when that work finished; the Code track has since added a twelfth, over field names in
-Java and Kotlin. **This paragraph used to end here by saying the file still lacked its own structure, and
-that sentence outlived what it described.** Action 1 of [step 25](#step-25-solrconfigxml-as-a-first-class-surface-done)
-shipped in `#141`: typing `<` inside `<config>` offers Solr's own top-level vocabulary —
-`requestHandler`, `query`, `directoryFactory`, `luceneMatchVersion` and the rest the generator read out
-of `SolrConfig`'s own config-reading calls — not an echo of whatever sibling tags already sit above the caret,
-and not a copy of the schema's vocabulary either. **Nesting is respected, and this is no longer merely the
-design intent — a defect closed after this paragraph was first corrected proves it.** `cache`,
-`featureVectorCache` and `HashDocSet` were being offered inside `<config>` as well as inside `<query>`,
-where all three actually belong; the generator now follows the bytecode call chain that reads a nested
-element off its parent node rather than stopping at calls made directly on `SolrConfig`, so an element
-that chain reaches is placed under its real parent instead of defaulting to the root when the chain went
-unfollowed. What completes inside `<query>` is not what completes inside `<config>`. [The manual suite's
-structure-completion checks](../../docs/manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str)
-press this — the checks that top-level completion inside `<config>` offers Solr's own vocabulary and
-that a discontinued element is never offered have a recorded pass — and
-[screenshot catalog entry 10](../../docs/screenshots.md#10-solrconfigxmls-own-structure--10-completion-solrconfig-structurepng)
-captures it against the sandbox.
+**The Editor track makes a configset explain and correct itself.** The field model reaches the screen as
+match-capability inlay hints; as quick documentation on schema elements, field types, `class` values and individual
+attributes; as inspections over both configuration files, several of which offer the valid names rather than only
+reporting the invalid one; and as completion for the schema's own vocabulary and for the catalog's classes and factory
+attributes. Some of it writes rather than describes — generating the `_prefix` and `_exact` companion patterns a field
+lacks, or removing an attribute that only restates the default, which is said only where the model can prove the field
+would be unchanged. `solrconfig.xml` is a surface in its own right rather than a file read for field names: its
+parameter names, the closed set `defType` accepts, the classes it names, its own nested structure — what completes
+inside `<query>` is not what completes inside `<config>` — and the schema fields its parameters hold. Behind much of
+this sits a catalog generated from Solr's own bytecode for each supported line, carrying every class's attributes,
+their value types and, where the bytecode proves them, their literal defaults and required markers. A field's
+effective properties resolve against the `version` attribute on the schema's root element, a third version number
+beside the Solr line and `luceneMatchVersion`.
 
-**Two facts were recorded before anything showed them, and now two surfaces do.** The catalog's attribute defaults and
-required markers went further than the class popup's `Accepts` table, which renders a name and a value type and stops;
-[the per-attribute hover and the complete-configuration popup](#step-10-completion-validation-and-quick-documentation-done)
-now render the rest, the first for the attribute under the caret and the second for every attribute a factory tag
-accepts. [The dimmed restated default](#step-26-showing-that-an-attribute-restates-the-default-done) now reads the
-same facts to make a different claim: not what Solr will supply, but that a written value need not have been written at
-all. A field attribute that decides nothing is dimmed where it stands, with an intention that removes it — the first
-time the plugin says something about a line without being asked, and it says it only where the model can prove the
-field would be unchanged.
+**The Server track reaches a live Solr.** It holds the connections, a tool window that browses what a server actually
+holds and opens a ready-to-run query for any collection or field in it, running queries against a collection, the
+comparison of a configset with a live collection along with its upload and reload, and indexing test documents.
 
-**Beyond the editor, the plugin reaches a live Solr and the code that calls it.** A configset can be compared
-with a live collection, uploaded and reloaded; the tool window browses what a server actually holds and opens a
-ready-to-run query for any collection or field in it; and field names in plain Java and Kotlin using SolrJ are
-checked, completed and navigable, with a query string coloured by structure and runnable from the gutter. A
-framework application — Spring Boot, Quarkus, Micronaut, MicroProfile, Apache Camel — gets those field checks, and
-not the connection its configuration already names; that is what the framework steps add. Release 0.2.0 carries
-what is built today and is prepared but not yet published; [the release guide](../../docs/how-to/releasing.md) says
-what publishing still needs.
+**The Code track reaches the code that calls Solr.** SolrJ code in Java and Kotlin gets its field names checked,
+completed and navigable, and its query strings coloured by structure and runnable from the gutter — in a plain
+application and equally in one built on Spring Boot, Quarkus, Micronaut, MicroProfile or Apache Camel. What the
+framework steps add is what only the framework knows: the connection an application's configuration already names,
+and, for Camel, the Solr endpoints and field references inside its routes.
 
-**This section no longer says which steps are done, and that is deliberate.** It said so four times, and four times
+**This section does not say which steps are done, and that is deliberate.** It used to, four times, and four times
 the sentence outlived the work it described — that neither the Server nor the Code track had started, that the server
 steps had never had a sandbox pass, that the Code track had met two of its first step's five criteria. Each stood
 through every pull request that made it untrue, while [the build order](#build-order) was right the whole time. Status
-is read there and in each step's heading, never here.
+is read there and in each step's heading, never here; which release carries what is
+[the documentation step's](#step-21-documentation) to say, and [the release guide](../../docs/how-to/releasing.md)
+says what publishing still needs.
 
-Neither track is blocked by the other, and neither is blocked by the Editor track.
+The Server and Code tracks are not blocked by each other, and neither is blocked by the Editor track.
 [The build order](#build-order) explains what cutting one whole would cost.
 
 **What this plan dropped.** The provenance classification, the API-first write gating, and the runtime derivation of
