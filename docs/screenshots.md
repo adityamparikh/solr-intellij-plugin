@@ -553,7 +553,7 @@ text. The summary line above must name both sides and the counts.
 is that a `DISAGREEING` fact must never be resolved to one side, and only a *Differs* row with two
 populated cells shows that it was not.
 
-**Capture** add a field to `demo/books/conf/managed-schema.xml` and do not deploy it; add a second
+**Capture** add a field to `demo/solr/conf/managed-schema.xml` and do not deploy it; add a second
 field to the collection through the Schema API and not to the configset; change a third field's
 `stored` in the configset only. Compare, and frame the table with the summary line above it.
 
@@ -877,6 +877,11 @@ own "Not yet in the suite" list:
   inline failure banner when a server is down (`SRV-5`) and Upload and Reload's confirmation
   (`SRV-22`) — the second cannot be shot against the demo configset at all, whose planted defects stop
   a core starting
+- **The tool window's right-click queries** — *Query* and *Explain Scoring* on a collection, *Find
+  Documents with* and *Count Values of* on a field (`SRV-10a` in
+  [the connections and tool window checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)).
+  The frame worth having is the menu open on a field of the demo's `products` collection, with the
+  scratch file it opens beside it
 - **The code track's remaining gestures.** Entries 26 to 29 above cover the check, the colour, the
   navigation and the gutter run; what none of them shows is the spelling quick-fix, field completion
   inside a query string, the *no connection* message, the same file written in Kotlin, and the

@@ -41,8 +41,10 @@ because the editor's job is to reason about the file in front of the user — bu
 surfaced rather than hidden, because showing where your configuration and your deployed server
 disagree is a feature the plugin is specified to have.
 
-The server half is empty until the server reader lands. Write new facts as `SolrFact<T>` anyway; a
-value that resolves the question away now will have to be unpicked later.
+The server half is filled only on a server surface — the drift view builds the two-source model, and
+nothing on the editor path may. Write new facts as `SolrFact<T>` even when only the repository half
+will ever be filled where you read them; a value that resolves the question away has to be unpicked
+the first time a server surface wants it.
 
 ## The pipeline
 

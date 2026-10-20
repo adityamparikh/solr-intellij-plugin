@@ -27,16 +27,16 @@ Solr has no maintained plugin on the JetBrains Marketplace, unlike Elasticsearch
 ## Status
 
 **The editor, server and code tracks are complete, and 0.2.0 carries all three.** It is drafted on
-GitHub and waiting to be published; 0.1.0 was cut in the changelog but never released. Every feature
-below has been pressed in a running IDE against a live SolrCloud, not only tested.
+GitHub and waiting to be published; 0.1.0 was cut in the changelog but never released.
 
 - **The configset editor** — the 0.1.0 content. Configset detection, a parsed field model, and
   everything built on it: eleven inspections with quick-fixes, completion over Solr's own
   vocabulary, cross-file navigation and rename, quick documentation at every caret position, and
   inline hints saying what each field can actually match.
 - **A live server** — connections with their passwords in the IDE's password safe, a tool window
-  showing collections, shards, replicas and the fields an index actually holds, queries run through
-  the IDE's own HTTP Client with a readable summary and field completion, a drift view comparing a
+  showing collections, shards, replicas and the fields an index actually holds — right-click any of
+  them for a ready-to-run query — queries run through the IDE's own HTTP Client with a readable
+  summary and field completion, a drift view comparing a
   configset with a collection — with upload, reload and additive Schema API changes — and a
   test-document editor that opens on every field the collection holds and refuses what Solr would
   silently accept.
@@ -169,7 +169,7 @@ and the comparison that only exists because two of them are connected.
 | Surface | What it does | Needs a running Solr |
 |---|---|---|
 | **Configuration** | Navigation, Find Usages, inspections, match-capability hints and quick-fixes, completion, rename | No |
-| **Server** | Browse collections, query console with structured results, index test documents, upload configsets and reload collections | Yes |
+| **Server** | Browse collections, run queries with a readable summary of each answer, index test documents, upload configsets and reload collections | Yes |
 | **Code** | Field names in [SolrJ](docs/glossary.md#solrj) usage checked and completed, query syntax inside string literals, run a query from a gutter icon | No, better with one |
 | **Repo vs. server** | Show where your configuration and the deployed server disagree | Both |
 
