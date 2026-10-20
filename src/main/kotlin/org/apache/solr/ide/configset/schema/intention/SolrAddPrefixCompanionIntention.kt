@@ -1,8 +1,8 @@
 package org.apache.solr.ide.configset.schema.intention
 
 import org.apache.solr.ide.SolrBundle
-import org.apache.solr.ide.model.schema.SolrField
 import org.apache.solr.ide.model.SolrFieldModel
+import org.apache.solr.ide.model.schema.SolrField
 
 /**
  * Generates the field that makes prefix searching work, from the field that cannot do it.
@@ -16,35 +16,37 @@ import org.apache.solr.ide.model.SolrFieldModel
  */
 class SolrAddPrefixCompanionIntention : SolrAddCompanionIntention() {
 
-    /** The stable label, which groups both variants under one entry in the intention settings. */
-    override fun getFamilyName(): String = SolrBundle.message("intention.prefixCompanion.family")
+  /** The stable label, which groups both variants under one entry in the intention settings. */
+  override fun getFamilyName(): String = SolrBundle.message("intention.prefixCompanion.family")
 
-    override fun planFor(field: SolrField, model: SolrFieldModel): SolrCompanionPlan? =
-        SolrPrefixCompanion.planFor(field, model)
+  override fun planFor(field: SolrField, model: SolrFieldModel): SolrCompanionPlan? =
+    SolrPrefixCompanion.planFor(field, model)
 
-    /**
-     * Naming the reused type is the mitigation for the one real ambiguity here: a schema declaring
-     * several edge-n-gram types has one picked for it, and reading that choice before taking the fix
-     * is the difference between a decision and a surprise.
-     */
-    override fun textFor(plan: SolrCompanionPlan): String = if (plan.generatesType) {
-        SolrBundle.message("intention.prefixCompanion.generate")
+  /**
+   * Naming the reused type is the mitigation for the one real ambiguity here: a schema declaring
+   * several edge-n-gram types has one picked for it, and reading that choice before taking the fix
+   * is the difference between a decision and a surprise.
+   */
+  override fun textFor(plan: SolrCompanionPlan): String =
+    if (plan.generatesType) {
+      SolrBundle.message("intention.prefixCompanion.generate")
     } else {
-        SolrBundle.message("intention.prefixCompanion.reuse", plan.typeName)
+      SolrBundle.message("intention.prefixCompanion.reuse", plan.typeName)
     }
 
-    /**
-     * The generated type, whose asymmetry is the reason generating it is worth more than generating
-     * the field: the edge n-gram appears on the index side only.
-     *
-     * Put it on the query side as well and a search for `wid` is itself ground into `wi` and `wid`,
-     * both of which match a large fraction of the index. Relevance collapses, and the symptom gets
-     * reported as "search is broken" rather than as a schema bug.
-     *
-     * The gram bounds are conventional rather than derived: below two a single character matches
-     * most of the index, and above fifteen the index carries prefixes nobody types.
-     */
-    override fun generatedType(typeName: String): String = """
+  /**
+   * The generated type, whose asymmetry is the reason generating it is worth more than generating
+   * the field: the edge n-gram appears on the index side only.
+   *
+   * Put it on the query side as well and a search for `wid` is itself ground into `wi` and `wid`,
+   * both of which match a large fraction of the index. Relevance collapses, and the symptom gets
+   * reported as "search is broken" rather than as a schema bug.
+   *
+   * The gram bounds are conventional rather than derived: below two a single character matches most
+   * of the index, and above fifteen the index carries prefixes nobody types.
+   */
+  override fun generatedType(typeName: String): String =
+    """
         <fieldType name="$typeName" class="solr.TextField" positionIncrementGap="100">
           <analyzer type="index">
             <tokenizer class="solr.StandardTokenizerFactory"/>
@@ -56,5 +58,6 @@ class SolrAddPrefixCompanionIntention : SolrAddCompanionIntention() {
             <filter class="solr.LowerCaseFilterFactory"/>
           </analyzer>
         </fieldType>
-    """.trimIndent()
+    """
+      .trimIndent()
 }

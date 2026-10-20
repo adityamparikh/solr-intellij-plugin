@@ -23,12 +23,13 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
 
-    override fun setUp() {
-        super.setUp()
-        myFixture.enableInspections(SolrUnknownCodeFieldInspection())
-    }
+  override fun setUp() {
+    super.setUp()
+    myFixture.enableInspections(SolrUnknownCodeFieldInspection())
+  }
 
-    private fun searching(body: String) = """
+  private fun searching(body: String) =
+    """
         import org.apache.solr.client.solrj.SolrQuery;
         class Search {
             void go() {
@@ -36,110 +37,112 @@ class SolrUnknownCodeFieldInspectionTest : SolrConfigsetTestCase() {
                 $body
             }
         }
-    """.trimIndent()
+    """
+      .trimIndent()
 
-    private fun check(text: String) {
-        myFixture.configureByText("Search.java", text)
-        myFixture.checkHighlighting()
-    }
+  private fun check(text: String) {
+    myFixture.configureByText("Search.java", text)
+    myFixture.checkHighlighting()
+  }
 
-    // --- the clean file, first --------------------------------------------------------------------
+  // --- the clean file, first --------------------------------------------------------------------
 
-    /** A declared field is not reported, which is the case every other test is measured against. */
-    fun testADeclaredFieldIsNotReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
+  /** A declared field is not reported, which is the case every other test is measured against. */
+  fun testADeclaredFieldIsNotReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
 
-        check(searching("""q.addFilterQuery("category:books");"""))
-    }
+    check(searching("""q.addFilterQuery("category:books");"""))
+  }
 
-    /** A name a dynamic pattern covers is declared, even though nothing spells it out. */
-    fun testANameADynamicPatternCoversIsNotReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
+  /** A name a dynamic pattern covers is declared, even though nothing spells it out. */
+  fun testANameADynamicPatternCoversIsNotReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
 
-        check(searching("""q.addFilterQuery("author_s:herbert");"""))
-    }
+    check(searching("""q.addFilterQuery("author_s:herbert");"""))
+  }
 
-    /**
-     * Nothing is reported where the project has no configset at all.
-     *
-     * The plugin cannot know a name is wrong if it has nothing to check it against, and a warning
-     * here would fire in every project that uses SolrJ against a server whose schema lives
-     * elsewhere — which is most of them.
-     */
-    fun testNothingIsReportedWithNoConfigsetToCheckAgainst() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
+  /**
+   * Nothing is reported where the project has no configset at all.
+   *
+   * The plugin cannot know a name is wrong if it has nothing to check it against, and a warning
+   * here would fire in every project that uses SolrJ against a server whose schema lives elsewhere
+   * — which is most of them.
+   */
+  fun testNothingIsReportedWithNoConfigsetToCheckAgainst() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
 
-        check(searching("""q.addFilterQuery("categry:books");"""))
-    }
+    check(searching("""q.addFilterQuery("categry:books");"""))
+  }
 
-    /**
-     * Solr's own fields are not reported, because no schema declares them.
-     *
-     * `score` is computed per result and appears in half the field lists ever written.
-     */
-    fun testSolrsOwnFieldsAreNotReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
+  /**
+   * Solr's own fields are not reported, because no schema declares them.
+   *
+   * `score` is computed per result and appears in half the field lists ever written.
+   */
+  fun testSolrsOwnFieldsAreNotReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
 
-        check(searching("""q.setFields("id", "score");"""))
-    }
+    check(searching("""q.setFields("id", "score");"""))
+  }
 
-    /** A module with no Solr client is not examined, so nothing in it can be reported. */
-    fun testNothingIsReportedWithoutASolrClient() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
-        givenNoSolrOnTheClasspath()
+  /** A module with no Solr client is not examined, so nothing in it can be reported. */
+  fun testNothingIsReportedWithoutASolrClient() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id")
+    givenNoSolrOnTheClasspath()
 
-        check(searching("""q.addFilterQuery("categry:books");"""))
-    }
+    check(searching("""q.addFilterQuery("categry:books");"""))
+  }
 
-    /**
-     * A declared field whose name contains a hyphen is not reported.
-     *
-     * **The symptom the scanner's contradiction produced.** `-` separated clauses unconditionally
-     * while also being legal inside a name, so `some-field:books` was read as the field `field` and
-     * reported undeclared — a warning on correct code naming a field that is declared, which is the
-     * one failure this plugin's rules put above all others.
-     *
-     * Solr settles it: `some-field:books` comes back as *undefined field some-field*, so the whole
-     * token is the name.
-     */
-    fun testAHyphenatedFieldNameIsNotReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "some-field")
+  /**
+   * A declared field whose name contains a hyphen is not reported.
+   *
+   * **The symptom the scanner's contradiction produced.** `-` separated clauses unconditionally
+   * while also being legal inside a name, so `some-field:books` was read as the field `field` and
+   * reported undeclared — a warning on correct code naming a field that is declared, which is the
+   * one failure this plugin's rules put above all others.
+   *
+   * Solr settles it: `some-field:books` comes back as *undefined field some-field*, so the whole
+   * token is the name.
+   */
+  fun testAHyphenatedFieldNameIsNotReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "some-field")
 
-        check(searching("""q.addFilterQuery("some-field:books");"""))
-    }
+    check(searching("""q.addFilterQuery("some-field:books");"""))
+  }
 
-    // --- and then what it reports -----------------------------------------------------------------
+  // --- and then what it reports -----------------------------------------------------------------
 
-    fun testAnUndeclaredFieldIsReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
+  fun testAnUndeclaredFieldIsReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "category")
 
-        check(
-            searching(
-                """q.addFilterQuery("<warning descr="Solr: no field named 'categry' is declared in this project's configsets">categry</warning>:books");""",
-            ),
-        )
-    }
+    check(
+      searching(
+        """q.addFilterQuery("<warning descr="Solr: no field named 'categry' is declared in this project's configsets">categry</warning>:books");"""
+      )
+    )
+  }
 
-    /** The same name in a bean annotation is reported the same way. */
-    fun testAnUndeclaredBeanFieldIsReported() {
-        SolrCodeFixtures.givenSolrJ(myFixture)
-        SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "price")
+  /** The same name in a bean annotation is reported the same way. */
+  fun testAnUndeclaredBeanFieldIsReported() {
+    SolrCodeFixtures.givenSolrJ(myFixture)
+    SolrCodeFixtures.givenConfigsetDeclaring(myFixture, "id", "price")
 
-        myFixture.configureByText(
-            "Product.java",
-            """
-            import org.apache.solr.client.solrj.beans.Field;
-            class Product {
-                @Field("<warning descr="Solr: no field named 'prce' is declared in this project's configsets">prce</warning>") int price;
-            }
-            """.trimIndent(),
-        )
-        myFixture.checkHighlighting()
-    }
+    myFixture.configureByText(
+      "Product.java",
+      """
+      import org.apache.solr.client.solrj.beans.Field;
+      class Product {
+          @Field("<warning descr="Solr: no field named 'prce' is declared in this project's configsets">prce</warning>") int price;
+      }
+      """
+        .trimIndent(),
+    )
+    myFixture.checkHighlighting()
+  }
 }

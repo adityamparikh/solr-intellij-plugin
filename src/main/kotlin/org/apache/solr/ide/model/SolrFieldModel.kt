@@ -23,17 +23,17 @@ import org.apache.solr.ide.model.vocabulary.SolrClassKind
  */
 enum class SolrAgreement {
 
-    /** Declared in the configset, absent from the server. Typically not yet deployed. */
-    REPOSITORY_ONLY,
+  /** Declared in the configset, absent from the server. Typically not yet deployed. */
+  REPOSITORY_ONLY,
 
-    /** Present on the server, absent from the configset. Typically added through the Schema API. */
-    SERVER_ONLY,
+  /** Present on the server, absent from the configset. Typically added through the Schema API. */
+  SERVER_ONLY,
 
-    /** Present in both, and identical. */
-    AGREEING,
+  /** Present in both, and identical. */
+  AGREEING,
 
-    /** Present in both, and different. The case worth showing the user. */
-    DISAGREEING,
+  /** Present in both, and different. The case worth showing the user. */
+  DISAGREEING,
 }
 
 /**
@@ -48,40 +48,43 @@ enum class SolrAgreement {
  */
 data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
 
-    init {
-        require(repository != null || server != null) { "a fact must be known to at least one source" }
-    }
+  init {
+    require(repository != null || server != null) { "a fact must be known to at least one source" }
+  }
 
-    /** How the two sources relate. */
-    val agreement: SolrAgreement
-        get() = when {
-            repository != null && server == null -> SolrAgreement.REPOSITORY_ONLY
-            repository == null && server != null -> SolrAgreement.SERVER_ONLY
-            repository == server -> SolrAgreement.AGREEING
-            else -> SolrAgreement.DISAGREEING
-        }
+  /** How the two sources relate. */
+  val agreement: SolrAgreement
+    get() =
+      when {
+        repository != null && server == null -> SolrAgreement.REPOSITORY_ONLY
+        repository == null && server != null -> SolrAgreement.SERVER_ONLY
+        repository == server -> SolrAgreement.AGREEING
+        else -> SolrAgreement.DISAGREEING
+      }
 
-    /**
-     * The version to use when only one can be shown.
-     *
-     * The repository wins, because the editor's job is to reason about the file in front of the
-     * user. Where the two differ, that difference is surfaced through [agreement] rather than by
-     * quietly substituting the server's answer for the one the user is editing.
-     */
-    val effective: T get() = repository ?: requireNotNull(server)
+  /**
+   * The version to use when only one can be shown.
+   *
+   * The repository wins, because the editor's job is to reason about the file in front of the user.
+   * Where the two differ, that difference is surfaced through [agreement] rather than by quietly
+   * substituting the server's answer for the one the user is editing.
+   */
+  val effective: T
+    get() = repository ?: requireNotNull(server)
 }
 
 /**
  * Everything the plugin knows about one configset's fields, merged from the repository and,
  * eventually, from a server.
  *
- * **The server half is filled only where a caller has read one**, which is a distinction with teeth.
- * A model built from a configset alone reports every fact as [SolrAgreement.REPOSITORY_ONLY], and
- * that is indistinguishable from a server which genuinely has none of them — so a consumer that
- * reads `agreement` without knowing whether a server was consulted can report an entire schema as
- * undeployed on a project that has never connected to anything. The drift view avoids it by taking
- * both halves as separate arguments rather than a model; see `SolrDrift.between`. The editing
- * surfaces avoid it by never asking about agreement at all.
+ * **The server half is filled only where a caller has read one**, which is a distinction with
+ * teeth. A model built from a configset alone reports every fact as
+ * [SolrAgreement.REPOSITORY_ONLY], and that is indistinguishable from a server which genuinely has
+ * none of them — so a consumer that reads `agreement` without knowing whether a server was
+ * consulted can report an entire schema as undeployed on a project that has never connected to
+ * anything. The drift view avoids it by taking both halves as separate arguments rather than a
+ * model; see `SolrDrift.between`. The editing surfaces avoid it by never asking about agreement at
+ * all.
  *
  * @property fields declared fields, by name
  * @property dynamicFields dynamic-field declarations, by pattern
@@ -90,179 +93,190 @@ data class SolrFact<T : Any>(val repository: T? = null, val server: T? = null) {
  * @property uniqueKey the `uniqueKey` declaration, or null if the configset declares none
  * @property fieldReferences field names referenced from `solrconfig.xml`
  * @property serverVersion the Solr version a connected server reported, or null where none has been
- *   asked. Kept as reported rather than as a resolved selection, because it is also what a user reads
- *   to know which server they reached
+ *   asked. Kept as reported rather than as a resolved selection, because it is also what a user
+ *   reads to know which server they reached
  * @property luceneMatchVersion the version the configset declares it targets, or null
  * @property schemaVersion the schema's declared `version`, resolved through Solr's own fallback, so
  *   a schema declaring none reports [SolrSchemaVersion.ASSUMED] rather than null
  */
 class SolrFieldModel(
-    val fields: Map<String, SolrFact<SolrField>> = emptyMap(),
-    val dynamicFields: Map<String, SolrFact<SolrDynamicField>> = emptyMap(),
-    val fieldTypes: Map<String, SolrFact<SolrFieldType>> = emptyMap(),
-    val copyFields: List<SolrFact<SolrCopyField>> = emptyList(),
-    val uniqueKey: SolrFact<String>? = null,
-    val fieldReferences: List<SolrFieldReference> = emptyList(),
-    val luceneMatchVersion: String? = null,
-    val serverVersion: String? = null,
-    val schemaVersion: SolrSchemaVersion = SolrSchemaVersion.ASSUMED,
+  val fields: Map<String, SolrFact<SolrField>> = emptyMap(),
+  val dynamicFields: Map<String, SolrFact<SolrDynamicField>> = emptyMap(),
+  val fieldTypes: Map<String, SolrFact<SolrFieldType>> = emptyMap(),
+  val copyFields: List<SolrFact<SolrCopyField>> = emptyList(),
+  val uniqueKey: SolrFact<String>? = null,
+  val fieldReferences: List<SolrFieldReference> = emptyList(),
+  val luceneMatchVersion: String? = null,
+  val serverVersion: String? = null,
+  val schemaVersion: SolrSchemaVersion = SolrSchemaVersion.ASSUMED,
 ) {
 
-    /**
-     * The field type backing [field], or null if the type it names is not declared.
-     *
-     * A null return is a dangling reference, not an internal error: a schema may name a type that
-     * does not exist, and saying so is one of the inspections this model is built for.
-     *
-     * @param field the field whose type is wanted
-     * @return the type, or null if undeclared
-     */
-    fun typeOf(field: SolrField): SolrFieldType? = fieldTypes[field.type]?.effective
+  /**
+   * The field type backing [field], or null if the type it names is not declared.
+   *
+   * A null return is a dangling reference, not an internal error: a schema may name a type that
+   * does not exist, and saying so is one of the inspections this model is built for.
+   *
+   * @param field the field whose type is wanted
+   * @return the type, or null if undeclared
+   */
+  fun typeOf(field: SolrField): SolrFieldType? = fieldTypes[field.type]?.effective
 
-    /**
-     * The Solr line this configset targets, for reading the generated class catalog.
-     *
-     * All three of the specification's sources can reach this now: a connected server's reported
-     * version outranks the configset's own declaration, which outranks the default. The server one
-     * is present only when a caller built this model with it — the editing surfaces do not, because
-     * nothing on the editor path contacts a server.
-     */
-    val solrVersion: SolrVersionSelection
-        get() = serverVersion?.let { SolrVersionSelection.fromServerVersion(it) }
-            ?: luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
-            ?: SolrVersionSelection.DEFAULT
+  /**
+   * The Solr line this configset targets, for reading the generated class catalog.
+   *
+   * All three of the specification's sources can reach this now: a connected server's reported
+   * version outranks the configset's own declaration, which outranks the default. The server one is
+   * present only when a caller built this model with it — the editing surfaces do not, because
+   * nothing on the editor path contacts a server.
+   */
+  val solrVersion: SolrVersionSelection
+    get() =
+      serverVersion?.let { SolrVersionSelection.fromServerVersion(it) }
+        ?: luceneMatchVersion?.let { SolrVersionSelection.fromLuceneMatchVersion(it) }
+        ?: SolrVersionSelection.DEFAULT
 
-    /**
-     * The catalog's traits for the class [fieldType] names, or null when nothing can be said.
-     *
-     * Null covers three cases that are all the same answer: no type was resolved, the type names no
-     * class, or the class is one the catalog does not carry — a custom plugin type. Returning an
-     * empty set for any of them would claim the class is known and carries no trait, which is what
-     * turns `omitNorms` into a confident `false` for a type nobody here has ever seen.
-     *
-     * @param fieldType the type whose class to look up, or null
-     * @return its traits, or null when the class is not one the catalog carries
-     */
-    fun traitsOf(fieldType: SolrFieldType?): Set<SolrTypeTrait>? {
-        val className = fieldType?.className?.takeIf { it.isNotEmpty() } ?: return null
-        return SolrClassCatalog.find(className, solrVersion)
-            ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
-            ?.traits
+  /**
+   * The catalog's traits for the class [fieldType] names, or null when nothing can be said.
+   *
+   * Null covers three cases that are all the same answer: no type was resolved, the type names no
+   * class, or the class is one the catalog does not carry — a custom plugin type. Returning an
+   * empty set for any of them would claim the class is known and carries no trait, which is what
+   * turns `omitNorms` into a confident `false` for a type nobody here has ever seen.
+   *
+   * @param fieldType the type whose class to look up, or null
+   * @return its traits, or null when the class is not one the catalog carries
+   */
+  fun traitsOf(fieldType: SolrFieldType?): Set<SolrTypeTrait>? {
+    val className = fieldType?.className?.takeIf { it.isNotEmpty() } ?: return null
+    return SolrClassCatalog.find(className, solrVersion)
+      ?.takeIf { it.kind == SolrClassKind.FIELD_TYPE }
+      ?.traits
+  }
+
+  /**
+   * A test of whether a field in this model may be offered where [operation] is asked of it.
+   *
+   * **For a caller building a list to offer, which is why only a definite no excludes.** A field
+   * whose capability is undetermined — a custom type the catalog has never seen — is kept, on the
+   * reasoning that keeps the inspections quiet about it: nothing can say it cannot serve, and
+   * leaving it out would be a list claiming a *no* the schema never stated. What is left out is
+   * exactly what an inspection would underline once written, so an offer and a warning never argue
+   * about the same field.
+   *
+   * One test for every surface that offers field names — the `solrconfig.xml` parameters and a
+   * SolrJ call in code — because both answer "which of these fields can do this", and two copies of
+   * that loop are two chances to answer it differently.
+   *
+   * @param operation what the position asks of a field, or null where it asks nothing a schema can
+   *   refuse — `fl`, for one — so that every field passes
+   * @return the test, holding its own memo of each type's traits: resolving them scans the
+   *   generated catalog, and this runs per field on every keystroke
+   */
+  fun mayServe(operation: SolrFieldOperation?): (SolrField) -> Boolean {
+    if (operation == null) return { true }
+    val traitsByType = HashMap<String, Set<SolrTypeTrait>?>()
+    return { field ->
+      val type = typeOf(field)
+      val traits = traitsByType.getOrPut(field.type) { traitsOf(type) }
+      SolrFieldOperations.supports(operation, field, type, schemaVersion, traits) != false
     }
+  }
 
-    /**
-     * A test of whether a field in this model may be offered where [operation] is asked of it.
-     *
-     * **For a caller building a list to offer, which is why only a definite no excludes.** A field
-     * whose capability is undetermined — a custom type the catalog has never seen — is kept, on the
-     * reasoning that keeps the inspections quiet about it: nothing can say it cannot serve, and
-     * leaving it out would be a list claiming a *no* the schema never stated. What is left out is
-     * exactly what an inspection would underline once written, so an offer and a warning never argue
-     * about the same field.
-     *
-     * One test for every surface that offers field names — the `solrconfig.xml` parameters and a
-     * SolrJ call in code — because both answer "which of these fields can do this", and two copies
-     * of that loop are two chances to answer it differently.
-     *
-     * @param operation what the position asks of a field, or null where it asks nothing a schema can
-     *   refuse — `fl`, for one — so that every field passes
-     * @return the test, holding its own memo of each type's traits: resolving them scans the
-     *   generated catalog, and this runs per field on every keystroke
-     */
-    fun mayServe(operation: SolrFieldOperation?): (SolrField) -> Boolean {
-        if (operation == null) return { true }
-        val traitsByType = HashMap<String, Set<SolrTypeTrait>?>()
-        return { field ->
-            val type = typeOf(field)
-            val traits = traitsByType.getOrPut(field.type) { traitsOf(type) }
-            SolrFieldOperations.supports(operation, field, type, schemaVersion, traits) != false
-        }
+  /**
+   * The declaration supplying [fieldName], whether declared outright or matched dynamically.
+   *
+   * Declared fields win over dynamic ones, and among competing dynamic patterns the longest literal
+   * part wins — Solr's own rule, so that `text_body` takes `*_body` rather than `*`.
+   *
+   * @param fieldName a concrete field name, as a document or a query would use it
+   * @return the field supplying it, or null if nothing does
+   */
+  fun resolve(fieldName: String): SolrField? {
+    fields[fieldName]?.let {
+      return it.effective
     }
+    return dynamicFields.values
+      .map { it.effective }
+      .filter { it.matches(fieldName) }
+      .maxByOrNull { it.specificity }
+      ?.field
+  }
+
+  /**
+   * Copy-field directives whose source names [fieldName], including through a dynamic pattern.
+   *
+   * @param fieldName the source field name
+   * @return every directive copying from it
+   */
+  fun copyFieldsFrom(fieldName: String): List<SolrCopyField> =
+    copyFields.map { it.effective }.filter { SolrGlob.matches(it.source, fieldName) }
+
+  /** Facts whose two sources disagree — the drift a user needs to see. */
+  val disagreements: List<SolrFact<*>>
+    get() =
+      (fields.values + dynamicFields.values + fieldTypes.values + copyFields).filter {
+        it.agreement == SolrAgreement.DISAGREEING
+      }
+
+  /** Construction from the two halves. */
+  companion object {
 
     /**
-     * The declaration supplying [fieldName], whether declared outright or matched dynamically.
+     * Merges a repository half and a server half into one model.
      *
-     * Declared fields win over dynamic ones, and among competing dynamic patterns the longest
-     * literal part wins — Solr's own rule, so that `text_body` takes `*_body` rather than `*`.
+     * Either may be null. With only a repository the model is complete but every fact reports
+     * [SolrAgreement.REPOSITORY_ONLY], which is the state the plugin is in until a connection
+     * exists — and a perfectly useful state, since the editing features never needed a server.
      *
-     * @param fieldName a concrete field name, as a document or a query would use it
-     * @return the field supplying it, or null if nothing does
+     * @param repository facts parsed from the configset on disk
+     * @param server facts read from a live collection, or null when there is no connection
+     * @return the merged model
      */
-    fun resolve(fieldName: String): SolrField? {
-        fields[fieldName]?.let { return it.effective }
-        return dynamicFields.values
-            .map { it.effective }
-            .filter { it.matches(fieldName) }
-            .maxByOrNull { it.specificity }
-            ?.field
-    }
-
-    /**
-     * Copy-field directives whose source names [fieldName], including through a dynamic pattern.
-     *
-     * @param fieldName the source field name
-     * @return every directive copying from it
-     */
-    fun copyFieldsFrom(fieldName: String): List<SolrCopyField> =
-        copyFields.map { it.effective }.filter { SolrGlob.matches(it.source, fieldName) }
-
-    /** Facts whose two sources disagree — the drift a user needs to see. */
-    val disagreements: List<SolrFact<*>>
-        get() = (fields.values + dynamicFields.values + fieldTypes.values + copyFields)
-            .filter { it.agreement == SolrAgreement.DISAGREEING }
-
-    /** Construction from the two halves. */
-    companion object {
-
-        /**
-         * Merges a repository half and a server half into one model.
-         *
-         * Either may be null. With only a repository the model is complete but every fact reports
-         * [SolrAgreement.REPOSITORY_ONLY], which is the state the plugin is in until a connection
-         * exists — and a perfectly useful state, since the editing features never needed a server.
-         *
-         * @param repository facts parsed from the configset on disk
-         * @param server facts read from a live collection, or null when there is no connection
-         * @return the merged model
-         */
-        fun of(
-            repository: SolrConfigsetFacts?,
-            server: SolrConfigsetFacts? = null,
-            serverVersion: String? = null,
-        ): SolrFieldModel {
-            val empty = SolrConfigsetFacts()
-            val repo = repository ?: empty
-            val srv = server ?: empty
-            return SolrFieldModel(
-                fields = merge(repo.fields.associateBy { it.name }, srv.fields.associateBy { it.name }),
-                dynamicFields = merge(
-                    repo.dynamicFields.associateBy { it.pattern },
-                    srv.dynamicFields.associateBy { it.pattern },
-                ),
-                fieldTypes = merge(repo.fieldTypes.associateBy { it.name }, srv.fieldTypes.associateBy { it.name }),
-                copyFields = merge(
-                    repo.copyFields.associateBy { it.source to it.destination },
-                    srv.copyFields.associateBy { it.source to it.destination },
-                ).values.toList(),
-                uniqueKey = if (repo.uniqueKey == null && srv.uniqueKey == null) {
-                    null
-                } else {
-                    SolrFact(repo.uniqueKey, srv.uniqueKey)
-                },
-                fieldReferences = repo.fieldReferences,
-                luceneMatchVersion = repo.luceneMatchVersion,
-                // The one fact neither half of `SolrConfigsetFacts` can carry. That type stays
-                // symmetric between a configset and a server, and a configset has no server version
-                // to report — so this arrives as its own argument rather than as a field on a half.
-                serverVersion = serverVersion,
-                // The repository half decides: the schema version is a property of the file the
-                // user is editing, and a server reports its resolved configuration rather than the
-                // declaration that produced it.
-                schemaVersion = SolrSchemaVersion.of(repo.schemaVersion),
+    fun of(
+      repository: SolrConfigsetFacts?,
+      server: SolrConfigsetFacts? = null,
+      serverVersion: String? = null,
+    ): SolrFieldModel {
+      val empty = SolrConfigsetFacts()
+      val repo = repository ?: empty
+      val srv = server ?: empty
+      return SolrFieldModel(
+        fields = merge(repo.fields.associateBy { it.name }, srv.fields.associateBy { it.name }),
+        dynamicFields =
+          merge(
+            repo.dynamicFields.associateBy { it.pattern },
+            srv.dynamicFields.associateBy { it.pattern },
+          ),
+        fieldTypes =
+          merge(repo.fieldTypes.associateBy { it.name }, srv.fieldTypes.associateBy { it.name }),
+        copyFields =
+          merge(
+              repo.copyFields.associateBy { it.source to it.destination },
+              srv.copyFields.associateBy { it.source to it.destination },
             )
-        }
-
-        private fun <K, T : Any> merge(repository: Map<K, T>, server: Map<K, T>): Map<K, SolrFact<T>> =
-            (repository.keys + server.keys).associateWith { SolrFact(repository[it], server[it]) }
+            .values
+            .toList(),
+        uniqueKey =
+          if (repo.uniqueKey == null && srv.uniqueKey == null) {
+            null
+          } else {
+            SolrFact(repo.uniqueKey, srv.uniqueKey)
+          },
+        fieldReferences = repo.fieldReferences,
+        luceneMatchVersion = repo.luceneMatchVersion,
+        // The one fact neither half of `SolrConfigsetFacts` can carry. That type stays
+        // symmetric between a configset and a server, and a configset has no server version
+        // to report — so this arrives as its own argument rather than as a field on a half.
+        serverVersion = serverVersion,
+        // The repository half decides: the schema version is a property of the file the
+        // user is editing, and a server reports its resolved configuration rather than the
+        // declaration that produced it.
+        schemaVersion = SolrSchemaVersion.of(repo.schemaVersion),
+      )
     }
+
+    private fun <K, T : Any> merge(repository: Map<K, T>, server: Map<K, T>): Map<K, SolrFact<T>> =
+      (repository.keys + server.keys).associateWith { SolrFact(repository[it], server[it]) }
+  }
 }

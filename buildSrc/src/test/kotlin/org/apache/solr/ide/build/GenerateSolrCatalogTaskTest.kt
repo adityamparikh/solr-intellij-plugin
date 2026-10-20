@@ -17,467 +17,562 @@ import org.objectweb.asm.Type
  */
 class GenerateSolrCatalogTaskTest {
 
-    /** The three checked types are exactly the primitive returns Solr's typed readers use. */
-    @Test
-    fun `a primitive return names the value type`() {
-        assertEquals("int", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;I)I"))
-        assertEquals("bool", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;Z)Z"))
-        assertEquals("float", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;F)F"))
-        assertEquals("float", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;D)D"))
-    }
+  /** The three checked types are exactly the primitive returns Solr's typed readers use. */
+  @Test
+  fun `a primitive return names the value type`() {
+    assertEquals(
+      "int",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;I)I"),
+    )
+    assertEquals(
+      "bool",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;Z)Z"),
+    )
+    assertEquals(
+      "float",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;F)F"),
+    )
+    assertEquals(
+      "float",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;D)D"),
+    )
+  }
 
-    /**
-     * Everything else is `free`, including returns a stricter reading could type. `J` matters
-     * here: no typed reader on `AbstractAnalysisFactory` returns a long today, so if one appears
-     * it must land on `free` — more permissive, never a warning on a correct file — rather than
-     * on a guess.
-     */
-    @Test
-    fun `an unrecognized return is free, not a guess`() {
-        assertEquals("free", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"))
-        assertEquals("free", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;C)C"))
-        assertEquals("free", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;)Ljava/util/Set;"))
-        assertEquals("free", GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;J)J"))
-        // The erased `Map.remove`, which rule B admits as a read but which can never carry a type.
-        assertEquals("free", GenerateSolrCatalogTask.valueTypeOf("(Ljava/lang/Object;)Ljava/lang/Object;"))
-    }
+  /**
+   * Everything else is `free`, including returns a stricter reading could type. `J` matters here:
+   * no typed reader on `AbstractAnalysisFactory` returns a long today, so if one appears it must
+   * land on `free` — more permissive, never a warning on a correct file — rather than on a guess.
+   */
+  @Test
+  fun `an unrecognized return is free, not a guess`() {
+    assertEquals(
+      "free",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"),
+    )
+    assertEquals(
+      "free",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;C)C"),
+    )
+    assertEquals(
+      "free",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;)Ljava/util/Set;"),
+    )
+    assertEquals(
+      "free",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/util/Map;Ljava/lang/String;J)J"),
+    )
+    // The erased `Map.remove`, which rule B admits as a read but which can never carry a type.
+    assertEquals(
+      "free",
+      GenerateSolrCatalogTask.valueTypeOf("(Ljava/lang/Object;)Ljava/lang/Object;"),
+    )
+  }
 
-    @Test
-    fun `an agreeing or first reading keeps its type`() {
-        assertEquals("int", GenerateSolrCatalogTask.mergeType(null, "int"))
-        assertEquals("int", GenerateSolrCatalogTask.mergeType("int", "int"))
-    }
+  @Test
+  fun `an agreeing or first reading keeps its type`() {
+    assertEquals("int", GenerateSolrCatalogTask.mergeType(null, "int"))
+    assertEquals("int", GenerateSolrCatalogTask.mergeType("int", "int"))
+  }
 
-    /**
-     * A conflict resolves to `free` no matter which side was checked: a name read as `getInt` in
-     * one class and `get` in its subclass means the extraction did not fully understand the
-     * hierarchy, and declining the claim beats value-checking against the wrong type.
-     */
-    @Test
-    fun `a conflicting reading resolves to free`() {
-        assertEquals("free", GenerateSolrCatalogTask.mergeType("int", "bool"))
-        assertEquals("free", GenerateSolrCatalogTask.mergeType("int", "free"))
-        assertEquals("free", GenerateSolrCatalogTask.mergeType("free", "int"))
-    }
+  /**
+   * A conflict resolves to `free` no matter which side was checked: a name read as `getInt` in one
+   * class and `get` in its subclass means the extraction did not fully understand the hierarchy,
+   * and declining the claim beats value-checking against the wrong type.
+   */
+  @Test
+  fun `a conflicting reading resolves to free`() {
+    assertEquals("free", GenerateSolrCatalogTask.mergeType("int", "bool"))
+    assertEquals("free", GenerateSolrCatalogTask.mergeType("int", "free"))
+    assertEquals("free", GenerateSolrCatalogTask.mergeType("free", "int"))
+  }
 
-    /**
-     * The count that decides how many pending literals a call could have consumed. The motivating
-     * shape is `get(args, "language", "English")` — name plus default, two string-like slots —
-     * where counting only one took the default for the attribute name.
-     */
-    @Test
-    fun `string parameters are counted, name and default alike`() {
-        assertEquals(1, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"))
-        assertEquals(
-            2,
-            GenerateSolrCatalogTask.stringLikeParameters(
-                "(Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-            ),
+  /**
+   * The count that decides how many pending literals a call could have consumed. The motivating
+   * shape is `get(args, "language", "English")` — name plus default, two string-like slots — where
+   * counting only one took the default for the attribute name.
+   */
+  @Test
+  fun `string parameters are counted, name and default alike`() {
+    assertEquals(
+      1,
+      GenerateSolrCatalogTask.stringLikeParameters(
+        "(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"
+      ),
+    )
+    assertEquals(
+      2,
+      GenerateSolrCatalogTask.stringLikeParameters(
+        "(Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;"
+      ),
+    )
+  }
+
+  /**
+   * A primitive default — `getInt(args, "minGramSize", 1)` — holds no literal and is not counted.
+   */
+  @Test
+  fun `primitives and non-string objects are not counted`() {
+    assertEquals(
+      1,
+      GenerateSolrCatalogTask.stringLikeParameters("(Ljava/util/Map;Ljava/lang/String;I)I"),
+    )
+    assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("(IZF)V"))
+    assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("()V"))
+  }
+
+  /** `Object` counts because the erased `Map.get` and `Map.remove` take the name as `Object`. */
+  @Test
+  fun `an erased object parameter is string-like`() {
+    assertEquals(
+      1,
+      GenerateSolrCatalogTask.stringLikeParameters("(Ljava/lang/Object;)Ljava/lang/Object;"),
+    )
+  }
+
+  /** The array prefix is skipped and the element type judged on its own. */
+  @Test
+  fun `an array of strings is string-like`() {
+    assertEquals(1, GenerateSolrCatalogTask.stringLikeParameters("([Ljava/lang/String;)V"))
+    assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("([I)V"))
+  }
+
+  /** A malformed descriptor stops the count rather than throwing mid-extraction. */
+  @Test
+  fun `an unterminated reference type ends the count`() {
+    assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/lang/String"))
+  }
+
+  /**
+   * A third parameter after the (Map, String) prefix is the default slot. `get(args, name, def)`
+   * and `getInt(args, name, 1)` each have one; the default text is then read from the operand
+   * pushed into it.
+   */
+  @Test
+  fun `a third parameter is a default slot`() {
+    assertTrue(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;I)I"))
+    assertTrue(
+      GenerateSolrCatalogTask.hasDefaultParameter(
+        "(Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;"
+      )
+    )
+  }
+
+  /**
+   * A reader that takes only the map and a name has no default: a plain `get(args, name)`, and
+   * every `require*` reader — which is what keeps a required attribute from also carrying one.
+   */
+  @Test
+  fun `a two-parameter reader has no default slot`() {
+    assertFalse(
+      GenerateSolrCatalogTask.hasDefaultParameter(
+        "(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"
+      )
+    )
+    assertFalse(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)I"))
+  }
+
+  // --- the documentation column: reading a class's own Javadoc from a -sources jar --------------
+
+  /** The ordinary shape: a class comment directly above `public class X`. */
+  @Test
+  fun `a class comment is found above its declaration`() {
+    val source =
+      """
+      package org.example;
+
+      /**
+       * Creates new instances of EdgeNGramTokenFilter.
+       */
+      public class EdgeNGramFilterFactory extends TokenFilterFactory {
+      }
+      """
+        .trimIndent()
+    val comment = GenerateSolrCatalogTask.classJavadocComment(source, "EdgeNGramFilterFactory")
+    assertTrue(comment != null && comment.contains("Creates new instances"))
+  }
+
+  /** An annotation between the comment and the declaration does not hide it. */
+  @Test
+  fun `an annotated class still finds its comment`() {
+    val source =
+      """
+      /**
+       * Filters LowerCase.
+       */
+      @Deprecated
+      public final class LowerCaseFilterFactory extends TokenFilterFactory {
+      }
+      """
+        .trimIndent()
+    val comment = GenerateSolrCatalogTask.classJavadocComment(source, "LowerCaseFilterFactory")
+    assertTrue(comment != null && comment.contains("Filters LowerCase"))
+  }
+
+  /**
+   * A commented type ahead of the target keeps its own comment. A lazy `.*?` still backtracks
+   * across an intervening comment terminator when that is what lets the rest of the pattern match,
+   * so this file shape used to hand the helper's comment to the factory.
+   */
+  @Test
+  fun `an earlier commented class does not lend its comment to a later one`() {
+    val source =
+      """
+      package org.example;
+
+      /**
+       * A helper nobody asked about.
+       */
+      class Helper {
+      }
+
+      /**
+       * Creates new instances of NGramTokenFilter.
+       */
+      public class NGramFilterFactory extends TokenFilterFactory {
+      }
+      """
+        .trimIndent()
+    val comment = GenerateSolrCatalogTask.classJavadocComment(source, "NGramFilterFactory")
+    assertTrue(
+      "read the wrong class's comment: $comment",
+      comment != null && comment.contains("NGramTokenFilter"),
+    )
+    assertTrue(
+      "leaked the earlier comment: $comment",
+      comment != null && !comment.contains("helper"),
+    )
+  }
+
+  /** A class with no comment above it is absent, not an empty string. */
+  @Test
+  fun `a class with no comment reads as absent`() {
+    val source = "public class NoComment extends TokenFilterFactory {\n}"
+    assertEquals(null, GenerateSolrCatalogTask.classJavadocComment(source, "NoComment"))
+  }
+
+  /**
+   * A one-line comment with no sentence-ending period reads in full, rather than being discarded
+   * for lacking one. This is the common shape for a factory's class comment.
+   */
+  @Test
+  fun `a comment with no period is kept whole`() {
+    val summary =
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * Creates new instances of EdgeNGramTokenFilter\n"
+      )
+    assertEquals("Creates new instances of EdgeNGramTokenFilter", summary)
+  }
+
+  /** Only the first sentence survives when there is more than one. */
+  @Test
+  fun `only the first sentence is kept`() {
+    val summary =
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * Splits words. See the example below for details.\n"
+      )
+    assertEquals("Splits words.", summary)
+  }
+
+  /** A block tag ends the summary; nothing after `@since` or `@param` belongs in one sentence. */
+  @Test
+  fun `a block tag ends the summary`() {
+    val summary =
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * Splits words on case change\n * @since 4.0\n * @lucene.spi {@value #NAME}\n"
+      )
+    assertEquals("Splits words on case change", summary)
+  }
+
+  /** `{@link}` resolves to a plain label, with or without an explicit one. */
+  @Test
+  fun `a link tag reads as its label`() {
+    assertEquals(
+      "Creates new instances of EdgeNGramTokenFilter.",
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * Creates new instances of {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter}.\n"
+      ),
+    )
+    assertEquals(
+      "See the ngram filter.",
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * See the {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter ngram filter}.\n"
+      ),
+    )
+  }
+
+  /** `{@code}` reads as its plain content, and an HTML tag is stripped rather than shown raw. */
+  @Test
+  fun `code tags and HTML markup are reduced to plain text`() {
+    assertEquals(
+      "Reads the minGramSize argument.",
+      GenerateSolrCatalogTask.summarizeJavadocComment(
+        " * Reads the {@code minGramSize} argument.\n"
+      ),
+    )
+    assertEquals(
+      "A filter factory for this.",
+      GenerateSolrCatalogTask.summarizeJavadocComment(" * A <b>filter factory</b> for this.\n"),
+    )
+  }
+
+  /** An empty comment, or one that is only whitespace and stars, summarizes to nothing. */
+  @Test
+  fun `a blank comment summarizes to nothing`() {
+    assertEquals(null, GenerateSolrCatalogTask.summarizeJavadocComment(" *\n * \n"))
+  }
+
+  // --- the plugin roots Solr declares -----------------------------------------------------------
+
+  @Test
+  fun `each class constant pairs with the tag that follows it`() {
+    val roots =
+      SolrConfigPlugins.pair(
+        listOf(
+          Type.getObjectType("org/apache/solr/request/SolrRequestHandler"),
+          "requestHandler",
+          Type.getObjectType("org/apache/solr/search/QParserPlugin"),
+          "queryParser",
         )
-    }
+      )
+    assertEquals("org/apache/solr/request/SolrRequestHandler", roots["requestHandler"])
+    assertEquals("org/apache/solr/search/QParserPlugin", roots["queryParser"])
+  }
 
-    /** A primitive default — `getInt(args, "minGramSize", 1)` — holds no literal and is not counted. */
-    @Test
-    fun `primitives and non-string objects are not counted`() {
-        assertEquals(1, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/util/Map;Ljava/lang/String;I)I"))
-        assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("(IZF)V"))
-        assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("()V"))
-    }
-
-    /** `Object` counts because the erased `Map.get` and `Map.remove` take the name as `Object`. */
-    @Test
-    fun `an erased object parameter is string-like`() {
-        assertEquals(1, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/lang/Object;)Ljava/lang/Object;"))
-    }
-
-    /** The array prefix is skipped and the element type judged on its own. */
-    @Test
-    fun `an array of strings is string-like`() {
-        assertEquals(1, GenerateSolrCatalogTask.stringLikeParameters("([Ljava/lang/String;)V"))
-        assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("([I)V"))
-    }
-
-    /** A malformed descriptor stops the count rather than throwing mid-extraction. */
-    @Test
-    fun `an unterminated reference type ends the count`() {
-        assertEquals(0, GenerateSolrCatalogTask.stringLikeParameters("(Ljava/lang/String"))
-    }
-
-    /**
-     * A third parameter after the (Map, String) prefix is the default slot. `get(args, name, def)`
-     * and `getInt(args, name, 1)` each have one; the default text is then read from the operand
-     * pushed into it.
-     */
-    @Test
-    fun `a third parameter is a default slot`() {
-        assertTrue(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;I)I"))
-        assertTrue(
-            GenerateSolrCatalogTask.hasDefaultParameter(
-                "(Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-            ),
+  /**
+   * Three tags are paths rather than bare names, and one of those means "at any depth". The catalog
+   * is keyed by the element as a reader writes it, so only the last segment belongs here — the
+   * nesting is a fact about element structure and not about a table of classes.
+   */
+  @Test
+  fun `a tag declared as a path keeps only the element name`() {
+    val roots =
+      SolrConfigPlugins.pair(
+        listOf(
+          Type.getObjectType("org/apache/solr/core/SolrEventListener"),
+          "//listener",
+          Type.getObjectType("org/apache/solr/update/UpdateLog"),
+          "updateHandler/updateLog",
+          Type.getObjectType("org/apache/solr/core/IndexDeletionPolicy"),
+          "indexConfig/deletionPolicy",
         )
-    }
+      )
+    assertEquals(setOf("listener", "updateLog", "deletionPolicy"), roots.keys)
+  }
 
-    /**
-     * A reader that takes only the map and a name has no default: a plain `get(args, name)`, and
-     * every `require*` reader — which is what keeps a required attribute from also carrying one.
-     */
-    @Test
-    fun `a two-parameter reader has no default slot`() {
-        assertFalse(
-            GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)Ljava/lang/String;"),
+  /**
+   * A tag with no class before it is dropped rather than attached to whichever class came last.
+   *
+   * Solr writes the constructor class-first, so this cannot happen today. The point is what happens
+   * when it changes: pairing a tag with a distant class would mis-attribute a root silently, and a
+   * missing tag is the failure that shows up as an absent kind and a failing assertion.
+   */
+  @Test
+  fun `a tag with no class before it is dropped rather than guessed`() {
+    val roots =
+      SolrConfigPlugins.pair(
+        listOf(
+          "strandedTag",
+          Type.getObjectType("org/apache/solr/request/SolrRequestHandler"),
+          "requestHandler",
         )
-        assertFalse(GenerateSolrCatalogTask.hasDefaultParameter("(Ljava/util/Map;Ljava/lang/String;)I"))
-    }
+      )
+    assertEquals(mapOf("requestHandler" to "org/apache/solr/request/SolrRequestHandler"), roots)
+  }
 
-    // --- the documentation column: reading a class's own Javadoc from a -sources jar --------------
-
-    /** The ordinary shape: a class comment directly above `public class X`. */
-    @Test
-    fun `a class comment is found above its declaration`() {
-        val source = """
-            package org.example;
-
-            /**
-             * Creates new instances of EdgeNGramTokenFilter.
-             */
-            public class EdgeNGramFilterFactory extends TokenFilterFactory {
-            }
-        """.trimIndent()
-        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "EdgeNGramFilterFactory")
-        assertTrue(comment != null && comment.contains("Creates new instances"))
-    }
-
-    /** An annotation between the comment and the declaration does not hide it. */
-    @Test
-    fun `an annotated class still finds its comment`() {
-        val source = """
-            /**
-             * Filters LowerCase.
-             */
-            @Deprecated
-            public final class LowerCaseFilterFactory extends TokenFilterFactory {
-            }
-        """.trimIndent()
-        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "LowerCaseFilterFactory")
-        assertTrue(comment != null && comment.contains("Filters LowerCase"))
-    }
-
-    /**
-     * A commented type ahead of the target keeps its own comment. A lazy `.*?` still backtracks
-     * across an intervening comment terminator when that is what lets the rest of the pattern
-     * match, so this file shape used to hand the helper's comment to the factory.
-     */
-    @Test
-    fun `an earlier commented class does not lend its comment to a later one`() {
-        val source = """
-            package org.example;
-
-            /**
-             * A helper nobody asked about.
-             */
-            class Helper {
-            }
-
-            /**
-             * Creates new instances of NGramTokenFilter.
-             */
-            public class NGramFilterFactory extends TokenFilterFactory {
-            }
-        """.trimIndent()
-        val comment = GenerateSolrCatalogTask.classJavadocComment(source, "NGramFilterFactory")
-        assertTrue("read the wrong class's comment: $comment", comment != null && comment.contains("NGramTokenFilter"))
-        assertTrue("leaked the earlier comment: $comment", comment != null && !comment.contains("helper"))
-    }
-
-    /** A class with no comment above it is absent, not an empty string. */
-    @Test
-    fun `a class with no comment reads as absent`() {
-        val source = "public class NoComment extends TokenFilterFactory {\n}"
-        assertEquals(null, GenerateSolrCatalogTask.classJavadocComment(source, "NoComment"))
-    }
-
-    /**
-     * A one-line comment with no sentence-ending period reads in full, rather than being
-     * discarded for lacking one. This is the common shape for a factory's class comment.
-     */
-    @Test
-    fun `a comment with no period is kept whole`() {
-        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
-            " * Creates new instances of EdgeNGramTokenFilter\n",
+  /** One class is used once: a second tag does not silently reuse the previous root. */
+  @Test
+  fun `a class is consumed by the tag it pairs with`() {
+    val roots =
+      SolrConfigPlugins.pair(
+        listOf(
+          Type.getObjectType("org/apache/solr/request/SolrRequestHandler"),
+          "requestHandler",
+          "orphan",
         )
-        assertEquals("Creates new instances of EdgeNGramTokenFilter", summary)
-    }
+      )
+    assertEquals(setOf("requestHandler"), roots.keys)
+  }
 
-    /** Only the first sentence survives when there is more than one. */
-    @Test
-    fun `only the first sentence is kept`() {
-        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
-            " * Splits words. See the example below for details.\n",
+  // --- request parameters --------------------------------------------------------------------
+
+  /**
+   * The three mechanical rules, each against the constant that motivated it.
+   *
+   * These are preferred to naming constants one by one because curation goes stale, so what they
+   * reject matters as much as what they keep: a request path, a response key and a prefix are all
+   * `public static final String` in the same interfaces as the parameters, and all three shipped in
+   * the first generated resource before these rules existed.
+   */
+  @Test
+  fun `only values spelled like a parameter name are parameters`() {
+    // Kept: lowercase, camel case, dotted, and the underscore-fenced document fields.
+    for (value in listOf("qf", "df", "rows", "mm.autoRelax", "facet.range.other", "_version_")) {
+      assertTrue(value, SolrParameters.isParameterValue(value))
+    }
+    // A request path, which `CommonParams` declares nine of.
+    assertFalse("/admin/ping", SolrParameters.isParameterValue("/admin/ping"))
+    assertFalse("apispec/", SolrParameters.isParameterValue("apispec/"))
+    // A value or a response key rather than a name. `AND` is one of `SimpleParams`' operators.
+    for (value in listOf("OK", "FAILURE", "RESPONSE_TIME", "AND")) {
+      assertFalse(value, SolrParameters.isParameterValue(value))
+    }
+    // A prefix its own interface builds parameters from, which a reader would have to finish.
+    for (value in listOf("tv.", "spellcheck.", "group.topgroups.")) {
+      assertFalse(value, SolrParameters.isParameterValue(value))
+    }
+    assertFalse("blank", SolrParameters.isParameterValue("  "))
+  }
+
+  /**
+   * `NOW` and `TZ` are genuinely query parameters and this loses them, which is recorded rather
+   * than special-cased.
+   *
+   * The bound that makes it acceptable is that the resource is a completion and documentation
+   * source and never a membership test: a name absent from it costs a suggestion, while a response
+   * key present in it is noise in a list a reader is using to learn the vocabulary. Pinning the
+   * loss here means a later revision that fixes it fails this test and has to say so.
+   */
+  @Test
+  fun `the uppercase rule loses two real parameters`() {
+    assertFalse(SolrParameters.isParameterValue("NOW"))
+    assertFalse(SolrParameters.isParameterValue("TZ"))
+  }
+
+  /** The curated exclusions apply to `CommonParams` and to nothing else. */
+  @Test
+  fun `a debug value is excluded from CommonParams but not from elsewhere`() {
+    val constants = listOf("QUERY" to "query", "QF" to "qf")
+    assertEquals(
+      listOf("qf"),
+      SolrParameters.parametersOf("CommonParams", constants).map { it.second },
+    )
+    // The same field name in another interface is not touched: `AnalysisParams.QUERY` is
+    // `analysis.query`, a real parameter, and a name-based exclusion must not reach it.
+    assertEquals(
+      listOf("query", "qf"),
+      SolrParameters.parametersOf("DisMaxParams", constants).map { it.second },
+    )
+  }
+
+  /**
+   * The field name survives the selection, because a parameter's documentation is the comment on
+   * the constant and is found by field name rather than by the value it holds.
+   */
+  @Test
+  fun `the declaring field name is carried alongside the parameter`() {
+    val selected = SolrParameters.parametersOf("DisMaxParams", listOf("QF" to "qf"))
+    assertEquals(listOf("QF" to "qf"), selected)
+  }
+
+  /** Two constants holding one value contribute one parameter, not two rows of it. */
+  @Test
+  fun `a value declared twice yields one parameter`() {
+    val selected =
+      SolrParameters.parametersOf(
+        "FacetParams",
+        listOf("FACET" to "facet", "FACET_ALIAS" to "facet"),
+      )
+    assertEquals(listOf("FACET" to "facet"), selected)
+  }
+
+  // --- query parser names -------------------------------------------------------------------
+
+  /**
+   * The registry pairs a name to a class the initializer *instantiates*, so the operands arrive
+   * name-first and the class arrives as a `NEW` rather than as a constant.
+   *
+   * This is the pairing `SolrConfigPlugins.pair` cannot do: it expects class-first, and a collector
+   * that read only `LDC` would hand this function 44 strings and no types at all.
+   */
+  @Test
+  fun `a registered name pairs with the class instantiated after it`() {
+    val parsers =
+      SolrQueryParsers.pair(
+        listOf(
+          "lucene",
+          Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin"),
+          "edismax",
+          Type.getObjectType("org/apache/solr/search/ExtendedDismaxQParserPlugin"),
         )
-        assertEquals("Splits words.", summary)
-    }
+      )
+    assertEquals("org.apache.solr.search.LuceneQParserPlugin", parsers["lucene"])
+    assertEquals("org.apache.solr.search.ExtendedDismaxQParserPlugin", parsers["edismax"])
+  }
 
-    /** A block tag ends the summary; nothing after `@since` or `@param` belongs in one sentence. */
-    @Test
-    fun `a block tag ends the summary`() {
-        val summary = GenerateSolrCatalogTask.summarizeJavadocComment(
-            " * Splits words on case change\n * @since 4.0\n * @lucene.spi {@value #NAME}\n",
+  /**
+   * A name with no class after it is dropped rather than attached to a later one.
+   *
+   * The same rule the plugin-root pairing follows, and for the same reason: the alternative
+   * silently documents `defType=first` with whatever plugin happened to be constructed next.
+   */
+  @Test
+  fun `a name with no class after it is dropped rather than guessed`() {
+    val parsers =
+      SolrQueryParsers.pair(
+        listOf(
+          "stranded",
+          "lucene",
+          Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin"),
         )
-        assertEquals("Splits words on case change", summary)
-    }
+      )
+    assertEquals(setOf("lucene"), parsers.keys)
+  }
 
-    /** `{@link}` resolves to a plain label, with or without an explicit one. */
-    @Test
-    fun `a link tag reads as its label`() {
-        assertEquals(
-            "Creates new instances of EdgeNGramTokenFilter.",
-            GenerateSolrCatalogTask.summarizeJavadocComment(
-                " * Creates new instances of {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter}.\n",
-            ),
-        )
-        assertEquals(
-            "See the ngram filter.",
-            GenerateSolrCatalogTask.summarizeJavadocComment(
-                " * See the {@link org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter ngram filter}.\n",
-            ),
-        )
-    }
+  // --- constant documentation ----------------------------------------------------------------
 
-    /** `{@code}` reads as its plain content, and an HTML tag is stripped rather than shown raw. */
-    @Test
-    fun `code tags and HTML markup are reduced to plain text`() {
-        assertEquals(
-            "Reads the minGramSize argument.",
-            GenerateSolrCatalogTask.summarizeJavadocComment(" * Reads the {@code minGramSize} argument.\n"),
-        )
-        assertEquals(
-            "A filter factory for this.",
-            GenerateSolrCatalogTask.summarizeJavadocComment(" * A <b>filter factory</b> for this.\n"),
-        )
-    }
+  /**
+   * The comment on the constant, under either spelling of the declaration.
+   *
+   * `DisMaxParams` writes `public static String QF` and `CommonParams` writes a bare `String Q`, so
+   * a pattern requiring `static final` would have documented one interface and silently not the
+   * other.
+   */
+  @Test
+  fun `a constant's own comment is found under either declaration style`() {
+    val source =
+      """
+      public interface Params {
+        /** query and init param for query fields */
+        public static String QF = "qf";
 
-    /** An empty comment, or one that is only whitespace and stars, summarizes to nothing. */
-    @Test
-    fun `a blank comment summarizes to nothing`() {
-        assertEquals(null, GenerateSolrCatalogTask.summarizeJavadocComment(" *\n * \n"))
-    }
+        /** default query field */
+        String DF = "df";
+      }
+      """
+        .trimIndent()
+    assertEquals(
+      "query and init param for query fields",
+      ConstantJavadocSummaries.constantJavadocComment(source, "QF")?.let {
+        GenerateSolrCatalogTask.summarizeJavadocComment(it)
+      },
+    )
+    assertEquals(
+      "default query field",
+      ConstantJavadocSummaries.constantJavadocComment(source, "DF")?.let {
+        GenerateSolrCatalogTask.summarizeJavadocComment(it)
+      },
+    )
+  }
 
-    // --- the plugin roots Solr declares -----------------------------------------------------------
+  /**
+   * An undocumented constant takes no comment, least of all the previous constant's.
+   *
+   * This is the failure the comment-terminator guard exists for: a pattern that let the body cross
+   * a terminator would hand `QF`'s comment to `PF` and produce documentation that reads correctly
+   * and describes the wrong parameter.
+   */
+  @Test
+  fun `an undocumented constant borrows no comment from its neighbour`() {
+    val source =
+      """
+      public interface Params {
+        /** query and init param for query fields */
+        String QF = "qf";
 
-    @Test
-    fun `each class constant pairs with the tag that follows it`() {
-        val roots = SolrConfigPlugins.pair(
-            listOf(
-                Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler",
-                Type.getObjectType("org/apache/solr/search/QParserPlugin"), "queryParser",
-            ),
-        )
-        assertEquals("org/apache/solr/request/SolrRequestHandler", roots["requestHandler"])
-        assertEquals("org/apache/solr/search/QParserPlugin", roots["queryParser"])
-    }
-
-    /**
-     * Three tags are paths rather than bare names, and one of those means "at any depth". The catalog is
-     * keyed by the element as a reader writes it, so only the last segment belongs here — the nesting is
-     * a fact about element structure and not about a table of classes.
-     */
-    @Test
-    fun `a tag declared as a path keeps only the element name`() {
-        val roots = SolrConfigPlugins.pair(
-            listOf(
-                Type.getObjectType("org/apache/solr/core/SolrEventListener"), "//listener",
-                Type.getObjectType("org/apache/solr/update/UpdateLog"), "updateHandler/updateLog",
-                Type.getObjectType("org/apache/solr/core/IndexDeletionPolicy"), "indexConfig/deletionPolicy",
-            ),
-        )
-        assertEquals(setOf("listener", "updateLog", "deletionPolicy"), roots.keys)
-    }
-
-    /**
-     * A tag with no class before it is dropped rather than attached to whichever class came last.
-     *
-     * Solr writes the constructor class-first, so this cannot happen today. The point is what happens
-     * when it changes: pairing a tag with a distant class would mis-attribute a root silently, and a
-     * missing tag is the failure that shows up as an absent kind and a failing assertion.
-     */
-    @Test
-    fun `a tag with no class before it is dropped rather than guessed`() {
-        val roots = SolrConfigPlugins.pair(
-            listOf(
-                "strandedTag",
-                Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler",
-            ),
-        )
-        assertEquals(mapOf("requestHandler" to "org/apache/solr/request/SolrRequestHandler"), roots)
-    }
-
-    /** One class is used once: a second tag does not silently reuse the previous root. */
-    @Test
-    fun `a class is consumed by the tag it pairs with`() {
-        val roots = SolrConfigPlugins.pair(
-            listOf(Type.getObjectType("org/apache/solr/request/SolrRequestHandler"), "requestHandler", "orphan"),
-        )
-        assertEquals(setOf("requestHandler"), roots.keys)
-    }
-    // --- request parameters --------------------------------------------------------------------
-
-    /**
-     * The three mechanical rules, each against the constant that motivated it.
-     *
-     * These are preferred to naming constants one by one because curation goes stale, so what they
-     * reject matters as much as what they keep: a request path, a response key and a prefix are all
-     * `public static final String` in the same interfaces as the parameters, and all three shipped in
-     * the first generated resource before these rules existed.
-     */
-    @Test
-    fun `only values spelled like a parameter name are parameters`() {
-        // Kept: lowercase, camel case, dotted, and the underscore-fenced document fields.
-        for (value in listOf("qf", "df", "rows", "mm.autoRelax", "facet.range.other", "_version_")) {
-            assertTrue(value, SolrParameters.isParameterValue(value))
-        }
-        // A request path, which `CommonParams` declares nine of.
-        assertFalse("/admin/ping", SolrParameters.isParameterValue("/admin/ping"))
-        assertFalse("apispec/", SolrParameters.isParameterValue("apispec/"))
-        // A value or a response key rather than a name. `AND` is one of `SimpleParams`' operators.
-        for (value in listOf("OK", "FAILURE", "RESPONSE_TIME", "AND")) {
-            assertFalse(value, SolrParameters.isParameterValue(value))
-        }
-        // A prefix its own interface builds parameters from, which a reader would have to finish.
-        for (value in listOf("tv.", "spellcheck.", "group.topgroups.")) {
-            assertFalse(value, SolrParameters.isParameterValue(value))
-        }
-        assertFalse("blank", SolrParameters.isParameterValue("  "))
-    }
-
-    /**
-     * `NOW` and `TZ` are genuinely query parameters and this loses them, which is recorded rather than
-     * special-cased.
-     *
-     * The bound that makes it acceptable is that the resource is a completion and documentation source
-     * and never a membership test: a name absent from it costs a suggestion, while a response key
-     * present in it is noise in a list a reader is using to learn the vocabulary. Pinning the loss here
-     * means a later revision that fixes it fails this test and has to say so.
-     */
-    @Test
-    fun `the uppercase rule loses two real parameters`() {
-        assertFalse(SolrParameters.isParameterValue("NOW"))
-        assertFalse(SolrParameters.isParameterValue("TZ"))
-    }
-
-    /** The curated exclusions apply to `CommonParams` and to nothing else. */
-    @Test
-    fun `a debug value is excluded from CommonParams but not from elsewhere`() {
-        val constants = listOf("QUERY" to "query", "QF" to "qf")
-        assertEquals(listOf("qf"), SolrParameters.parametersOf("CommonParams", constants).map { it.second })
-        // The same field name in another interface is not touched: `AnalysisParams.QUERY` is
-        // `analysis.query`, a real parameter, and a name-based exclusion must not reach it.
-        assertEquals(
-            listOf("query", "qf"),
-            SolrParameters.parametersOf("DisMaxParams", constants).map { it.second },
-        )
-    }
-
-    /**
-     * The field name survives the selection, because a parameter's documentation is the comment on the
-     * constant and is found by field name rather than by the value it holds.
-     */
-    @Test
-    fun `the declaring field name is carried alongside the parameter`() {
-        val selected = SolrParameters.parametersOf("DisMaxParams", listOf("QF" to "qf"))
-        assertEquals(listOf("QF" to "qf"), selected)
-    }
-
-    /** Two constants holding one value contribute one parameter, not two rows of it. */
-    @Test
-    fun `a value declared twice yields one parameter`() {
-        val selected = SolrParameters.parametersOf("FacetParams", listOf("FACET" to "facet", "FACET_ALIAS" to "facet"))
-        assertEquals(listOf("FACET" to "facet"), selected)
-    }
-
-    // --- query parser names -------------------------------------------------------------------
-
-    /**
-     * The registry pairs a name to a class the initializer *instantiates*, so the operands arrive
-     * name-first and the class arrives as a `NEW` rather than as a constant.
-     *
-     * This is the pairing `SolrConfigPlugins.pair` cannot do: it expects class-first, and a collector
-     * that read only `LDC` would hand this function 44 strings and no types at all.
-     */
-    @Test
-    fun `a registered name pairs with the class instantiated after it`() {
-        val parsers = SolrQueryParsers.pair(
-            listOf(
-                "lucene", Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin"),
-                "edismax", Type.getObjectType("org/apache/solr/search/ExtendedDismaxQParserPlugin"),
-            ),
-        )
-        assertEquals("org.apache.solr.search.LuceneQParserPlugin", parsers["lucene"])
-        assertEquals("org.apache.solr.search.ExtendedDismaxQParserPlugin", parsers["edismax"])
-    }
-
-    /**
-     * A name with no class after it is dropped rather than attached to a later one.
-     *
-     * The same rule the plugin-root pairing follows, and for the same reason: the alternative silently
-     * documents `defType=first` with whatever plugin happened to be constructed next.
-     */
-    @Test
-    fun `a name with no class after it is dropped rather than guessed`() {
-        val parsers = SolrQueryParsers.pair(
-            listOf("stranded", "lucene", Type.getObjectType("org/apache/solr/search/LuceneQParserPlugin")),
-        )
-        assertEquals(setOf("lucene"), parsers.keys)
-    }
-
-    // --- constant documentation ----------------------------------------------------------------
-
-    /**
-     * The comment on the constant, under either spelling of the declaration.
-     *
-     * `DisMaxParams` writes `public static String QF` and `CommonParams` writes a bare `String Q`, so a
-     * pattern requiring `static final` would have documented one interface and silently not the other.
-     */
-    @Test
-    fun `a constant's own comment is found under either declaration style`() {
-        val source = """
-            public interface Params {
-              /** query and init param for query fields */
-              public static String QF = "qf";
-
-              /** default query field */
-              String DF = "df";
-            }
-        """.trimIndent()
-        assertEquals(
-            "query and init param for query fields",
-            ConstantJavadocSummaries.constantJavadocComment(source, "QF")
-                ?.let { GenerateSolrCatalogTask.summarizeJavadocComment(it) },
-        )
-        assertEquals(
-            "default query field",
-            ConstantJavadocSummaries.constantJavadocComment(source, "DF")
-                ?.let { GenerateSolrCatalogTask.summarizeJavadocComment(it) },
-        )
-    }
-
-    /**
-     * An undocumented constant takes no comment, least of all the previous constant's.
-     *
-     * This is the failure the comment-terminator guard exists for: a pattern that let the body cross a
-     * terminator would hand `QF`'s comment to `PF` and produce documentation that reads correctly and
-     * describes the wrong parameter.
-     */
-    @Test
-    fun `an undocumented constant borrows no comment from its neighbour`() {
-        val source = """
-            public interface Params {
-              /** query and init param for query fields */
-              String QF = "qf";
-
-              String PF = "pf";
-            }
-        """.trimIndent()
-        assertNull(ConstantJavadocSummaries.constantJavadocComment(source, "PF"))
-    }
+        String PF = "pf";
+      }
+      """
+        .trimIndent()
+    assertNull(ConstantJavadocSummaries.constantJavadocComment(source, "PF"))
+  }
 }

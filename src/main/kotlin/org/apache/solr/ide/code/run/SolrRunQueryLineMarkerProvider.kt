@@ -24,36 +24,36 @@ import org.jetbrains.uast.UastFacade
  */
 class SolrRunQueryLineMarkerProvider : LineMarkerProvider {
 
-    /**
-     * A marker where [element] is the leaf of a query argument, and nothing anywhere else.
-     *
-     * Both conditions are the recognizer's rather than this file's: the module must carry a Solr
-     * client, and the call must be one that names a query. A gutter icon that appeared on any string
-     * resembling a query would be an offer to run something the plugin cannot actually see.
-     *
-     * @param element every leaf the daemon walks, on every editor pass
-     * @return the marker, or null where this leaf carries no query
-     */
-    override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        if (element.firstChild != null) return null
-        // **Cheapest question first, and it is what makes registering without a language
-        // affordable.** This runs for every leaf of every file the editor shows — Markdown, YAML,
-        // JSON — and the module gate below walks the module's libraries under a read action. A file
-        // no JVM language reads can hold no call, so it is turned away before that.
-        if (UastFacade.findPlugin(element.language) == null) return null
-        val file = element.containingFile ?: return null
-        if (!SolrRecognizers.recognizeSolrIn(file)) return null
+  /**
+   * A marker where [element] is the leaf of a query argument, and nothing anywhere else.
+   *
+   * Both conditions are the recognizer's rather than this file's: the module must carry a Solr
+   * client, and the call must be one that names a query. A gutter icon that appeared on any string
+   * resembling a query would be an offer to run something the plugin cannot actually see.
+   *
+   * @param element every leaf the daemon walks, on every editor pass
+   * @return the marker, or null where this leaf carries no query
+   */
+  override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
+    if (element.firstChild != null) return null
+    // **Cheapest question first, and it is what makes registering without a language
+    // affordable.** This runs for every leaf of every file the editor shows — Markdown, YAML,
+    // JSON — and the module gate below walks the module's libraries under a read action. A file
+    // no JVM language reads can hold no call, so it is turned away before that.
+    if (UastFacade.findPlugin(element.language) == null) return null
+    val file = element.containingFile ?: return null
+    if (!SolrRecognizers.recognizeSolrIn(file)) return null
 
-        val query = SolrJFieldPositions.runnableQueryAt(element) ?: return null
+    val query = SolrJFieldPositions.runnableQueryAt(element) ?: return null
 
-        return LineMarkerInfo(
-            element,
-            element.textRange,
-            AllIcons.RunConfigurations.TestState.Run,
-            { SolrBundle.message("code.runQuery.tooltip", query) },
-            { _, clicked -> SolrRunQuery.from(clicked, query) },
-            GutterIconRenderer.Alignment.LEFT,
-            { SolrBundle.message("code.runQuery.name") },
-        )
-    }
+    return LineMarkerInfo(
+      element,
+      element.textRange,
+      AllIcons.RunConfigurations.TestState.Run,
+      { SolrBundle.message("code.runQuery.tooltip", query) },
+      { _, clicked -> SolrRunQuery.from(clicked, query) },
+      GutterIconRenderer.Alignment.LEFT,
+      { SolrBundle.message("code.runQuery.name") },
+    )
+  }
 }

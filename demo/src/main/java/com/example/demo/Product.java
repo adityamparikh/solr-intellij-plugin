@@ -11,24 +11,24 @@ import org.apache.solr.client.solrj.beans.Field;
  */
 public class Product {
 
-    @Field("id")
-    private String id;
+  @Field("id")
+  private String id;
 
-    @Field("name")
-    private String name;
+  @Field("name")
+  private String name;
 
-    @Field("prce")
-    private Double price;
+  @Field("prce")
+  private Double price;
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public Double getPrice() {
-        return price;
-    }
+  public Double getPrice() {
+    return price;
+  }
 }

@@ -11,14 +11,14 @@ import javax.swing.Icon
  */
 object SolrIcons {
 
-    /**
-     * The Solr tool window's stripe icon: the plugin icon's mark, in the single grey tool window
-     * icons are drawn in.
-     *
-     * 13x13, which is what the classic stripe takes. The new UI asks for 20x20 and 16x16 instead, and
-     * gets them from `icons/expui/` through `SolrIconMappings.json` rather than through this field —
-     * the platform swaps the file behind the same icon, so nothing here needs to know which UI is on.
-     */
-    @JvmField
-    val ToolWindow: Icon = IconLoader.getIcon("/icons/solrToolWindow.svg", SolrIcons::class.java)
+  /**
+   * The Solr tool window's stripe icon: the plugin icon's mark, in the single grey tool window
+   * icons are drawn in.
+   *
+   * 13x13, which is what the classic stripe takes. The new UI asks for 20x20 and 16x16 instead, and
+   * gets them from `icons/expui/` through `SolrIconMappings.json` rather than through this field —
+   * the platform swaps the file behind the same icon, so nothing here needs to know which UI is on.
+   */
+  @JvmField
+  val ToolWindow: Icon = IconLoader.getIcon("/icons/solrToolWindow.svg", SolrIcons::class.java)
 }

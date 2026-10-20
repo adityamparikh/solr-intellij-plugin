@@ -19,45 +19,45 @@ import org.apache.solr.ide.server.transport.SolrResponse
  */
 sealed interface SolrDriftView {
 
-    /** Nothing has been compared yet, because nobody has asked. */
-    data object NotCompared : SolrDriftView
+  /** Nothing has been compared yet, because nobody has asked. */
+  data object NotCompared : SolrDriftView
 
-    /** A comparison is in flight. */
-    data object Comparing : SolrDriftView
+  /** A comparison is in flight. */
+  data object Comparing : SolrDriftView
 
-    /**
-     * A write is in flight, to be followed by a fresh comparison.
-     *
-     * Distinct from [Comparing] because the two say different things about what the server is
-     * doing, and a user watching a write wants to know a write is what they are watching.
-     */
-    data object Writing : SolrDriftView
+  /**
+   * A write is in flight, to be followed by a fresh comparison.
+   *
+   * Distinct from [Comparing] because the two say different things about what the server is doing,
+   * and a user watching a write wants to know a write is what they are watching.
+   */
+  data object Writing : SolrDriftView
 
-    /**
-     * A comparison ran, and this is what it found.
-     *
-     * @property configset the configset compared, named so the answer can be attributed
-     * @property collection the collection it was compared against
-     * @property drift what the two disagree about, empty where they agree
-     * @property warning what to say about an answer that arrived incomplete, or null
-     */
-    data class Compared(
-        val configset: String,
-        val collection: String,
-        val drift: SolrDrift,
-        val warning: String? = null,
-    ) : SolrDriftView
+  /**
+   * A comparison ran, and this is what it found.
+   *
+   * @property configset the configset compared, named so the answer can be attributed
+   * @property collection the collection it was compared against
+   * @property drift what the two disagree about, empty where they agree
+   * @property warning what to say about an answer that arrived incomplete, or null
+   */
+  data class Compared(
+    val configset: String,
+    val collection: String,
+    val drift: SolrDrift,
+    val warning: String? = null,
+  ) : SolrDriftView
 
-    /**
-     * The server could not be read, so nothing was compared.
-     *
-     * **Distinct from a comparison finding everything missing**, which is what a view that treated a
-     * failed read as an empty server would show — an entire schema reported as undeployed because a
-     * password was wrong.
-     *
-     * @property message the failure in Solr's own words where Solr spoke
-     */
-    data class Failed(val message: String) : SolrDriftView
+  /**
+   * The server could not be read, so nothing was compared.
+   *
+   * **Distinct from a comparison finding everything missing**, which is what a view that treated a
+   * failed read as an empty server would show — an entire schema reported as undeployed because a
+   * password was wrong.
+   *
+   * @property message the failure in Solr's own words where Solr spoke
+   */
+  data class Failed(val message: String) : SolrDriftView
 }
 
 /**
@@ -79,21 +79,23 @@ sealed interface SolrDriftView {
  * @return the state the drift view should be in
  */
 fun driftViewFor(
-    configset: String,
-    collection: String,
-    repository: SolrConfigsetFacts,
-    response: SolrResponse<SolrServerRead>,
+  configset: String,
+  collection: String,
+  repository: SolrConfigsetFacts,
+  response: SolrResponse<SolrServerRead>,
 ): SolrDriftView {
-    failureMessageFor(response)?.let { return SolrDriftView.Failed(it) }
-    val read = valueIn(response) ?: return SolrDriftView.Failed(NO_FACTS)
-    return SolrDriftView.Compared(
-        configset = configset,
-        collection = collection,
-        // The version travels with the facts rather than being fetched again: the read that produced
-        // them already asked, and asking twice would be two answers about one moment.
-        drift = SolrDrift.between(repository, read.facts, read.solrVersion),
-        warning = warningFor(response),
-    )
+  failureMessageFor(response)?.let {
+    return SolrDriftView.Failed(it)
+  }
+  val read = valueIn(response) ?: return SolrDriftView.Failed(NO_FACTS)
+  return SolrDriftView.Compared(
+    configset = configset,
+    collection = collection,
+    // The version travels with the facts rather than being fetched again: the read that produced
+    // them already asked, and asking twice would be two answers about one moment.
+    drift = SolrDrift.between(repository, read.facts, read.solrVersion),
+    warning = warningFor(response),
+  )
 }
 
 // Unreachable through the reader, which returns a failure rather than a success carrying nothing —
@@ -106,23 +108,26 @@ private const val NO_FACTS = "The server answered without a schema."
  *
  * @property name what the schema endpoint is addressed by — a collection on SolrCloud, a core on a
  *   standalone server
- * @property configset the configset the server says it was built from, or null where it did not say.
- *   Shown beside the name because the comparison most often run by mistake is against a collection
- *   never built from the configset chosen, and that reads as a wall of *Only on server* rows
+ * @property configset the configset the server says it was built from, or null where it did not
+ *   say. Shown beside the name because the comparison most often run by mistake is against a
+ *   collection never built from the configset chosen, and that reads as a wall of *Only on server*
+ *   rows
  */
 data class SolrCollectionChoice(val name: String, val configset: String?)
 
 /**
  * What the collection chooser offers for [topology], in name order.
  *
- * A server of unknown mode offers nothing rather than a guess: its schema endpoint may still answer,
- * and a typed name is still accepted, but a list is a claim about what exists.
+ * A server of unknown mode offers nothing rather than a guess: its schema endpoint may still
+ * answer, and a typed name is still accepted, but a list is a claim about what exists.
  *
  * @param topology what the selected server reported holding
  * @return its collections or cores, each with the configset it came from
  */
-fun collectionChoicesIn(topology: SolrTopology): List<SolrCollectionChoice> = when (topology.mode) {
-    SolrServerMode.SOLR_CLOUD -> topology.collections.map { SolrCollectionChoice(it.name, it.configName) }
+fun collectionChoicesIn(topology: SolrTopology): List<SolrCollectionChoice> =
+  when (topology.mode) {
+    SolrServerMode.SOLR_CLOUD ->
+      topology.collections.map { SolrCollectionChoice(it.name, it.configName) }
     SolrServerMode.STANDALONE -> topology.cores.map { SolrCollectionChoice(it.name, it.configSet) }
     SolrServerMode.UNKNOWN -> emptyList()
-}.sortedBy { it.name }
+  }.sortedBy { it.name }

@@ -17,6 +17,14 @@ kover = "0.9.11"
 sonarqube = "7.5.0.8588"
 dokka = "2.2.0"
 testcontainers = "1.21.4"
+# Formatting: Google style, for Kotlin through ktfmt and for the demo's Java through
+# google-java-format. Both formatters are versioned here rather than left to Spotless's defaults, so
+# a Spotless bump cannot reformat the tree on its own.
+spotless = "8.10.4"
+ktfmt = "0.64"
+# Held at 1.36.1: Spotless 8.10.4 cannot drive 1.37.0, which fails every file with a bare
+# InvocationTargetException. Raise it with the Spotless that supports it.
+google-java-format = "1.36.1"
 
 [libraries]
 # Consumed by buildSrc: reads Solr class files to generate the shipped class catalog.
@@ -37,3 +45,4 @@ changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

@@ -15,202 +15,224 @@ import org.apache.solr.ide.model.schema.SolrMatchGranularity
  */
 class SolrAddExactCompanionIntentionTest : SolrConfigsetTestCase() {
 
-    private val hint = "Add exact-match companion field"
+  private val hint = "Add exact-match companion field"
 
-    private fun schema(body: String) = """
-        <schema name='t' version='1.6'>
-          <fieldType name="text_general" class="solr.TextField">
-            <analyzer type="index">
-              <tokenizer class="solr.StandardTokenizerFactory"/>
-              <filter class="solr.LowerCaseFilterFactory"/>
-            </analyzer>
-          </fieldType>
-          BODY
-        </schema>
-    """.trimIndent().replace("BODY", body)
+  private fun schema(body: String) =
+    """
+    <schema name='t' version='1.6'>
+      <fieldType name="text_general" class="solr.TextField">
+        <analyzer type="index">
+          <tokenizer class="solr.StandardTokenizerFactory"/>
+          <filter class="solr.LowerCaseFilterFactory"/>
+        </analyzer>
+      </fieldType>
+      BODY
+    </schema>
+    """
+      .trimIndent()
+      .replace("BODY", body)
 
-    private val stringType = """<fieldType name="string" class="solr.StrField" sortMissingLast="true"/>"""
+  private val stringType =
+    """<fieldType name="string" class="solr.StrField" sortMissingLast="true"/>"""
 
-    /** The same fixture at a declared version, for the properties whose default the version decides. */
-    private fun schemaAtVersion(version: String, body: String) =
-        schema(body).replace("version='1.6'", "version='$version'")
+  /**
+   * The same fixture at a declared version, for the properties whose default the version decides.
+   */
+  private fun schemaAtVersion(version: String, body: String) =
+    schema(body).replace("version='1.6'", "version='$version'")
 
-    private fun applyIntention(body: String) {
-        myFixture.configureByText("managed-schema.xml", schema(body))
-        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
-    }
+  private fun applyIntention(body: String) {
+    myFixture.configureByText("managed-schema.xml", schema(body))
+    myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+  }
 
-    fun testTheCompanionReusesADeclaredStringType() {
-        applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
+  fun testTheCompanionReusesADeclaredStringType() {
+    applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
 
-        val text = myFixture.file.text
-        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
-        assertTrue(text, text.contains("""<copyField source="name" dest="name_exact"/>"""))
-        // Reuse means no second type: the one declaration of `string` is the fixture's own.
-        assertEquals(text, 1, text.split("""class="solr.StrField"""").size - 1)
-    }
+    val text = myFixture.file.text
+    assertTrue(
+      text,
+      text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""),
+    )
+    assertTrue(text, text.contains("""<copyField source="name" dest="name_exact"/>"""))
+    // Reuse means no second type: the one declaration of `string` is the fixture's own.
+    assertEquals(text, 1, text.split("""class="solr.StrField"""").size - 1)
+  }
 
-    /**
-     * A multi-valued source gets a multi-valued companion, or the schema breaks at index time.
-     *
-     * `copyField` copies every value the source receives, so Solr rejects a multi-valued source
-     * feeding a single-valued destination with *multiple values encountered for non-multiValued copy
-     * field* — and it rejects it while indexing the user's documents, not while they are looking at
-     * the schema. The intention wrote a single-valued companion unconditionally, which made accepting
-     * it a way to break indexing later with an edit the plugin had offered.
-     */
-    fun testAMultiValuedSourceGetsAMultiValuedCompanion() {
-        applyIntention("""$stringType<field name="ta<caret>gs" type="text_general" multiValued="true"/>""")
+  /**
+   * A multi-valued source gets a multi-valued companion, or the schema breaks at index time.
+   *
+   * `copyField` copies every value the source receives, so Solr rejects a multi-valued source
+   * feeding a single-valued destination with *multiple values encountered for non-multiValued copy
+   * field* — and it rejects it while indexing the user's documents, not while they are looking at
+   * the schema. The intention wrote a single-valued companion unconditionally, which made accepting
+   * it a way to break indexing later with an edit the plugin had offered.
+   */
+  fun testAMultiValuedSourceGetsAMultiValuedCompanion() {
+    applyIntention(
+      """$stringType<field name="ta<caret>gs" type="text_general" multiValued="true"/>"""
+    )
 
-        val text = myFixture.file.text
-        assertTrue(
-            text,
-            text.contains(
-                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
-            ),
-        )
-        assertTrue(text, text.contains("""<copyField source="tags" dest="tags_exact"/>"""))
-    }
+    val text = myFixture.file.text
+    assertTrue(
+      text,
+      text.contains(
+        """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>"""
+      ),
+    )
+    assertTrue(text, text.contains("""<copyField source="tags" dest="tags_exact"/>"""))
+  }
 
-    /**
-     * And a single-valued source keeps the shorter tag, so the attribute is not written by habit.
-     *
-     * Asserted on the word rather than on a rendering of the whole tag: the fixture declares no
-     * multi-valued field anywhere, so any occurrence at all is this defect. A first version of this
-     * matched one long concatenated literal and would have passed silently the moment the attribute
-     * order or spacing changed — a test that fails for no reason it names is worth less than none.
-     */
-    fun testASingleValuedSourceGetsNoMultiValuedAttribute() {
-        applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
+  /**
+   * And a single-valued source keeps the shorter tag, so the attribute is not written by habit.
+   *
+   * Asserted on the word rather than on a rendering of the whole tag: the fixture declares no
+   * multi-valued field anywhere, so any occurrence at all is this defect. A first version of this
+   * matched one long concatenated literal and would have passed silently the moment the attribute
+   * order or spacing changed — a test that fails for no reason it names is worth less than none.
+   */
+  fun testASingleValuedSourceGetsNoMultiValuedAttribute() {
+    applyIntention("""$stringType<field name="na<caret>me" type="text_general"/>""")
 
-        val text = myFixture.file.text
-        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
-        assertFalse(text, "multiValued" in text)
-    }
+    val text = myFixture.file.text
+    assertTrue(
+      text,
+      text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""),
+    )
+    assertFalse(text, "multiValued" in text)
+  }
 
-    /**
-     * Below schema version 1.1, `multiValued` defaults to *true*, and the companion has to follow.
-     *
-     * A first version of this rule read the field's attribute, then the type's, then defaulted to
-     * false, on the stated reasoning that `multiValued` has one flat default unlike `docValues` and
-     * `uninvertible`. The property table says otherwise and so does Solr, so a `version="1.0"`
-     * schema declaring nothing would have regenerated the exact defect the rule exists to prevent:
-     * a single-valued companion fed by a source Solr treats as multi-valued, failing at index time
-     * on the user's data.
-     *
-     * The fixture declares no `multiValued` anywhere. Everything here comes from the version.
-     */
-    fun testTheVersionDefaultDecidesWhenTheSchemaSaysNothing() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schemaAtVersion("1.0", """$stringType<field name="ta<caret>gs" type="text_general"/>"""),
-        )
-        myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
+  /**
+   * Below schema version 1.1, `multiValued` defaults to *true*, and the companion has to follow.
+   *
+   * A first version of this rule read the field's attribute, then the type's, then defaulted to
+   * false, on the stated reasoning that `multiValued` has one flat default unlike `docValues` and
+   * `uninvertible`. The property table says otherwise and so does Solr, so a `version="1.0"` schema
+   * declaring nothing would have regenerated the exact defect the rule exists to prevent: a
+   * single-valued companion fed by a source Solr treats as multi-valued, failing at index time on
+   * the user's data.
+   *
+   * The fixture declares no `multiValued` anywhere. Everything here comes from the version.
+   */
+  fun testTheVersionDefaultDecidesWhenTheSchemaSaysNothing() {
+    myFixture.configureByText(
+      "managed-schema.xml",
+      schemaAtVersion("1.0", """$stringType<field name="ta<caret>gs" type="text_general"/>"""),
+    )
+    myFixture.launchAction(myFixture.filterAvailableIntentions(hint).single())
 
-        val text = myFixture.file.text
-        assertTrue(
-            text,
-            text.contains(
-                """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>""",
-            ),
-        )
-    }
+    val text = myFixture.file.text
+    assertTrue(
+      text,
+      text.contains(
+        """<field name="tags_exact" type="string" indexed="true" stored="false" multiValued="true"/>"""
+      ),
+    )
+  }
 
-    fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {
-        applyIntention("""<field name="na<caret>me" type="text_general"/>""")
+  fun testAStringTypeIsWrittenWhenTheSchemaDeclaresNone() {
+    applyIntention("""<field name="na<caret>me" type="text_general"/>""")
 
-        val text = myFixture.file.text
-        assertTrue(text, text.contains("""<fieldType name="string" class="solr.StrField""""))
-        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
-        assertTrue(text, text.contains("""<copyField source="name" dest="name_exact"/>"""))
-    }
+    val text = myFixture.file.text
+    assertTrue(text, text.contains("""<fieldType name="string" class="solr.StrField""""))
+    assertTrue(
+      text,
+      text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""),
+    )
+    assertTrue(text, text.contains("""<copyField source="name" dest="name_exact"/>"""))
+  }
 
-    /**
-     * Each inserted element owns its line, as for the prefix half.
-     *
-     * Worth repeating rather than trusting the shared insertion code: the type written here is a
-     * single self-closing element where the prefix half's spans several lines, and a one-line tag is
-     * exactly the shape that could land glued to its neighbour without anything else looking wrong.
-     */
-    fun testEachInsertedElementIsOnItsOwnLine() {
-        applyIntention("""<field name="na<caret>me" type="text_general"/>""")
+  /**
+   * Each inserted element owns its line, as for the prefix half.
+   *
+   * Worth repeating rather than trusting the shared insertion code: the type written here is a
+   * single self-closing element where the prefix half's spans several lines, and a one-line tag is
+   * exactly the shape that could land glued to its neighbour without anything else looking wrong.
+   */
+  fun testEachInsertedElementIsOnItsOwnLine() {
+    applyIntention("""<field name="na<caret>me" type="text_general"/>""")
 
-        val lines = myFixture.file.text.lines().map { it.trim() }
-        assertContainsElements(
-            lines,
-            """<fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true"/>""",
-            """<field name="name" type="text_general"/>""",
-            """<field name="name_exact" type="string" indexed="true" stored="false"/>""",
-            """<copyField source="name" dest="name_exact"/>""",
-        )
-    }
+    val lines = myFixture.file.text.lines().map { it.trim() }
+    assertContainsElements(
+      lines,
+      """<fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true"/>""",
+      """<field name="name" type="text_general"/>""",
+      """<field name="name_exact" type="string" indexed="true" stored="false"/>""",
+      """<copyField source="name" dest="name_exact"/>""",
+    )
+  }
 
-    /** What the user was promised has to survive the round trip through the parser. */
-    fun testTheCompanionActuallyReadsBackAsWholeValue() {
-        applyIntention("""<field name="na<caret>me" type="text_general"/>""")
+  /** What the user was promised has to survive the round trip through the parser. */
+  fun testTheCompanionActuallyReadsBackAsWholeValue() {
+    applyIntention("""<field name="na<caret>me" type="text_general"/>""")
 
-        val configset = SolrConfigsetDetector.configsetFor(myFixture.file)!!
-        val model = SolrConfigsetReader.getInstance(project).modelFor(configset)
-        val companion = model.fields["name_exact"]!!.effective
-        val capability = SolrMatchAnalysis.of(model.typeOf(companion)!!)
+    val configset = SolrConfigsetDetector.configsetFor(myFixture.file)!!
+    val model = SolrConfigsetReader.getInstance(project).modelFor(configset)
+    val companion = model.fields["name_exact"]!!.effective
+    val capability = SolrMatchAnalysis.of(model.typeOf(companion)!!)
 
-        assertEquals(SolrMatchGranularity.WHOLE_VALUE, capability.granularity)
-        assertTrue(capability.confident)
-    }
+    assertEquals(SolrMatchGranularity.WHOLE_VALUE, capability.granularity)
+    assertTrue(capability.confident)
+  }
 
-    /**
-     * The trap, at fixture level: the schema declares a numeric type and no string one, so the
-     * intention must write `string` rather than pointing the companion at `plong`.
-     */
-    fun testANumericTypeIsNotBorrowedForTheCompanion() {
-        applyIntention(
-            """<fieldType name="plong" class="solr.LongPointField"/><field name="na<caret>me" type="text_general"/>""",
-        )
+  /**
+   * The trap, at fixture level: the schema declares a numeric type and no string one, so the
+   * intention must write `string` rather than pointing the companion at `plong`.
+   */
+  fun testANumericTypeIsNotBorrowedForTheCompanion() {
+    applyIntention(
+      """<fieldType name="plong" class="solr.LongPointField"/><field name="na<caret>me" type="text_general"/>"""
+    )
 
-        val text = myFixture.file.text
-        assertTrue(text, text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""))
-        assertFalse(text, text.contains("""type="plong""""))
-    }
+    val text = myFixture.file.text
+    assertTrue(
+      text,
+      text.contains("""<field name="name_exact" type="string" indexed="true" stored="false"/>"""),
+    )
+    assertFalse(text, text.contains("""type="plong""""))
+  }
 
-    /** The wiring test for availability: a string field already matches whole values. */
-    fun testNothingIsOfferedOnAFieldThatAlreadyMatchesWholeValues() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema("""$stringType<field name="co<caret>de" type="string"/>"""),
-        )
+  /** The wiring test for availability: a string field already matches whole values. */
+  fun testNothingIsOfferedOnAFieldThatAlreadyMatchesWholeValues() {
+    myFixture.configureByText(
+      "managed-schema.xml",
+      schema("""$stringType<field name="co<caret>de" type="string"/>"""),
+    )
 
-        assertEmpty(myFixture.filterAvailableIntentions(hint))
-    }
+    assertEmpty(myFixture.filterAvailableIntentions(hint))
+  }
 
-    /** The one availability rule that cannot be a pure test, because it is about the caret. */
-    fun testNothingIsOfferedWhenTheCaretIsNotOnAField() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema("""<fieldType name="o<caret>ther" class="solr.StrField"/><field name="name" type="text_general"/>"""),
-        )
+  /** The one availability rule that cannot be a pure test, because it is about the caret. */
+  fun testNothingIsOfferedWhenTheCaretIsNotOnAField() {
+    myFixture.configureByText(
+      "managed-schema.xml",
+      schema(
+        """<fieldType name="o<caret>ther" class="solr.StrField"/><field name="name" type="text_general"/>"""
+      ),
+    )
 
-        assertEmpty(myFixture.filterAvailableIntentions(hint))
-    }
+    assertEmpty(myFixture.filterAvailableIntentions(hint))
+  }
 
-    /** Outside a Solr project every surface is inert, and an intention is no exception. */
-    fun testNothingIsOfferedOutsideASolrProject() {
-        givenNoSolrOnTheClasspath()
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema("""<field name="na<caret>me" type="text_general"/>"""),
-        )
+  /** Outside a Solr project every surface is inert, and an intention is no exception. */
+  fun testNothingIsOfferedOutsideASolrProject() {
+    givenNoSolrOnTheClasspath()
+    myFixture.configureByText(
+      "managed-schema.xml",
+      schema("""<field name="na<caret>me" type="text_general"/>"""),
+    )
 
-        assertEmpty(myFixture.filterAvailableIntentions(hint))
-    }
+    assertEmpty(myFixture.filterAvailableIntentions(hint))
+  }
 
-    /** Both companions are offered on the same field, and neither hides the other. */
-    fun testThePrefixCompanionIsStillOfferedAlongsideIt() {
-        myFixture.configureByText(
-            "managed-schema.xml",
-            schema("""<field name="na<caret>me" type="text_general"/>"""),
-        )
+  /** Both companions are offered on the same field, and neither hides the other. */
+  fun testThePrefixCompanionIsStillOfferedAlongsideIt() {
+    myFixture.configureByText(
+      "managed-schema.xml",
+      schema("""<field name="na<caret>me" type="text_general"/>"""),
+    )
 
-        assertSize(1, myFixture.filterAvailableIntentions(hint))
-        assertSize(1, myFixture.filterAvailableIntentions("Add prefix-capable companion field"))
-    }
+    assertSize(1, myFixture.filterAvailableIntentions(hint))
+    assertSize(1, myFixture.filterAvailableIntentions("Add prefix-capable companion field"))
+  }
 }

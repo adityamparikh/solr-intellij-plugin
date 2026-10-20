@@ -18,17 +18,17 @@ import tools.jackson.databind.json.JsonMapper
  */
 internal object SolrJsonDocuments {
 
-    private val MAPPER: JsonMapper = JsonMapper.builder().build()
+  private val MAPPER: JsonMapper = JsonMapper.builder().build()
 
-    /**
-     * Reads [text] as JSON, or null where it is not.
-     *
-     * Null rather than an exception because the case is ordinary rather than exceptional: a mistyped
-     * collection is answered by Solr's servlet container with an HTML error page, and that is a
-     * routine mistake rather than a fault in the plugin.
-     *
-     * @param text a response body
-     * @return the parsed tree, or null when the text is not JSON
-     */
-    fun treeOf(text: String): JsonNode? = runCatching { MAPPER.readTree(text) }.getOrNull()
+  /**
+   * Reads [text] as JSON, or null where it is not.
+   *
+   * Null rather than an exception because the case is ordinary rather than exceptional: a mistyped
+   * collection is answered by Solr's servlet container with an HTML error page, and that is a
+   * routine mistake rather than a fault in the plugin.
+   *
+   * @param text a response body
+   * @return the parsed tree, or null when the text is not JSON
+   */
+  fun treeOf(text: String): JsonNode? = runCatching { MAPPER.readTree(text) }.getOrNull()
 }

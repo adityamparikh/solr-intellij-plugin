@@ -12,92 +12,96 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrInvalidAttributeValueInspectionTest : SolrConfigsetTestCase() {
 
-    private val schema = """
-        <schema name='t'>
-          <fieldType name="string" class="solr.StrField"/>
-          BODY
-        </schema>
-    """.trimIndent()
+  private val schema =
+    """
+    <schema name='t'>
+      <fieldType name="string" class="solr.StrField"/>
+      BODY
+    </schema>
+    """
+      .trimIndent()
 
-    private fun checkValues(body: String) {
-        myFixture.enableInspections(SolrInvalidAttributeValueInspection())
-        myFixture.configureByText("managed-schema.xml", schema.replace("BODY", body))
-        myFixture.checkHighlighting(true, false, false)
-    }
+  private fun checkValues(body: String) {
+    myFixture.enableInspections(SolrInvalidAttributeValueInspection())
+    myFixture.configureByText("managed-schema.xml", schema.replace("BODY", body))
+    myFixture.checkHighlighting(true, false, false)
+  }
 
-    // --- clean: values ----------------------------------------------------------------------------
+  // --- clean: values ----------------------------------------------------------------------------
 
-    fun testCorrectValuesAreClean() {
-        checkValues(
-            """<field name="sku" type="string" indexed="true" stored="false" multiValued="true"/>""" +
-                """<fieldType name="t" class="solr.TextField" positionIncrementGap="100"/>""",
-        )
-    }
+  fun testCorrectValuesAreClean() {
+    checkValues(
+      """<field name="sku" type="string" indexed="true" stored="false" multiValued="true"/>""" +
+        """<fieldType name="t" class="solr.TextField" positionIncrementGap="100"/>"""
+    )
+  }
 
-    /** Solr's resource loader substitutes these, possibly from outside the repository. */
-    fun testASubstitutedValueIsNeverJudged() {
-        checkValues(
-            """<fieldType name="t" class="solr.TextField" positionIncrementGap="${'$'}{solr.gap:100}"/>""" +
-                """<field name="sku" type="string" indexed="${'$'}{solr.indexed:true}"/>""",
-        )
-    }
+  /** Solr's resource loader substitutes these, possibly from outside the repository. */
+  fun testASubstitutedValueIsNeverJudged() {
+    checkValues(
+      """<fieldType name="t" class="solr.TextField" positionIncrementGap="${'$'}{solr.gap:100}"/>""" +
+        """<field name="sku" type="string" indexed="${'$'}{solr.indexed:true}"/>"""
+    )
+  }
 
-    /** A legal value this inspection has no opinion about. */
-    fun testANegativeIntegerIsAnInteger() {
-        checkValues("""<fieldType name="t" class="solr.TextField" positionIncrementGap="-1"/>""")
-    }
+  /** A legal value this inspection has no opinion about. */
+  fun testANegativeIntegerIsAnInteger() {
+    checkValues("""<fieldType name="t" class="solr.TextField" positionIncrementGap="-1"/>""")
+  }
 
-    fun testAnOpenValuedAttributeIsNeverJudged() {
-        checkValues("""<field name="sku" type="string" default="anything at all"/>""")
-    }
+  fun testAnOpenValuedAttributeIsNeverJudged() {
+    checkValues("""<field name="sku" type="string" default="anything at all"/>""")
+  }
 
-    fun testACustomClassIsNeverJudged() {
-        checkValues("""<fieldType name="t" class="com.example.MyField"><analyzer><filter class="com.example.MyFilterFactory" minGramSize="not-a-number"/></analyzer></fieldType>""")
-    }
+  fun testACustomClassIsNeverJudged() {
+    checkValues(
+      """<fieldType name="t" class="com.example.MyField"><analyzer><filter class="com.example.MyFilterFactory" minGramSize="not-a-number"/></analyzer></fieldType>"""
+    )
+  }
 
-    /** Solr reads these with getInt as 0/1 flags, so "1" is right and "true" would not be. */
-    fun testWordDelimiterFlagsAcceptIntegers() {
-        checkValues(
-            """<fieldType name="t" class="solr.TextField"><analyzer>""" +
-                """<filter class="solr.WordDelimiterGraphFilterFactory" generateWordParts="1" catenateAll="0"/>""" +
-                """</analyzer></fieldType>""",
-        )
-    }
+  /** Solr reads these with getInt as 0/1 flags, so "1" is right and "true" would not be. */
+  fun testWordDelimiterFlagsAcceptIntegers() {
+    checkValues(
+      """<fieldType name="t" class="solr.TextField"><analyzer>""" +
+        """<filter class="solr.WordDelimiterGraphFilterFactory" generateWordParts="1" catenateAll="0"/>""" +
+        """</analyzer></fieldType>"""
+    )
+  }
 
-    // --- flagged: values --------------------------------------------------------------------------
+  // --- flagged: values --------------------------------------------------------------------------
 
-    fun testABooleanPropertyRejectsAWord() {
-        checkValues(
-            """<field name="sku" type="string" indexed="<warning descr="Solr: 'indexed' accepts true or false">yes</warning>"/>""",
-        )
-    }
+  fun testABooleanPropertyRejectsAWord() {
+    checkValues(
+      """<field name="sku" type="string" indexed="<warning descr="Solr: 'indexed' accepts true or false">yes</warning>"/>"""
+    )
+  }
 
-    fun testAnIntegerPropertyRejectsAWord() {
-        checkValues(
-            """<fieldType name="t" class="solr.TextField" positionIncrementGap="<warning descr="Solr: 'positionIncrementGap' accepts a whole number">foo</warning>"/>""",
-        )
-    }
+  fun testAnIntegerPropertyRejectsAWord() {
+    checkValues(
+      """<fieldType name="t" class="solr.TextField" positionIncrementGap="<warning descr="Solr: 'positionIncrementGap' accepts a whole number">foo</warning>"/>"""
+    )
+  }
 
-    fun testAFactoryIntegerAttributeRejectsADecimal() {
-        checkValues(
-            """<fieldType name="t" class="solr.TextField"><analyzer>""" +
-                """<filter class="solr.EdgeNGramFilterFactory" minGramSize="<warning descr="Solr: 'minGramSize' accepts a whole number">2.5</warning>"/>""" +
-                """</analyzer></fieldType>""",
-        )
-    }
+  fun testAFactoryIntegerAttributeRejectsADecimal() {
+    checkValues(
+      """<fieldType name="t" class="solr.TextField"><analyzer>""" +
+        """<filter class="solr.EdgeNGramFilterFactory" minGramSize="<warning descr="Solr: 'minGramSize' accepts a whole number">2.5</warning>"/>""" +
+        """</analyzer></fieldType>"""
+    )
+  }
 
-    fun testAFactoryBooleanAttributeRejectsAWord() {
-        checkValues(
-            """<fieldType name="t" class="solr.TextField"><analyzer>""" +
-                """<filter class="solr.EdgeNGramFilterFactory" preserveOriginal="<warning descr="Solr: 'preserveOriginal' accepts true or false">nope</warning>"/>""" +
-                """</analyzer></fieldType>""",
-        )
-    }
+  fun testAFactoryBooleanAttributeRejectsAWord() {
+    checkValues(
+      """<fieldType name="t" class="solr.TextField"><analyzer>""" +
+        """<filter class="solr.EdgeNGramFilterFactory" preserveOriginal="<warning descr="Solr: 'preserveOriginal' accepts true or false">nope</warning>"/>""" +
+        """</analyzer></fieldType>"""
+    )
+  }
 
-    // --- the outer gate ---------------------------------------------------------------------------
+  // --- the outer gate ---------------------------------------------------------------------------
 
-    fun testNothingIsReportedOutsideASolrProject() {
-        givenNoSolrOnTheClasspath()
-        checkValues("""<field name="sku" type="string" indexed="yes"/>""")
-    }
+  fun testNothingIsReportedOutsideASolrProject() {
+    givenNoSolrOnTheClasspath()
+    checkValues("""<field name="sku" type="string" indexed="yes"/>""")
+  }
 }

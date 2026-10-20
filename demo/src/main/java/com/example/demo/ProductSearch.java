@@ -21,29 +21,29 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProductSearch {
 
-    private final SolrClient solr;
+  private final SolrClient solr;
 
-    ProductSearch(SolrClient solr) {
-        this.solr = solr;
-    }
+  ProductSearch(SolrClient solr) {
+    this.solr = solr;
+  }
 
-    /**
-     * The correct counterpart, and the one the code-track gestures are shown on.
-     *
-     * <p>Every name here is declared, so nothing is warned about — which is what makes it the useful
-     * subject: the query's field names are coloured and navigable, and the gutter icon beside it
-     * runs it. A defect would show the check instead, and {@link #findBooks()} already does that.
-     */
-    public QueryResponse findSolrBooks() throws Exception {
-        SolrQuery q = new SolrQuery();
-        q.setQuery("category:books AND name:solr");
-        return solr.query("products", q);
-    }
+  /**
+   * The correct counterpart, and the one the code-track gestures are shown on.
+   *
+   * <p>Every name here is declared, so nothing is warned about — which is what makes it the useful
+   * subject: the query's field names are coloured and navigable, and the gutter icon beside it runs
+   * it. A defect would show the check instead, and {@link #findBooks()} already does that.
+   */
+  public QueryResponse findSolrBooks() throws Exception {
+    SolrQuery q = new SolrQuery();
+    q.setQuery("category:books AND name:solr");
+    return solr.query("products", q);
+  }
 
-    public QueryResponse findBooks() throws Exception {
-        SolrQuery q = new SolrQuery("*:*");
-        q.addFilterQuery("categry:books");
-        q.setFields("id,name,price");
-        return solr.query("products", q);
-    }
+  public QueryResponse findBooks() throws Exception {
+    SolrQuery q = new SolrQuery("*:*");
+    q.addFilterQuery("categry:books");
+    q.setFields("id,name,price");
+    return solr.query("products", q);
+  }
 }

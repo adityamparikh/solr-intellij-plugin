@@ -11,158 +11,162 @@ import org.apache.solr.ide.model.schema.SolrValueType
  */
 enum class SolrClassKind(internal val token: String) {
 
-    /** The implementation behind a `<fieldType>`, such as `solr.StrField`. */
-    FIELD_TYPE("fieldType"),
+  /** The implementation behind a `<fieldType>`, such as `solr.StrField`. */
+  FIELD_TYPE("fieldType"),
 
-    /** The `<tokenizer>` that splits a value into terms. */
-    TOKENIZER("tokenizer"),
+  /** The `<tokenizer>` that splits a value into terms. */
+  TOKENIZER("tokenizer"),
 
-    /** A `<filter>` in an analyzer chain, applied to the tokens a tokenizer produced. */
-    TOKEN_FILTER("tokenFilter"),
+  /** A `<filter>` in an analyzer chain, applied to the tokens a tokenizer produced. */
+  TOKEN_FILTER("tokenFilter"),
 
-    /** A `<charFilter>`, applied to the raw text before tokenization. */
-    CHAR_FILTER("charFilter"),
+  /** A `<charFilter>`, applied to the raw text before tokenization. */
+  CHAR_FILTER("charFilter"),
 
-    // --- solrconfig.xml -----------------------------------------------------------------------
-    //
-    // Every constant below names a tag Solr itself declares in `SolrConfig.plugins`, which is where
-    // the generator reads the roots from. The token is the tag name, so a token spelled differently
-    // from what a reader writes in the file would be a generator bug rather than a choice made here.
+  // --- solrconfig.xml -----------------------------------------------------------------------
+  //
+  // Every constant below names a tag Solr itself declares in `SolrConfig.plugins`, which is where
+  // the generator reads the roots from. The token is the tag name, so a token spelled differently
+  // from what a reader writes in the file would be a generator bug rather than a choice made here.
 
-    /** A `<requestHandler>`, the endpoint a query is sent to. */
-    REQUEST_HANDLER("requestHandler"),
+  /** A `<requestHandler>`, the endpoint a query is sent to. */
+  REQUEST_HANDLER("requestHandler"),
 
-    /** A `<queryParser>`, which is what a `defType` names. */
-    QUERY_PARSER("queryParser"),
+  /** A `<queryParser>`, which is what a `defType` names. */
+  QUERY_PARSER("queryParser"),
 
-    /** A `<searchComponent>`, one stage of a request handler's chain. */
-    SEARCH_COMPONENT("searchComponent"),
+  /** A `<searchComponent>`, one stage of a request handler's chain. */
+  SEARCH_COMPONENT("searchComponent"),
 
-    /** A `<queryResponseWriter>`, which decides the shape a response is written in. */
-    QUERY_RESPONSE_WRITER("queryResponseWriter"),
+  /** A `<queryResponseWriter>`, which decides the shape a response is written in. */
+  QUERY_RESPONSE_WRITER("queryResponseWriter"),
 
-    /** An `<updateProcessor>`, which may rewrite a document on its way in. */
-    UPDATE_PROCESSOR("updateProcessor"),
+  /** An `<updateProcessor>`, which may rewrite a document on its way in. */
+  UPDATE_PROCESSOR("updateProcessor"),
 
-    /** A `<transformer>`, which adds a field to a returned document — what `fl=[docid]` names. */
-    TRANSFORMER("transformer"),
+  /** A `<transformer>`, which adds a field to a returned document — what `fl=[docid]` names. */
+  TRANSFORMER("transformer"),
 
-    /** A `<valueSourceParser>`, which supplies a function usable in a function query. */
-    VALUE_SOURCE_PARSER("valueSourceParser"),
+  /** A `<valueSourceParser>`, which supplies a function usable in a function query. */
+  VALUE_SOURCE_PARSER("valueSourceParser"),
 
-    /** An `<expressible>`, a streaming-expression function. */
-    EXPRESSIBLE("expressible"),
+  /** An `<expressible>`, a streaming-expression function. */
+  EXPRESSIBLE("expressible"),
 
-    /** A `<directoryFactory>`, which decides how the index is stored and cached. */
-    DIRECTORY_FACTORY("directoryFactory"),
+  /** A `<directoryFactory>`, which decides how the index is stored and cached. */
+  DIRECTORY_FACTORY("directoryFactory"),
 
-    /** A `<codecFactory>`, which decides the on-disk encoding Lucene writes. */
-    CODEC_FACTORY("codecFactory"),
+  /** A `<codecFactory>`, which decides the on-disk encoding Lucene writes. */
+  CODEC_FACTORY("codecFactory"),
 
-    /** An `<indexReaderFactory>`. */
-    INDEX_READER_FACTORY("indexReaderFactory"),
+  /** An `<indexReaderFactory>`. */
+  INDEX_READER_FACTORY("indexReaderFactory"),
 
-    /** A `<schemaFactory>`, which decides whether the schema is managed or hand-edited. */
-    SCHEMA_FACTORY("schemaFactory"),
+  /** A `<schemaFactory>`, which decides whether the schema is managed or hand-edited. */
+  SCHEMA_FACTORY("schemaFactory"),
 
-    /** A `<deletionPolicy>` under `<indexConfig>`, which decides which commit points survive. */
-    DELETION_POLICY("deletionPolicy"),
+  /** A `<deletionPolicy>` under `<indexConfig>`, which decides which commit points survive. */
+  DELETION_POLICY("deletionPolicy"),
 
-    /** A `<cache>` under `<query>` — a user-defined cache, not one of the named ones. */
-    CACHE("cache"),
+  /** A `<cache>` under `<query>` — a user-defined cache, not one of the named ones. */
+  CACHE("cache"),
 
-    /** A `<listener>`, which runs on a commit or on a new searcher. */
-    LISTENER("listener"),
+  /** A `<listener>`, which runs on a commit or on a new searcher. */
+  LISTENER("listener"),
 
-    /** A `<circuitBreaker>`, which rejects a request when the node is under load. */
-    CIRCUIT_BREAKER("circuitBreaker"),
+  /** A `<circuitBreaker>`, which rejects a request when the node is under load. */
+  CIRCUIT_BREAKER("circuitBreaker"),
 
-    /** A `<statsCache>`, which decides how distributed term statistics are shared. */
-    STATS_CACHE("statsCache"),
+  /** A `<statsCache>`, which decides how distributed term statistics are shared. */
+  STATS_CACHE("statsCache"),
 
-    /** A `<queryConverter>`, used by spellchecking to read a query back into terms. */
-    QUERY_CONVERTER("queryConverter");
+  /** A `<queryConverter>`, used by spellchecking to read a query back into terms. */
+  QUERY_CONVERTER("queryConverter");
 
-    /** Lookup from a configset's element vocabulary. */
-    companion object {
+  /** Lookup from a configset's element vocabulary. */
+  companion object {
 
-        /** The four kinds a schema names, whose tags [forTag] maps explicitly. */
-        private val schemaKinds = setOf(FIELD_TYPE, TOKENIZER, TOKEN_FILTER, CHAR_FILTER)
+    /** The four kinds a schema names, whose tags [forTag] maps explicitly. */
+    private val schemaKinds = setOf(FIELD_TYPE, TOKENIZER, TOKEN_FILTER, CHAR_FILTER)
 
-        /**
-         * The kind of class [tagName]'s `class` attribute names, or null when the element does
-         * not carry one.
-         *
-         * Both spellings of `fieldType` are accepted, as Solr accepts both. This is the single
-         * mapping from configset vocabulary to catalog population; completion, documentation and
-         * navigation all read it, so a kind added to one cannot silently be missed by the others.
-         *
-         * **A kind's token is not always the element a configset writes, and the exceptions are
-         * exactly the elements that matter.** The token comes from Solr's own plugin declaration, and
-         * for most kinds that is also the tag — a `<requestHandler>` is declared `requestHandler`.
-         * But an update processor is written `<processor>` inside a chain, and the caches Solr reads
-         * by name are written `<filterCache>`, `<documentCache>` and three more, none of which is
-         * spelled `cache`. Those are among the most edited elements in the file, so a mapping that
-         * assumed token equals tag would be silent on the very positions a reader visits most.
-         *
-         * The remaining kinds fall through to a token match, which is what lets a kind the generator
-         * starts emitting resolve without a line being added here.
-         *
-         * @param tagName an element name as written in a configset
-         * @return the kind, or null
-         */
-        fun forTag(tagName: String): SolrClassKind? = when (tagName) {
-            // The schema's four, irregular and therefore stated. A `<filter>` means a token filter,
-            // and no kind is spelled `filter` at all.
-            "fieldType", "fieldtype" -> FIELD_TYPE
-            "tokenizer" -> TOKENIZER
-            "filter" -> TOKEN_FILTER
-            "charFilter" -> CHAR_FILTER
-            // A chain's members. The standalone `<updateProcessor name= class=>` spelling is a real
-            // element too, and reaches the same kind through the token table below.
-            "processor" -> UPDATE_PROCESSOR
-            // Solr's named caches. Each is a `SolrCache` position written under its own element name;
-            // `cache` itself is the user-defined one, and reaches this kind through its token.
-            in NAMED_CACHE_TAGS -> CACHE
-            else -> byToken[tagName]
-        }
+    /**
+     * The kind of class [tagName]'s `class` attribute names, or null when the element does not
+     * carry one.
+     *
+     * Both spellings of `fieldType` are accepted, as Solr accepts both. This is the single mapping
+     * from configset vocabulary to catalog population; completion, documentation and navigation all
+     * read it, so a kind added to one cannot silently be missed by the others.
+     *
+     * **A kind's token is not always the element a configset writes, and the exceptions are exactly
+     * the elements that matter.** The token comes from Solr's own plugin declaration, and for most
+     * kinds that is also the tag — a `<requestHandler>` is declared `requestHandler`. But an update
+     * processor is written `<processor>` inside a chain, and the caches Solr reads by name are
+     * written `<filterCache>`, `<documentCache>` and three more, none of which is spelled `cache`.
+     * Those are among the most edited elements in the file, so a mapping that assumed token equals
+     * tag would be silent on the very positions a reader visits most.
+     *
+     * The remaining kinds fall through to a token match, which is what lets a kind the generator
+     * starts emitting resolve without a line being added here.
+     *
+     * @param tagName an element name as written in a configset
+     * @return the kind, or null
+     */
+    fun forTag(tagName: String): SolrClassKind? =
+      when (tagName) {
+        // The schema's four, irregular and therefore stated. A `<filter>` means a token filter,
+        // and no kind is spelled `filter` at all.
+        "fieldType",
+        "fieldtype" -> FIELD_TYPE
+        "tokenizer" -> TOKENIZER
+        "filter" -> TOKEN_FILTER
+        "charFilter" -> CHAR_FILTER
+        // A chain's members. The standalone `<updateProcessor name= class=>` spelling is a real
+        // element too, and reaches the same kind through the token table below.
+        "processor" -> UPDATE_PROCESSOR
+        // Solr's named caches. Each is a `SolrCache` position written under its own element name;
+        // `cache` itself is the user-defined one, and reaches this kind through its token.
+        in NAMED_CACHE_TAGS -> CACHE
+        else -> byToken[tagName]
+      }
 
-        /**
-         * The elements under `<query>` that name a cache class without being spelled `cache`.
-         *
-         * Read from `SolrConfig`, which fetches each by name rather than through the plugin list —
-         * which is why the generated token is `cache` and none of these appears as one.
-         */
-        private val NAMED_CACHE_TAGS = setOf(
-            "filterCache",
-            "queryResultCache",
-            "documentCache",
-            "fieldValueCache",
-            "featureVectorCache",
-        )
+    /**
+     * The elements under `<query>` that name a cache class without being spelled `cache`.
+     *
+     * Read from `SolrConfig`, which fetches each by name rather than through the plugin list —
+     * which is why the generated token is `cache` and none of these appears as one.
+     */
+    private val NAMED_CACHE_TAGS =
+      setOf(
+        "filterCache",
+        "queryResultCache",
+        "documentCache",
+        "fieldValueCache",
+        "featureVectorCache",
+      )
 
-        /**
-         * The `solrconfig.xml` kinds by token.
-         *
-         * The schema's four are excluded on purpose. `fieldType` would match either way, but
-         * `tokenizer` and `charFilter` matching their own tokens is a coincidence this must not rely
-         * on, and `filter` matching nothing is the point — the `when` above owns all four so that the
-         * irregular mapping is stated in one place rather than half-derived.
-         */
-        private val byToken: Map<String, SolrClassKind> =
-            entries.filterNot { it in schemaKinds }.associateBy { it.token }
-    }
+    /**
+     * The `solrconfig.xml` kinds by token.
+     *
+     * The schema's four are excluded on purpose. `fieldType` would match either way, but
+     * `tokenizer` and `charFilter` matching their own tokens is a coincidence this must not rely
+     * on, and `filter` matching nothing is the point — the `when` above owns all four so that the
+     * irregular mapping is stated in one place rather than half-derived.
+     */
+    private val byToken: Map<String, SolrClassKind> =
+      entries.filterNot { it in schemaKinds }.associateBy { it.token }
+  }
 }
 
 /**
  * One attribute a class reads, and what kind of value it accepts.
  *
  * **[defaultValue] and [required] are recorded only where the bytecode proves them**, for the same
- * reason [valueType] is: a factory reads a literal default beside the attribute name — `getInt(args,
- * "generateWordParts", 1)` — and marks an attribute required by reading it with `requireInt` rather
- * than `getInt`. A default computed at runtime is recorded as absent rather than guessed, so a value
- * the plugin shows on hover is one Solr would genuinely fall back to. The pair is what the factory
- * half of quick documentation and the restates-the-default inspection consume.
+ * reason [valueType] is: a factory reads a literal default beside the attribute name —
+ * `getInt(args, "generateWordParts", 1)` — and marks an attribute required by reading it with
+ * `requireInt` rather than `getInt`. A default computed at runtime is recorded as absent rather
+ * than guessed, so a value the plugin shows on hover is one Solr would genuinely fall back to. The
+ * pair is what the factory half of quick documentation and the restates-the-default inspection
+ * consume.
  *
  * @property name the attribute name as a configset writes it
  * @property valueType what the class does with the value
@@ -171,48 +175,49 @@ enum class SolrClassKind(internal val token: String) {
  * @property required whether Solr rejects the class when the attribute is absent
  */
 data class SolrClassAttribute(
-    val name: String,
-    val valueType: SolrValueType = SolrValueType.FREE,
-    val defaultValue: String? = null,
-    val required: Boolean = false,
+  val name: String,
+  val valueType: SolrValueType = SolrValueType.FREE,
+  val defaultValue: String? = null,
+  val required: Boolean = false,
 ) {
 
-    /** Service lookup for the token spellings the generated catalog uses. */
-    companion object {
+  /** Service lookup for the token spellings the generated catalog uses. */
+  companion object {
 
-        /**
-         * Reads one attribute entry as the generated catalog writes it.
-         *
-         * The grammar is `name:type`, optionally carrying one of two mutually exclusive markers: a
-         * trailing `!` for a required attribute (`minGramSize:int!`), or `=` and a literal default
-         * (`generateWordParts:int=1`). A required attribute never carries a default, because the
-         * reader that marks it required — `requireInt` — takes none.
-         *
-         * An entry with no `:` reads as [SolrValueType.FREE] and no default, so a catalog generated
-         * before types or defaults existed degrades to "no value checking" rather than to an
-         * exception.
-         *
-         * @param entry one comma-separated attribute from the catalog's fourth column
-         * @return the parsed attribute
-         */
-        fun parse(entry: String): SolrClassAttribute {
-            val name = entry.substringBefore(':')
-            val rest = entry.substringAfter(':', "")
-            return when {
-                '=' in rest -> SolrClassAttribute(
-                    name,
-                    SolrValueType.forToken(rest.substringBefore('=')),
-                    defaultValue = rest.substringAfter('='),
-                )
-                rest.endsWith('!') -> SolrClassAttribute(
-                    name,
-                    SolrValueType.forToken(rest.dropLast(1)),
-                    required = true,
-                )
-                else -> SolrClassAttribute(name, SolrValueType.forToken(rest))
-            }
-        }
+    /**
+     * Reads one attribute entry as the generated catalog writes it.
+     *
+     * The grammar is `name:type`, optionally carrying one of two mutually exclusive markers: a
+     * trailing `!` for a required attribute (`minGramSize:int!`), or `=` and a literal default
+     * (`generateWordParts:int=1`). A required attribute never carries a default, because the reader
+     * that marks it required — `requireInt` — takes none.
+     *
+     * An entry with no `:` reads as [SolrValueType.FREE] and no default, so a catalog generated
+     * before types or defaults existed degrades to "no value checking" rather than to an exception.
+     *
+     * @param entry one comma-separated attribute from the catalog's fourth column
+     * @return the parsed attribute
+     */
+    fun parse(entry: String): SolrClassAttribute {
+      val name = entry.substringBefore(':')
+      val rest = entry.substringAfter(':', "")
+      return when {
+        '=' in rest ->
+          SolrClassAttribute(
+            name,
+            SolrValueType.forToken(rest.substringBefore('=')),
+            defaultValue = rest.substringAfter('='),
+          )
+        rest.endsWith('!') ->
+          SolrClassAttribute(
+            name,
+            SolrValueType.forToken(rest.dropLast(1)),
+            required = true,
+          )
+        else -> SolrClassAttribute(name, SolrValueType.forToken(rest))
+      }
     }
+  }
 }
 
 /**
@@ -228,65 +233,66 @@ data class SolrClassAttribute(
  *   analysis factory, which has no defaults to decide. An empty set on a field type is a positive
  *   answer — the class carries no trait — and is what makes a default resolvable as `false` rather
  *   than left undetermined
- * @property spiName the short name a schema may write instead of the class, as in
- *   `<filter name="lowercase"/>`, or null for a class that registers none. Carried rather than
- *   derived because no rule turns `LowerCaseFilterFactory` into `lowercase` without also turning
+ * @property spiName the short name a schema may write instead of the class, as in `<filter
+ *   name="lowercase"/>`, or null for a class that registers none. Carried rather than derived
+ *   because no rule turns `LowerCaseFilterFactory` into `lowercase` without also turning
  *   `UAX29URLEmailTokenizerFactory` into something other than `uax29URLEmail`
  */
 data class SolrClassEntry(
-    val kind: SolrClassKind,
-    val className: String,
-    val shortName: String,
-    val attributes: List<SolrClassAttribute> = emptyList(),
-    val summary: String? = null,
-    val traits: Set<SolrTypeTrait> = emptySet(),
-    val spiName: String? = null,
+  val kind: SolrClassKind,
+  val className: String,
+  val shortName: String,
+  val attributes: List<SolrClassAttribute> = emptyList(),
+  val summary: String? = null,
+  val traits: Set<SolrTypeTrait> = emptySet(),
+  val spiName: String? = null,
 ) {
 
-    /** The attribute [name], or null when this class does not read one by that name. */
-    fun attribute(name: String): SolrClassAttribute? = attributes.firstOrNull { it.name == name }
+  /** The attribute [name], or null when this class does not read one by that name. */
+  fun attribute(name: String): SolrClassAttribute? = attributes.firstOrNull { it.name == name }
 
-    /**
-     * Whether writing [attributeName] as [writtenValue] gives this class the value it would use anyway.
-     *
-     * **Every uncertainty answers false, and that asymmetry is the design.** A true here is rendered
-     * as an invitation to delete the attribute, so the cost of being wrong is not a missing hint but
-     * a configuration change the reader was told was safe. Three separate things therefore read as
-     * "no": an attribute this class does not read, one whose default the bytecode did not prove —
-     * [SolrClassAttribute.defaultValue] is null for a default computed at runtime — and one Solr
-     * requires, which by construction carries no default at all.
-     *
-     * **The comparison is on the literal text, deliberately.** `maxTokenLength="255"` restates the
-     * recorded `255`; `maxTokenLength="0255"` does not, because nothing here parses either side into
-     * the type the factory will coerce it to. Both are the same number to Solr, so this misses a real
-     * restatement — which is the direction to miss in, and cheaper than a coercion table that has to
-     * be right for every [SolrValueType] before it can be trusted for any.
-     *
-     * @param attributeName the attribute as the configset spells it
-     * @param writtenValue the value exactly as the file spells it
-     * @return true when deleting the attribute would leave the class configured identically
-     */
-    fun restatesDefault(attributeName: String, writtenValue: String): Boolean {
-        val default = attribute(attributeName)?.defaultValue ?: return false
-        return default == writtenValue
-    }
+  /**
+   * Whether writing [attributeName] as [writtenValue] gives this class the value it would use
+   * anyway.
+   *
+   * **Every uncertainty answers false, and that asymmetry is the design.** A true here is rendered
+   * as an invitation to delete the attribute, so the cost of being wrong is not a missing hint but
+   * a configuration change the reader was told was safe. Three separate things therefore read as
+   * "no": an attribute this class does not read, one whose default the bytecode did not prove —
+   * [SolrClassAttribute.defaultValue] is null for a default computed at runtime — and one Solr
+   * requires, which by construction carries no default at all.
+   *
+   * **The comparison is on the literal text, deliberately.** `maxTokenLength="255"` restates the
+   * recorded `255`; `maxTokenLength="0255"` does not, because nothing here parses either side into
+   * the type the factory will coerce it to. Both are the same number to Solr, so this misses a real
+   * restatement — which is the direction to miss in, and cheaper than a coercion table that has to
+   * be right for every [SolrValueType] before it can be trusted for any.
+   *
+   * @param attributeName the attribute as the configset spells it
+   * @param writtenValue the value exactly as the file spells it
+   * @return true when deleting the attribute would leave the class configured identically
+   */
+  fun restatesDefault(attributeName: String, writtenValue: String): Boolean {
+    val default = attribute(attributeName)?.defaultValue ?: return false
+    return default == writtenValue
+  }
 }
 
 /**
  * The Solr and Lucene classes a configset can name, per supported Solr line.
  *
- * **Generated at build time, not written down.** There are several hundred entries per line and they
- * differ between lines — Solr 10 dropped `CurrencyField`, `EnumField`, `ExternalFileField` and
+ * **Generated at build time, not written down.** There are several hundred entries per line and
+ * they differ between lines — Solr 10 dropped `CurrencyField`, `EnumField`, `ExternalFileField` and
  * `PreAnalyzedField`, and added `BinaryQuantizedDenseVectorField`. The specification argues the
  * general case under "The factory catalog"; the operative fact here is that this file only reads
  * what `:generateSolrCatalog` produced, and knows nothing about Solr itself.
  *
  * **A row whose kind [SolrClassKind] does not name is dropped, and that is a hazard as much as a
- * safeguard.** It is what lets a catalog written by a newer build cost one row rather than the whole
- * file — but it also means a generator that starts emitting a new kind changes nothing at all until
- * the constant is added, silently and with every test still green. That is not hypothetical: it is
- * what happened between the two halves of this feature, when eighteen kinds and five hundred rows
- * arrived and the editor behaved identically. The catalog-side guard against a repeat lives in
+ * safeguard.** It is what lets a catalog written by a newer build cost one row rather than the
+ * whole file — but it also means a generator that starts emitting a new kind changes nothing at all
+ * until the constant is added, silently and with every test still green. That is not hypothetical:
+ * it is what happened between the two halves of this feature, when eighteen kinds and five hundred
+ * rows arrived and the editor behaved identically. The catalog-side guard against a repeat lives in
  * `SolrClassCatalogTest`, which asserts every shipped token is one this enum knows.
  *
  * The tab-separated form is deliberate. Reading it needs no parser and no dependency, and a
@@ -300,276 +306,287 @@ data class SolrClassEntry(
  */
 object SolrClassCatalog {
 
-    /**
-     * The Solr major lines with a shipped catalog, newest first.
-     *
-     * Kept in step with the `supportedSolrLines` the build declares. A line named here with no
-     * generated resource behind it reads as empty rather than failing, because a missing catalog
-     * must not take the editor down with it.
-     */
-    val SUPPORTED_LINES: List<Int> = listOf(10, 9)
+  /**
+   * The Solr major lines with a shipped catalog, newest first.
+   *
+   * Kept in step with the `supportedSolrLines` the build declares. A line named here with no
+   * generated resource behind it reads as empty rather than failing, because a missing catalog must
+   * not take the editor down with it.
+   */
+  val SUPPORTED_LINES: List<Int> = listOf(10, 9)
 
-    private val byLine = HashMap<Int, List<SolrClassEntry>>()
+  private val byLine = HashMap<Int, List<SolrClassEntry>>()
 
-    private val guideSegmentByLine = HashMap<Int, String?>()
+  private val guideSegmentByLine = HashMap<Int, String?>()
 
-    // SPI short name -> class, per line. Indexed rather than scanned because the caller is on an
-    // editor path: a configset written the way Solr's own are — `name="standard"` — sends every
-    // component through this lookup, once per component per field, on every inlay pass, completion
-    // and quick-documentation render. A linear scan is ~200 comparisons for a hit and the whole
-    // catalog for a miss; this is one hash lookup against a map built once.
-    private val spiIndexByLine = HashMap<Int, Map<String, String>>()
+  // SPI short name -> class, per line. Indexed rather than scanned because the caller is on an
+  // editor path: a configset written the way Solr's own are — `name="standard"` — sends every
+  // component through this lookup, once per component per field, on every inlay pass, completion
+  // and quick-documentation render. A linear scan is ~200 comparisons for a hit and the whole
+  // catalog for a miss; this is one hash lookup against a map built once.
+  private val spiIndexByLine = HashMap<Int, Map<String, String>>()
 
-    /**
-     * The Reference Guide path segment for [line], read from the catalog that answers for it.
-     *
-     * **The link must name the Solr the facts beside it came from.** Everything else in a class
-     * popup — the attributes, the defaults, the required markers, the Javadoc sentence — is read out
-     * of `solr-<line>.tsv`, which one supported release generated. A link derived independently of
-     * that file can name a different release while looking authoritative, and it did: deriving the
-     * segment from the declared major alone sent every Solr 9 configset to the Solr **9.0** guide,
-     * four minor lines behind the 9.10.1 the catalog is generated from. Every page resolved, so
-     * nothing failed — the links were live and about something else, which is the one failure mode
-     * [SolrReferenceGuide][org.apache.solr.ide.model.SolrReferenceGuide]'s "a dead link is worse than
-     * no link" rule did not anticipate.
-     *
-     * Reading it here rather than restating it keeps `supportedSolrLines` in the build the only place
-     * a Solr release is named. The generator writes the line into the catalog's header, and
-     * [parse] skips that header for entries, so this is the same fact read for a second purpose
-     * rather than a second declaration of it.
-     *
-     * **Null is an answer worth caching, and `getOrPut` cannot cache it.** That function decides what
-     * to do by comparing the stored value to null, so a line whose segment is null re-reads the
-     * classpath on every call — and null is the answer for exactly the lines that ask most cheaply to
-     * be wrong about: a major this build ships no catalog for, which the popup then sends to the
-     * undated guide. `containsKey` distinguishes "not looked up" from "looked up, found nothing".
-     *
-     * The membership check ahead of it is the same rule [lineFor] already applies to every catalog
-     * read, and it keeps the map's keys bounded by the lines this build knows rather than by whatever
-     * majors the configsets in a project happen to declare.
-     *
-     * @param line the Solr major line, as [SUPPORTED_LINES] names them
-     * @return the segment, such as `9_10`, or null when this build ships no catalog for that line
-     */
-    fun guideSegmentFor(line: Int): String? = synchronized(guideSegmentByLine) {
-        if (line !in SUPPORTED_LINES) return@synchronized null
-        if (!guideSegmentByLine.containsKey(line)) {
-            guideSegmentByLine[line] = readGuideSegment(line)
+  /**
+   * The Reference Guide path segment for [line], read from the catalog that answers for it.
+   *
+   * **The link must name the Solr the facts beside it came from.** Everything else in a class popup
+   * — the attributes, the defaults, the required markers, the Javadoc sentence — is read out of
+   * `solr-<line>.tsv`, which one supported release generated. A link derived independently of that
+   * file can name a different release while looking authoritative, and it did: deriving the segment
+   * from the declared major alone sent every Solr 9 configset to the Solr **9.0** guide, four minor
+   * lines behind the 9.10.1 the catalog is generated from. Every page resolved, so nothing failed —
+   * the links were live and about something else, which is the one failure mode
+   * [SolrReferenceGuide][org.apache.solr.ide.model.SolrReferenceGuide]'s "a dead link is worse than
+   * no link" rule did not anticipate.
+   *
+   * Reading it here rather than restating it keeps `supportedSolrLines` in the build the only place
+   * a Solr release is named. The generator writes the line into the catalog's header, and [parse]
+   * skips that header for entries, so this is the same fact read for a second purpose rather than a
+   * second declaration of it.
+   *
+   * **Null is an answer worth caching, and `getOrPut` cannot cache it.** That function decides what
+   * to do by comparing the stored value to null, so a line whose segment is null re-reads the
+   * classpath on every call — and null is the answer for exactly the lines that ask most cheaply to
+   * be wrong about: a major this build ships no catalog for, which the popup then sends to the
+   * undated guide. `containsKey` distinguishes "not looked up" from "looked up, found nothing".
+   *
+   * The membership check ahead of it is the same rule [lineFor] already applies to every catalog
+   * read, and it keeps the map's keys bounded by the lines this build knows rather than by whatever
+   * majors the configsets in a project happen to declare.
+   *
+   * @param line the Solr major line, as [SUPPORTED_LINES] names them
+   * @return the segment, such as `9_10`, or null when this build ships no catalog for that line
+   */
+  fun guideSegmentFor(line: Int): String? =
+    synchronized(guideSegmentByLine) {
+      if (line !in SUPPORTED_LINES) return@synchronized null
+      if (!guideSegmentByLine.containsKey(line)) {
+        guideSegmentByLine[line] = readGuideSegment(line)
+      }
+      guideSegmentByLine[line]
+    }
+
+  /**
+   * Every class the [version] line can name.
+   *
+   * @param version the Solr line this configset targets
+   * @return the entries for that line, or the newest line's when it names none this ships
+   */
+  fun entriesFor(version: SolrVersionSelection): List<SolrClassEntry> = load(lineFor(version))
+
+  /**
+   * The classes of one [kind] that the [version] line can name.
+   *
+   * @param kind the position being completed or documented
+   * @param version the Solr line this configset targets
+   * @return the matching entries, in the order the catalog lists them
+   */
+  fun of(kind: SolrClassKind, version: SolrVersionSelection): List<SolrClassEntry> =
+    entriesFor(version).filter { it.kind == kind }
+
+  /**
+   * The entry for [name], matched against any spelling a configset may use.
+   *
+   * A configset may write `solr.StrField` or the fully qualified name, and both are the same class
+   * — so a lookup that only understood one would report a correct file as unrecognized. An analysis
+   * component adds a third: `<filter name="lowercase"/>` names the same factory as `<filter
+   * class="solr.LowerCaseFilterFactory"/>`, and it is the spelling Solr's own shipped configsets
+   * use throughout.
+   *
+   * @param name the class or SPI name as written in the configset
+   * @param version the Solr line this configset targets
+   * @return the entry, or null when this line names no such class
+   */
+  fun find(name: String, version: SolrVersionSelection): SolrClassEntry? =
+    entriesFor(version).firstOrNull {
+      it.shortName == name || it.className == name || it.spiName == name
+    }
+
+  /**
+   * The fully qualified class [name] stands for, whichever of its three spellings was written.
+   *
+   * A single factory is nameable three ways: its SPI short name (`lowercase`), Solr's abbreviated
+   * class (`solr.LowerCaseFilterFactory`), and the fully qualified one
+   * (`org.apache.lucene.analysis.core.LowerCaseFilterFactory`). All three are correct, and which
+   * one appears depends on who wrote it — a hand-maintained configset tends to the second, Solr's
+   * own shipped configsets use the first, and a schema read back from a server reports the first.
+   *
+   * **This exists for comparing two sources, not for showing one.** An editor surface shows the
+   * user the spelling they wrote, which is the right answer there. Only a comparison has to decide
+   * whether two different strings name the same thing, and answering that by string equality is how
+   * a drift view reports differences that are not there.
+   *
+   * Version-free for the reason [classForSpiName] gives: a factory's class does not change between
+   * lines that both have it, so narrowing by version could only turn a resolvable name into an
+   * unresolvable one.
+   *
+   * @param name a class or SPI name as either source wrote it
+   * @return the fully qualified class, or null when no supported line knows that name
+   */
+  fun canonicalClassFor(name: String): String? {
+    if (name.isEmpty()) return null
+    return SUPPORTED_LINES.firstNotNullOfOrNull { line ->
+      load(line).firstOrNull { it.matchesIgnoringCase(name) }?.className
+    }
+  }
+
+  /**
+   * Whether this entry is the one [name] means, disregarding case.
+   *
+   * **Case-insensitive, and that was learned from Solr's own files rather than chosen.** The
+   * `_default` configset Solr ships writes `name="CJKWidth"`, and a server reads the same schema
+   * back as `cjkWidth`. Both are Solr's, both work, and a case-sensitive comparison reports the two
+   * as different filters — which is the whole failure this resolution exists to prevent, surviving
+   * in the one case nobody would think to write a test for.
+   *
+   * The risk it trades against is two distinct factories differing only in case. No supported line
+   * has such a pair, and a collision would be a naming accident in Lucene rather than something a
+   * schema could rely on.
+   */
+  private fun SolrClassEntry.matchesIgnoringCase(name: String): Boolean =
+    shortName.equals(name, ignoreCase = true) ||
+      className.equals(name, ignoreCase = true) ||
+      spiName?.equals(name, ignoreCase = true) == true
+
+  /**
+   * The class registered under the SPI short name [spiName], on any supported line.
+   *
+   * Deliberately version-free, and that is the one thing worth arguing about here. Every other
+   * catalog lookup is per-line because what a line *accepts* is the question being asked. This one
+   * asks what a factory *is* — the class behind `lowercase` is `LowerCaseFilterFactory` on every
+   * line that has it at all — so narrowing by version could only turn a resolvable name into an
+   * unresolvable one, and the caller reading it treats unresolved as "say nothing confidently".
+   *
+   * @param spiName the short name as a schema writes it, such as `standard` or `synonymGraph`
+   * @return the fully qualified class, or null when no supported line registers that name
+   */
+  fun classForSpiName(spiName: String): String? {
+    // A component that named itself neither way reaches here as an empty string, from a caller
+    // reading an absent `class` attribute. Answering it costs a full sweep of every line's
+    // catalog for a guaranteed null, so it is refused before the sweep rather than during it.
+    if (spiName.isEmpty()) return null
+    return SUPPORTED_LINES.firstNotNullOfOrNull { spiIndexFor(it)[spiName] }
+  }
+
+  private fun spiIndexFor(line: Int): Map<String, String> =
+    synchronized(spiIndexByLine) {
+      spiIndexByLine.getOrPut(line) {
+        load(line).mapNotNull { entry -> entry.spiName?.let { it to entry.className } }.toMap()
+      }
+    }
+
+  /**
+   * The line whose catalog answers for [version].
+   *
+   * An unsupported or undeclared version falls back to the newest line rather than to nothing. A
+   * configset declaring Solr 7 is one this plugin does not support, but a reader looking at it is
+   * better served by the newest line's vocabulary than by silence.
+   */
+  private fun lineFor(version: SolrVersionSelection): Int {
+    val declared = version.guidePathSegment.substringBefore('_').toIntOrNull()
+    return declared?.takeIf { it in SUPPORTED_LINES } ?: SUPPORTED_LINES.first()
+  }
+
+  private fun load(line: Int): List<SolrClassEntry> =
+    synchronized(byLine) {
+      byLine.getOrPut(line) { read(line) }
+    }
+
+  private fun read(line: Int): List<SolrClassEntry> {
+    val stream =
+      SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
+        ?: return emptyList()
+    return stream.bufferedReader().useLines { parse(it) }
+  }
+
+  private fun readGuideSegment(line: Int): String? {
+    val stream =
+      SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
+        ?: return null
+    return stream.bufferedReader().useLines { guideSegment(it) }
+  }
+
+  /**
+   * The guide segment named by the catalog header in [rows], or null when none is.
+   *
+   * **Null rather than a guess is the whole point.** A header this does not recognize means the
+   * generator's wording moved, and the honest answer is then the undated `latest` guide rather than
+   * a segment assembled from whatever else is to hand. `SolrClassCatalogTest` asserts every shipped
+   * catalog still answers, so a reword fails the build instead of silently downgrading every link
+   * in the plugin to `latest`.
+   *
+   * Only the major and minor are kept: the guide is published per minor line, so 9.10.1 and 9.10.0
+   * share `9_10`, and carrying the patch would build a segment that has never existed.
+   *
+   * @param rows the catalog's lines
+   * @return the segment, such as `9_10`, or null when the header does not state a version
+   */
+  internal fun guideSegment(rows: Sequence<String>): String? {
+    val header =
+      rows.take(HEADER_SEARCH_LIMIT).firstNotNullOfOrNull { GUIDE_LINE.find(it) } ?: return null
+    return "${header.groupValues[1]}_${header.groupValues[2]}"
+  }
+
+  /**
+   * The header the generator writes, as `# Solr line 9, read from 9.10.1.`
+   *
+   * Anchored on the release rather than on the line number, because the line number is already
+   * known by whoever is asking and the release is the part being recovered.
+   */
+  private val GUIDE_LINE = Regex("""^#\s*Solr line \d+, read from (\d+)\.(\d+)""")
+
+  /**
+   * How far into the file to look for the header before giving up.
+   *
+   * The header is the second line today. A bounded search rather than a scan of the whole file, so
+   * a catalog whose header was dropped costs a handful of comparisons rather than a walk through
+   * five hundred rows on every call that misses.
+   */
+  private const val HEADER_SEARCH_LIMIT = 8
+
+  /**
+   * The entries in [rows], skipping anything that is not one.
+   *
+   * Separate from reading the resource so it can be tested against input the generator would never
+   * produce. That matters more here than the shipped file suggests: this parser is the one place a
+   * malformed or half-written catalog reaches the editor, and the guarantee worth having is that it
+   * drops the bad row rather than the file.
+   *
+   * @param rows the catalog's lines
+   * @return the entries, in the order they appear
+   */
+  internal fun parse(rows: Sequence<String>): List<SolrClassEntry> {
+    val kinds = SolrClassKind.entries.associateBy { it.token }
+    return rows
+      .mapNotNull { row ->
+        if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
+        val columns = row.split('\t')
+        if (columns.size < 3) return@mapNotNull null
+        val attributes =
+          columns
+            .getOrNull(3)
+            .orEmpty()
+            .split(',')
+            .filter { it.isNotBlank() }
+            .map { SolrClassAttribute.parse(it) }
+        // Absent on a catalog generated before the documentation column existed, and blank when
+        // this line's `-sources` artifacts resolved but carried nothing for this class -- both
+        // read as "nothing to show" rather than as an empty sentence.
+        val summary = columns.getOrNull(4)?.takeIf { it.isNotBlank() }
+        // An unknown trait token is dropped rather than failing the entry: a catalog written by
+        // a newer build naming a trait this one has never heard of should cost that one trait.
+        val traits =
+          columns.getOrNull(5).orEmpty().split(',').mapNotNullTo(mutableSetOf()) {
+            SolrTypeTrait.forToken(it.trim())
+          }
+        // Absent on a catalog generated before this column existed, and blank for every class
+        // that registers no SPI name — a field type, a plugin, or a factory Lucene did not
+        // register. Both read as "this class has no other spelling".
+        val spiName = columns.getOrNull(6)?.takeIf { it.isNotBlank() }
+        kinds[columns[0]]?.let {
+          SolrClassEntry(it, columns[1], columns[2], attributes, summary, traits, spiName)
         }
-        guideSegmentByLine[line]
-    }
-
-    /**
-     * Every class the [version] line can name.
-     *
-     * @param version the Solr line this configset targets
-     * @return the entries for that line, or the newest line's when it names none this ships
-     */
-    fun entriesFor(version: SolrVersionSelection): List<SolrClassEntry> = load(lineFor(version))
-
-    /**
-     * The classes of one [kind] that the [version] line can name.
-     *
-     * @param kind the position being completed or documented
-     * @param version the Solr line this configset targets
-     * @return the matching entries, in the order the catalog lists them
-     */
-    fun of(kind: SolrClassKind, version: SolrVersionSelection): List<SolrClassEntry> =
-        entriesFor(version).filter { it.kind == kind }
-
-    /**
-     * The entry for [name], matched against any spelling a configset may use.
-     *
-     * A configset may write `solr.StrField` or the fully qualified name, and both are the same
-     * class — so a lookup that only understood one would report a correct file as unrecognized.
-     * An analysis component adds a third: `<filter name="lowercase"/>` names the same factory as
-     * `<filter class="solr.LowerCaseFilterFactory"/>`, and it is the spelling Solr's own shipped
-     * configsets use throughout.
-     *
-     * @param name the class or SPI name as written in the configset
-     * @param version the Solr line this configset targets
-     * @return the entry, or null when this line names no such class
-     */
-    fun find(name: String, version: SolrVersionSelection): SolrClassEntry? =
-        entriesFor(version).firstOrNull {
-            it.shortName == name || it.className == name || it.spiName == name
-        }
-
-    /**
-     * The fully qualified class [name] stands for, whichever of its three spellings was written.
-     *
-     * A single factory is nameable three ways: its SPI short name (`lowercase`), Solr's abbreviated
-     * class (`solr.LowerCaseFilterFactory`), and the fully qualified one
-     * (`org.apache.lucene.analysis.core.LowerCaseFilterFactory`). All three are correct, and which
-     * one appears depends on who wrote it — a hand-maintained configset tends to the second, Solr's
-     * own shipped configsets use the first, and a schema read back from a server reports the first.
-     *
-     * **This exists for comparing two sources, not for showing one.** An editor surface shows the
-     * user the spelling they wrote, which is the right answer there. Only a comparison has to decide
-     * whether two different strings name the same thing, and answering that by string equality is
-     * how a drift view reports differences that are not there.
-     *
-     * Version-free for the reason [classForSpiName] gives: a factory's class does not change between
-     * lines that both have it, so narrowing by version could only turn a resolvable name into an
-     * unresolvable one.
-     *
-     * @param name a class or SPI name as either source wrote it
-     * @return the fully qualified class, or null when no supported line knows that name
-     */
-    fun canonicalClassFor(name: String): String? {
-        if (name.isEmpty()) return null
-        return SUPPORTED_LINES.firstNotNullOfOrNull { line ->
-            load(line).firstOrNull { it.matchesIgnoringCase(name) }?.className
-        }
-    }
-
-    /**
-     * Whether this entry is the one [name] means, disregarding case.
-     *
-     * **Case-insensitive, and that was learned from Solr's own files rather than chosen.** The
-     * `_default` configset Solr ships writes `name="CJKWidth"`, and a server reads the same schema
-     * back as `cjkWidth`. Both are Solr's, both work, and a case-sensitive comparison reports the
-     * two as different filters — which is the whole failure this resolution exists to prevent,
-     * surviving in the one case nobody would think to write a test for.
-     *
-     * The risk it trades against is two distinct factories differing only in case. No supported
-     * line has such a pair, and a collision would be a naming accident in Lucene rather than
-     * something a schema could rely on.
-     */
-    private fun SolrClassEntry.matchesIgnoringCase(name: String): Boolean =
-        shortName.equals(name, ignoreCase = true) ||
-            className.equals(name, ignoreCase = true) ||
-            spiName?.equals(name, ignoreCase = true) == true
-
-    /**
-     * The class registered under the SPI short name [spiName], on any supported line.
-     *
-     * Deliberately version-free, and that is the one thing worth arguing about here. Every other
-     * catalog lookup is per-line because what a line *accepts* is the question being asked. This one
-     * asks what a factory *is* — the class behind `lowercase` is `LowerCaseFilterFactory` on every
-     * line that has it at all — so narrowing by version could only turn a resolvable name into an
-     * unresolvable one, and the caller reading it treats unresolved as "say nothing confidently".
-     *
-     * @param spiName the short name as a schema writes it, such as `standard` or `synonymGraph`
-     * @return the fully qualified class, or null when no supported line registers that name
-     */
-    fun classForSpiName(spiName: String): String? {
-        // A component that named itself neither way reaches here as an empty string, from a caller
-        // reading an absent `class` attribute. Answering it costs a full sweep of every line's
-        // catalog for a guaranteed null, so it is refused before the sweep rather than during it.
-        if (spiName.isEmpty()) return null
-        return SUPPORTED_LINES.firstNotNullOfOrNull { spiIndexFor(it)[spiName] }
-    }
-
-    private fun spiIndexFor(line: Int): Map<String, String> = synchronized(spiIndexByLine) {
-        spiIndexByLine.getOrPut(line) {
-            load(line).mapNotNull { entry -> entry.spiName?.let { it to entry.className } }.toMap()
-        }
-    }
-
-    /**
-     * The line whose catalog answers for [version].
-     *
-     * An unsupported or undeclared version falls back to the newest line rather than to nothing.
-     * A configset declaring Solr 7 is one this plugin does not support, but a reader looking at it
-     * is better served by the newest line's vocabulary than by silence.
-     */
-    private fun lineFor(version: SolrVersionSelection): Int {
-        val declared = version.guidePathSegment.substringBefore('_').toIntOrNull()
-        return declared?.takeIf { it in SUPPORTED_LINES } ?: SUPPORTED_LINES.first()
-    }
-
-    private fun load(line: Int): List<SolrClassEntry> = synchronized(byLine) {
-        byLine.getOrPut(line) { read(line) }
-    }
-
-    private fun read(line: Int): List<SolrClassEntry> {
-        val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
-            ?: return emptyList()
-        return stream.bufferedReader().useLines { parse(it) }
-    }
-
-    private fun readGuideSegment(line: Int): String? {
-        val stream = SolrClassCatalog::class.java.getResourceAsStream("/solr-catalog/solr-$line.tsv")
-            ?: return null
-        return stream.bufferedReader().useLines { guideSegment(it) }
-    }
-
-    /**
-     * The guide segment named by the catalog header in [rows], or null when none is.
-     *
-     * **Null rather than a guess is the whole point.** A header this does not recognize means the
-     * generator's wording moved, and the honest answer is then the undated `latest` guide rather
-     * than a segment assembled from whatever else is to hand. `SolrClassCatalogTest` asserts every
-     * shipped catalog still answers, so a reword fails the build instead of silently downgrading
-     * every link in the plugin to `latest`.
-     *
-     * Only the major and minor are kept: the guide is published per minor line, so 9.10.1 and
-     * 9.10.0 share `9_10`, and carrying the patch would build a segment that has never existed.
-     *
-     * @param rows the catalog's lines
-     * @return the segment, such as `9_10`, or null when the header does not state a version
-     */
-    internal fun guideSegment(rows: Sequence<String>): String? {
-        val header = rows.take(HEADER_SEARCH_LIMIT).firstNotNullOfOrNull { GUIDE_LINE.find(it) }
-            ?: return null
-        return "${header.groupValues[1]}_${header.groupValues[2]}"
-    }
-
-    /**
-     * The header the generator writes, as `# Solr line 9, read from 9.10.1.`
-     *
-     * Anchored on the release rather than on the line number, because the line number is already
-     * known by whoever is asking and the release is the part being recovered.
-     */
-    private val GUIDE_LINE = Regex("""^#\s*Solr line \d+, read from (\d+)\.(\d+)""")
-
-    /**
-     * How far into the file to look for the header before giving up.
-     *
-     * The header is the second line today. A bounded search rather than a scan of the whole file,
-     * so a catalog whose header was dropped costs a handful of comparisons rather than a walk
-     * through five hundred rows on every call that misses.
-     */
-    private const val HEADER_SEARCH_LIMIT = 8
-
-    /**
-     * The entries in [rows], skipping anything that is not one.
-     *
-     * Separate from reading the resource so it can be tested against input the generator would
-     * never produce. That matters more here than the shipped file suggests: this parser is the one
-     * place a malformed or half-written catalog reaches the editor, and the guarantee worth having
-     * is that it drops the bad row rather than the file.
-     *
-     * @param rows the catalog's lines
-     * @return the entries, in the order they appear
-     */
-    internal fun parse(rows: Sequence<String>): List<SolrClassEntry> {
-        val kinds = SolrClassKind.entries.associateBy { it.token }
-        return rows.mapNotNull { row ->
-            if (row.startsWith("#") || row.isBlank()) return@mapNotNull null
-            val columns = row.split('\t')
-            if (columns.size < 3) return@mapNotNull null
-            val attributes = columns.getOrNull(3).orEmpty()
-                .split(',')
-                .filter { it.isNotBlank() }
-                .map { SolrClassAttribute.parse(it) }
-            // Absent on a catalog generated before the documentation column existed, and blank when
-            // this line's `-sources` artifacts resolved but carried nothing for this class -- both
-            // read as "nothing to show" rather than as an empty sentence.
-            val summary = columns.getOrNull(4)?.takeIf { it.isNotBlank() }
-            // An unknown trait token is dropped rather than failing the entry: a catalog written by
-            // a newer build naming a trait this one has never heard of should cost that one trait.
-            val traits = columns.getOrNull(5).orEmpty()
-                .split(',')
-                .mapNotNullTo(mutableSetOf()) { SolrTypeTrait.forToken(it.trim()) }
-            // Absent on a catalog generated before this column existed, and blank for every class
-            // that registers no SPI name — a field type, a plugin, or a factory Lucene did not
-            // register. Both read as "this class has no other spelling".
-            val spiName = columns.getOrNull(6)?.takeIf { it.isNotBlank() }
-            kinds[columns[0]]?.let {
-                SolrClassEntry(it, columns[1], columns[2], attributes, summary, traits, spiName)
-            }
-        }.toList()
-    }
+      }
+      .toList()
+  }
 }

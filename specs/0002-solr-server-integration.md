@@ -111,9 +111,9 @@ are each one step's own work once the reader beneath them exists.
   (`SolrConnectionSettings.kt:51`), keeps only the non-secret fields of `SolrConnection` in that state
   (`SolrConnectionSettings.kt:56-68`), and routes the password to `PasswordSafe` under a key derived
   from the connection's id, filed under the *username* rather than the id so a later request sends the
-  identity Solr will actually recognize (`SolrConnectionSettings.kt:136-143`). `getPassword` and
+  identity Solr will actually recognize (`SolrConnectionSettings.kt:140-148`). `getPassword` and
   `getStoredUsername` both read back through `PasswordSafe` rather than the persisted state
-  (`SolrConnectionSettings.kt:151-164`), which is the right shape for anything this specification adds:
+  (`SolrConnectionSettings.kt:156-169`), which is the right shape for anything this specification adds:
   a reader that wants a credential should call these two, never touch `ConnectionState`, and never log
   either return value.
 - **Nothing constructs an HTTP request anywhere in the plugin.** There is no HTTP client dependency in
@@ -122,19 +122,19 @@ are each one step's own work once the reader beneath them exists.
 - **The field model was built with a server-shaped hole and nothing has filled it.**
   `SolrConfigsetFacts` is deliberately "a flat bag of lists... the same shape serves both sources"
   (`SolrConfigsetFacts.kt:10-15`) precisely so `SolrFieldModel.of(repository, server)` can merge two
-  instances of the same type without either being privileged (`SolrFieldModel.kt:186-213`). Today every
+  instances of the same type without either being privileged (`SolrFieldModel.kt:190-221`). Today every
   call site passes `server = null`, so every fact in every model reports
-  `SolrAgreement.REPOSITORY_ONLY` (`SolrFieldModel.kt:76-78`). The seam is not aspirational — it is
+  `SolrAgreement.REPOSITORY_ONLY` (`SolrFieldModel.kt:78-81`). The seam is not aspirational — it is
   exercised today with a synthetic server half in tests, per Step 3's success criteria — it is simply
   never fed a real one.
 - **Version selection already has a `SERVER` case it can never reach.** `SolrVersionSource.SERVER` is
   documented as "a connected server reported it. The authority, when there is one."
-  (`SolrReferenceGuide.kt:206-208`), and `SolrVersionSelection.describeSource()` already has user-facing
-  text for it (`SolrReferenceGuide.kt:157`). But `SolrFieldModel.solrVersion` reads only
+  (`SolrReferenceGuide.kt:209-211`), and `SolrVersionSelection.describeSource()` already has user-facing
+  text for it (`SolrReferenceGuide.kt:158`). But `SolrFieldModel.solrVersion` reads only
   `luceneMatchVersion?.let { fromLuceneMatchVersion(it) } ?: DEFAULT`
-  (`SolrFieldModel.kt:118-120`) — there is no third arm, and there cannot be one without a server
+  (`SolrFieldModel.kt:121-123`) — there is no third arm, and there cannot be one without a server
   version reaching the model first. Worse: `SolrFieldModel.of` builds `luceneMatchVersion` from
-  `repo.luceneMatchVersion` alone (`SolrFieldModel.kt:206-207`), so even a `server` argument populated
+  `repo.luceneMatchVersion` alone (`SolrFieldModel.kt:212-213`), so even a `server` argument populated
   by Step 11 would have nowhere to put a reported version if this specification did not say where it
   goes. [FR-6](#requirements) closes this — it is the single fact this investigation is most confident
   would otherwise ship silently wrong, because it is exactly the shape of the four defects the Editor
@@ -215,7 +215,7 @@ users of this IDE have met them.
 
 **FR-1 — HTTP transport.** The plugin uses `java.net.http.HttpClient` for every call to Solr. This adds
 no dependency — the toolchain is already pinned to JDK 21
-(`build.gradle.kts:22-26`) — and it natively supports what the non-functional requirements below need:
+(`build.gradle.kts:22-27`) — and it natively supports what the non-functional requirements below need:
 per-request timeouts (`HttpRequest.Builder.timeout`), asynchronous execution
 (`HttpClient.sendAsync` returning a `CompletableFuture`), and TLS for a server behind HTTPS — which,
 measured rather than assumed, is the IDE's TLS and the IDE's proxying, because the platform installs
@@ -324,14 +324,14 @@ required a second request — and it is wrong. The reader issues one schema requ
 
 | `SolrConfigsetFacts` property | Server source | Note |
 |---|---|---|
-| `fields` | `schema.fields[]` | `indexed`/`stored`/`docValues`/`multiValued` map directly; an absent key means *unset*, matching the repository parser's own null-means-unset convention (`SolrSchemaTypes.kt:76-77`) — not `false`. **Verified: the server reports what the schema *declared*, not the type's effective defaults** — `<field name="price" type="pfloat" indexed="true" stored="true"/>` comes back as exactly those keys and no `multiValued`. That is what makes a field-by-field comparison against the repository parser meaningful at all; had the server materialized inherited defaults, every field would read as `DISAGREEING` on properties nobody wrote |
-| | | **Values arrive as JSON booleans, and `SolrField` stores each one twice.** The five named flags are `Boolean?` properties that a JSON boolean populates directly — easier than the XML side, which parses attribute text. But `SolrField.attributes` is `Map<String, String>` built as `attributesExcept("name", "type")` (`SolrSchemaParser.kt:68`), so it *also* holds `indexed`, `stored` and the rest, as the strings `"true"`/`"false"`. The JSON reader must populate both representations, stringifying on the way into the map, or two facts that agree will compare as different in the map while agreeing in the properties. The same applies to `SolrAnalyzerComponent.attributes`, which holds every factory argument as text |
+| `fields` | `schema.fields[]` | `indexed`/`stored`/`docValues`/`multiValued` map directly; an absent key means *unset*, matching the repository parser's own null-means-unset convention (`SolrSchemaTypes.kt:81-82`) — not `false`. **Verified: the server reports what the schema *declared*, not the type's effective defaults** — `<field name="price" type="pfloat" indexed="true" stored="true"/>` comes back as exactly those keys and no `multiValued`. That is what makes a field-by-field comparison against the repository parser meaningful at all; had the server materialized inherited defaults, every field would read as `DISAGREEING` on properties nobody wrote |
+| | | **Values arrive as JSON booleans, and `SolrField` stores each one twice.** The five named flags are `Boolean?` properties that a JSON boolean populates directly — easier than the XML side, which parses attribute text. But `SolrField.attributes` is `Map<String, String>` built as `attributesExcept("name", "type")` (`SolrSchemaParser.kt:73`), so it *also* holds `indexed`, `stored` and the rest, as the strings `"true"`/`"false"`. The JSON reader must populate both representations, stringifying on the way into the map, or two facts that agree will compare as different in the map while agreeing in the properties. The same applies to `SolrAnalyzerComponent.attributes`, which holds every factory argument as text |
 | `dynamicFields` | `schema.dynamicFields[]`, each `name` is the pattern | |
 | `fieldTypes` | `schema.fieldTypes[]` | `class` → `className`. The chain arrives under `analyzer`, `indexAnalyzer` or `queryAnalyzer` — all three keys observed — each an object with `tokenizer` (single) plus `filters` and `charFilters` (arrays); every other key on a component is one of its factory arguments |
 | | | **A component names its factory under `name` *or* `class`, and the server echoes back whichever spelling the schema used — it does not normalize.** Both supported lines returned `name` for all 236 components in the shipped techproducts configset and `class` for none; a field type added through the Schema API with `{"class": "solr.StandardTokenizerFactory"}` read back as `class` verbatim. The reader must accept both keys, and resolve them the way the repository side now does — through `SolrClassCatalog.classForSpiName` — rather than comparing the strings. See the note below the table for how that resolution came to exist |
-| `copyFields` | `schema.copyFields[]` | `source`/`dest`, both plain strings. **Verified: `dest` is never an array.** Several destinations for one source arrive as several entries repeating the `source` (`author`, `manu` and `name` each appear twice in techproducts), which is already the repository parser's one-source-one-destination shape (`SolrSchemaTypes.kt:141-145`). No expansion step is needed |
+| `copyFields` | `schema.copyFields[]` | `source`/`dest`, both plain strings. **Verified: `dest` is never an array.** Several destinations for one source arrive as several entries repeating the `source` (`author`, `manu` and `name` each appear twice in techproducts), which is already the repository parser's one-source-one-destination shape (`SolrSchemaTypes.kt:147-151`). No expansion step is needed |
 | `uniqueKey` | `schema.uniqueKey` | |
-| `schemaVersion` | **not populated by this parser** | The server reports one, and nothing would read it: `SolrFieldModel.of` takes `SolrSchemaVersion.of(repo.schemaVersion)` — the repository half, deliberately, because "the schema version is a property of the file the user is editing" (`SolrFieldModel.kt:207-209`). Populating it would create a value that looks consumed and is discarded on the next line, which is the mistake the element catalog's `valueType` column already made and paid for. If a future step wants to show a schema-version disagreement it must change `of` first, and that is a change to argue for rather than to arrive by accident. **Note also that `SolrConfigsetFacts.schemaVersion` is a `String?` "exactly as written" (`SolrConfigsetFacts.kt:26-28`), not a `Float`** — an earlier draft of this row claimed the opposite and inferred from it that no string round trip was needed |
+| `schemaVersion` | **not populated by this parser** | The server reports one, and nothing would read it: `SolrFieldModel.of` takes `SolrSchemaVersion.of(repo.schemaVersion)` — the repository half, deliberately, because "the schema version is a property of the file the user is editing" (`SolrFieldModel.kt:213-215`). Populating it would create a value that looks consumed and is discarded on the next line, which is the mistake the element catalog's `valueType` column already made and paid for. If a future step wants to show a schema-version disagreement it must change `of` first, and that is a change to argue for rather than to arrive by accident. **Note also that `SolrConfigsetFacts.schemaVersion` is a `String?` "exactly as written" (`SolrConfigsetFacts.kt:26-28`), not a `Float`** — an earlier draft of this row claimed the opposite and inferred from it that no string round trip was needed |
 | `fieldReferences` | always empty | Already documented on the type: "always empty for a server, which reports its configuration rather than the file that produced it" (`SolrConfigsetFacts.kt:22-23`) |
 | `luceneMatchVersion` | **not populated by this parser** | See [FR-6](#requirements) — the server's own version is a different fact, carried differently |
 
@@ -350,7 +350,7 @@ The consequence ran downhill into match analysis: a chain whose components were 
 `UNANALYZED.copy(granularity = TOKENS, confident = false)` (`SolrMatchAnalysis.kt:62-66`). **The plugin
 degraded to silence rather than to a false claim** — `confident = false` doing exactly the job this
 project's "silence over a false positive" rule asks of it — but quick documentation rendered an empty
-analyzer chain (`SolrFieldPresentation.kt:187-188`) and every match-capability surface went dark on the
+analyzer chain (`SolrFieldPresentation.kt:191-196`) and every match-capability surface went dark on the
 configsets Solr itself ships. The suite was green because the parser's own unit tests used `class` in
 all six of their fixtures and `name` in none, and because `SolrShippedConfigsetTest`, which asserts
 nothing is reported over those very files, guarded itself against a fixture that "passes just as well
@@ -411,9 +411,9 @@ applies is decided in this order," implemented for the first time rather than de
 
 **The first argument is a Reference Guide path segment, not a version, and an earlier draft of this
 section got that wrong.** `SolrVersionSelection(guidePathSegment, source)` is what the type takes
-(`SolrReferenceGuide.kt:151-154`), and `fromLuceneMatchVersion` never passes a version into it — it
+(`SolrReferenceGuide.kt:152-155`), and `fromLuceneMatchVersion` never passes a version into it — it
 reads the segment out of the catalog with `SolrClassCatalog.guideSegmentFor(major)`
-(`SolrReferenceGuide.kt:157-162`). Handing it `"10.0.0"` would produce links to
+(`SolrReferenceGuide.kt:158-164`). Handing it `"10.0.0"` would produce links to
 `…/guide/solr/10.0.0/…`, which is a variant of a defect this plugin has already shipped once and
 fixed: an earlier revision assembled the segment as `${major}_0`, sent every Solr 9 configset to the
 Solr **9.0** documentation, and the links were live and about the wrong Solr — "harder to notice than
@@ -533,8 +533,8 @@ qualify it, and both are requirements rather than notes:
   asked.
 
 **FR-9 — Disagreement is rendered, not resolved.** The drift view (Step 14) reads
-`SolrFieldModel.disagreements` (`SolrFieldModel.kt:167-170`) and the per-fact `agreement` property
-(`SolrFieldModel.kt:53-60`) exactly as they exist today — this specification adds no new agreement
+`SolrFieldModel.disagreements` (`SolrFieldModel.kt:171-174`) and the per-fact `agreement` property
+(`SolrFieldModel.kt:53-61`) exactly as they exist today — this specification adds no new agreement
 state and no per-property diff. A `DISAGREEING` fact is shown with both its `repository` and `server`
 values visible; **the view must never call `.effective` when rendering drift**, because `effective`
 exists for single-source consumers that need one answer to display inline (an inlay hint has one line
@@ -654,7 +654,7 @@ which the first is mechanical and the rest are about what an editor is for:
 
 - **The cache cannot express a server half.** `modelFor` caches on the `PsiDirectory` with its
   dependencies listed as the configset's source files plus `VFS_STRUCTURE_MODIFICATIONS`
-  (`SolrConfigsetReader.kt:73-81`), and the KDoc there already rejects
+  (`SolrConfigsetReader.kt:73-82`), and the KDoc there already rejects
   `PsiModificationTracker.MODIFICATION_COUNT` for being too broad. A completed fetch is neither a file
   edit nor a VFS structure change, so a server-aware editor model needs a dependency that advances on
   every fetch — invalidating every configset's model and re-running every inspection on every open
@@ -678,7 +678,7 @@ which the first is mechanical and the rest are about what an editor is for:
 **The mechanism this needs already exists and has no production caller yet.**
 `SolrConfigsetReader.factsFor(configset)` returns the repository half alone, documented as "exposed for
 the drift comparison, which needs the two halves separately rather than the merged model"
-(`SolrConfigsetReader.kt:86-91`). A server-side surface builds
+(`SolrConfigsetReader.kt:87-92`). A server-side surface builds
 `SolrFieldModel.of(factsFor(configset), serverFacts)` itself, once per pairing
 ([FR-12](#requirements)). Step 14 is that method's first caller; today only its tests reach it.
 
@@ -939,7 +939,7 @@ which this plugin's requests must never construct in the first place.
 fields in a response are ignored, unknown values are shown rather than rejected, and an unrecognized
 server version is reported rather than refused." Concretely: a field property present in a schema
 response but absent from `SolrField`'s typed accessors is not an error — it is exactly the situation
-`SolrField.attributes` exists for (`SolrSchemaTypes.kt:88-90`), and the server parser should populate it
+`SolrField.attributes` exists for (`SolrSchemaTypes.kt:93-95`), and the server parser should populate it
 the same way the schema parser does, rather than silently dropping anything it does not have a named
 property for.
 
@@ -1110,7 +1110,7 @@ as the thing it was read from, and a future reader deserves to know which Solr s
 
 | | |
 |---|---|
-| Images | `solr:10.0.0` and `solr:9.10.1` — the two lines `supportedSolrLines` declares (`build.gradle.kts:269-272`), pinned by tag |
+| Images | `solr:10.0.0` and `solr:9.10.1` — the two lines `supportedSolrLines` declares (`build.gradle.kts:277-280`), pinned by tag |
 | Standalone | both images, `solr-precreate techproducts /opt/solr/server/solr/configsets/sample_techproducts_configs` — chosen over `_default` because it is the shipped configset with copy fields, dynamic fields and analyzer chains in it, which is what three of the closed questions were about |
 | SolrCloud | `solr:10.0.0` run as `solr -f -c`, with a two-shard `drift` collection created through `CREATE`, since the Collections and Config Sets APIs do not exist without it |
 | Read | `/admin/info/system`, `/<c>/schema`, the four `/schema/<kind>` endpoints, `/admin/collections` (`LIST`, `CLUSTERSTATUS`, and an invalid action), `/admin/cores?action=STATUS`, `/admin/configs?action=LIST`, and `/select` with an unknown field, with `timeAllowed=1`, and against a collection that does not exist |

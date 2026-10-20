@@ -9,11 +9,11 @@ package org.apache.solr.ide.model.schema
  */
 enum class SolrMatchGranularity {
 
-    /** Indexed as a single term. Only an exact match on the entire value hits it. */
-    WHOLE_VALUE,
+  /** Indexed as a single term. Only an exact match on the entire value hits it. */
+  WHOLE_VALUE,
 
-    /** Broken into terms. Individual terms match; the whole value needs a phrase query. */
-    TOKENS,
+  /** Broken into terms. Individual terms match; the whole value needs a phrase query. */
+  TOKENS,
 }
 
 /**
@@ -27,17 +27,19 @@ enum class SolrMatchGranularity {
  */
 enum class SolrPrefixSupport {
 
-    /** Nothing in the index-time chain produces partial terms. Wildcards still work, and are slow. */
-    NONE,
+  /** Nothing in the index-time chain produces partial terms. Wildcards still work, and are slow. */
+  NONE,
 
-    /** An edge n-gram filter or tokenizer: every term is ground into its prefixes at index time. */
-    EDGE_NGRAM,
+  /** An edge n-gram filter or tokenizer: every term is ground into its prefixes at index time. */
+  EDGE_NGRAM,
 
-    /** An n-gram filter or tokenizer: every substring, so prefixes *and* infixes match. */
-    N_GRAM,
+  /** An n-gram filter or tokenizer: every substring, so prefixes *and* infixes match. */
+  N_GRAM,
 
-    /** A path-hierarchy tokenizer: prefixes at path separators, as `a/b/c` yields `a`, `a/b`, `a/b/c`. */
-    PATH_HIERARCHY,
+  /**
+   * A path-hierarchy tokenizer: prefixes at path separators, as `a/b/c` yields `a`, `a/b`, `a/b/c`.
+   */
+  PATH_HIERARCHY,
 }
 
 /**
@@ -49,14 +51,14 @@ enum class SolrPrefixSupport {
  */
 enum class SolrMatchTrait {
 
-    /** Decided [SolrMatchCapability.granularity]. */
-    GRANULARITY,
+  /** Decided [SolrMatchCapability.granularity]. */
+  GRANULARITY,
 
-    /** Decided [SolrMatchCapability.caseSensitive]. */
-    CASE,
+  /** Decided [SolrMatchCapability.caseSensitive]. */
+  CASE,
 
-    /** Decided [SolrMatchCapability.prefix]. */
-    PREFIX,
+  /** Decided [SolrMatchCapability.prefix]. */
+  PREFIX,
 }
 
 /**
@@ -72,8 +74,8 @@ data class SolrMatchEvidence(val trait: SolrMatchTrait, val factory: String)
  *
  * This is the plugin's most surprising output and the one most likely to tell an experienced user
  * something they did not know, so it is also the one that has to be right. It is a pure function of
- * the chain — see [org.apache.solr.ide.model.schema.SolrMatchAnalysis] — and carries [evidence] so that
- * every claim can name the factory behind it.
+ * the chain — see [org.apache.solr.ide.model.schema.SolrMatchAnalysis] — and carries [evidence] so
+ * that every claim can name the factory behind it.
  *
  * @property granularity whole value or tokens
  * @property caseSensitive whether case must match; false when something in the chain folds case
@@ -82,45 +84,47 @@ data class SolrMatchEvidence(val trait: SolrMatchTrait, val factory: String)
  * @property confident false when the chain contained a factory this analysis does not know
  */
 data class SolrMatchCapability(
-    val granularity: SolrMatchGranularity,
-    val caseSensitive: Boolean,
-    val prefix: SolrPrefixSupport = SolrPrefixSupport.NONE,
-    val evidence: List<SolrMatchEvidence> = emptyList(),
-    val confident: Boolean = true,
+  val granularity: SolrMatchGranularity,
+  val caseSensitive: Boolean,
+  val prefix: SolrPrefixSupport = SolrPrefixSupport.NONE,
+  val evidence: List<SolrMatchEvidence> = emptyList(),
+  val confident: Boolean = true,
 ) {
 
-    /** Whether arbitrary substrings match efficiently, which only full n-grams provide. */
-    val substringSupported: Boolean get() = prefix == SolrPrefixSupport.N_GRAM
+  /** Whether arbitrary substrings match efficiently, which only full n-grams provide. */
+  val substringSupported: Boolean
+    get() = prefix == SolrPrefixSupport.N_GRAM
 
-    /**
-     * The [summary] as its parts: granularity, case, and how partial matching is supported.
-     *
-     * Split out for the inline hint, whose renderer truncates any single text segment past a
-     * 30-character budget; a part per segment keeps the whole summary visible. [summary] is
-     * this list joined, so the two can never disagree.
-     */
-    val summaryParts: List<String>
-        get() = buildList {
-            add(if (granularity == SolrMatchGranularity.WHOLE_VALUE) "whole value" else "tokenised")
-            add(if (caseSensitive) "case-sensitive" else "case-insensitive")
-            when (prefix) {
-                SolrPrefixSupport.NONE -> Unit
-                SolrPrefixSupport.EDGE_NGRAM -> add("prefix-capable")
-                SolrPrefixSupport.N_GRAM -> add("substring-capable")
-                SolrPrefixSupport.PATH_HIERARCHY -> add("path-prefix-capable")
-            }
-        }
+  /**
+   * The [summary] as its parts: granularity, case, and how partial matching is supported.
+   *
+   * Split out for the inline hint, whose renderer truncates any single text segment past a
+   * 30-character budget; a part per segment keeps the whole summary visible. [summary] is this list
+   * joined, so the two can never disagree.
+   */
+  val summaryParts: List<String>
+    get() = buildList {
+      add(if (granularity == SolrMatchGranularity.WHOLE_VALUE) "whole value" else "tokenised")
+      add(if (caseSensitive) "case-sensitive" else "case-insensitive")
+      when (prefix) {
+        SolrPrefixSupport.NONE -> Unit
+        SolrPrefixSupport.EDGE_NGRAM -> add("prefix-capable")
+        SolrPrefixSupport.N_GRAM -> add("substring-capable")
+        SolrPrefixSupport.PATH_HIERARCHY -> add("path-prefix-capable")
+      }
+    }
 
-    /**
-     * A one-line summary: granularity, case, and how partial matching is supported.
-     *
-     * Lives on the capability rather than in any one feature's presentation code, because the
-     * inline hint, the documentation popup and the completion lookup all show it and must never
-     * word it differently — the same field described three ways is three chances to be doubted.
-     */
-    val summary: String
-        get() = summaryParts.joinToString(", ")
+  /**
+   * A one-line summary: granularity, case, and how partial matching is supported.
+   *
+   * Lives on the capability rather than in any one feature's presentation code, because the inline
+   * hint, the documentation popup and the completion lookup all show it and must never word it
+   * differently — the same field described three ways is three chances to be doubted.
+   */
+  val summary: String
+    get() = summaryParts.joinToString(", ")
 
-    /** The factory responsible for [trait], or null if nothing in the chain decided it. */
-    fun evidenceFor(trait: SolrMatchTrait): String? = evidence.firstOrNull { it.trait == trait }?.factory
+  /** The factory responsible for [trait], or null if nothing in the chain decided it. */
+  fun evidenceFor(trait: SolrMatchTrait): String? =
+    evidence.firstOrNull { it.trait == trait }?.factory
 }

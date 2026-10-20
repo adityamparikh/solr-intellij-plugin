@@ -19,28 +19,35 @@ import org.junit.Test
  */
 class SolrServerVersionEndToEndTest {
 
-    private fun resource(path: String) =
-        checkNotNull(javaClass.getResourceAsStream(path)) { "missing $path" }.bufferedReader().readText()
+  private fun resource(path: String) =
+    checkNotNull(javaClass.getResourceAsStream(path)) { "missing $path" }
+      .bufferedReader()
+      .readText()
 
-    @Test
-    fun `a real server response reaches the view as the connected server`() {
-        val systemInfo = org.apache.solr.ide.server.reading.SolrJsonDocuments.treeOf(
-            resource("/server-responses/system-info-10.json"),
-        )!!
-        val version = SolrServerSchemaReader.solrVersionIn(systemInfo)
-        assertEquals("10.0.0", version)
+  @Test
+  fun `a real server response reaches the view as the connected server`() {
+    val systemInfo =
+      org.apache.solr.ide.server.reading.SolrJsonDocuments.treeOf(
+        resource("/server-responses/system-info-10.json")
+      )!!
+    val version = SolrServerSchemaReader.solrVersionIn(systemInfo)
+    assertEquals("10.0.0", version)
 
-        val facts = SolrServerSchemaReader.read(resource("/server-responses/schema-10.json"))
-        val view = driftViewFor(
-            configset = "books",
-            collection = "books_prod",
-            repository = SolrConfigsetFacts(),
-            response = SolrResponse.Success(SolrServerRead(facts, version)),
-        )
+    val facts = SolrServerSchemaReader.read(resource("/server-responses/schema-10.json"))
+    val view =
+      driftViewFor(
+        configset = "books",
+        collection = "books_prod",
+        repository = SolrConfigsetFacts(),
+        response = SolrResponse.Success(SolrServerRead(facts, version)),
+      )
 
-        assertTrue(view.toString(), view is SolrDriftView.Compared)
-        val drift = (view as SolrDriftView.Compared).drift
-        assertEquals(SolrVersionSource.SERVER, drift.solrVersion.source)
-        assertTrue(drift.solrVersion.describeSource(), drift.solrVersion.describeSource().contains("connected server"))
-    }
+    assertTrue(view.toString(), view is SolrDriftView.Compared)
+    val drift = (view as SolrDriftView.Compared).drift
+    assertEquals(SolrVersionSource.SERVER, drift.solrVersion.source)
+    assertTrue(
+      drift.solrVersion.describeSource(),
+      drift.solrVersion.describeSource().contains("connected server"),
+    )
+  }
 }

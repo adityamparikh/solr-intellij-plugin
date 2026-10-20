@@ -39,65 +39,71 @@ val SOLR_DOCUMENT_SCHEMA: Key<SolrConfigsetFacts> = Key.create("solr.document.sc
  */
 class SolrDocumentFieldCompletionContributor : CompletionContributor() {
 
-    /**
-     * Offers the collection's field names where a document names one.
-     *
-     * @param parameters where the caret is
-     * @param result where offers are added
-     */
-    override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
-        val facts = schemaFor(parameters.position.containingFile) ?: return
-        if (!namesAField(parameters.position)) return
+  /**
+   * Offers the collection's field names where a document names one.
+   *
+   * @param parameters where the caret is
+   * @param result where offers are added
+   */
+  override fun fillCompletionVariants(
+    parameters: CompletionParameters,
+    result: CompletionResultSet,
+  ) {
+    val facts = schemaFor(parameters.position.containingFile) ?: return
+    if (!namesAField(parameters.position)) return
 
-        facts.fields.filterNot { it.name.isInternal() }.forEach { field ->
-            result.addElement(
-                LookupElementBuilder.create(field.name)
-                    .withTypeText(field.type)
-                    .withBoldness(field.required == true),
-            )
-        }
-        // Patterns are offered too, and italicised as they are everywhere else in this plugin. A
-        // user naming `author_s` is naming the pattern's instance, and the pattern is the only clue
-        // the schema gives that such a name is legal at all.
-        facts.dynamicFields.forEach { pattern ->
-            result.addElement(
-                LookupElementBuilder.create(pattern.pattern)
-                    .withTypeText(pattern.field.type)
-                    .withItemTextItalic(true),
-            )
-        }
+    facts.fields
+      .filterNot { it.name.isInternal() }
+      .forEach { field ->
+        result.addElement(
+          LookupElementBuilder.create(field.name)
+            .withTypeText(field.type)
+            .withBoldness(field.required == true)
+        )
+      }
+    // Patterns are offered too, and italicised as they are everywhere else in this plugin. A
+    // user naming `author_s` is naming the pattern's instance, and the pattern is the only clue
+    // the schema gives that such a name is legal at all.
+    facts.dynamicFields.forEach { pattern ->
+      result.addElement(
+        LookupElementBuilder.create(pattern.pattern)
+          .withTypeText(pattern.field.type)
+          .withItemTextItalic(true)
+      )
     }
+  }
 
-    /**
-     * The schema this file is being written against, or null where it is not one of ours.
-     *
-     * The original file is consulted as well as the file itself, because completion runs over a copy
-     * and the copy is where the caret is. Only those two: the virtual-file variants an earlier draft
-     * carried were speculation about a case nobody produced, and a branch no input reaches is one a
-     * reader has to wonder about.
-     */
-    private fun schemaFor(file: PsiFile?): SolrConfigsetFacts? {
-        if (file == null) return null
-        return file.getUserData(SOLR_DOCUMENT_SCHEMA) ?: file.originalFile.getUserData(SOLR_DOCUMENT_SCHEMA)
-    }
+  /**
+   * The schema this file is being written against, or null where it is not one of ours.
+   *
+   * The original file is consulted as well as the file itself, because completion runs over a copy
+   * and the copy is where the caret is. Only those two: the virtual-file variants an earlier draft
+   * carried were speculation about a case nobody produced, and a branch no input reaches is one a
+   * reader has to wonder about.
+   */
+  private fun schemaFor(file: PsiFile?): SolrConfigsetFacts? {
+    if (file == null) return null
+    return file.getUserData(SOLR_DOCUMENT_SCHEMA)
+      ?: file.originalFile.getUserData(SOLR_DOCUMENT_SCHEMA)
+  }
 
-    /**
-     * Whether the caret is where a document names a field.
-     *
-     * A document is an object of field names to values, so a field name is a *key*, and the question
-     * is only ever which half of a property the caret sits in. Completing in a value would offer
-     * field names as data, which is a different and wrong suggestion.
-     *
-     * **A caret with nothing typed yet is still inside a property**, which is why there is no second
-     * case here for a bare object. The platform substitutes a dummy identifier at the caret before
-     * re-parsing, so `{|}` reaches this as an object holding one nameless-value property. An earlier
-     * draft carried an `else` for the bare-object position; every input that could reach it went
-     * down this path instead.
-     */
-    private fun namesAField(position: PsiElement): Boolean {
-        val property = position.parentOfType<JsonProperty>() ?: return false
-        return property.nameElement.textRange.contains(position.textRange.startOffset)
-    }
+  /**
+   * Whether the caret is where a document names a field.
+   *
+   * A document is an object of field names to values, so a field name is a *key*, and the question
+   * is only ever which half of a property the caret sits in. Completing in a value would offer
+   * field names as data, which is a different and wrong suggestion.
+   *
+   * **A caret with nothing typed yet is still inside a property**, which is why there is no second
+   * case here for a bare object. The platform substitutes a dummy identifier at the caret before
+   * re-parsing, so `{|}` reaches this as an object holding one nameless-value property. An earlier
+   * draft carried an `else` for the bare-object position; every input that could reach it went down
+   * this path instead.
+   */
+  private fun namesAField(position: PsiElement): Boolean {
+    val property = position.parentOfType<JsonProperty>() ?: return false
+    return property.nameElement.textRange.contains(position.textRange.startOffset)
+  }
 
-    private fun String.isInternal() = length > 2 && startsWith('_') && endsWith('_')
+  private fun String.isInternal() = length > 2 && startsWith('_') && endsWith('_')
 }

@@ -10,19 +10,19 @@ import org.apache.solr.ide.model.SolrConfigsetFacts
  * @property severity whether this stops the send or merely warns
  */
 data class SolrDocumentProblem(
-    val field: String?,
-    val message: String,
-    val severity: SolrDocumentSeverity,
+  val field: String?,
+  val message: String,
+  val severity: SolrDocumentSeverity,
 )
 
 /** How much a problem matters. */
 enum class SolrDocumentSeverity {
 
-    /** Sending this would fail, or would do something the user did not ask for. */
-    ERROR,
+  /** Sending this would fail, or would do something the user did not ask for. */
+  ERROR,
 
-    /** Sending this works and is worth knowing about first. */
-    WARNING,
+  /** Sending this works and is worth knowing about first. */
+  WARNING,
 }
 
 /**
@@ -43,59 +43,69 @@ enum class SolrDocumentSeverity {
  */
 object SolrDocumentValidation {
 
-    /**
-     * Everything worth saying about [fieldNames] against [facts].
-     *
-     * @param fieldNames the field names the document carries, in document order
-     * @param facts the schema the document will be indexed against
-     * @return the problems, most severe first
-     */
-    fun problemsIn(fieldNames: List<String>, facts: SolrConfigsetFacts): List<SolrDocumentProblem> {
-        val problems = mutableListOf<SolrDocumentProblem>()
+  /**
+   * Everything worth saying about [fieldNames] against [facts].
+   *
+   * @param fieldNames the field names the document carries, in document order
+   * @param facts the schema the document will be indexed against
+   * @return the problems, most severe first
+   */
+  fun problemsIn(fieldNames: List<String>, facts: SolrConfigsetFacts): List<SolrDocumentProblem> {
+    val problems = mutableListOf<SolrDocumentProblem>()
 
-        val uniqueKey = facts.uniqueKey
-        if (uniqueKey != null && uniqueKey !in fieldNames) {
-            problems += SolrDocumentProblem(
-                field = uniqueKey,
-                message = "The document has no $uniqueKey. Solr will index it under a generated " +
-                    "identifier rather than refusing it, and the document will not be findable by " +
-                    "any id you know.",
-                severity = SolrDocumentSeverity.ERROR,
-            )
-        }
-
-        fieldNames.filterNot { it.isKnownTo(facts) }.forEach { unknown ->
-            problems += SolrDocumentProblem(
-                field = unknown,
-                message = "The schema declares no $unknown and no pattern matching it. A collection " +
-                    "running the default update chain will add it to the schema rather than " +
-                    "refusing the document, which changes the deployed schema and shows up as drift.",
-                severity = SolrDocumentSeverity.ERROR,
-            )
-        }
-
-        fieldNames.filter { it.isInternal() }.forEach { internal ->
-            problems += SolrDocumentProblem(
-                field = internal,
-                message = "$internal is Solr's own field. Supplying one asserts a concurrency check " +
-                    "or a routing decision that was probably not intended.",
-                severity = SolrDocumentSeverity.WARNING,
-            )
-        }
-
-        return problems.sortedBy { it.severity }
+    val uniqueKey = facts.uniqueKey
+    if (uniqueKey != null && uniqueKey !in fieldNames) {
+      problems +=
+        SolrDocumentProblem(
+          field = uniqueKey,
+          message =
+            "The document has no $uniqueKey. Solr will index it under a generated " +
+              "identifier rather than refusing it, and the document will not be findable by " +
+              "any id you know.",
+          severity = SolrDocumentSeverity.ERROR,
+        )
     }
 
-    /**
-     * Whether the schema has somewhere to put a field of this name.
-     *
-     * A dynamic pattern counts. `author_s` is not declared anywhere and is entirely legitimate,
-     * which is the whole reason the model carries patterns as well as fields.
-     */
-    private fun String.isKnownTo(facts: SolrConfigsetFacts): Boolean =
-        facts.fields.any { it.name == this } ||
-            facts.dynamicFields.any { it.matches(this) } ||
-            isInternal()
+    fieldNames
+      .filterNot { it.isKnownTo(facts) }
+      .forEach { unknown ->
+        problems +=
+          SolrDocumentProblem(
+            field = unknown,
+            message =
+              "The schema declares no $unknown and no pattern matching it. A collection " +
+                "running the default update chain will add it to the schema rather than " +
+                "refusing the document, which changes the deployed schema and shows up as drift.",
+            severity = SolrDocumentSeverity.ERROR,
+          )
+      }
 
-    private fun String.isInternal() = length > 2 && startsWith('_') && endsWith('_')
+    fieldNames
+      .filter { it.isInternal() }
+      .forEach { internal ->
+        problems +=
+          SolrDocumentProblem(
+            field = internal,
+            message =
+              "$internal is Solr's own field. Supplying one asserts a concurrency check " +
+                "or a routing decision that was probably not intended.",
+            severity = SolrDocumentSeverity.WARNING,
+          )
+      }
+
+    return problems.sortedBy { it.severity }
+  }
+
+  /**
+   * Whether the schema has somewhere to put a field of this name.
+   *
+   * A dynamic pattern counts. `author_s` is not declared anywhere and is entirely legitimate, which
+   * is the whole reason the model carries patterns as well as fields.
+   */
+  private fun String.isKnownTo(facts: SolrConfigsetFacts): Boolean =
+    facts.fields.any { it.name == this } ||
+      facts.dynamicFields.any { it.matches(this) } ||
+      isInternal()
+
+  private fun String.isInternal() = length > 2 && startsWith('_') && endsWith('_')
 }

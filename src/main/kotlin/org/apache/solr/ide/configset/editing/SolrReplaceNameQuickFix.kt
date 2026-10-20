@@ -23,37 +23,39 @@ import org.apache.solr.ide.SolrBundle
  * @param familyText the grouping label shown when several of these are offered together
  */
 internal class SolrReplaceNameQuickFix(
-    private val replacement: String,
-    private val familyText: String,
+  private val replacement: String,
+  private val familyText: String,
 ) : LocalQuickFix {
 
-    override fun getName(): String = SolrBundle.message("quickfix.replaceWith", replacement)
+  override fun getName(): String = SolrBundle.message("quickfix.replaceWith", replacement)
 
-    override fun getFamilyName(): String = familyText
+  override fun getFamilyName(): String = familyText
 
-    /**
-     * Substitutes the replacement into whichever half of the attribute the problem was reported on.
-     *
-     * **Both halves, because the inspections report on both.** A wrong *value* is reported on the
-     * value element, and a wrong *name* on the name element —
-     * [SolrUnknownAttributeInspection][org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection]
-     * deliberately underlines the name so it does not point at the half that is correct. Handling
-     * only the value made every fix that inspection offered a no-op: the menu listed the right
-     * spellings, and choosing one changed nothing.
-     *
-     * The value is written through `ElementManipulators`, so the quotes and escaping stay the
-     * platform's business. A name has no manipulator registered and goes through
-     * [XmlAttribute.setName], which is the same call rename uses. The value case is tested first
-     * because an attribute value's parent is an attribute too, and asking about the parent first
-     * would rewrite the name whenever the value was meant.
-     */
-    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        when (val element = descriptor.psiElement) {
-            is XmlAttributeValue -> ElementManipulators.handleContentChange(element, replacement)
-            else -> (element.parent as? XmlAttribute)?.name = replacement
-        }
+  /**
+   * Substitutes the replacement into whichever half of the attribute the problem was reported on.
+   *
+   * **Both halves, because the inspections report on both.** A wrong *value* is reported on the
+   * value element, and a wrong *name* on the name element —
+   * [SolrUnknownAttributeInspection][org.apache.solr.ide.configset.schema.inspection.SolrUnknownAttributeInspection]
+   * deliberately underlines the name so it does not point at the half that is correct. Handling
+   * only the value made every fix that inspection offered a no-op: the menu listed the right
+   * spellings, and choosing one changed nothing.
+   *
+   * The value is written through `ElementManipulators`, so the quotes and escaping stay the
+   * platform's business. A name has no manipulator registered and goes through
+   * [XmlAttribute.setName], which is the same call rename uses. The value case is tested first
+   * because an attribute value's parent is an attribute too, and asking about the parent first
+   * would rewrite the name whenever the value was meant.
+   */
+  override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+    when (val element = descriptor.psiElement) {
+      is XmlAttributeValue -> ElementManipulators.handleContentChange(element, replacement)
+      else -> (element.parent as? XmlAttribute)?.name = replacement
     }
+  }
 
-    /** Fixes are computed from the model, which is not modified, so a preview needs no special case. */
-    override fun startInWriteAction(): Boolean = true
+  /**
+   * Fixes are computed from the model, which is not modified, so a preview needs no special case.
+   */
+  override fun startInWriteAction(): Boolean = true
 }

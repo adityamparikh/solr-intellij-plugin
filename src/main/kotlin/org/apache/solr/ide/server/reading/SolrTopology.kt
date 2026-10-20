@@ -10,19 +10,19 @@ package org.apache.solr.ide.server.reading
  */
 enum class SolrServerMode {
 
-    /** One node, cores rather than collections, and no Collections or Config Sets API. */
-    STANDALONE,
+  /** One node, cores rather than collections, and no Collections or Config Sets API. */
+  STANDALONE,
 
-    /** ZooKeeper-coordinated, with collections, shards and replicas. */
-    SOLR_CLOUD,
+  /** ZooKeeper-coordinated, with collections, shards and replicas. */
+  SOLR_CLOUD,
 
-    /**
-     * The server did not say, so nothing may be assumed about it.
-     *
-     * Distinct from either answer on purpose: guessing SolrCloud here would produce the spurious
-     * failure this enum exists to avoid, and guessing standalone would hide a cluster.
-     */
-    UNKNOWN,
+  /**
+   * The server did not say, so nothing may be assumed about it.
+   *
+   * Distinct from either answer on purpose: guessing SolrCloud here would produce the spurious
+   * failure this enum exists to avoid, and guessing standalone would hide a cluster.
+   */
+  UNKNOWN,
 }
 
 /**
@@ -36,12 +36,12 @@ enum class SolrServerMode {
  * @property leader whether this replica leads its shard
  */
 data class SolrReplica(
-    val name: String,
-    val core: String,
-    val nodeName: String,
-    val state: String,
-    val type: String,
-    val leader: Boolean,
+  val name: String,
+  val core: String,
+  val nodeName: String,
+  val state: String,
+  val type: String,
+  val leader: Boolean,
 )
 
 /**
@@ -54,11 +54,11 @@ data class SolrReplica(
  * @property replicas its replicas, in the order reported
  */
 data class SolrShard(
-    val name: String,
-    val range: String?,
-    val state: String,
-    val health: String?,
-    val replicas: List<SolrReplica>,
+  val name: String,
+  val range: String?,
+  val state: String,
+  val health: String?,
+  val replicas: List<SolrReplica>,
 )
 
 /**
@@ -73,17 +73,17 @@ data class SolrShard(
  * @property shards its shards, in the order reported
  */
 data class SolrCollection(
-    val name: String,
-    val configName: String?,
-    val health: String?,
-    val shards: List<SolrShard>,
+  val name: String,
+  val configName: String?,
+  val health: String?,
+  val shards: List<SolrShard>,
 )
 
 /**
  * One core on a standalone server.
  *
- * A core is not a collection with fewer parts — it is the other vocabulary entirely, which is why it
- * is its own type rather than a collection with empty shards.
+ * A core is not a collection with fewer parts — it is the other vocabulary entirely, which is why
+ * it is its own type rather than a collection with empty shards.
  *
  * @property name the core's name
  * @property configSet the configset directory it was created from, where the server reports one
@@ -93,10 +93,10 @@ data class SolrCore(val name: String, val configSet: String?)
 /**
  * What a server holds, in whichever vocabulary it uses.
  *
- * **Both lists exist and only one is ever populated**, which is deliberate: a view has to render one
- * vocabulary or the other, and a single list called "things" would leave it guessing which word to
- * put on screen. The mode says which list to read, and a caller that ignores the mode and reads both
- * still gets a correct answer rather than a merged one.
+ * **Both lists exist and only one is ever populated**, which is deliberate: a view has to render
+ * one vocabulary or the other, and a single list called "things" would leave it guessing which word
+ * to put on screen. The mode says which list to read, and a caller that ignores the mode and reads
+ * both still gets a correct answer rather than a merged one.
  *
  * @property mode which shape the server is running in
  * @property collections its collections, empty unless the mode is [SolrServerMode.SOLR_CLOUD]
@@ -107,9 +107,9 @@ data class SolrCore(val name: String, val configSet: String?)
  * @property liveNodes the nodes currently in the cluster, empty on a standalone server
  */
 data class SolrTopology(
-    val mode: SolrServerMode,
-    val collections: List<SolrCollection> = emptyList(),
-    val cores: List<SolrCore> = emptyList(),
-    val aliases: Map<String, String> = emptyMap(),
-    val liveNodes: List<String> = emptyList(),
+  val mode: SolrServerMode,
+  val collections: List<SolrCollection> = emptyList(),
+  val cores: List<SolrCore> = emptyList(),
+  val aliases: Map<String, String> = emptyMap(),
+  val liveNodes: List<String> = emptyList(),
 )

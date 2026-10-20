@@ -14,37 +14,37 @@ import org.junit.Test
  */
 class SolrGlobTest {
 
-    @Test
-    fun `a bare star matches anything`() {
-        assertTrue(SolrGlob.matches("*", "anything"))
-        assertTrue(SolrGlob.matches("*", ""))
-    }
+  @Test
+  fun `a bare star matches anything`() {
+    assertTrue(SolrGlob.matches("*", "anything"))
+    assertTrue(SolrGlob.matches("*", ""))
+  }
 
-    @Test
-    fun `a leading star matches by suffix`() {
-        assertTrue(SolrGlob.matches("*_s", "title_s"))
-        assertFalse(SolrGlob.matches("*_s", "title_str"))
-    }
+  @Test
+  fun `a leading star matches by suffix`() {
+    assertTrue(SolrGlob.matches("*_s", "title_s"))
+    assertFalse(SolrGlob.matches("*_s", "title_str"))
+  }
 
-    @Test
-    fun `a trailing star matches by prefix`() {
-        assertTrue(SolrGlob.matches("attr_*", "attr_colour"))
-        assertFalse(SolrGlob.matches("attr_*", "colour_attr"))
-    }
+  @Test
+  fun `a trailing star matches by prefix`() {
+    assertTrue(SolrGlob.matches("attr_*", "attr_colour"))
+    assertFalse(SolrGlob.matches("attr_*", "colour_attr"))
+  }
 
-    /** The case the two implementations disagreed on. */
-    @Test
-    fun `a pattern with no wildcard matches only itself`() {
-        assertTrue(SolrGlob.matches("literal", "literal"))
-        assertFalse(SolrGlob.matches("literal", "literal_s"))
-        assertFalse(SolrGlob.matches("literal", "other"))
-    }
+  /** The case the two implementations disagreed on. */
+  @Test
+  fun `a pattern with no wildcard matches only itself`() {
+    assertTrue(SolrGlob.matches("literal", "literal"))
+    assertFalse(SolrGlob.matches("literal", "literal_s"))
+    assertFalse(SolrGlob.matches("literal", "other"))
+  }
 
-    /** Dynamic fields delegate here, so the two can no longer drift. */
-    @Test
-    fun `dynamic field matching uses the same rule`() {
-        val dynamic = SolrDynamicField("*_str", SolrField("*_str", "strings"))
-        assertTrue(dynamic.matches("title_str"))
-        assertFalse(dynamic.matches("title_s"))
-    }
+  /** Dynamic fields delegate here, so the two can no longer drift. */
+  @Test
+  fun `dynamic field matching uses the same rule`() {
+    val dynamic = SolrDynamicField("*_str", SolrField("*_str", "strings"))
+    assertTrue(dynamic.matches("title_str"))
+    assertFalse(dynamic.matches("title_s"))
+  }
 }

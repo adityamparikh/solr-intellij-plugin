@@ -11,218 +11,223 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrConnectionsEditorModelTest : SolrConfigsetTestCase() {
 
-    private val model get() = SolrConnectionsEditorModel(connectionSettings)
+  private val model
+    get() = SolrConnectionsEditorModel(connectionSettings)
 
-    private fun connection(id: String, username: String? = null) = SolrConnection(
-        id = id,
-        displayName = "Solr $id",
-        baseUrl = "http://localhost:8983/solr",
-        username = username,
+  private fun connection(id: String, username: String? = null) =
+    SolrConnection(
+      id = id,
+      displayName = "Solr $id",
+      baseUrl = "http://localhost:8983/solr",
+      username = username,
     )
 
-    /**
-     * One Apply announces the list once, however many connections it moves.
-     *
-     * **The announcement's unit is the Apply, not the mutation.** `apply` removes what was dropped
-     * and re-adds every draft, so a per-mutation announcement makes a single OK on the settings page
-     * publish a burst of them — and every subscriber then evaluates a list that is half applied. The
-     * tool window's is the one that shows: it refetches when the selection it would read has moved,
-     * and mid-burst the selection moves to whatever happens to remain, so a user pressing OK once
-     * can send requests to a server they never selected.
-     */
-    fun testOneApplyAnnouncesTheListOnce() {
-        connectionSettings.addConnection(connection("a"))
-        connectionSettings.addConnection(connection("b"))
-        var announcements = 0
-        project.messageBus.connect(testRootDisposable).subscribe(
-            SolrConnectionSettings.CONNECTIONS_CHANGED,
-            SolrConnectionsListener { announcements++ },
-        )
-        val editor = model
-        editor.reset()
-        editor.remove(0)
+  /**
+   * One Apply announces the list once, however many connections it moves.
+   *
+   * **The announcement's unit is the Apply, not the mutation.** `apply` removes what was dropped
+   * and re-adds every draft, so a per-mutation announcement makes a single OK on the settings page
+   * publish a burst of them — and every subscriber then evaluates a list that is half applied. The
+   * tool window's is the one that shows: it refetches when the selection it would read has moved,
+   * and mid-burst the selection moves to whatever happens to remain, so a user pressing OK once can
+   * send requests to a server they never selected.
+   */
+  fun testOneApplyAnnouncesTheListOnce() {
+    connectionSettings.addConnection(connection("a"))
+    connectionSettings.addConnection(connection("b"))
+    var announcements = 0
+    project.messageBus
+      .connect(testRootDisposable)
+      .subscribe(
+        SolrConnectionSettings.CONNECTIONS_CHANGED,
+        SolrConnectionsListener { announcements++ },
+      )
+    val editor = model
+    editor.reset()
+    editor.remove(0)
 
-        editor.apply()
+    editor.apply()
 
-        assertEquals(1, announcements)
-    }
+    assertEquals(1, announcements)
+  }
 
-    // --- what it shows ----------------------------------------------------------------------------
+  // --- what it shows ----------------------------------------------------------------------------
 
-    fun testResetShowsWhatIsSaved() {
-        connectionSettings.addConnection(connection("a"))
-        val editor = model
+  fun testResetShowsWhatIsSaved() {
+    connectionSettings.addConnection(connection("a"))
+    val editor = model
 
-        editor.reset()
+    editor.reset()
 
-        assertEquals(listOf("a"), editor.connections.map { it.id })
-    }
+    assertEquals(listOf("a"), editor.connections.map { it.id })
+  }
 
-    fun testNothingIsModifiedBeforeAnythingIsEdited() {
-        connectionSettings.addConnection(connection("a"))
-        val editor = model
-        editor.reset()
+  fun testNothingIsModifiedBeforeAnythingIsEdited() {
+    connectionSettings.addConnection(connection("a"))
+    val editor = model
+    editor.reset()
 
-        assertFalse(editor.isModified())
-    }
+    assertFalse(editor.isModified())
+  }
 
-    // --- what it writes ---------------------------------------------------------------------------
+  // --- what it writes ---------------------------------------------------------------------------
 
-    fun testAnAddedConnectionIsSaved() {
-        val editor = model
-        editor.reset()
+  fun testAnAddedConnectionIsSaved() {
+    val editor = model
+    editor.reset()
 
-        editor.add(connection("new"))
+    editor.add(connection("new"))
 
-        assertTrue(editor.isModified())
-        editor.apply()
-        assertEquals(listOf("new"), connectionSettings.connections.map { it.id })
-    }
+    assertTrue(editor.isModified())
+    editor.apply()
+    assertEquals(listOf("new"), connectionSettings.connections.map { it.id })
+  }
 
-    fun testARemovedConnectionIsDeleted() {
-        connectionSettings.addConnection(connection("a"))
-        connectionSettings.addConnection(connection("b"))
-        val editor = model
-        editor.reset()
+  fun testARemovedConnectionIsDeleted() {
+    connectionSettings.addConnection(connection("a"))
+    connectionSettings.addConnection(connection("b"))
+    val editor = model
+    editor.reset()
 
-        editor.remove(0)
-        editor.apply()
+    editor.remove(0)
+    editor.apply()
 
-        assertEquals(listOf("b"), connectionSettings.connections.map { it.id })
-    }
+    assertEquals(listOf("b"), connectionSettings.connections.map { it.id })
+  }
 
-    fun testAnEditedConnectionIsReplacedRatherThanDuplicated() {
-        connectionSettings.addConnection(connection("a"))
-        val editor = model
-        editor.reset()
+  fun testAnEditedConnectionIsReplacedRatherThanDuplicated() {
+    connectionSettings.addConnection(connection("a"))
+    val editor = model
+    editor.reset()
 
-        editor.replace(0, connection("a").copy(baseUrl = "http://elsewhere:8983/solr"))
-        editor.apply()
+    editor.replace(0, connection("a").copy(baseUrl = "http://elsewhere:8983/solr"))
+    editor.apply()
 
-        assertEquals(1, connectionSettings.connections.size)
-        assertEquals("http://elsewhere:8983/solr", connectionSettings.connections.single().baseUrl)
-    }
+    assertEquals(1, connectionSettings.connections.size)
+    assertEquals("http://elsewhere:8983/solr", connectionSettings.connections.single().baseUrl)
+  }
 
-    // --- the secret, which is the part worth being careful about -----------------------------------
+  // --- the secret, which is the part worth being careful about -----------------------------------
 
-    /**
-     * A typed secret reaches `PasswordSafe` and nothing else.
-     *
-     * Written after the connections deliberately: `setPassword` files the secret under the
-     * connection's username and reads that from the *saved* connection, so writing it first would
-     * file it under the username the connection used to have.
-     */
-    fun testATypedPasswordIsStored() {
-        val editor = model
-        editor.reset()
-        editor.add(connection("a", username = "solr"))
+  /**
+   * A typed secret reaches `PasswordSafe` and nothing else.
+   *
+   * Written after the connections deliberately: `setPassword` files the secret under the
+   * connection's username and reads that from the *saved* connection, so writing it first would
+   * file it under the username the connection used to have.
+   */
+  fun testATypedPasswordIsStored() {
+    val editor = model
+    editor.reset()
+    editor.add(connection("a", username = "solr"))
 
-        editor.setPassword("a", "SolrRocks".toCharArray())
-        editor.apply()
+    editor.setPassword("a", "SolrRocks".toCharArray())
+    editor.apply()
 
-        assertEquals("SolrRocks", connectionSettings.getPassword("a"))
-        assertEquals("solr", connectionSettings.getStoredUsername("a"))
-    }
+    assertEquals("SolrRocks", connectionSettings.getPassword("a"))
+    assertEquals("solr", connectionSettings.getStoredUsername("a"))
+  }
 
-    /**
-     * Editing something else does not rewrite a password nobody touched.
-     *
-     * The reason edited secrets are tracked separately rather than carried on a draft: a draft with a
-     * password on it would rewrite the secret on every apply, and a user renaming a connection would
-     * silently re-file a credential they never looked at.
-     */
-    fun testEditingADisplayNameLeavesAStoredPasswordAlone() {
-        connectionSettings.addConnection(connection("a", username = "solr"))
-        connectionSettings.setPassword("a", "SolrRocks".toCharArray())
-        val editor = model
-        editor.reset()
+  /**
+   * Editing something else does not rewrite a password nobody touched.
+   *
+   * The reason edited secrets are tracked separately rather than carried on a draft: a draft with a
+   * password on it would rewrite the secret on every apply, and a user renaming a connection would
+   * silently re-file a credential they never looked at.
+   */
+  fun testEditingADisplayNameLeavesAStoredPasswordAlone() {
+    connectionSettings.addConnection(connection("a", username = "solr"))
+    connectionSettings.setPassword("a", "SolrRocks".toCharArray())
+    val editor = model
+    editor.reset()
 
-        editor.replace(0, connection("a", username = "solr").copy(displayName = "Renamed"))
-        editor.apply()
+    editor.replace(0, connection("a", username = "solr").copy(displayName = "Renamed"))
+    editor.apply()
 
-        assertEquals("SolrRocks", connectionSettings.getPassword("a"))
-    }
+    assertEquals("SolrRocks", connectionSettings.getPassword("a"))
+  }
 
-    /** Clearing is a change, and reaches the store as one. */
-    fun testAClearedPasswordIsForgotten() {
-        connectionSettings.addConnection(connection("a", username = "solr"))
-        connectionSettings.setPassword("a", "SolrRocks".toCharArray())
-        val editor = model
-        editor.reset()
+  /** Clearing is a change, and reaches the store as one. */
+  fun testAClearedPasswordIsForgotten() {
+    connectionSettings.addConnection(connection("a", username = "solr"))
+    connectionSettings.setPassword("a", "SolrRocks".toCharArray())
+    val editor = model
+    editor.reset()
 
-        editor.setPassword("a", null)
-        editor.apply()
+    editor.setPassword("a", null)
+    editor.apply()
 
-        assertNull(connectionSettings.getPassword("a"))
-    }
+    assertNull(connectionSettings.getPassword("a"))
+  }
 
-    /**
-     * A typed secret counts as a change even where it matches what is stored.
-     *
-     * Comparing them would mean reading the stored secret back, which puts it somewhere it need not
-     * be. Rewriting an identical password costs nothing; reading one to avoid that costs the property
-     * this class is careful about.
-     */
-    fun testATypedPasswordCountsAsAChange() {
-        connectionSettings.addConnection(connection("a", username = "solr"))
-        connectionSettings.setPassword("a", "SolrRocks".toCharArray())
-        val editor = model
-        editor.reset()
+  /**
+   * A typed secret counts as a change even where it matches what is stored.
+   *
+   * Comparing them would mean reading the stored secret back, which puts it somewhere it need not
+   * be. Rewriting an identical password costs nothing; reading one to avoid that costs the property
+   * this class is careful about.
+   */
+  fun testATypedPasswordCountsAsAChange() {
+    connectionSettings.addConnection(connection("a", username = "solr"))
+    connectionSettings.setPassword("a", "SolrRocks".toCharArray())
+    val editor = model
+    editor.reset()
 
-        editor.setPassword("a", "SolrRocks".toCharArray())
+    editor.setPassword("a", "SolrRocks".toCharArray())
 
-        assertTrue(editor.isModified())
-    }
+    assertTrue(editor.isModified())
+  }
 
-    /** Removing a connection forgets a secret typed for it, rather than writing it on apply. */
-    fun testRemovingAConnectionDropsASecretTypedForIt() {
-        val editor = model
-        editor.reset()
-        editor.add(connection("a", username = "solr"))
-        editor.setPassword("a", "SolrRocks".toCharArray())
+  /** Removing a connection forgets a secret typed for it, rather than writing it on apply. */
+  fun testRemovingAConnectionDropsASecretTypedForIt() {
+    val editor = model
+    editor.reset()
+    editor.add(connection("a", username = "solr"))
+    editor.setPassword("a", "SolrRocks".toCharArray())
 
-        editor.remove(0)
+    editor.remove(0)
 
-        assertFalse("nothing remains to write", editor.isModified())
-    }
+    assertFalse("nothing remains to write", editor.isModified())
+  }
 
-    // --- what it discards -------------------------------------------------------------------------
+  // --- what it discards -------------------------------------------------------------------------
 
-    fun testResetDiscardsUnappliedEdits() {
-        connectionSettings.addConnection(connection("a"))
-        val editor = model
-        editor.reset()
-        editor.add(connection("b"))
-        editor.setPassword("b", "secret".toCharArray())
+  fun testResetDiscardsUnappliedEdits() {
+    connectionSettings.addConnection(connection("a"))
+    val editor = model
+    editor.reset()
+    editor.add(connection("b"))
+    editor.setPassword("b", "secret".toCharArray())
 
-        editor.reset()
+    editor.reset()
 
-        assertEquals(listOf("a"), editor.connections.map { it.id })
-        assertFalse(editor.isModified())
-    }
+    assertEquals(listOf("a"), editor.connections.map { it.id })
+    assertFalse(editor.isModified())
+  }
 
-    // --- where queries open ---------------------------------------------------------------------------
+  // --- where queries open
+  // ---------------------------------------------------------------------------
 
-    fun testChoosingTheConsoleIsAChangeAndApplies() {
-        val editor = model
-        editor.reset()
+  fun testChoosingTheConsoleIsAChangeAndApplies() {
+    val editor = model
+    editor.reset()
 
-        editor.openQueriesIn = SolrQueryDestination.CONSOLE
+    editor.openQueriesIn = SolrQueryDestination.CONSOLE
 
-        assertTrue(editor.isModified())
-        editor.apply()
-        assertEquals(SolrQueryDestination.CONSOLE, connectionSettings.openQueriesIn)
-        assertFalse(editor.isModified())
-    }
+    assertTrue(editor.isModified())
+    editor.apply()
+    assertEquals(SolrQueryDestination.CONSOLE, connectionSettings.openQueriesIn)
+    assertFalse(editor.isModified())
+  }
 
-    fun testResetRestoresWhereQueriesOpen() {
-        connectionSettings.openQueriesIn = SolrQueryDestination.CONSOLE
-        val editor = model
-        editor.openQueriesIn = SolrQueryDestination.HTTP_CLIENT
+  fun testResetRestoresWhereQueriesOpen() {
+    connectionSettings.openQueriesIn = SolrQueryDestination.CONSOLE
+    val editor = model
+    editor.openQueriesIn = SolrQueryDestination.HTTP_CLIENT
 
-        editor.reset()
+    editor.reset()
 
-        assertEquals(SolrQueryDestination.CONSOLE, editor.openQueriesIn)
-        assertFalse(editor.isModified())
-    }
+    assertEquals(SolrQueryDestination.CONSOLE, editor.openQueriesIn)
+    assertFalse(editor.isModified())
+  }
 }

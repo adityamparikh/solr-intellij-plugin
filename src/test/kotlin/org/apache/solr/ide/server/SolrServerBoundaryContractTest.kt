@@ -14,8 +14,8 @@ import org.junit.Test
  * to forbid, and two of the five named did not exist — a hand-maintained list of what to forbid was
  * wrong on the day it was written and would have gone quietly wronger with every package added,
  * because a package missing from a denylist is a package the test permits. This plugin has already
- * paid for a hand-maintained copy of a list, twice, in the supported Solr lines that drifted in both
- * directions until a test compared them against what the build generated.
+ * paid for a hand-maintained copy of a list, twice, in the supported Solr lines that drifted in
+ * both directions until a test compared them against what the build generated.
  *
  * Inverted, the failure mode inverts with it: a new package that reaches for the server fails this
  * test until someone adds it to [ALLOWED_CONSUMERS] deliberately, in a diff a reviewer sees.
@@ -25,103 +25,115 @@ import org.junit.Test
  */
 class SolrServerBoundaryContractTest {
 
-    /**
-     * Package prefixes permitted to reach `org.apache.solr.ide.server`.
-     *
-     * The server surface itself, and — as the specification anticipates — the tool windows and
-     * actions that exist to talk to a server. Those live under `server` too, per the code
-     * organization's rule that `org.apache.solr.ide.server.*` *is* the live-server surface, which is
-     * why this list stays short rather than growing a tail of UI packages.
-     *
-     * The one exception is the gutter action that runs a query written in code. It cannot live under
-     * `server` because what decides *whether there is a query here* is the code recognizer, and it
-     * cannot be refused because the plan names it as the Code track's single sanctioned dependency
-     * on the Server track. What makes it safe is the same thing that makes the tool windows safe: it
-     * runs when a user asks, never while a file is being read.
-     *
-     * Adding to it is a deliberate act. Anything that would need adding because an editor feature
-     * wanted "just to check the live server" is the thing this test exists to stop.
-     */
-    private val allowedConsumers = listOf(
-        "org.apache.solr.ide.server",
-        // The gutter action that runs a query written in Java or Kotlin. The plan names this as the
-        // Code track's *one* dependency on the Server track, so it is sanctioned rather than
-        // discovered — and it is the narrowest package that can hold it: the line marker deciding
-        // where the icon goes stays in `code` and reaches no server, and only the click does.
-        //
-        // It is also not the editor path. Nothing here runs while a file is being read; it runs when
-        // a user presses something, which is the same rule every other server surface keeps. That
-        // distinction is what the boundary protects, and adding a package that ignored it -- an
-        // inspection or a completion reaching for a live server -- is what this list exists to stop.
-        "org.apache.solr.ide.code.run",
+  /**
+   * Package prefixes permitted to reach `org.apache.solr.ide.server`.
+   *
+   * The server surface itself, and — as the specification anticipates — the tool windows and
+   * actions that exist to talk to a server. Those live under `server` too, per the code
+   * organization's rule that `org.apache.solr.ide.server.*` *is* the live-server surface, which is
+   * why this list stays short rather than growing a tail of UI packages.
+   *
+   * The one exception is the gutter action that runs a query written in code. It cannot live under
+   * `server` because what decides *whether there is a query here* is the code recognizer, and it
+   * cannot be refused because the plan names it as the Code track's single sanctioned dependency on
+   * the Server track. What makes it safe is the same thing that makes the tool windows safe: it
+   * runs when a user asks, never while a file is being read.
+   *
+   * Adding to it is a deliberate act. Anything that would need adding because an editor feature
+   * wanted "just to check the live server" is the thing this test exists to stop.
+   */
+  private val allowedConsumers =
+    listOf(
+      "org.apache.solr.ide.server",
+      // The gutter action that runs a query written in Java or Kotlin. The plan names this as the
+      // Code track's *one* dependency on the Server track, so it is sanctioned rather than
+      // discovered — and it is the narrowest package that can hold it: the line marker deciding
+      // where the icon goes stays in `code` and reaches no server, and only the click does.
+      //
+      // It is also not the editor path. Nothing here runs while a file is being read; it runs when
+      // a user presses something, which is the same rule every other server surface keeps. That
+      // distinction is what the boundary protects, and adding a package that ignored it -- an
+      // inspection or a completion reaching for a live server -- is what this list exists to stop.
+      "org.apache.solr.ide.code.run",
     )
 
-    private val serverPackage = "org.apache.solr.ide.server"
+  private val serverPackage = "org.apache.solr.ide.server"
 
-    private fun sourceRoot(): File {
-        // Gradle runs tests from the project directory; the worktree layout puts the sources under
-        // it either way. Resolved rather than assumed so a failure names a missing directory instead
-        // of silently walking nothing and passing.
-        val root = File("src/main/kotlin")
-        assertTrue("expected Kotlin sources at ${root.absolutePath}", root.isDirectory)
-        return root
-    }
+  private fun sourceRoot(): File {
+    // Gradle runs tests from the project directory; the worktree layout puts the sources under
+    // it either way. Resolved rather than assumed so a failure names a missing directory instead
+    // of silently walking nothing and passing.
+    val root = File("src/main/kotlin")
+    assertTrue("expected Kotlin sources at ${root.absolutePath}", root.isDirectory)
+    return root
+  }
 
-    private fun packageOf(file: File): String =
-        file.readLines().firstOrNull { it.startsWith("package ") }?.removePrefix("package ")?.trim().orEmpty()
+  private fun packageOf(file: File): String =
+    file
+      .readLines()
+      .firstOrNull { it.startsWith("package ") }
+      ?.removePrefix("package ")
+      ?.trim()
+      .orEmpty()
 
-    /**
-     * Lines mentioning the server package, with comments and KDoc dropped.
-     *
-     * A doc comment may legitimately *name* the boundary — this plugin's prose does so constantly —
-     * and failing on a sentence about the rule would make the rule unstateable.
-     */
-    private fun serverReferencesIn(file: File): List<String> = file.readLines()
-        .map { it.trim() }
-        .filterNot { it.startsWith("*") || it.startsWith("//") || it.startsWith("/*") }
-        .filter { it.contains(serverPackage) }
+  /**
+   * Lines mentioning the server package, with comments and KDoc dropped.
+   *
+   * A doc comment may legitimately *name* the boundary — this plugin's prose does so constantly —
+   * and failing on a sentence about the rule would make the rule unstateable.
+   */
+  private fun serverReferencesIn(file: File): List<String> =
+    file
+      .readLines()
+      .map { it.trim() }
+      .filterNot { it.startsWith("*") || it.startsWith("//") || it.startsWith("/*") }
+      .filter { it.contains(serverPackage) }
 
-    @Test
-    fun `only the live-server surface reaches the live-server surface`() {
-        val trespassers = sourceRoot().walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .filterNot { file -> allowedConsumers.any { packageOf(file).startsWith(it) } }
-            .mapNotNull { file ->
-                serverReferencesIn(file).takeIf { it.isNotEmpty() }?.let { file.path to it }
-            }
-            .toList()
-
-        if (trespassers.isNotEmpty()) {
-            fail(
-                buildString {
-                    appendLine("Nothing on the editor path may reach a running server.")
-                    appendLine("These files import or name org.apache.solr.ide.server:")
-                    trespassers.forEach { (path, lines) ->
-                        appendLine("  $path")
-                        lines.forEach { appendLine("      $it") }
-                    }
-                    appendLine()
-                    append("If one of them genuinely exists to talk to a server, add its package to allowedConsumers.")
-                },
-            )
+  @Test
+  fun `only the live-server surface reaches the live-server surface`() {
+    val trespassers =
+      sourceRoot()
+        .walkTopDown()
+        .filter { it.isFile && it.extension == "kt" }
+        .filterNot { file -> allowedConsumers.any { packageOf(file).startsWith(it) } }
+        .mapNotNull { file ->
+          serverReferencesIn(file).takeIf { it.isNotEmpty() }?.let { file.path to it }
         }
-    }
+        .toList()
 
-    /**
-     * The test can actually see the sources it claims to check.
-     *
-     * Without this the suite above passes just as well against an empty directory, a wrong working
-     * directory, or a glob that matches nothing — a green tick carrying no information, which is the
-     * failure mode this plugin has hit four times and now checks for on purpose.
-     */
-    @Test
-    fun `the walk reaches the sources it claims to check`() {
-        val files = sourceRoot().walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-
-        assertTrue("expected to find Kotlin sources, found ${files.size}", files.size > 50)
-        assertTrue(
-            "expected to find the server package itself among them",
-            files.any { packageOf(it).startsWith(serverPackage) },
-        )
+    if (trespassers.isNotEmpty()) {
+      fail(
+        buildString {
+          appendLine("Nothing on the editor path may reach a running server.")
+          appendLine("These files import or name org.apache.solr.ide.server:")
+          trespassers.forEach { (path, lines) ->
+            appendLine("  $path")
+            lines.forEach { appendLine("      $it") }
+          }
+          appendLine()
+          append(
+            "If one of them genuinely exists to talk to a server, add its package to allowedConsumers."
+          )
+        }
+      )
     }
+  }
+
+  /**
+   * The test can actually see the sources it claims to check.
+   *
+   * Without this the suite above passes just as well against an empty directory, a wrong working
+   * directory, or a glob that matches nothing — a green tick carrying no information, which is the
+   * failure mode this plugin has hit four times and now checks for on purpose.
+   */
+  @Test
+  fun `the walk reaches the sources it claims to check`() {
+    val files = sourceRoot().walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+
+    assertTrue("expected to find Kotlin sources, found ${files.size}", files.size > 50)
+    assertTrue(
+      "expected to find the server package itself among them",
+      files.any { packageOf(it).startsWith(serverPackage) },
+    )
+  }
 }

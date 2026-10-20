@@ -26,7 +26,7 @@ field ends up tokenized despite naming a whole-value tokenizer
 > plugin only ever reads the chain's *declaration*, never invokes Lucene's analysis machinery.
 
 Modeled as `SolrAnalyzerChain`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:37`), holding `charFilters`,
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:39`), holding `charFilters`,
 `tokenizer` and `filters` in declaration order. `SolrMatchAnalysis`
 (`src/main/kotlin/org/apache/solr/ide/model/schema/SolrMatchAnalysis.kt:21`) is the plugin's one
 consumer that derives meaning from it: it classifies **only the index-time chain**, because that is
@@ -38,9 +38,9 @@ than reading them from the generated [factory](#factory) catalog — see [factor
 An analyzer chain component that transforms raw text before [tokenizer](#tokenizer)ization —
 `HTMLStripCharFilterFactory`, for instance. Declared with `<charFilter class="...">` inside an
 `<analyzer>`. In `SolrAnalyzerChain`, char filters run first, in `charFilters`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:32`). `SolrMatchAnalysis`
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:33`). `SolrMatchAnalysis`
 treats most known char filters as neutral to what a field can match (`NEUTRAL_CHAR_FILTERS`,
-`SolrMatchAnalysis.kt:231`) — an unrecognized one drops the hint's confidence rather than guessing.
+`SolrMatchAnalysis.kt:238`) — an unrecognized one drops the hint's confidence rather than guessing.
 
 ### collection
 
@@ -78,7 +78,7 @@ may hold several configsets, and they are never merged into one model.
 
 A schema directive, `<copyField source="..." dest="..."/>`, that duplicates one field's value into
 another at index time — commonly used to build a catch-all search field. Modeled as `SolrCopyField`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:141`), with an optional
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:147`), with an optional
 `maxChars` truncation limit. The demo configset's `manufacturer` → `text` copyField is a *deliberate*
 dangling reference (`demo/solr/conf/managed-schema.xml:91`), left broken on purpose to exercise
 `SolrDanglingCopyFieldInspection`.
@@ -107,19 +107,19 @@ chain](#analyzer-chain) entry for the ordering-sensitivity pattern this shares c
 
 Its default is one of the two properties in `SolrFieldProperties` that depends on the *field type's
 class* rather than a flat value (`typeDefault = SolrTypeDefaultRule.DOC_VALUES`,
-`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:235`) — `string` fields
+`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:242`) — `string` fields
 default to having them, most others do not, and the resolution needs the [schema
 version](#schema-version) too. `SolrPropertyOrigin.FIELD_TYPE_DEFAULT` is the origin the plugin
 reports when it resolves this from the type's class rather than from an explicit attribute
-(`SolrFieldProperties.kt:38`).
+(`SolrFieldProperties.kt:37`).
 
 ### dynamic field
 
 A schema pattern, `<dynamicField name="*_t" type="text_general" .../>`, that supplies a field
 declaration for any field name matching its glob rather than one exact name. Solr's globs are
 deliberately impoverished — a single leading or trailing `*`, or the bare `*`, never a general regex
-(`SolrGlob.matches`, `src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:184`).
-Modeled as `SolrDynamicField` (`SolrSchemaTypes.kt:110`), whose `specificity` (count of non-`*`
+(`SolrGlob.matches`, `src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:190`).
+Modeled as `SolrDynamicField` (`SolrSchemaTypes.kt:115`), whose `specificity` (count of non-`*`
 characters) is what Solr uses to pick a winner when several patterns match the same name — the
 longest literal part wins. The demo's `*_t` pattern (`demo/solr/conf/managed-schema.xml:84`) is the
 one declaration in the demo that is a pattern rather than a literal name, and the reason
@@ -153,12 +153,12 @@ stayed stable across majors, while the surrounding catalog has not (`SolrMatchAn
 
 A single named, typed value slot in a schema, declared `<field name="sku" type="string"
 indexed="true" stored="true"/>`. Modeled as `SolrField`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:92`), whose boolean properties
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:97`), whose boolean properties
 (`indexed`, `stored`, `docValues`, `multiValued`, `required`) are nullable **on purpose**: Solr
 treats an *unset* attribute differently from an explicit `false`, since unset inherits from the
 [field type](#field-type) — collapsing the two would silently invent a value the file never stated.
 `SolrFieldProperties.ALL`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:215`) is the full table of
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:216`) is the full table of
 ~24 properties a field or field type may carry, each with its summary, valid values and default rule.
 
 ### field type
@@ -166,7 +166,7 @@ treats an *unset* attribute differently from an explicit `false`, since unset in
 A schema declaration, `<fieldType name="text_general" class="solr.TextField">`, naming the Java class
 that implements a family of fields' behavior and, for analyzed types, their [analyzer
 chain](#analyzer-chain)(s). Modeled as `SolrFieldType`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:57`); its `isAnalyzed`
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:61`); its `isAnalyzed`
 property distinguishes types with no chain at all — `StrField` and the numeric/date types, which
 match whole values only — from analyzed text types.
 
@@ -183,10 +183,10 @@ An analyzer chain component (Solr's word for what Lucene calls a `TokenFilter`) 
 stream of terms a [tokenizer](#tokenizer) already produced — folding case, stripping stopwords,
 stemming, generating n-grams. Declared `<filter class="solr.LowerCaseFilterFactory"/>` inside an
 `<analyzer>`, and modeled as the `filters` list on `SolrAnalyzerChain`, applied in declaration order
-after the tokenizer (`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:40`,
+after the tokenizer (`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaTypes.kt:42`,
 `components`). `SolrMatchAnalysis` groups known filters into sets it can reason about — case-folding
 filters, partial-match (n-gram) filters, and filters that split one term into several
-(`TOKEN_SPLITTING_FILTERS`, `SolrMatchAnalysis.kt:195`) — because a splitting filter placed after a
+(`TOKEN_SPLITTING_FILTERS`, `SolrMatchAnalysis.kt:199`) — because a splitting filter placed after a
 `KeywordTokenizerFactory` is the one ordering defect this codebase's `SolrAnalyzerChainOrderInspection`
 exists to catch: it undoes the tokenizer's whole-value guarantee. An unrecognized filter class drops
 the [inlay hint](#inlay-hint)'s confidence rather than being assumed harmless.
@@ -195,7 +195,7 @@ the [inlay hint](#inlay-hint)'s confidence rather than being assumed harmless.
 
 A field property controlling whether the field can be searched or sorted on at all
 (`SolrFieldProperties.ALL`, entry `"indexed"`,
-`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:216`). Defaults to `true`
+`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:218`). Defaults to `true`
 when unset. `SolrNonIndexedRelevanceFieldInspection` uses this: a field referenced in a relevance
 parameter (`qf`, `pf`) that resolves to `indexed="false"` is a request Solr will refuse.
 
@@ -226,7 +226,7 @@ extension (`<fileType name="XML" fileNames="managed-schema;managed-schema.xml"/>
 ### multiValued
 
 A field property controlling whether one document may hold several values for the field
-(`SolrFieldProperties.ALL`, entry `"multiValued"`, `SolrFieldProperties.kt:241`). Its default is
+(`SolrFieldProperties.ALL`, entry `"multiValued"`, `SolrFieldProperties.kt:250`). Its default is
 `true` only for [schema version](#schema-version)s below `1.1` — one of the properties whose default
 is conditional on the declared schema version (`defaultTrueWithin = SolrVersionRange(below = 1.1f)`),
 otherwise `false`.
@@ -235,11 +235,11 @@ otherwise `false`.
 
 A field property discarding length-normalization and index-time boost data to save memory, at the
 cost of short and long field values scoring identically (`SolrFieldProperties.ALL`, entry
-`"omitNorms"`, `SolrFieldProperties.kt:257`). Its default depends on the [field type](#field-type)'s
+`"omitNorms"`, `SolrFieldProperties.kt:273`). Its default depends on the [field type](#field-type)'s
 class (`typeDefault = SolrTypeDefaultRule.OMIT_NORMS`) — `true` for primitive types like `StrField`,
 `false` for `TextField` — which is exactly the kind of question "no external documentation can
 answer for the field in front of the reader", per the KDoc on
-`SolrPropertyOrigin.FIELD_TYPE_DEFAULT` (`SolrFieldProperties.kt:38`).
+`SolrPropertyOrigin.FIELD_TYPE_DEFAULT` (`SolrFieldProperties.kt:37`).
 
 ### request handler
 
@@ -258,10 +258,10 @@ and [Find Usages](#find-usages) machinery exists to make clickable.
 A named value a [request handler](#request-handler) (or query) accepts — `qf`, `df`, `rows`,
 `facet.range.other`. Generated at build time from the `public static final String` constants Solr
 declares them as, into `SolrParameterCatalog`
-(`src/main/kotlin/org/apache/solr/ide/model/vocabulary/SolrParameterCatalog.kt:44`), which is
+(`src/main/kotlin/org/apache/solr/ide/model/vocabulary/SolrParameterCatalog.kt:46`), which is
 explicitly **a completion and documentation source, not a membership test** — a `solrconfig.xml` may
 name parameters a custom `SearchComponent` reads that no generator will ever see, so an unrecognized
-name is never treated as wrong on its own (`SolrParameterCatalog.kt:37`). `SolrConfigParameters`
+name is never treated as wrong on its own (`SolrParameterCatalog.kt:39`). `SolrConfigParameters`
 (`src/main/kotlin/org/apache/solr/ide/configset/solrconfig/SolrConfigParameters.kt:16`) decides which
 parameters carry field names (`qf`, `fl`, `pf`, and similar) and maps their occurrences back onto PSI
 positions, shared by the unknown-field inspection and the reference provider so both annotate exactly
@@ -274,7 +274,7 @@ The `version` attribute on a schema's root element (`<schema name="products" ver
 several field properties (`docValues`, `uninvertible`, `multiValued`, `useDocValuesAsStored`) default
 to when a field or type does not declare them explicitly — Solr's mechanism for changing its defaults
 without breaking schemas already deployed. Modeled as `SolrSchemaVersion`
-(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaVersion.kt:23`), which assumes `1.0`
+(`src/main/kotlin/org/apache/solr/ide/model/schema/SolrSchemaVersion.kt:22`), which assumes `1.0`
 when the schema declares nothing at all, matching `IndexSchema`'s own fallback — assuming the newest
 version instead would silently report modern defaults for a file Solr is actually running under 2008
 semantics (`SolrSchemaVersion.kt:39`).
@@ -304,7 +304,7 @@ privileged (`SolrConfigsetFacts.kt:10`).
 
 Apache's reference Java client for Solr (`solr-solrj` artifact). This plugin uses SolrJ's presence,
 not its API: `SolrProjectDetector`
-(`src/main/kotlin/org/apache/solr/ide/configset/activation/SolrProjectDetector.kt:114`) checks
+(`src/main/kotlin/org/apache/solr/ide/configset/activation/SolrProjectDetector.kt:120`) checks
 whether a project depends on `solr-solrj` — transitively present under every wrapper client (Spring
 Data Solr, Camel, Quarkus) — as the fact that gates whether the plugin activates at all. Matched **by
 artifact id, never by version**, because that is a fact about the dependency graph rather than an
@@ -314,11 +314,11 @@ inference from a directory listing.
 
 A field property controlling whether the field's original value is kept and can be returned in
 search results (`SolrFieldProperties.ALL`, entry `"stored"`,
-`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:223`). Defaults to `true`
+`src/main/kotlin/org/apache/solr/ide/model/schema/SolrFieldProperties.kt:227`). Defaults to `true`
 when unset. Independent of [indexed](#indexed): a field can be searchable without being retrievable,
 or retrievable without being searchable, and the two properties' KDoc spells out that a field with
 neither has [docValues](#docvalues) as its only way back into a result, if it has them at all
-(`SolrFieldProperties.kt:224-230`). The demo's `name_prefix` field is `stored="false"`
+(`SolrFieldProperties.kt:228-237`). The demo's `name_prefix` field is `stored="false"`
 (`demo/solr/conf/managed-schema.xml:69`) — it exists purely to support prefix matching, not to be
 displayed.
 
@@ -335,7 +335,7 @@ chain](#analyzer-chain) for how a downstream [filter](#filter) can undo a tokeni
 
 A field property controlling whether Solr may build an in-memory field cache to sort or facet on a
 field that has no [docValues](#docvalues), at the cost of memory on a large index
-(`SolrFieldProperties.ALL`, entry `"uninvertible"`, `SolrFieldProperties.kt:308`). Its default flips
+(`SolrFieldProperties.ALL`, entry `"uninvertible"`, `SolrFieldProperties.kt:343`). Its default flips
 at [schema version](#schema-version) `1.7`: `true` below it, `false` from it
 (`defaultTrueWithin = SolrVersionRange(below = 1.7f)`) — see [schema version](#schema-version) for
 why that flip matters and why the demo pins its schema below the threshold on purpose.
@@ -603,7 +603,7 @@ that list is "the difference between an editor that helps and one that complains
 
 A platform requirement that any code reading PSI or the index run inside a read lock, so it cannot
 observe a half-mutated state concurrently with a write. `SolrProjectDetector.hasSolrClientLibrary`
-(`src/main/kotlin/org/apache/solr/ide/configset/activation/SolrProjectDetector.kt:78`) is this
+(`src/main/kotlin/org/apache/solr/ide/configset/activation/SolrProjectDetector.kt:84`) is this
 repository's one explicit use, via `ReadAction.computeBlocking`. It is also the plugin's sole current
 source of a platform *deprecation* warning caught by `verifyPlugin` — one
 `ReadAction.compute(ThrowableComputable)` usage
@@ -651,7 +651,7 @@ The platform's typed visitor base class for walking XML [PSI](#psi) — `visitXm
 `buildVisitor` around. The shape is identical across all eleven: reach the model, bail to
 `PsiElementVisitor.EMPTY_VISITOR` if it is null, then `return object : XmlElementVisitor() { override
 fun visitXmlTag(tag: XmlTag) { ... } }`
-(`src/main/kotlin/org/apache/solr/ide/configset/schema/inspection/SolrUnknownFieldTypeInspection.kt:39-40`,
+(`src/main/kotlin/org/apache/solr/ide/configset/schema/inspection/SolrUnknownFieldTypeInspection.kt:41-42`,
 and identically in `SolrDanglingCopyFieldInspection`, `SolrUnknownAttributeInspection`,
 `SolrAnalyzerChainOrderInspection`, `SolrUnusedFieldTypeInspection`,
 `SolrInvalidAttributeValueInspection`, and the four `solrconfig` inspections).
@@ -692,7 +692,7 @@ This repository's `buildSrc` holds `GenerateSolrCatalogTask`
 (`buildSrc/src/main/kotlin/org/apache/solr/ide/build/GenerateSolrCatalogTask.kt`), which the root
 `build.gradle.kts` wires in but does not implement — the task's own KDoc explicitly says the "how" of
 bytecode extraction lives there, and the root script "declares only the policy" of which Solr lines
-are supported (`build.gradle.kts:230-232`).
+are supported (`build.gradle.kts:237-239`).
 
 ### data class
 
@@ -714,7 +714,7 @@ The Kotlin documentation generator this build runs as one of its two mandatory g
 
 > **In Java terms.** Kotlin's Javadoc — it reads [KDoc](#kdoc) comments and renders HTML API docs.
 
-Configured in `build.gradle.kts:187-207` with `reportUndocumented = true` and `failOnWarning = true`:
+Configured in `build.gradle.kts:194-214` with `reportUndocumented = true` and `failOnWarning = true`:
 any public class, function or property in `src/main/kotlin` without KDoc fails `./gradlew build`,
 naming the declaration (`docs/how-to/testing-and-the-build-gates.md:244-249`). Tests are exempt —
 only the `main` source set is gated. `docs/Module.md` supplies the module and package overview pages
@@ -736,7 +736,7 @@ The Kotlin code-coverage plugin (`kotlinx.kover`) this build runs as its second 
 
 > **In Java terms.** Kotlin's JaCoCo — in fact it uses JaCoCo's engine under the hood.
 
-Configured in `build.gradle.kts:147-183` to enforce an **80% line floor** via `koverVerify`, bound to
+Configured in `build.gradle.kts:150-188` to enforce an **80% line floor** via `koverVerify`, bound to
 `check`. The floor sits deliberately below actual project coverage: it is a backstop against a sharp
 regression, not a target, since SonarCloud's new-code gate is what is meant to catch gradual erosion
 on the lines a given PR touches (`docs/how-to/testing-and-the-build-gates.md:278-284`). `SolrBundle`
@@ -747,7 +747,7 @@ is excluded from the report as thin resource-bundle plumbing with no branches of
 A Kotlin class (or `sealed interface`) whose subtypes are all known at compile time within the same
 module, letting a `when` expression over it be exhaustive with no `else` branch required. Used
 sparingly in this codebase — `SolrSchemaDocumentationProvider`'s private `Target` type
-(`src/main/kotlin/org/apache/solr/ide/configset/schema/documentation/SolrSchemaDocumentationProvider.kt:382`)
+(`src/main/kotlin/org/apache/solr/ide/configset/schema/documentation/SolrSchemaDocumentationProvider.kt:413`)
 is the one example, modeling the closed set of things a documentation-popup caret can land on.
 
 > **In Java terms.** The direct ancestor of Java's `sealed` interfaces/classes (JEP 409) combined

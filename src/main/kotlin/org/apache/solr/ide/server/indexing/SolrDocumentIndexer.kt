@@ -7,7 +7,6 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
-import org.apache.solr.ide.server.transport.SolrCredential
 import org.apache.solr.ide.server.transport.SolrHttpTransport
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -24,20 +23,20 @@ import org.apache.solr.ide.server.transport.SolrResponse
  */
 enum class SolrCommitMode(val parameter: String?, val label: String) {
 
-    /**
-     * Findable shortly, without forcing a commit.
-     *
-     * The default, and deliberately so. A hard commit on a shared server is somebody else's latency
-     * spike and is the wrong thing to make easiest; three equal options in front of someone
-     * indexing one test document is a quiz rather than a choice.
-     */
-    WITHIN("commitWithin=1000", "findable within a second"),
+  /**
+   * Findable shortly, without forcing a commit.
+   *
+   * The default, and deliberately so. A hard commit on a shared server is somebody else's latency
+   * spike and is the wrong thing to make easiest; three equal options in front of someone indexing
+   * one test document is a quiz rather than a choice.
+   */
+  WITHIN("commitWithin=1000", "findable within a second"),
 
-    /** Findable immediately, at the cost of a commit the whole server pays for. */
-    IMMEDIATE("commit=true", "findable immediately, forcing a commit"),
+  /** Findable immediately, at the cost of a commit the whole server pays for. */
+  IMMEDIATE("commit=true", "findable immediately, forcing a commit"),
 
-    /** Sent and left to the server's own commit policy. */
-    NONE(null, "left to the server's commit policy"),
+  /** Sent and left to the server's own commit policy. */
+  NONE(null, "left to the server's commit policy"),
 }
 
 /**
@@ -54,64 +53,64 @@ enum class SolrCommitMode(val parameter: String?, val label: String) {
 @Service(Service.Level.PROJECT)
 class SolrDocumentIndexer(private val project: Project) {
 
+  /**
+   * Indexes [document] into [collection].
+   *
+   * @param connection the server to write to
+   * @param collection the collection to index into
+   * @param document the document as JSON — one object, or an array of them
+   * @param commit when the document should become findable
+   * @return what Solr answered, which is not on its own proof the document is findable
+   */
+  suspend fun index(
+    connection: SolrConnection,
+    collection: String,
+    document: String,
+    commit: SolrCommitMode = SolrCommitMode.WITHIN,
+  ): SolrResponse<Unit> {
+    val query = commit.parameter?.let { "?$it" }.orEmpty()
+    return SolrHttpTransport.getInstance(project)
+      .post(
+        connection.baseUrl,
+        "/${encode(collection)}/update$query",
+        // Wrapped where it is not already a list. Solr's update handler takes either, and a
+        // user editing a generated document should not have to know which.
+        asDocumentList(document).toByteArray(),
+        SolrHttpTransport.JSON,
+        SolrConnectionSettings.getInstance(project).credentialFor(connection),
+      )
+      .map {}
+  }
+
+  /**
+   * [document] as something the update handler will take.
+   *
+   * Reachable so the wrapping can be checked without a server: a document wrapped twice is rejected
+   * with a parse error that reads as the user's mistake.
+   *
+   * @param document a JSON object or array
+   * @return an array, whichever arrived
+   */
+  internal fun asDocumentList(document: String): String {
+    val trimmed = document.trim()
+    return if (trimmed.startsWith("[")) trimmed else "[$trimmed]"
+  }
+
+  // Composed by `SolrCredential.of` rather than decided here: which of the three cases a
+  // connection is in is one rule, and this was the second place spelling it out. The two agreed on
+  // the obvious halves and diverged on the ones that matter -- an empty username, and an empty
+  // stored password, which `PasswordSafe` returns for some cleared entries and which reaches a
+  // server as the same wrong credential a null would.
+  private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
+
+  /** Service lookup. */
+  companion object {
     /**
-     * Indexes [document] into [collection].
+     * The indexer for [project].
      *
-     * @param connection the server to write to
-     * @param collection the collection to index into
-     * @param document the document as JSON — one object, or an array of them
-     * @param commit when the document should become findable
-     * @return what Solr answered, which is not on its own proof the document is findable
+     * @param project the project whose connections it writes through
+     * @return the project-level service
      */
-    suspend fun index(
-        connection: SolrConnection,
-        collection: String,
-        document: String,
-        commit: SolrCommitMode = SolrCommitMode.WITHIN,
-    ): SolrResponse<Unit> {
-        val query = commit.parameter?.let { "?$it" }.orEmpty()
-        return SolrHttpTransport.getInstance(project)
-            .post(
-                connection.baseUrl,
-                "/${encode(collection)}/update$query",
-                // Wrapped where it is not already a list. Solr's update handler takes either, and a
-                // user editing a generated document should not have to know which.
-                asDocumentList(document).toByteArray(),
-                SolrHttpTransport.JSON,
-                SolrConnectionSettings.getInstance(project).credentialFor(connection),
-            )
-            .map { }
-    }
-
-    /**
-     * [document] as something the update handler will take.
-     *
-     * Reachable so the wrapping can be checked without a server: a document wrapped twice is
-     * rejected with a parse error that reads as the user's mistake.
-     *
-     * @param document a JSON object or array
-     * @return an array, whichever arrived
-     */
-    internal fun asDocumentList(document: String): String {
-        val trimmed = document.trim()
-        return if (trimmed.startsWith("[")) trimmed else "[$trimmed]"
-    }
-
-    // Composed by `SolrCredential.of` rather than decided here: which of the three cases a
-    // connection is in is one rule, and this was the second place spelling it out. The two agreed on
-    // the obvious halves and diverged on the ones that matter -- an empty username, and an empty
-    // stored password, which `PasswordSafe` returns for some cleared entries and which reaches a
-    // server as the same wrong credential a null would.
-    private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
-
-    /** Service lookup. */
-    companion object {
-        /**
-         * The indexer for [project].
-         *
-         * @param project the project whose connections it writes through
-         * @return the project-level service
-         */
-        fun getInstance(project: Project): SolrDocumentIndexer = project.service()
-    }
+    fun getInstance(project: Project): SolrDocumentIndexer = project.service()
+  }
 }
