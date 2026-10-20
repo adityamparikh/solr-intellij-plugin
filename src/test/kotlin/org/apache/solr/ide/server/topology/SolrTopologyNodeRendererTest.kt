@@ -79,6 +79,46 @@ class SolrTopologyNodeRendererTest : BasePlatformTestCase() {
         assertNull(renderer.toolTipText)
     }
 
+    private fun shard(health: SolrHealth?, range: String?) = SolrTopologyNode(
+        label = "shard1",
+        detail = "active",
+        kind = SolrTopologyNodeKind.SHARD,
+        health = health,
+        range = range,
+    )
+
+    /** The hash range is not in the row, and is on hover beside the health. */
+    fun testAShardsHashRangeIsOnHoverNotInTheRow() {
+        render(shard(SolrHealth.GREEN, "80000000-7fffffff"))
+
+        assertFalse(text(), text().contains("80000000"))
+        assertTrue(text(), text().contains("active"))
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("GREEN"))
+    }
+
+    /** A shard on an older line reports a range and no health, and the range alone is the hover. */
+    fun testARangeWithNoHealthIsStillOnHover() {
+        render(shard(null, "80000000-7fffffff"))
+
+        assertNull(renderer.icon)
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+    }
+
+    /**
+     * The range is the server's text, and it reaches the tooltip as text, not as markup.
+     *
+     * The tooltip is HTML so its two lines can stack, and Swing renders HTML it is handed — an
+     * `<img>` included, which would fetch whatever URL a misbehaving server named.
+     */
+    fun testMarkupInARangeIsShownAsText() {
+        render(shard(SolrHealth.GREEN, "<img src='http://example.invalid/x'>"))
+
+        val tooltip = renderer.toolTipText.orEmpty()
+        assertFalse(tooltip, tooltip.contains("<img"))
+        assertTrue(tooltip, tooltip.contains("&lt;img"))
+    }
+
     fun testEachHealthIsDrawnInItsOwnColour() {
         val colours = SolrHealth.entries.map {
             render(books(it))

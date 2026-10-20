@@ -54,6 +54,9 @@ object SolrQueryResultRenderer {
         return when {
             found == null -> SolrBundle.message("query.summary.unknownTotal", shown)
             found == 0L -> SolrBundle.message("query.summary.none", time ?: 0)
+            // `rows=0` — how a facet or a count is asked for — or a page past the last match. The
+            // window phrasing would read "showing 1 to 0".
+            shown == 0 -> SolrBundle.message("query.summary.noneReturned", found, time ?: 0)
             found.toInt() == shown && result.start == 0L ->
                 SolrBundle.message("query.summary.all", found, time ?: 0)
             else -> SolrBundle.message(

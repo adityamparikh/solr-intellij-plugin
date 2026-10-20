@@ -45,11 +45,10 @@ stage can break it.
 
 **Second — it gives the talk an ending.** Field names checked inside Java, and the gutter
 action that runs a query. This closes the story the talk opens with. The gutter action
-needs the query console, so it arrives with the server work even though the rest of this
-group does not.
+needs a running Solr and a connection to it; the field checks need neither.
 
 **Third — the most impressive and the most fragile.** The server connection, collections
-browser, query console and the repository-versus-server comparison.
+browser, queries and the repository-versus-server comparison.
 
 **Last — nice, not memorable.** Completion and quick documentation, which need the
 generated factory catalogue.
@@ -501,6 +500,11 @@ configuration files now behave like a language rather than like text.
 
 ### Step 35. Connect to a server
 
+**Not built as written.** Offering a URL found in the application's configuration is
+Spring Boot support, which was taken out of 0.2.0 and comes in a later release. Until then,
+add the connection by hand — `http://localhost:8983/solr` — say that discovery is next, and
+skip to Step 36. The rest of this step is the demo once it ships.
+
 Open the connections list. Point out that `http://localhost:8983/solr` is already
 offered, and that nobody typed it.
 
@@ -523,15 +527,26 @@ connection changes with it.
 Show collections, and the fields the server actually has. Note that this list is not the
 same as the schema file's list, and that difference is the next demo.
 
+Then right-click the `products` collection: *Query* and *Explain Scoring*. Right-click a
+field whose values can be counted — `category`, which has doc values — and choose *Find
+Documents with* it and *Count Values of* it. A tokenized text field such as `name` offers
+only the first, because counting it would count its words. Each opens a ready-to-run request
+in a scratch file, already addressed to this server — which is how the next two steps begin.
+
 ### Step 37. Run a query
 
-In the console, start typing a field name and let it complete from the live schema. Run
-it. Results render as a table rather than as raw JSON.
+Open `demo/queries.http` at *The query ProductSearch.java sends, as a JSON body*. Put the
+caret inside its `fields` array, start a new name and press <kbd>Ctrl-Space</kbd>: it
+completes from the `products` collection's live schema, each entry labelled with the server
+that answered — no configset involved. Run the request. A readable summary of the answer sits
+above the raw JSON: how many matched, how many came back, and the rows as a table.
 
 ### Step 38. Show why a document scored
 
-Expand the scoring explanation as a tree. Say that this is normally an unreadable nested
-blob, and that relevance debugging is most of the job.
+Right-click the collection again and choose *Explain Scoring*, then run it. Each document's
+scoring explanation is shown under the summary, as Solr's own indented text. Say that this is
+normally an unreadable nested blob, and that relevance debugging is most of the job. An
+expandable tree is planned and not built — do not promise one on stage.
 
 ### Step 39. The drift demo
 
@@ -583,8 +598,9 @@ Point out that the query string is syntax-highlighted as a query — field, oper
 
 ### Step 46. Run it from where it lives
 
-Click the gutter icon beside the query. It runs in the console against the selected
-connection. You never left the file.
+Click the gutter icon beside the query. It asks which of the server's collections to run
+against, runs the query on the selected connection, and shows the answer in a popup beside the
+line. You never left the file.
 
 ### Step 47. Volunteer the limitation
 

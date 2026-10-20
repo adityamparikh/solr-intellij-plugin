@@ -18,6 +18,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.PopupHandler
@@ -571,7 +572,8 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
 /**
  * One row of the topology tree: the server's name for a thing, and what it says about it.
  *
- * A row Solr reported a health for leads with a coloured dot, and names the health on hover.
+ * A row Solr reported a health for leads with a coloured dot, and names the health on hover. A
+ * shard's hash range is on hover too, beside its health, rather than in the row.
  */
 internal class SolrTopologyNodeRenderer : ColoredTreeCellRenderer() {
     override fun customizeCellRenderer(
@@ -588,10 +590,15 @@ internal class SolrTopologyNodeRenderer : ColoredTreeCellRenderer() {
         icon = null
         toolTipText = null
         val node = (value as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode ?: return
-        node.health?.let {
-            icon = SolrHealthPresentation.iconOf(it)
-            toolTipText = SolrHealthPresentation.tooltipOf(it)
-        }
+        node.health?.let { icon = SolrHealthPresentation.iconOf(it) }
+        // Escaped line by line, because the lines are joined as HTML and the range is the server's
+        // own text: a server that answered with markup in it would otherwise have Swing render it,
+        // remote images included.
+        val hover = listOfNotNull(
+            node.health?.let(SolrHealthPresentation::tooltipOf),
+            node.range?.let { SolrBundle.message("collections.shard.range.tooltip", it) },
+        ).map(StringUtil::escapeXmlEntities)
+        if (hover.isNotEmpty()) toolTipText = hover.joinToString("<br>", "<html>", "</html>")
         append(node.label)
         node.detail?.let { append("  $it", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
     }
