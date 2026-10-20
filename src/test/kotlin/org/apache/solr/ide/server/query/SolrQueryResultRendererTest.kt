@@ -82,6 +82,34 @@ class SolrQueryResultRendererTest : SolrConfigsetTestCase() {
         assertFalse("an empty table is noise", rendered.contains("---"))
     }
 
+    /**
+     * Matches with none returned says so, rather than "showing 1 to 0".
+     *
+     * `rows=0` is how a facet or a count is asked for — *Count Values of* sends it — so this is an
+     * ordinary answer, and the window phrasing turned it into an empty range. Found in the
+     * 2026-10-20 sandbox pass.
+     */
+    fun testMatchesWithNoneReturnedSaysSo() {
+        val rendered = renderOfJson(
+            """{"responseHeader":{"status":0,"QTime":45},"response":{"numFound":10,"start":0,"docs":[]}}""",
+        )
+
+        assertTrue(rendered, rendered.lines().first().contains("10 documents matched"))
+        assertTrue(rendered, rendered.lines().first().contains("none returned"))
+        assertFalse(rendered, rendered.contains("showing"))
+        assertFalse("an empty table is noise", rendered.contains("---"))
+    }
+
+    /** Paging past the last match is the same answer: matches exist, and this page holds none. */
+    fun testAPagePastTheEndSaysNoneReturned() {
+        val rendered = renderOfJson(
+            """{"responseHeader":{"status":0,"QTime":3},"response":{"numFound":10,"start":40,"docs":[]}}""",
+        )
+
+        assertTrue(rendered, rendered.lines().first().contains("none returned"))
+        assertFalse(rendered, rendered.contains("showing 41 to 40"))
+    }
+
     // --- the table --------------------------------------------------------------------------------
 
     fun testTheTableCarriesAHeaderAndARowPerDocument() {
