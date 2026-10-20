@@ -105,6 +105,20 @@ class SolrTopologyNodeRendererTest : BasePlatformTestCase() {
         assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
     }
 
+    /**
+     * The range is the server's text, and it reaches the tooltip as text, not as markup.
+     *
+     * The tooltip is HTML so its two lines can stack, and Swing renders HTML it is handed — an
+     * `<img>` included, which would fetch whatever URL a misbehaving server named.
+     */
+    fun testMarkupInARangeIsShownAsText() {
+        render(shard(SolrHealth.GREEN, "<img src='http://example.invalid/x'>"))
+
+        val tooltip = renderer.toolTipText.orEmpty()
+        assertFalse(tooltip, tooltip.contains("<img"))
+        assertTrue(tooltip, tooltip.contains("&lt;img"))
+    }
+
     fun testEachHealthIsDrawnInItsOwnColour() {
         val colours = SolrHealth.entries.map {
             render(books(it))
