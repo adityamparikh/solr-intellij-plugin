@@ -621,11 +621,14 @@ documents something that looks like a bug.
 
 ### 23. The collections tree — `23-collections-topology.png`
 
-**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1.
+**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1. **Due a reshoot**: the shard row in it still
+shows its hash range, `80000000-7fffffff`, which has since moved to the row's tooltip. Slide 46 of
+the deck embeds this file, so the reshoot updates both.
 
 **Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
 shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
-Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip —
+Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip,
+and so is a shard's hash range —
 and the stripe button on the right carries the tool window's own icon, the plugin's sunburst.
 
 **A standalone capture would show a different vocabulary and is a separate image**, if anyone wants

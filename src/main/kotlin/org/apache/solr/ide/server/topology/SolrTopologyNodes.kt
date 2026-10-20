@@ -72,6 +72,10 @@ enum class SolrTopologyNodeKind {
  * @property field what the index says about the field a [SolrTopologyNodeKind.FIELD] row stands for,
  *   or null on every other row. Carried whole because what can be asked of a field — searched for,
  *   counted — depends on its flags, which the row's [detail] does not show
+ * @property range the hash range a [SolrTopologyNodeKind.SHARD] row's documents are routed by, such
+ *   as `80000000-7fffffff`, or null on every other row and on an implicitly routed shard. Shown on
+ *   hover rather than in [detail]: two eight-digit hex numbers nobody reads at a glance and most
+ *   readers never need, and on a single-shard collection the whole ring, which says nothing
  */
 data class SolrTopologyNode(
     val label: String,
@@ -81,6 +85,7 @@ data class SolrTopologyNode(
     val collection: String? = null,
     val health: SolrHealth? = null,
     val field: SolrIndexField? = null,
+    val range: String? = null,
 )
 
 /**
@@ -203,8 +208,9 @@ object SolrTopologyNodes {
 
     private fun shardNode(shard: SolrShard) = SolrTopologyNode(
         label = shard.name,
-        detail = detailOf(unrecognised(shard.health), shard.state, shard.range),
+        detail = detailOf(unrecognised(shard.health), shard.state),
         kind = SolrTopologyNodeKind.SHARD,
+        range = shard.range,
         health = SolrHealth.of(shard.health),
         children = shard.replicas.map(::replicaNode),
     )
@@ -231,8 +237,8 @@ object SolrTopologyNodes {
     )
 
     // Absent parts drop out rather than rendering as a gap or the word "null" — Solr omits health on
-    // an older line, a range on an implicitly routed shard, and a configset on a core it did not
-    // create from one, and all three are ordinary rather than faults.
+    // an older line and a configset on a core it did not create from one, and both are ordinary
+    // rather than faults.
     private fun detailOf(vararg parts: String?): String? =
         parts.filter { !it.isNullOrBlank() }.joinToString(SEPARATOR).takeIf { it.isNotEmpty() }
 
