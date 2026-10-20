@@ -198,8 +198,15 @@ What that settles, decided when PR 3 was planned:
   set. Choosing a row puts it back into the form, and runs nothing; Execute does that.
 - **Put back as far as the form still allows.** A parameter the form no longer has — or does not have
   yet, for an entry written by a later version — is left out rather than refused.
-- **Removing a connection removes its history**, as it closes its tab. A collection that disappears
-  from the server keeps its history, because it may come back, and the list costs nothing until then.
+- **Removing a connection removes its history**, as it closes its tab. The store prunes when a history
+  is read, dropping every entry whose connection is no longer configured, and does not rely on hearing
+  the removal: it is a lazy service, so in a session that never opened a console it never subscribed,
+  and a listener alone would leave a removed connection's history in the workspace file for good. A
+  collection that disappears from the server keeps its history, because it may come back, and the list
+  costs nothing until then.
+- **History follows the connection, not its address.** Renaming a connection or editing its URL keeps
+  its id — the connection dialog reuses the one it was opened with — so the history goes with it,
+  including to a new address.
 
 ## What changes in the specification and the docs
 

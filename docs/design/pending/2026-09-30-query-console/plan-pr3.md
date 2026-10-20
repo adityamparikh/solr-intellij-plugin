@@ -4,7 +4,7 @@
 
 **Goal:** Each query console tab keeps the queries it ran: a **History** tab beside Results and Response lists them newest first, and choosing one puts it back into the form. The history belongs to the connection and collection rather than to the open tab, so it survives closing the tab and restarting the IDE.
 
-**Architecture:** One pure class and one store. `SolrQueryHistory` decides what a history is — an entry is the form's state and when it was sent; newest first, no repeats, fifty at most — and how an entry goes back into a form whose definition may have changed since. `SolrQueryHistoryStore` is a project service persisting entries per connection and collection to the workspace file, pruning a removed connection's history as `SolrQueryScreens` closes its tab. The editor records on Execute; a thin Swing list in the results panel shows the tab's history and puts an entry back through `SolrQueryScreenFile.update`, which already redraws every editor of the tab.
+**Architecture:** One pure class and one store. `SolrQueryHistory` decides what a history is — an entry is the form's state and when it was sent; newest first, no repeats, fifty at most — and how an entry goes back into a form whose definition may have changed since. `SolrQueryHistoryStore` is a project service persisting entries per connection and collection to the workspace file, keyed by the connection's id, and dropping a removed connection's history whenever a history is read. The editor records on Execute; a thin Swing list in the results panel shows the tab's history and puts an entry back through `SolrQueryScreenFile.update`, which already redraws every editor of the tab.
 
 **Tech Stack:** Kotlin, IntelliJ Platform 2026.2 (`SimplePersistentStateComponent`, `BaseState`, `XmlSerializer` for the round-trip test, `JBList`), JUnit 4, `SolrConfigsetTestCase`, the embedded `HttpServer` `SolrQueryScreenEditorTest` already uses.
 
@@ -28,7 +28,7 @@
 1. **The stored history round-trips through the platform's serializer.** A `BaseState` collection without `@XCollection` is skipped in silence — the connections list shipped that way once, surviving exactly as long as the IDE stayed open. → Task 2, `testHistoryRoundTripsThroughTheWorkspaceSerializer`.
 2. **A query is recorded when it is sent, not when it succeeds.** A cancelled or failed run is kept; a refused one, which sent nothing, is not. → Task 3, `testASecondExecuteKeepsTheCancelledQuery` and `testARefusedQueryIsNotRecorded`.
 3. **An entry goes back into the form as far as the form allows.** A parameter the definition no longer has is left out, not thrown at — the facet section of PR 4 makes this ordinary in both directions. → Task 1, `a parameter the form no longer has is left out when put back`.
-4. **Two connections with the same collection keep two histories**, and removing one connection removes only its history. → Task 2, `testRemovingAConnectionRemovesOnlyItsHistory`.
+4. **Two connections with the same collection keep two histories**, and removing one connection removes only its history — including when the store was never instantiated while the connection was removed, so it heard nothing. → Task 2, `testRemovingAConnectionRemovesOnlyItsHistory` and `testAStoredHistoryOfAnUnknownConnectionIsDropped`.
 5. **The cap holds on load as well as on record.** The workspace file is hand-editable and outlives any version of this code. → Task 2, `testAnOverlongStoredHistoryIsCappedOnLoad`.
 
 ---
@@ -68,9 +68,13 @@ Rules: newest first. Recording a form already in the history — same values and
 
 Persisted form: `State { @get:XCollection val entries: MutableList<EntryState> }`, where `EntryState` holds `connectionId`, `collection`, `sentAt` (epoch milliseconds) and `@get:XCollection val parameters: MutableList<ParameterState>`, and `ParameterState` is `name`, `value` and `line` (true for one line of a repeated or raw parameter, so a `fq` with three lines is three `ParameterState`s in order). A flat list rather than a map of maps, because it is what `BaseState` serializes without a custom converter.
 
-**A separate component from the connection settings**, though both live in the workspace file: a history is not a setting, it grows, and keeping it apart keeps `SolrConnectionSettings`' state the size it is. It subscribes to `CONNECTIONS_CHANGED` and drops the entries of every connection id no longer configured.
+**A separate component from the connection settings**, though both live in the workspace file: a history is not a setting, it grows, and keeping it apart keeps `SolrConnectionSettings`' state the size it is.
 
-- [ ] Tests: **`testHistoryRoundTripsThroughTheWorkspaceSerializer`** (`XmlSerializer.serialize(state)` then `deserialize`, then `loadState`, and the history reads back equal — including a repeated parameter's line order); `testTwoConnectionsWithOneCollectionKeepTwoHistories`; **`testRemovingAConnectionRemovesOnlyItsHistory`**; **`testAnOverlongStoredHistoryIsCappedOnLoad`**; `testClearEmptiesOnlyThatTab`; `testAnEmptyHistoryWritesNothing` (the state is the default, so a workspace file that never ran a query says nothing).
+**Pruning happens on read, not only on notice.** `historyOf` and `record` first drop every entry whose connection id is not among `SolrConnectionSettings.getInstance(project).connections`, and the dropped entries leave the state, so the next save forgets them. A `CONNECTIONS_CHANGED` subscription alone is not enough: the store is a lazy `@Service`, so in a session where no console was opened it is never instantiated, never subscribes, and a connection removed then would keep its history in the workspace file indefinitely. The subscription stays for the live case — an open History tab refreshing when its connection goes — but correctness does not depend on it. Not in `loadState`, which runs while the component is being initialised, where reaching for another component would tie the two load orders together; a read costs one set lookup per entry.
+
+**The key is the connection's id, which survives a rename or a URL edit**: `SolrConnectionDialog` keeps `initial?.id`, so a connection's history follows it to a new name and a new address.
+
+- [ ] Tests: **`testHistoryRoundTripsThroughTheWorkspaceSerializer`** (`XmlSerializer.serialize(state)` then `deserialize`, then `loadState`, and the history reads back equal — including a repeated parameter's line order); `testTwoConnectionsWithOneCollectionKeepTwoHistories`; **`testRemovingAConnectionRemovesOnlyItsHistory`**; **`testAStoredHistoryOfAnUnknownConnectionIsDropped`** (`loadState` with entries for a configured connection and for an id that is not, as a workspace file written before the connection was removed in a session that never opened a console; reading either history leaves only the configured connection's entries in the state); `testRenamingAConnectionKeepsItsHistory` (replace the connection with the same id and a new name and URL); **`testAnOverlongStoredHistoryIsCappedOnLoad`**; `testClearEmptiesOnlyThatTab`; `testAnEmptyHistoryWritesNothing` (the state is the default, so a workspace file that never ran a query says nothing).
 - [ ] Commit `feat: keep the query console's history per connection and collection, in the workspace file`.
 
 ### Task 3: Recording on Execute
@@ -93,7 +97,7 @@ A `JBList` of the tab's entries, each row the entry's label and its time (today'
 
 ### Task 5: The documents
 
-- **Plan, Step 13.** Action 3's history is built; the criterion it serves is ticked. What still holds the step open is said in its body — the facet, highlighting and spellcheck sections, and the scoring explanation as an expandable tree — and its build-order line agrees.
+- **Plan, Step 13.** Action 3's history is built. The step's success criteria cover running queries and saved `.http` files and say nothing of history, so add one and tick it: *each console tab keeps the queries it sent, per connection and collection, past closing the tab and restarting the IDE, and putting one back fills the form without running it.* What still holds the step open is said in its body — the facet, highlighting and spellcheck sections, and the scoring explanation as an expandable tree — and its build-order line agrees.
 - **Design.** The delivery table's PR 3 row says it shipped.
 - **User guide**, *Running a query*: the History tab, what an entry is, that it outlives the tab, and that choosing one runs nothing.
 - **Code organization**: the two new files under `server.query.screen`.
