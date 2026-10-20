@@ -17,9 +17,9 @@
 
 **Claim.** Release 0.2.0, published as *Solr Support*, ships all three tracks for plain Java and
 Kotlin with SolrJ: the editor over configsets; the server track complete — connections, the collections
-tool window, queries in the IDE's HTTP Client, the drift view with upload, reload and additive apply,
-and indexing a test document; and the code track complete — field checks, completion, navigation,
-query colouring and running a query from the gutter.
+tool window, queries in the IDE's HTTP Client or from a right-click in that tool window, the drift view
+with upload, reload and additive apply, and indexing a test document; and the code track complete —
+field checks, completion, navigation, query colouring and running a query from the gutter.
 
 **What is next, said as plainly.** Framework support is the next release: Spring Boot first, in
 IntelliJ IDEA Ultimate only, then Quarkus, Micronaut, MicroProfile and Apache Camel — applications
@@ -96,7 +96,11 @@ inspection".
   shipped configsets. The code track's check is a twelfth registration and stays a warning.
 - **The tree.** `model/` holds schema, vocabulary and query; `server/` is seven packages — connection,
   transport, reading, topology, query, drift, indexing; `code/` is six — solrj, inspection,
-  completion, navigation, highlighting, run. 140 `.kt` files under `org.apache.solr.ide`, counted
-  on 2026-09-28.
+  completion, navigation, highlighting, run. 145 `.kt` files under `org.apache.solr.ide`, counted
+  on 2026-10-20 (slide 36).
+- **The tests.** 59 of 156 test files are plain JUnit 4 — more than a third — against 93 that extend a
+  platform base class; the other four are shared fixtures. Counted on 2026-10-20 by partitioning every
+  file on whether it extends a platform test case or imports `org.junit.Test`, which do not overlap.
+  Slides 32 and 37 both quote it, so change both together.
 - **The boundary.** `SolrServerBoundaryContractTest` allowlists one consumer outside `server/`:
   `code.run`, the gutter action, which runs when a user presses it.

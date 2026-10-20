@@ -22,7 +22,8 @@
 >
 > **Status.** Release 0.2.0 ships this track complete: connections, the collections tool window,
 > queries in the IDE's HTTP Client, the drift view with upload, reload and additive apply, and indexing
-> a test document.
+> a test document. The tool window's right-click queries arrived after the sandbox pass these slides
+> come from; S3 and S12 mention them, and no slide shows them until they are pressed and captured.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it.
 Keep that shape. What changes for this act is where the claims come from: the editor track's claims
@@ -70,6 +71,12 @@ mode is read first and decides which endpoint may be asked at all.
 and "Solr instance is not running in SolrCloud mode". A reader that assumed the cloud vocabulary
 would report a hard failure against a server that is working perfectly — and catching that 400 would
 swallow the genuinely different one a malformed request produces.
+
+**Where a query starts.** Right-click a collection or core for *Query* and *Explain Scoring*, or a
+field for *Find Documents with* it and, where it can be counted, *Count Values of* it — each opens a ready-to-run request in a
+scratch file, addressed to the selected server. The tree already knows the collection and field names,
+so this needs no configset. Said in the slide's caption rather than shown: it has tests and has not yet
+been pressed in a sandbox (`SRV-10a`).
 
 **Screenshot.** `23-collections-topology.png` — a SolrCloud collection down to its leader replica,
 each level's health as a coloured dot, and the Solr mark on the tool-window stripe that opens it.
@@ -248,6 +255,11 @@ dialog prefilled with every field, and the line under the editor saying the docu
 ---
 
 ## S12 · What the track cost, and what it taught
+
+**What the recap claims, and what it does not.** Every screen on the ten slides before it was pressed
+against a real SolrCloud. The right-click queries were not, so the recap lists them in a block of their
+own — *added since that pass, tested, not yet pressed* — rather than in the pressed list. Move them
+across when `SRV-10a` has a pass recorded.
 
 Three claims in the specification did not survive contact with a running Solr or a real IDE, and
 each was found by checking rather than by a bug report:
