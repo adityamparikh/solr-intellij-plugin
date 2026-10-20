@@ -58,9 +58,9 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
         return "http://127.0.0.1:${started.address.port}/solr"
     }
 
-    private fun respond(exchange: HttpExchange, status: Int, body: String) {
+    private fun respond(exchange: HttpExchange, status: Int, body: String, contentType: String = "application/json") {
         val bytes = body.toByteArray()
-        exchange.responseHeaders.add("Content-Type", "application/json")
+        exchange.responseHeaders.add("Content-Type", contentType)
         exchange.sendResponseHeaders(status, bytes.size.toLong())
         exchange.responseBody.use { it.write(bytes) }
     }
@@ -151,6 +151,42 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
         )
     }
 
+    /**
+     * An address that answers without saying which mode it runs in is refused as not Solr.
+     *
+     * The reader asks for neither list without a mode, so the topology it returns is empty for want
+     * of asking — and reporting that as *no collections* would make the claim about a server that was
+     * never asked, which is the defect the unreachable case above already fixed.
+     */
+    fun testAnAddressThatDoesNotAnswerAsSolrIsNotReportedAsEmpty() {
+        connectedTo(givenServer(systemInfo = { respond(it, 200, """{"responseHeader":{"status":0}}""") }))
+
+        assertEquals(
+            SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.notSolr", "local")),
+            choices(),
+        )
+    }
+
+    /** A topology Solr says it cut short still offers what did arrive, rather than refusing. */
+    fun testAPartialTopologyStillOffersWhatArrived() {
+        val connection = connectedTo(
+            givenServer(
+                collections = {
+                    respond(
+                        it,
+                        200,
+                        """
+                        {"responseHeader":{"status":0,"partialResults":true},
+                         "cluster":{"collections":{"books":{"shards":{}}},"live_nodes":[]}}
+                        """.trimIndent(),
+                    )
+                },
+            ),
+        )
+
+        assertEquals(SolrRunChoices.Offer(connection, listOf("books")), choices())
+    }
+
     /** Solr refusing the topology request is reported as Solr's answer, with its code. */
     fun testASolrRefusalIsReportedWithItsCode() {
         connectedTo(
@@ -203,5 +239,21 @@ class SolrRunQueryTest : SolrConfigsetTestCase() {
 
         assertTrue(text, text.isNotBlank())
         assertFalse(text, text.contains("matched"))
+    }
+
+    /**
+     * A body that is not JSON at all says so, rather than rendering nothing.
+     *
+     * A proxy's login page is the usual case: it answers 200 with HTML, which is neither Solr's
+     * refusal nor a query result, and the popup says what arrived instead of inventing either.
+     */
+    fun testAnAnswerThatIsNotJsonSaysSo() {
+        val connection = connectedTo(
+            givenServer(select = { respond(it, 200, "<html>login</html>", "text/html") }),
+        )
+
+        val text = answer(connection)
+
+        assertTrue(text, text.contains("not JSON"))
     }
 }

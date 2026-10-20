@@ -17,6 +17,7 @@ import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.query.SolrQueryResultRenderer
 import org.apache.solr.ide.server.query.SolrQueryRunner
+import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.topology.SolrCollectionsScope
 import org.apache.solr.ide.server.transport.SolrResponse
@@ -62,15 +63,21 @@ internal object SolrRunQuery {
      *
      * **A server that could not be asked is not a server with no collections**, and saying it was
      * would send the reader to look for collections that may well exist. An empty answer names the
-     * connection that gave it; a failed one says what failed, in the same words a failed query uses.
+     * connection that gave it; a failed one says what failed, in the same words a failed query uses;
+     * and one that answered without saying which mode it runs in is refused as not Solr, since
+     * nothing was asked for its collections at all.
      */
     suspend fun choicesFor(project: Project): SolrRunChoices {
         val connection = SolrConnectionSettings.getInstance(project).selectedConnection
             ?: return SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.noConnection"))
         val topology = SolrServerReader.getInstance(project).topology(connection)
-        val value = (topology as? SolrResponse.Success)?.value
-            ?: (topology as? SolrResponse.Partial)?.value
-            ?: return SolrRunChoices.Refusal(failureText(topology))
+        val value = topology.arrived() ?: return SolrRunChoices.Refusal(failureText(topology))
+        // Answered, but not as Solr: both supported lines always say which mode they run in, and
+        // the reader asks for neither list without one. Its empty topology is the absence of an
+        // answer, and reporting it as "no collections" is the claim this function exists to avoid.
+        if (value.mode == SolrServerMode.UNKNOWN) {
+            return SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.notSolr", connection.displayName))
+        }
         val collections = (value.collections.map { it.name } + value.cores.map { it.name }).distinct().sorted()
         return if (collections.isEmpty()) {
             SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.noCollections", connection.displayName))
@@ -80,12 +87,17 @@ internal object SolrRunQuery {
     }
 
     /** Runs [query] against [collection] and returns what the popup beside the icon says. */
-    suspend fun answerFor(project: Project, connection: SolrConnection, collection: String, query: String): String =
-        when (val answered = SolrQueryRunner.getInstance(project).execute(connection, collection, query)) {
-            is SolrResponse.Success -> SolrQueryResultRenderer.render(answered.value)
-            is SolrResponse.Partial -> SolrQueryResultRenderer.render(answered.value)
-            else -> failureText(answered)
-        }
+    suspend fun answerFor(project: Project, connection: SolrConnection, collection: String, query: String): String {
+        val answered = SolrQueryRunner.getInstance(project).execute(connection, collection, query)
+        return answered.arrived()?.let(SolrQueryResultRenderer::render) ?: failureText(answered)
+    }
+
+    // What arrived, complete or not: a partial answer is real, as `SolrResponse.map` also holds.
+    private fun <T> SolrResponse<T>.arrived(): T? = when (this) {
+        is SolrResponse.Success -> value
+        is SolrResponse.Partial -> value
+        else -> null
+    }
 
     private fun failureText(response: SolrResponse<*>): String = when (response) {
         is SolrResponse.SolrError -> SolrBundle.message("code.runQuery.solrError", response.code, response.message.orEmpty())
