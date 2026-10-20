@@ -52,8 +52,9 @@ here.
 ### Commands
 
 ```bash
-./gradlew build            # compile, test, and run both gates
-./gradlew check            # tests + coverage floor + documentation gate
+./gradlew build            # compile, test, and run every gate
+./gradlew check            # tests + coverage floor + documentation gate + formatting
+./gradlew spotlessApply    # format every Kotlin, Gradle and demo Java file in Google style
 ./gradlew runIde           # sandbox IDE with the plugin installed
 ./gradlew buildPlugin      # distributable ZIP in build/distributions/
 ./gradlew verifyPlugin     # IntelliJ Plugin Verifier + plugin structure checks
@@ -213,7 +214,18 @@ the gate for exactly this reason, with `always()` so partial output survives a f
 
 ### What the gates check
 
-Both fire on `./gradlew build` locally, so CI should not be the first place you meet them.
+All three fire on `./gradlew build` locally, so CI should not be the first place you meet them.
+
+- **Formatting.** Google style, through [Spotless](https://github.com/diffplug/spotless): ktfmt's
+  Google style for Kotlin and the Gradle scripts, google-java-format for the demo's Java. Two-space
+  indents, 100 columns. An unformatted file fails `check`; `./gradlew spotlessApply` fixes it, and
+  that is the whole of the workflow — nobody formats by hand. In the IDE, the
+  [ktfmt plugin](https://plugins.jetbrains.com/plugin/14912-ktfmt) set to *Google (internal)* style
+  formats on <kbd>Ctrl-Alt-L</kbd> the same way, and is the surest route. Without it,
+  `.editorconfig` brings the IDE's own formatter close: it sets the indent, the continuation indent
+  and the line length, puts imports in the order ktfmt and google-java-format sort them, and stops
+  *Optimize Imports* collapsing them into wildcards. It does not make IntelliJ wrap lines as ktfmt
+  does, so run `spotlessApply` before committing either way.
 
 - **Documentation.** [Dokka](glossary.md#dokka) with `reportUndocumented` and `failOnWarning`. Any
   public class, function or property in `src/main/kotlin` without KDoc fails the build, naming the
@@ -222,7 +234,7 @@ Both fire on `./gradlew build` locally, so CI should not be the first place you 
   coverage on purpose, so landing hard-to-unit-test UI and [PSI](glossary.md#psi) code does not
   immediately block a PR.
 
-[Testing and the build gates](how-to/testing-and-the-build-gates.md) covers clearing both.
+[Testing and the build gates](how-to/testing-and-the-build-gates.md) covers clearing the last two.
 
 ### SonarCloud
 

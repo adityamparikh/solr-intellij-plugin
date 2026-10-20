@@ -29,8 +29,9 @@ behind a link. Read the relevant one before designing anything.
 ## Commands
 
 ```bash
-./gradlew build            # compile, test, and run both gates below
-./gradlew check            # tests + coverage floor + documentation gate
+./gradlew build            # compile, test, and run the gates below
+./gradlew check            # tests + coverage floor + documentation gate + formatting
+./gradlew spotlessApply    # Google-style formatting for every Kotlin, Gradle and demo Java file
 ./gradlew test --tests "*.SolrConfigsetDetectorTest"                          # one test class
 ./gradlew test --tests "*.SolrConfigsetDetectorTest.testSchemaUnderConfDirIsRecognized"  # one test
 ./gradlew runIde           # sandbox IDE with the plugin installed, opening demo/
@@ -59,6 +60,10 @@ documenting it in the same change. Tests are exempt.
 **Test coverage.** Kover enforces an 80% line floor via `koverVerify`, also bound to `check`. The
 floor sits below actual coverage on purpose; SonarCloud's new-code gate is what catches gradual
 erosion.
+
+**Formatting.** Spotless checks Google style — ktfmt for Kotlin and Gradle scripts,
+google-java-format for the demo's Java — as part of `check`. Run `./gradlew spotlessApply` before
+committing rather than formatting by hand.
 
 Package and module prose lives in `docs/Module.md`. KDoc reads `[foo]` as a symbol link, so Markdown
 reference-style links (`[text][ref]`) do not work there; use inline `[text](url)`.

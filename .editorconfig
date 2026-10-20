@@ -1,0 +1,31 @@
+# Matches what Spotless enforces, so the IDE's own formatter agrees with `./gradlew spotlessApply`
+# rather than undoing it. Spotless is the authority; this only stops the two fighting.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{kt,kts,java}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# ktfmt's Google style: a two-space continuation indent, every import in one block sorted
+# lexicographically (IntelliJ's default puts java, javax and kotlin last), and no wildcard imports.
+[*.{kt,kts}]
+ij_continuation_indent_size = 2
+ij_kotlin_imports_layout = *
+ij_kotlin_name_count_to_use_star_import = 2147483647
+ij_kotlin_name_count_to_use_star_import_for_members = 2147483647
+ij_kotlin_packages_to_use_import_on_demand = unset
+
+# google-java-format: a four-space continuation indent, static imports in one block above the
+# rest, each sorted, and no wildcard imports.
+[*.java]
+ij_continuation_indent_size = 4
+ij_java_imports_layout = $*,|,*
+ij_java_class_count_to_use_import_on_demand = 999
+ij_java_names_count_to_use_import_on_demand = 999
+ij_java_packages_to_use_import_on_demand = unset

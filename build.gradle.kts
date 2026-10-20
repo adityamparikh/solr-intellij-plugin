@@ -19,6 +19,7 @@ plugins {
     alias(libs.plugins.kover)
     alias(libs.plugins.sonarqube)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.spotless)
 }
 
 // The IDE release this plugin compiles against, and so the oldest it claims: the patched descriptor's
@@ -275,6 +276,27 @@ dokka {
             remoteUrl("${providers.gradleProperty("pluginRepositoryUrl").get()}/tree/main/src/main/kotlin")
             remoteLineSuffix = "#L"
         }
+    }
+}
+
+// **Google style, checked by `check`.** Spotless wires `spotlessCheck` into `check` itself, so an
+// unformatted file fails `./gradlew build` locally and in CI exactly as an undocumented one does;
+// `./gradlew spotlessApply` fixes it. Kotlin goes through ktfmt's Google style — two-space indents,
+// 100 columns — and the demo's Java through google-java-format, the formatter that style is named
+// for. buildSrc and the demo are separate builds with no plugin of their own, so this build formats
+// their files by path.
+spotless {
+    kotlin {
+        target("src/**/*.kt", "buildSrc/src/**/*.kt")
+        ktfmt(libs.versions.ktfmt.get()).googleStyle()
+    }
+    kotlinGradle {
+        target("*.gradle.kts", "buildSrc/*.gradle.kts", "demo/*.gradle.kts")
+        ktfmt(libs.versions.ktfmt.get()).googleStyle()
+    }
+    java {
+        target("demo/src/**/*.java")
+        googleJavaFormat(libs.versions.google.java.format.get())
     }
 }
 
