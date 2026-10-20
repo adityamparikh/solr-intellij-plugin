@@ -181,6 +181,33 @@ HTTP Client.
 The specification asks for it. Each tab keeps the queries it ran, and a query can be put back into
 the form. Per project, in the workspace file: history is one developer's, like connections.
 
+What that settles, decided when PR 3 was planned:
+
+- **An entry is the form, not the answer**: what was filled in, and when it was sent. Putting it back
+  needs only that, and an answer is a body of any size that would go stale the moment the index
+  changed.
+- **Recorded when Execute sends**, so a query that failed or was cancelled is kept — the one that
+  went wrong is usually the one to fix. A query the console refused to send is not recorded, because
+  nothing ran.
+- **Kept per connection and collection**, which is what a tab is, so the history outlives the tab and
+  is there again when the tab reopens after a restart. Two connections with a `products` each keep
+  two histories.
+- **Newest first, fifty per tab, and no repeats**: running the same form again moves its entry to the
+  top rather than adding a second.
+- **A History tab beside Results and Response.** Each row says when, the `q`, and how much else was
+  set. Choosing a row puts it back into the form, and runs nothing; Execute does that.
+- **Put back as far as the form still allows.** A parameter the form no longer has — or does not have
+  yet, for an entry written by a later version — is left out rather than refused.
+- **Removing a connection removes its history**, as it closes its tab. The store prunes when a history
+  is read, dropping every entry whose connection is no longer configured, and does not rely on hearing
+  the removal: it is a lazy service, so in a session that never opened a console it never subscribed,
+  and a listener alone would leave a removed connection's history in the workspace file for good. A
+  collection that disappears from the server keeps its history, because it may come back, and the list
+  costs nothing until then.
+- **History follows the connection, not its address.** Renaming a connection or editing its URL keeps
+  its id — the connection dialog reuses the one it was opened with — so the history goes with it,
+  including to a new address.
+
 ## What changes in the specification and the docs
 
 - **Integration spec, FR-1.** "A query somebody typed … is run by the IDE's HTTP Client" becomes: a
