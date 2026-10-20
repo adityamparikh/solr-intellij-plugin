@@ -6,8 +6,9 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 /**
  * Where the gutter icon offering to run a query appears, and where it does not.
  *
- * **The icon is the whole promise, so where it appears is the whole test.** Clicking it opens
- * popups and talks to a server, neither of which a headless fixture can drive; what a test can hold
+ * **The icon is the whole promise, so where it appears is the whole test here.** Clicking it opens
+ * popups, which a headless fixture cannot drive; what the click *decides* — which collections to
+ * offer, and what to say about the answer — is held by [SolrRunQueryTest]. What this class holds
  * is the claim the icon makes by existing — *there is a Solr query here, and this plugin can run
  * it*. An icon on a string that is not a query is that claim being false.
  *
