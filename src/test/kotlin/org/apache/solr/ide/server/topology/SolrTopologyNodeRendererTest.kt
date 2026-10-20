@@ -79,6 +79,32 @@ class SolrTopologyNodeRendererTest : BasePlatformTestCase() {
         assertNull(renderer.toolTipText)
     }
 
+    private fun shard(health: SolrHealth?, range: String?) = SolrTopologyNode(
+        label = "shard1",
+        detail = "active",
+        kind = SolrTopologyNodeKind.SHARD,
+        health = health,
+        range = range,
+    )
+
+    /** The hash range is not in the row, and is on hover beside the health. */
+    fun testAShardsHashRangeIsOnHoverNotInTheRow() {
+        render(shard(SolrHealth.GREEN, "80000000-7fffffff"))
+
+        assertFalse(text(), text().contains("80000000"))
+        assertTrue(text(), text().contains("active"))
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("GREEN"))
+    }
+
+    /** A shard on an older line reports a range and no health, and the range alone is the hover. */
+    fun testARangeWithNoHealthIsStillOnHover() {
+        render(shard(null, "80000000-7fffffff"))
+
+        assertNull(renderer.icon)
+        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+    }
+
     fun testEachHealthIsDrawnInItsOwnColour() {
         val colours = SolrHealth.entries.map {
             render(books(it))
