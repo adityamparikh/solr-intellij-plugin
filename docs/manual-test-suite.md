@@ -870,8 +870,9 @@ Solr tool window in* set to **Query console**, and SRV-40 ends by setting it bac
       Solr receives it whole — the summary is a real match count, not a 400 about a parameter named
       `cable"`. **This is the reason the console exists.**
 - [ ] **SRV-36** — Choose `wt` **xml** and execute: no table, **Response** in front, holding XML
-      highlighted as XML. Set the handler to `/nosuch` and execute: *Solr answered 404* and the error
-      page under **Response**. Set the handler to `dismax`: **nothing is sent**, and the status says
+      highlighted as XML. Set the handler to `/nosuch` and execute: *Solr answered 405* and the error
+      page under **Response** — 405 rather than 404 because the console sends a POST, which Jetty's
+      default servlet refuses for a path no handler serves. Set the handler to `dismax`: **nothing is sent**, and the status says
       a handler is a path and names `handleSelect`.
 - [ ] **SRV-37** — `defType` starts at *(handler default)*. Choose **dismax**: `q.alt`, `qf` … `bf`
       appear and `pf2` does not; choose **edismax**: `uf` … `lowercaseOperators` appear too. Type
@@ -1036,9 +1037,7 @@ Checks join a section above when their feature ships; **which features those are
 list below is what the suite does not yet cover, and says nothing about what is built —
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
-- The settings page and *Mark Directory as Solr Configset Root*
-- The server-side surfaces that have not shipped: query console, drift view, indexing test
-  documents. Connections and the collections tool window are covered in section 13 above
+- The query console's history, and its facet, highlighting and spellcheck sections
 - Framework configuration, and any Solr client that is not SolrJ — Spring Data, Camel
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
@@ -1165,6 +1164,7 @@ the reason this list is worth as little as its last row.
 | 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
 | 2026-09-28 | main at 888e5f5 with #246 and #250 | owner, then Claude | the owner's full pass by the checklist; then Claude re-pressed each finding's fix: BASE-1, INSP-2, DIM-1, SRV-4, SRV-19, SRV-19b, SRV-22, SRV-28, CODE-5, CODE-6 | **not completed** | the first pass run by the owner. Nine findings, each fixed on its own branch and re-pressed on the combined build, and two more found while re-pressing. See the notes below |
 | 2026-09-28 | 53d5592, then this fix | Claude | ACT-3, ACT-4, ACT-5 | **not completed** | the configset settings page and the mark action, pressed for the first time. ACT-5 green at once; ACT-3 and ACT-4 failed first and are green on the fix. Also found the Spring Boot discovery broken in a real IDE, which took it out of 0.2.0. See the notes below |
+| 2026-10-20 | d8bdf94 (#266) | owner, then Claude | SRV-10a, SRV-32 to SRV-40 | **not completed** | the query console's first pass, against the demo's SolrCloud 10.0.0 `products`. Every check green. **SRV-36 was wrong about one status, not the plugin**: a form POST to `/nosuch` is answered 405 by Jetty, not 404 — rewritten. **Two defects found that no check names**: a shard row showed its hash range as a bare hex pair (#278), and a `rows=0` answer was summarised as "showing 1 to 0" (#279). SRV-35, 36, 37 and 39 were driven through the sandbox's own MCP server and confirmed in Solr's request log. Not completed because only these eleven checks were in scope. See the notes below |
 | 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
@@ -1657,3 +1657,45 @@ the fix re-pressed in a sandbox built from that combination before anything here
 
 The fresh screenshots — entries 4, 19, 23, 27, 31 and the new 32 in [the catalog](screenshots.md) — were
 taken in this session, in Islands Light, after every re-press above.
+
+### 2026-10-20 — the query console, pressed for the first time
+
+**Where it ran.** The plugin at `d8bdf94`, the head of #266, in a sandbox started from that branch,
+against the demo's SolrCloud 10.0.0 with *Index the sample products* run. The owner pressed SRV-10a and
+SRV-32 to SRV-40 by the checklist and reported them green.
+
+**Solr's request log did not bear out every report, so five were pressed again.** It held two console
+requests and two from `.http` files, and nothing at all for SRV-35 in the console, `wt=xml`, `/nosuch`,
+the parser check or the facet run. SRV-35's query had been run from an `.http` file, where it arrived
+split — `q=name:"usb&cable"+%2Bcategory:electronics=` — which is the failure the console exists to
+remove, seen from the other side.
+
+**The redo was driven through the sandbox's own MCP server**, not accessibility scripting: enabled in
+the sandbox, it accepts an `inspection.kts` whose top level runs inside the IDE, and through the
+plugin's classloader that script set the tab's form, called the editor's own Execute, and read back the
+results panel. The form the owner was watching redrew with each step. Every request was then matched
+in Solr's log.
+
+- **SRV-35** — green. Solr echoed `q` as `name:"usb & cable" +category:electronics`, whole, and three
+  documents matched.
+- **SRV-36** — green in substance. `wt=xml`: no table, **Response** in front, XML. `dismax` as handler:
+  nothing sent, and the status names `handleSelect`. **`/nosuch` answered 405, not the 404 the check
+  said**: the console sends a form POST, and Jetty's default servlet answers a POST to a path no handler
+  serves with *Method Not Allowed*. The console reported it accurately — *Solr answered 405* and the page
+  under **Response** — so the check was rewritten, not the plugin.
+- **SRV-37** — green. With `qf=name^2` typed under dismax and the parser set back to *(handler
+  default)*, Solr received `q`, `indent`, `echoParams` and `rows` only. Its echo still listed
+  `defType=edismax` and `qf=name^3 description category` — the `/select` handler's own defaults, which
+  is exactly what leaving the choice alone is meant to keep.
+- **SRV-39** — green. *Count Values of category*, filled by the code the menu calls, sent `rows=0`,
+  `facet=true`, `facet.field=category`, and **Response** held `facet_counts`: books 4, electronics 3,
+  kitchen 3.
+
+**Two defects found that no check names**, each fixed on its own branch from `main`:
+
+- **A shard row read `active · 80000000-7fffffff`.** The hash range, which on a single-shard collection
+  is the whole ring. It moved to the row's tooltip, escaped — a background security review caught that
+  the first version put the server's text into tooltip HTML unescaped. #278.
+- **A `rows=0` answer was summarised as "10 documents matched in 45 ms, showing 1 to 0."** `rows=0` is
+  how *Count Values of* asks, so the console's own facet query produced it, and the HTTP Client's
+  summary shares the renderer. It now says *none returned*. #279.

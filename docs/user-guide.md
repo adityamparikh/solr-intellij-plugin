@@ -961,7 +961,9 @@ against and listing products](images/29-code-run-from-gutter.png)
 
 **A query in code names no collection**, so you are asked which one, from the list the server
 actually holds. `setQuery("category:books")` says what to match and nothing about where; the
-collection is chosen when the client is built, often in another file.
+collection is chosen when the client is built, often in another file. A server that cannot be
+reached, or that refuses the request, says so in the popup — it is never reported as a server with
+no collections.
 
 **Only the main query carries the icon**, not the filter queries beside it. Running an `fq` alone
 answers a different question from the one your code asks — a filter narrows a result set and scores

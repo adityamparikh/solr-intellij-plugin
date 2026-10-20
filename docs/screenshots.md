@@ -553,7 +553,7 @@ text. The summary line above must name both sides and the counts.
 is that a `DISAGREEING` fact must never be resolved to one side, and only a *Differs* row with two
 populated cells shows that it was not.
 
-**Capture** add a field to `demo/books/conf/managed-schema.xml` and do not deploy it; add a second
+**Capture** add a field to `demo/solr/conf/managed-schema.xml` and do not deploy it; add a second
 field to the collection through the Schema API and not to the configset; change a third field's
 `stored` in the configset only. Compare, and frame the table with the summary line above it.
 
@@ -621,11 +621,14 @@ documents something that looks like a bug.
 
 ### 23. The collections tree — `23-collections-topology.png`
 
-**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1.
+**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1. **Due a reshoot**: the shard row in it still
+shows its hash range, `80000000-7fffffff`, which has since moved to the row's tooltip. Slide 46 of
+the deck embeds this file, so the reshoot updates both.
 
 **Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
 shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
-Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip —
+Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip,
+and so is a shard's hash range —
 and the stripe button on the right carries the tool window's own icon, the plugin's sunburst.
 
 **A standalone capture would show a different vocabulary and is a separate image**, if anyone wants
@@ -877,6 +880,11 @@ own "Not yet in the suite" list:
   inline failure banner when a server is down (`SRV-5`) and Upload and Reload's confirmation
   (`SRV-22`) — the second cannot be shot against the demo configset at all, whose planted defects stop
   a core starting
+- **The tool window's right-click queries** — *Query* and *Explain Scoring* on a collection, *Find
+  Documents with* and *Count Values of* on a field (`SRV-10a` in
+  [the connections and tool window checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)).
+  The frame worth having is the menu open on a field of the demo's `products` collection, with the
+  scratch file it opens beside it
 - **The code track's remaining gestures.** Entries 26 to 29 above cover the check, the colour, the
   navigation and the gutter run; what none of them shows is the spelling quick-fix, field completion
   inside a query string, the *no connection* message, the same file written in Kotlin, and the

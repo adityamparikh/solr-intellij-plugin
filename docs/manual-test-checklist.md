@@ -240,7 +240,7 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
 - [ ] **SRV-34** — Execute: request line, summary table, raw JSON under **Response**; the request line
   opens a `{{solrUrl}}` `.http` file that gives the same numbers.
 - [ ] **SRV-35** — A `q` holding `&` and `+` reaches Solr whole.
-- [ ] **SRV-36** — `wt=xml` shows raw XML; `/nosuch` shows *Solr answered 404*; `dismax` as handler
+- [ ] **SRV-36** — `wt=xml` shows raw XML; `/nosuch` shows *Solr answered 405*; `dismax` as handler
   sends nothing and names `handleSelect`.
 - [ ] **SRV-37** — dismax and edismax show their parameters; back at *(handler default)* neither
   `qf` nor `defType` is sent.

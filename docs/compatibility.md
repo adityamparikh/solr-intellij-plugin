@@ -4,16 +4,16 @@ What this plugin runs in, what it understands, and how each of those is decided.
 
 **This page is written from the build rather than beside it.** Every version below is declared in one
 place in `build.gradle.kts` or `gradle.properties`, named in the table's last column — a matrix
-promising something the build does not is worse than no matrix, because it is believed. **Nothing
-yet checks that the two agree.** An earlier revision of this paragraph said a test did; the plan's
-CI-gates step still lists that check as open, and until it lands, keeping this page in step with the
-build is a reviewer's job.
+promising something the build does not is worse than no matrix, because it is believed.
+**`SolrCompatibilityPageTest` holds the two together**: the build hands it every value named below,
+and the descriptor it actually writes, and the test fails if this page says anything else. Change a
+declaration and this page in the same commit, or the build will not pass.
 
 ## Plugin 0.2.0
 
 | What | Supported | Declared in |
 |---|---|---|
-| IDE | **IntelliJ IDEA 2026.2 and later** | `intellijIdea("2026.2")` |
+| IDE | **IntelliJ IDEA 2026.2 and later** | `targetIdeVersion`, passed to `intellijIdea(...)` |
 | Verified against | IntelliJ IDEA `IU-262.8665.258` | `verifiedIdeBuilds` |
 | Apache Solr | **9.10.1** and **10.0.0** | `supportedSolrLines` |
 | Build toolchain | JDK 21 | `jvmToolchain(21)` |
@@ -64,6 +64,6 @@ happens to run.
 
 Adding or dropping a Solr line is one edit to `supportedSolrLines`; the catalogs regenerate and the
 tests that pin them will name whatever else needs to follow. Moving to a newer platform is one edit to
-`intellijIdea(...)` and one to `verifiedIdeBuilds`, and both belong in the same commit — the second is
+`targetIdeVersion` and one to `verifiedIdeBuilds`, and both belong in the same commit — the second is
 what the Verifier checks, and a matrix promising a build the Verifier never checked is the failure
 this page exists to prevent.

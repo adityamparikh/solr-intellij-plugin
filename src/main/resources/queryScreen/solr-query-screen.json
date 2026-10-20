@@ -47,7 +47,7 @@
         { "name": "ps2", "label": "ps2", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "phrase slop for bigram phrases" },
         { "name": "ps3", "label": "ps3", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "phrase slop for trigram phrases" },
         { "name": "boost", "label": "boost", "kind": "text", "showWhen": { "defType": ["edismax"] }, "tooltip": "multiplicative boost function" },
-        { "name": "stopwords", "label": "stopwords", "kind": "checkbox", "showWhen": { "defType": ["edismax"] }, "tooltip": "remove stopwords from mandatory 'matching' component" },
+        { "name": "stopwords", "label": "stopwords", "kind": "checkbox", "default": "true", "showWhen": { "defType": ["edismax"] }, "tooltip": "remove stopwords from mandatory 'matching' component" },
         { "name": "lowercaseOperators", "label": "lowercaseOperators", "kind": "checkbox", "showWhen": { "defType": ["edismax"] }, "tooltip": "Enable lower-case 'and' and 'or' as operators" }
       ]
     },

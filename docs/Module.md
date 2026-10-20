@@ -18,13 +18,14 @@ unindexed field degrades relevance with no warning. Comparable ecosystems closed
 this gap years ago; Elasticsearch and Kafka both have maintained JetBrains
 plugins, and Solr has none.
 
-The plugin is delivered in phases. **Phase 1**, the committed first release, is
-pure static analysis of configset files (`managed-schema` / `schema.xml`,
+The plugin has three surfaces over one field model. The **configset editor** is
+static analysis of configset files (`managed-schema` / `schema.xml`,
 `solrconfig.xml`) — completion, cross-file reference resolution, rename
 refactoring, inspections, and match-capability hints, all working offline with no
-Solr connection. Later phases add live connections and a query console, SolrJ
-code integration, and collection/dev-loop operations. The full program is
-specified in
+Solr connection. The **server** surface connects to a running Solr: it browses
+collections, runs queries, compares a configset with what is deployed, and
+indexes test documents. The **code** surface reads the project's own Java and
+Kotlin for the fields it asks Solr for. The full program is specified in
 [specs/0002-solr-intellij-plugin.md](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/specs/0002-solr-intellij-plugin.md).
 
 ### What is built

@@ -88,8 +88,9 @@ been true for some time — [step 25](../specs/plans/0002-solr-intellij-plugin-p
 shipped structure completion, and the Build Order section already said so. It was verified directly
 against the running sandbox during this session — typing `<` on a blank line inside `<config>` offers
 Solr's own top-level vocabulary, not an echo of whatever sibling tags happen to be nearby — and the
-plan's opening paragraph has been corrected to match, with the sandbox capture as evidence
+plan's opening paragraph was corrected to match, with the sandbox capture as evidence
 ([screenshot catalog entry 10](screenshots.md#10-solrconfigxmls-own-structure--10-completion-solrconfig-structurepng)).
+That overview has since stopped stating status at all, and leaves it to the build order.
 
 The reason to record the correction here rather than let it disappear into a diff: it is exactly the
 failure mode this document exists to avoid producing. A second file describing status is a second

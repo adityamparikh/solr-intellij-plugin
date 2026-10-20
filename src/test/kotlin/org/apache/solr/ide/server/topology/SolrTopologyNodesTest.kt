@@ -131,6 +131,21 @@ class SolrTopologyNodesTest {
         assertEquals(SolrTopologyNodeKind.REPLICA, shard.children.single().kind)
     }
 
+    /**
+     * A shard's row says its state, and its hash range is carried for the hover rather than written.
+     *
+     * The range read `80000000-7fffffff` beside every shard, which a tester reported as a stray hex
+     * code: it is the whole hash ring on a single-shard collection, and on any collection a pair of
+     * numbers nobody reads at a glance.
+     */
+    @Test
+    fun `a shard's hash range is kept out of its row`() {
+        val shard = shardsOf(rootsOf(cloud()).single().children.single()).single()
+
+        assertEquals("active", shard.detail)
+        assertEquals("80000000-7fffffff", shard.range)
+    }
+
     /** A replica is identified by the core backing it, which is what a user finds on disk. */
     @Test
     fun `a replica is labelled by its core`() {

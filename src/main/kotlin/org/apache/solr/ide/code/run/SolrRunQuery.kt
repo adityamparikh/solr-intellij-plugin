@@ -10,6 +10,7 @@ import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.solr.ide.SolrBundle
@@ -17,6 +18,7 @@ import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.query.SolrQueryResultRenderer
 import org.apache.solr.ide.server.query.SolrQueryRunner
+import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.topology.SolrCollectionsScope
 import org.apache.solr.ide.server.transport.SolrResponse
@@ -42,31 +44,69 @@ internal object SolrRunQuery {
      *
      * @param element the leaf the icon sits on, which anchors the popups
      * @param query the query as the source spells it
+     * @return the request in flight, up to the chooser or the refusal being shown; the gutter click
+     *   ignores it, and a test waits on it to drive the gesture through without a popup to press
      */
-    fun from(element: PsiElement, query: String) {
+    fun from(element: PsiElement, query: String): Job {
         val project = element.project
-        val connection = SolrConnectionSettings.getInstance(project).selectedConnection
-            ?: return tell(element, SolrBundle.message("code.runQuery.noConnection"))
-
-        project.service<SolrCollectionsScope>().scope.launch {
-            val collections = collectionsOn(project, connection)
+        return project.service<SolrCollectionsScope>().scope.launch {
+            val choices = choicesFor(project)
             withContext(Dispatchers.EDT) {
-                if (collections.isEmpty()) {
-                    tell(element, SolrBundle.message("code.runQuery.noCollections", connection.displayName))
-                } else {
-                    chooseThenRun(project, element, connection, collections, query)
+                when (choices) {
+                    is SolrRunChoices.Refusal -> tell(element, choices.message)
+                    is SolrRunChoices.Offer ->
+                        chooseThenRun(project, element, choices.connection, choices.collections, query)
                 }
             }
         }
     }
 
-    /** What [connection] holds, as names, empty where it could not be asked. */
-    private suspend fun collectionsOn(project: Project, connection: SolrConnection): List<String> {
+    /**
+     * What the chooser offers on the selected connection, or why it offers nothing.
+     *
+     * **A server that could not be asked is not a server with no collections**, and saying it was
+     * would send the reader to look for collections that may well exist. An empty answer names the
+     * connection that gave it; a failed one says what failed, in the same words a failed query uses;
+     * and one that answered without saying which mode it runs in is refused as not Solr, since
+     * nothing was asked for its collections at all.
+     */
+    suspend fun choicesFor(project: Project): SolrRunChoices {
+        val connection = SolrConnectionSettings.getInstance(project).selectedConnection
+            ?: return SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.noConnection"))
         val topology = SolrServerReader.getInstance(project).topology(connection)
-        val value = (topology as? SolrResponse.Success)?.value
-            ?: (topology as? SolrResponse.Partial)?.value
-            ?: return emptyList()
-        return (value.collections.map { it.name } + value.cores.map { it.name }).distinct().sorted()
+        val value = topology.arrived() ?: return SolrRunChoices.Refusal(failureText(topology))
+        // Answered, but not as Solr: both supported lines always say which mode they run in, and
+        // the reader asks for neither list without one. Its empty topology is the absence of an
+        // answer, and reporting it as "no collections" is the claim this function exists to avoid.
+        if (value.mode == SolrServerMode.UNKNOWN) {
+            return SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.notSolr", connection.displayName))
+        }
+        val collections = (value.collections.map { it.name } + value.cores.map { it.name }).distinct().sorted()
+        return if (collections.isEmpty()) {
+            SolrRunChoices.Refusal(SolrBundle.message("code.runQuery.noCollections", connection.displayName))
+        } else {
+            SolrRunChoices.Offer(connection, collections)
+        }
+    }
+
+    /** Runs [query] against [collection] and returns what the popup beside the icon says. */
+    suspend fun answerFor(project: Project, connection: SolrConnection, collection: String, query: String): String {
+        val answered = SolrQueryRunner.getInstance(project).execute(connection, collection, query)
+        return answered.arrived()?.let(SolrQueryResultRenderer::render) ?: failureText(answered)
+    }
+
+    // What arrived, complete or not: a partial answer is real, as `SolrResponse.map` also holds.
+    private fun <T> SolrResponse<T>.arrived(): T? = when (this) {
+        is SolrResponse.Success -> value
+        is SolrResponse.Partial -> value
+        else -> null
+    }
+
+    private fun failureText(response: SolrResponse<*>): String = when (response) {
+        is SolrResponse.SolrError -> SolrBundle.message("code.runQuery.solrError", response.code, response.message.orEmpty())
+        is SolrResponse.TransportFailure -> response.description
+        is SolrResponse.Unrecognized -> response.description
+        is SolrResponse.Success, is SolrResponse.Partial -> error("not a failure: $response")
     }
 
     private fun chooseThenRun(
@@ -94,15 +134,7 @@ internal object SolrRunQuery {
         query: String,
     ) {
         project.service<SolrCollectionsScope>().scope.launch {
-            val answered = SolrQueryRunner.getInstance(project).execute(connection, collection, query)
-            val text = when (answered) {
-                is SolrResponse.Success -> SolrQueryResultRenderer.render(answered.value)
-                is SolrResponse.Partial -> SolrQueryResultRenderer.render(answered.value)
-                is SolrResponse.SolrError ->
-                    SolrBundle.message("code.runQuery.solrError", answered.code, answered.message.orEmpty())
-                is SolrResponse.TransportFailure -> answered.description
-                is SolrResponse.Unrecognized -> answered.description
-            }
+            val text = answerFor(project, connection, collection, query)
             withContext(Dispatchers.EDT) { tell(element, text) }
         }
     }
@@ -127,4 +159,28 @@ internal object SolrRunQuery {
         FileEditorManager.getInstance(element.project).selectedTextEditor
             ?.component
             ?.let { RelativePoint.getNorthEastOf(it) }
+}
+
+/**
+ * What the run gesture can offer once the selected connection has been asked.
+ *
+ * The click itself is popups, which a headless test cannot drive; this is the decision under them,
+ * returned rather than shown so that a test can hold it.
+ */
+internal sealed interface SolrRunChoices {
+
+    /**
+     * The collections and cores [connection] holds, sorted, for the chooser.
+     *
+     * @property connection the connection that answered, which the query then runs on
+     * @property collections the names to choose from, never empty
+     */
+    data class Offer(val connection: SolrConnection, val collections: List<String>) : SolrRunChoices
+
+    /**
+     * Nothing to choose from, and the sentence saying why.
+     *
+     * @property message what the popup beside the icon says instead of a chooser
+     */
+    data class Refusal(val message: String) : SolrRunChoices
 }
