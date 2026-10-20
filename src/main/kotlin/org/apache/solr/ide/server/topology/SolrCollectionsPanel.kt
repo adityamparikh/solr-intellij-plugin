@@ -6,8 +6,8 @@ import com.intellij.ide.scratch.ScratchRootType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
@@ -48,13 +48,13 @@ import org.apache.solr.ide.server.connection.SolrConnectionDialog
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.connection.SolrConnectionsListener
 import org.apache.solr.ide.server.connection.SolrQueryDestination
-import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.indexing.SolrCommitMode
 import org.apache.solr.ide.server.indexing.SolrDocumentIndexer
 import org.apache.solr.ide.server.indexing.SolrIndexDocumentDialog
 import org.apache.solr.ide.server.query.SolrCollectionFields
 import org.apache.solr.ide.server.query.screen.SolrQueryScreenSpec
 import org.apache.solr.ide.server.query.screen.SolrQueryScreens
+import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -67,8 +67,7 @@ import org.apache.solr.ide.server.transport.SolrResponse
  *
  * @property scope where server reads are launched
  */
-@Service(Service.Level.PROJECT)
-class SolrCollectionsScope(val scope: CoroutineScope)
+@Service(Service.Level.PROJECT) class SolrCollectionsScope(val scope: CoroutineScope)
 
 /**
  * The collections tool window: what the selected server holds.
@@ -79,494 +78,531 @@ class SolrCollectionsScope(val scope: CoroutineScope)
  * request to Solr is not free, and a tool window that quietly reissued one would make it look it.
  *
  * What the tree says lives in [SolrTopologyNodes] and what the panel is showing lives in
- * [SolrCollectionsView], both of them pure and tested. What is left here is Swing and the fetch, and
- * [render] is deliberately reachable so every state can be exercised without one.
+ * [SolrCollectionsView], both of them pure and tested. What is left here is Swing and the fetch,
+ * and [render] is deliberately reachable so every state can be exercised without one.
  *
  * @param project the project whose connections this browses
  */
-class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel(true, true), Disposable {
+class SolrCollectionsPanel(private val project: Project) :
+  SimpleToolWindowPanel(true, true), Disposable {
 
-    private val settings get() = SolrConnectionSettings.getInstance(project)
+  private val settings
+    get() = SolrConnectionSettings.getInstance(project)
 
-    private val root = DefaultMutableTreeNode()
+  private val root = DefaultMutableTreeNode()
 
-    // `asksAllowsChildren` because one row's children arrive only when it is opened. A tree left to
-    // decide for itself calls any childless node a leaf, draws no handle, and so never fires the
-    // expansion the fields fetch hangs off — the row would be a promise nothing could redeem. Asking
-    // each node instead moves that decision to `nodeFor`, which knows which rows are still to fill.
-    private val treeModel = DefaultTreeModel(root, true)
-    private val tree = Tree(treeModel)
-    private val banner = JBLabel()
-    private val connectionCombo = JComboBox<SolrConnection>()
+  // `asksAllowsChildren` because one row's children arrive only when it is opened. A tree left to
+  // decide for itself calls any childless node a leaf, draws no handle, and so never fires the
+  // expansion the fields fetch hangs off — the row would be a promise nothing could redeem. Asking
+  // each node instead moves that decision to `nodeFor`, which knows which rows are still to fill.
+  private val treeModel = DefaultTreeModel(root, true)
+  private val tree = Tree(treeModel)
+  private val banner = JBLabel()
+  private val connectionCombo = JComboBox<SolrConnection>()
 
-    // Set while the combo is being repopulated, so rebuilding it does not read as the user choosing
-    // something and fire a fetch at whatever happens to land in slot zero.
-    private var populating = false
+  // Set while the combo is being repopulated, so rebuilding it does not read as the user choosing
+  // something and fire a fetch at whatever happens to land in slot zero.
+  private var populating = false
 
-    // The connection the tree currently shows, so a change to the list can tell whether the server
-    // it would read has actually moved. Null means nothing has been read.
-    private var lastReadConnectionId: String? = null
+  // The connection the tree currently shows, so a change to the list can tell whether the server
+  // it would read has actually moved. Null means nothing has been read.
+  private var lastReadConnectionId: String? = null
 
-    /**
-     * The right-click menu: the queries the selected row offers, each named for what it asks.
-     *
-     * Built on each opening from the row, so a field offers only what its flags can answer and a
-     * shard offers nothing. [SolrTreeQueries] decides; this only turns its answer into menu items.
-     */
-    internal val queryMenu: ActionGroup = object : ActionGroup(), DumbAware {
-        override fun getChildren(event: AnActionEvent?): Array<AnAction> =
-            offeredQueries().map { queryAction(it) }.toTypedArray()
+  /**
+   * The right-click menu: the queries the selected row offers, each named for what it asks.
+   *
+   * Built on each opening from the row, so a field offers only what its flags can answer and a
+   * shard offers nothing. [SolrTreeQueries] decides; this only turns its answer into menu items.
+   */
+  internal val queryMenu: ActionGroup =
+    object : ActionGroup(), DumbAware {
+      override fun getChildren(event: AnActionEvent?): Array<AnAction> =
+        offeredQueries().map { queryAction(it) }.toTypedArray()
 
-        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+      override fun getActionUpdateThread() = ActionUpdateThread.EDT
     }
 
-    init {
-        tree.isRootVisible = false
-        tree.showsRootHandles = true
-        tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
-        tree.cellRenderer = SolrTopologyNodeRenderer()
-        // A JTree shows its renderer's tooltip only once registered, and the tooltip is where a
-        // health dot's word lives — without it the colour would be the only way to read it.
-        ToolTipManager.sharedInstance().registerComponent(tree)
-        tree.addTreeWillExpandListener(
-            object : javax.swing.event.TreeWillExpandListener {
-                override fun treeWillExpand(event: javax.swing.event.TreeExpansionEvent) {
-                    (event.path.lastPathComponent as? DefaultMutableTreeNode)?.let { fieldsRequested(it) }
-                }
-
-                override fun treeWillCollapse(event: javax.swing.event.TreeExpansionEvent) = Unit
-            },
-        )
-
-        // Selecting the row under the pointer before the menu opens, so the menu is always about the
-        // row the user right-clicked rather than whichever one happened to be selected before.
-        PopupHandler.installFollowingSelectionTreePopup(tree, queryMenu, POPUP_PLACE)
-
-        banner.isVisible = false
-        banner.border = JBUI.Borders.empty(4, 8)
-
-        connectionCombo.renderer = SolrConnectionComboRenderer()
-        connectionCombo.addActionListener {
-            if (!populating) selectionChanged()
+  init {
+    tree.isRootVisible = false
+    tree.showsRootHandles = true
+    tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
+    tree.cellRenderer = SolrTopologyNodeRenderer()
+    // A JTree shows its renderer's tooltip only once registered, and the tooltip is where a
+    // health dot's word lives — without it the colour would be the only way to read it.
+    ToolTipManager.sharedInstance().registerComponent(tree)
+    tree.addTreeWillExpandListener(
+      object : javax.swing.event.TreeWillExpandListener {
+        override fun treeWillExpand(event: javax.swing.event.TreeExpansionEvent) {
+          (event.path.lastPathComponent as? DefaultMutableTreeNode)?.let { fieldsRequested(it) }
         }
 
-        toolbar = buildToolbar()
-        setContent(
-            JPanel(BorderLayout()).apply {
-                add(banner, BorderLayout.NORTH)
-                add(JBScrollPane(tree), BorderLayout.CENTER)
-            },
-        )
+        override fun treeWillCollapse(event: javax.swing.event.TreeExpansionEvent) = Unit
+      }
+    )
 
-        // The third author of the connection list, and the one that used to be missed: Settings
-        // writes it without this panel hosting the gesture.
-        project.messageBus.connect(this).subscribe(
-            SolrConnectionSettings.CONNECTIONS_CHANGED,
-            SolrConnectionsListener { connectionsChanged() },
-        )
+    // Selecting the row under the pointer before the menu opens, so the menu is always about the
+    // row the user right-clicked rather than whichever one happened to be selected before.
+    PopupHandler.installFollowingSelectionTreePopup(tree, queryMenu, POPUP_PLACE)
 
-        reloadConnections()
+    banner.isVisible = false
+    banner.border = JBUI.Borders.empty(4, 8)
+
+    connectionCombo.renderer = SolrConnectionComboRenderer()
+    connectionCombo.addActionListener {
+      if (!populating) selectionChanged()
     }
 
-    private fun buildToolbar(): JPanel {
-        val actions = DefaultActionGroup(
-            object : DumbAwareAction(
-                SolrBundle.message("collections.action.refresh"),
-                SolrBundle.message("collections.action.refresh.description"),
-                com.intellij.icons.AllIcons.Actions.Refresh,
-            ) {
-                override fun actionPerformed(event: AnActionEvent) = refresh()
-                override fun update(event: AnActionEvent) {
-                    event.presentation.isEnabled = settings.selectedConnection != null
-                }
-                override fun getActionUpdateThread() = ActionUpdateThread.EDT
-            },
-            object : DumbAwareAction(
-                SolrBundle.message("indexing.action.index"),
-                SolrBundle.message("indexing.action.index.description"),
-                com.intellij.icons.AllIcons.Actions.Upload,
-            ) {
-                override fun actionPerformed(event: AnActionEvent) {
-                    indexTestDocument()
-                }
-                override fun update(event: AnActionEvent) {
-                    event.presentation.isEnabled = selectedCollection() != null &&
-                        settings.selectedConnection != null
-                }
-                override fun getActionUpdateThread() = ActionUpdateThread.EDT
-            },
-            object : DumbAwareAction(
-                SolrBundle.message("collections.action.add"),
-                SolrBundle.message("collections.action.add.description"),
-                com.intellij.icons.AllIcons.General.Add,
-            ) {
-                override fun actionPerformed(event: AnActionEvent) = addConnection()
-                override fun getActionUpdateThread() = ActionUpdateThread.EDT
-            },
-        )
-        val bar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actions, true)
-        bar.targetComponent = this
-        return JPanel(FlowLayout(FlowLayout.LEFT, 4, 2)).apply {
-            add(JBLabel(SolrBundle.message("collections.connection.label")))
-            add(connectionCombo)
-            add(bar.component)
-        }
+    toolbar = buildToolbar()
+    setContent(
+      JPanel(BorderLayout()).apply {
+        add(banner, BorderLayout.NORTH)
+        add(JBScrollPane(tree), BorderLayout.CENTER)
+      }
+    )
+
+    // The third author of the connection list, and the one that used to be missed: Settings
+    // writes it without this panel hosting the gesture.
+    project.messageBus
+      .connect(this)
+      .subscribe(
+        SolrConnectionSettings.CONNECTIONS_CHANGED,
+        SolrConnectionsListener { connectionsChanged() },
+      )
+
+    reloadConnections()
+  }
+
+  private fun buildToolbar(): JPanel {
+    val actions =
+      DefaultActionGroup(
+        object :
+          DumbAwareAction(
+            SolrBundle.message("collections.action.refresh"),
+            SolrBundle.message("collections.action.refresh.description"),
+            com.intellij.icons.AllIcons.Actions.Refresh,
+          ) {
+          override fun actionPerformed(event: AnActionEvent) = refresh()
+
+          override fun update(event: AnActionEvent) {
+            event.presentation.isEnabled = settings.selectedConnection != null
+          }
+
+          override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        },
+        object :
+          DumbAwareAction(
+            SolrBundle.message("indexing.action.index"),
+            SolrBundle.message("indexing.action.index.description"),
+            com.intellij.icons.AllIcons.Actions.Upload,
+          ) {
+          override fun actionPerformed(event: AnActionEvent) {
+            indexTestDocument()
+          }
+
+          override fun update(event: AnActionEvent) {
+            event.presentation.isEnabled =
+              selectedCollection() != null && settings.selectedConnection != null
+          }
+
+          override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        },
+        object :
+          DumbAwareAction(
+            SolrBundle.message("collections.action.add"),
+            SolrBundle.message("collections.action.add.description"),
+            com.intellij.icons.AllIcons.General.Add,
+          ) {
+          override fun actionPerformed(event: AnActionEvent) = addConnection()
+
+          override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        },
+      )
+    val bar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actions, true)
+    bar.targetComponent = this
+    return JPanel(FlowLayout(FlowLayout.LEFT, 4, 2)).apply {
+      add(JBLabel(SolrBundle.message("collections.connection.label")))
+      add(connectionCombo)
+      add(bar.component)
+    }
+  }
+
+  /**
+   * Rebuilds the connection list from settings and reads the server that is selected.
+   *
+   * Used where both are wanted at once: the panel opening, and the `+` beside the selector, which
+   * adds a connection *and* chooses it.
+   */
+  internal fun reloadConnections() {
+    refillConnections()
+    refresh()
+  }
+
+  /**
+   * Answers a change to the connection list without necessarily reading a server.
+   *
+   * **Refilling the selector and reading a server are separate jobs, and welding them together is
+   * what hid the defect this exists to fix.** While the only way to refill was a call that also
+   * fetched, refilling was safe on just the two gestures this panel hosts — so a connection added
+   * through Settings left the selector holding the model it was built with, reading *No
+   * connections*, disabled, and collapsed to the width of a combo with nothing in it. The tree hid
+   * it rather than showing it, because [refresh] reads `selectedConnection` live and falls back to
+   * the first one.
+   *
+   * Refilling is local and costs nothing, so it follows every change. A request follows only where
+   * the selection it would read has actually moved, which is the rule the whole panel keeps: server
+   * data moves on request and on connection change, and on nothing else.
+   */
+  private fun connectionsChanged() {
+    refillConnections()
+    if (settings.selectedConnection?.id != lastReadConnectionId) refresh()
+  }
+
+  private fun refillConnections() {
+    val connections = settings.connections
+    populating = true
+    try {
+      connectionCombo.model = DefaultComboBoxModel(connections.toTypedArray())
+      connectionCombo.selectedItem = settings.selectedConnection
+    } finally {
+      populating = false
+    }
+    connectionCombo.isEnabled = connections.isNotEmpty()
+  }
+
+  private fun selectionChanged() {
+    settings.selectedConnectionId = (connectionCombo.selectedItem as? SolrConnection)?.id
+    // A connection change is one of the two events that may refetch, and this is it.
+    refresh()
+  }
+
+  private fun addConnection() {
+    val dialog = SolrConnectionDialog(project, initial = null, hasStoredPassword = false)
+    if (!dialog.showAndGet()) return
+    val added = dialog.connection
+    settings.addConnection(added)
+    if (dialog.passwordEdited) settings.setPassword(added.id, dialog.password)
+    // Chosen as well as added: a user who just described a server meant to look at it.
+    settings.selectedConnectionId = added.id
+    reloadConnections()
+  }
+
+  /**
+   * Reads the selected server, or shows that there is none to read.
+   *
+   * The only thing that issues a request, so "on request and on connection change" is a property of
+   * who calls this rather than a rule scattered through the panel.
+   *
+   * Also forgets the collection fields completion last read, because a refresh is the user saying
+   * that what the plugin last read from this server is no longer to be trusted.
+   */
+  internal fun refresh() {
+    SolrCollectionFields.getInstance(project).forget()
+    lastReadConnectionId = settings.selectedConnection?.id
+    val connection = settings.selectedConnection ?: return render(SolrCollectionsView.NoConnection)
+    render(SolrCollectionsView.Loading)
+    project.service<SolrCollectionsScope>().scope.launch {
+      val response = SolrServerReader.getInstance(project).topology(connection)
+      withContext(Dispatchers.EDT) { render(viewFor(response)) }
+    }
+  }
+
+  /**
+   * Reads a collection's indexed fields, if [node] is the row that stands for them and they have
+   * not been read already.
+   *
+   * **Expanding is the asking.** Reading an index costs one request per collection, so a server
+   * holding thirty of them would turn opening this tool window into thirty requests — which is
+   * slow, and a quiet breach of the rule that server data moves only when someone asks for it.
+   * Fetched once and kept: re-expanding a row already filled asks nothing, because nothing changed
+   * by the row being collapsed. Refresh is what asks again.
+   *
+   * @param node the row about to expand
+   */
+  internal fun fieldsRequested(node: DefaultMutableTreeNode) {
+    val row = node.userObject as? SolrTopologyNode ?: return
+    if (row.kind != SolrTopologyNodeKind.FIELDS || node.childCount > 0) return
+    val collection = row.collection ?: return
+    val connection = settings.selectedConnection ?: return
+
+    project.service<SolrCollectionsScope>().scope.launch {
+      val response = SolrServerReader.getInstance(project).indexContents(connection, collection)
+      withContext(Dispatchers.EDT) { fillFields(node, response) }
+    }
+  }
+
+  /**
+   * Puts what came back under [node], or says why nothing did.
+   *
+   * A failure here is reported in the banner like any other and leaves the row empty, rather than
+   * filling it with an apology that would read as a field called "could not be read".
+   *
+   * @param node the fields row being filled
+   * @param response what the server said its index holds
+   */
+  internal fun fillFields(node: DefaultMutableTreeNode, response: SolrResponse<SolrIndexContents>) {
+    failureMessageFor(response)?.let {
+      return showBanner(it)
     }
 
-    /**
-     * Rebuilds the connection list from settings and reads the server that is selected.
-     *
-     * Used where both are wanted at once: the panel opening, and the `+` beside the selector, which
-     * adds a connection *and* chooses it.
-     */
-    internal fun reloadConnections() {
-        refillConnections()
-        refresh()
+    // The reader's own group heading is discarded and its rows adopted, because the row being
+    // expanded is already that heading — nesting a second one would make the user open "Fields"
+    // to find "Fields". Its detail moves up onto the row, which is where the field counts belong.
+    val group = SolrTopologyNodes.fieldNodesOf(valueIn(response) ?: SolrIndexContents()).single()
+    node.removeAllChildren()
+    group.children.forEach { node.add(nodeFor(it)) }
+    (node.userObject as? SolrTopologyNode)?.let { node.userObject = it.copy(detail = group.detail) }
+    treeModel.nodeStructureChanged(node)
+    warningFor(response)?.let { showBanner(it) }
+  }
+
+  private fun showBanner(message: String) {
+    banner.text = message
+    banner.isVisible = true
+    banner.foreground = UIUtil.getErrorForeground()
+  }
+
+  /**
+   * The collection or core the selected row belongs to, or null where none is selected.
+   *
+   * A row deeper in the tree — a shard, a replica, a field — still answers with the collection it
+   * sits under, because that is the one a document would be indexed into and asking a user to click
+   * the exact right row would be the plugin being unhelpful on purpose.
+   */
+  internal fun selectedCollection(): String? {
+    var node = tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode
+    while (node != null) {
+      val row = node.userObject as? SolrTopologyNode
+      row?.collection?.let {
+        return it
+      }
+      if (row?.kind == SolrTopologyNodeKind.COLLECTION || row?.kind == SolrTopologyNodeKind.CORE) {
+        return row.label
+      }
+      node = node.parent as? DefaultMutableTreeNode
     }
+    return null
+  }
 
-    /**
-     * Answers a change to the connection list without necessarily reading a server.
-     *
-     * **Refilling the selector and reading a server are separate jobs, and welding them together is
-     * what hid the defect this exists to fix.** While the only way to refill was a call that also
-     * fetched, refilling was safe on just the two gestures this panel hosts — so a connection added
-     * through Settings left the selector holding the model it was built with, reading *No
-     * connections*, disabled, and collapsed to the width of a combo with nothing in it. The tree
-     * hid it rather than showing it, because [refresh] reads `selectedConnection` live and falls
-     * back to the first one.
-     *
-     * Refilling is local and costs nothing, so it follows every change. A request follows only where
-     * the selection it would read has actually moved, which is the rule the whole panel keeps:
-     * server data moves on request and on connection change, and on nothing else.
-     */
-    private fun connectionsChanged() {
-        refillConnections()
-        if (settings.selectedConnection?.id != lastReadConnectionId) refresh()
+  private fun offeredQueries(): List<SolrTreeQuery> {
+    val row =
+      (tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject
+        as? SolrTopologyNode ?: return emptyList()
+    return SolrTreeQueries.offeredFor(row, selectedCollection())
+  }
+
+  private fun queryAction(query: SolrTreeQuery): AnAction {
+    val label =
+      when (query.kind) {
+        SolrTreeQueryKind.QUERY -> SolrBundle.message("collections.query.query", query.collection)
+        SolrTreeQueryKind.EXPLAIN ->
+          SolrBundle.message("collections.query.explain", query.collection)
+        SolrTreeQueryKind.FIND_WITH_FIELD ->
+          SolrBundle.message("collections.query.find", query.field.orEmpty())
+        SolrTreeQueryKind.COUNT_VALUES ->
+          SolrBundle.message("collections.query.count", query.field.orEmpty())
+      }
+    return object : DumbAwareAction(label) {
+      override fun actionPerformed(event: AnActionEvent) {
+        openQuery(query)
+      }
+
+      override fun update(event: AnActionEvent) {
+        event.presentation.isEnabled = settings.selectedConnection != null
+      }
+
+      override fun getActionUpdateThread() = ActionUpdateThread.EDT
     }
+  }
 
-    private fun refillConnections() {
-        val connections = settings.connections
-        populating = true
-        try {
-            connectionCombo.model = DefaultComboBoxModel(connections.toTypedArray())
-            connectionCombo.selectedItem = settings.selectedConnection
-        } finally {
-            populating = false
-        }
-        connectionCombo.isEnabled = connections.isNotEmpty()
+  /**
+   * Opens [query] where *Open queries in* says, and runs nothing.
+   *
+   * In the HTTP Client, the default: a request in a scratch file rather than a project file, so
+   * choosing a query changes nothing in the repository; and a new one each time, so a request the
+   * user edited is never overwritten. In the query console: the collection's tab, its form filled
+   * in by the same rules.
+   *
+   * @param query the query to open
+   * @return the file opened, or null where there is no connection to address it to
+   */
+  internal fun openQuery(query: SolrTreeQuery): VirtualFile? {
+    val connection = settings.selectedConnection ?: return null
+    if (settings.openQueriesIn == SolrQueryDestination.CONSOLE) {
+      val fill = SolrTreeQueries.consoleState(query, SolrQueryScreenSpec.bundled)
+      return SolrQueryScreens.getInstance(project).open(connection, query.collection, fill)
     }
-
-    private fun selectionChanged() {
-        settings.selectedConnectionId = (connectionCombo.selectedItem as? SolrConnection)?.id
-        // A connection change is one of the two events that may refetch, and this is it.
-        refresh()
-    }
-
-    private fun addConnection() {
-        val dialog = SolrConnectionDialog(project, initial = null, hasStoredPassword = false)
-        if (!dialog.showAndGet()) return
-        val added = dialog.connection
-        settings.addConnection(added)
-        if (dialog.passwordEdited) settings.setPassword(added.id, dialog.password)
-        // Chosen as well as added: a user who just described a server meant to look at it.
-        settings.selectedConnectionId = added.id
-        reloadConnections()
-    }
-
-    /**
-     * Reads the selected server, or shows that there is none to read.
-     *
-     * The only thing that issues a request, so "on request and on connection change" is a property
-     * of who calls this rather than a rule scattered through the panel.
-     *
-     * Also forgets the collection fields completion last read, because a refresh is the user saying
-     * that what the plugin last read from this server is no longer to be trusted.
-     */
-    internal fun refresh() {
-        SolrCollectionFields.getInstance(project).forget()
-        lastReadConnectionId = settings.selectedConnection?.id
-        val connection = settings.selectedConnection ?: return render(SolrCollectionsView.NoConnection)
-        render(SolrCollectionsView.Loading)
-        project.service<SolrCollectionsScope>().scope.launch {
-            val response = SolrServerReader.getInstance(project).topology(connection)
-            withContext(Dispatchers.EDT) { render(viewFor(response)) }
-        }
-    }
-
-    /**
-     * Reads a collection's indexed fields, if [node] is the row that stands for them and they have
-     * not been read already.
-     *
-     * **Expanding is the asking.** Reading an index costs one request per collection, so a server
-     * holding thirty of them would turn opening this tool window into thirty requests — which is
-     * slow, and a quiet breach of the rule that server data moves only when someone asks for it.
-     * Fetched once and kept: re-expanding a row already filled asks nothing, because nothing
-     * changed by the row being collapsed. Refresh is what asks again.
-     *
-     * @param node the row about to expand
-     */
-    internal fun fieldsRequested(node: DefaultMutableTreeNode) {
-        val row = node.userObject as? SolrTopologyNode ?: return
-        if (row.kind != SolrTopologyNodeKind.FIELDS || node.childCount > 0) return
-        val collection = row.collection ?: return
-        val connection = settings.selectedConnection ?: return
-
-        project.service<SolrCollectionsScope>().scope.launch {
-            val response = SolrServerReader.getInstance(project).indexContents(connection, collection)
-            withContext(Dispatchers.EDT) { fillFields(node, response) }
-        }
-    }
-
-    /**
-     * Puts what came back under [node], or says why nothing did.
-     *
-     * A failure here is reported in the banner like any other and leaves the row empty, rather than
-     * filling it with an apology that would read as a field called "could not be read".
-     *
-     * @param node the fields row being filled
-     * @param response what the server said its index holds
-     */
-    internal fun fillFields(node: DefaultMutableTreeNode, response: SolrResponse<SolrIndexContents>) {
-        failureMessageFor(response)?.let { return showBanner(it) }
-
-        // The reader's own group heading is discarded and its rows adopted, because the row being
-        // expanded is already that heading — nesting a second one would make the user open "Fields"
-        // to find "Fields". Its detail moves up onto the row, which is where the field counts belong.
-        val group = SolrTopologyNodes.fieldNodesOf(valueIn(response) ?: SolrIndexContents()).single()
-        node.removeAllChildren()
-        group.children.forEach { node.add(nodeFor(it)) }
-        (node.userObject as? SolrTopologyNode)?.let { node.userObject = it.copy(detail = group.detail) }
-        treeModel.nodeStructureChanged(node)
-        warningFor(response)?.let { showBanner(it) }
-    }
-
-    private fun showBanner(message: String) {
-        banner.text = message
-        banner.isVisible = true
-        banner.foreground = UIUtil.getErrorForeground()
-    }
-
-    /**
-     * The collection or core the selected row belongs to, or null where none is selected.
-     *
-     * A row deeper in the tree — a shard, a replica, a field — still answers with the collection it
-     * sits under, because that is the one a document would be indexed into and asking a user to
-     * click the exact right row would be the plugin being unhelpful on purpose.
-     */
-    internal fun selectedCollection(): String? {
-        var node = tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode
-        while (node != null) {
-            val row = node.userObject as? SolrTopologyNode
-            row?.collection?.let { return it }
-            if (row?.kind == SolrTopologyNodeKind.COLLECTION || row?.kind == SolrTopologyNodeKind.CORE) {
-                return row.label
-            }
-            node = node.parent as? DefaultMutableTreeNode
-        }
-        return null
-    }
-
-    private fun offeredQueries(): List<SolrTreeQuery> {
-        val row = (tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode
-            ?: return emptyList()
-        return SolrTreeQueries.offeredFor(row, selectedCollection())
-    }
-
-    private fun queryAction(query: SolrTreeQuery): AnAction {
-        val label = when (query.kind) {
-            SolrTreeQueryKind.QUERY -> SolrBundle.message("collections.query.query", query.collection)
-            SolrTreeQueryKind.EXPLAIN -> SolrBundle.message("collections.query.explain", query.collection)
-            SolrTreeQueryKind.FIND_WITH_FIELD -> SolrBundle.message("collections.query.find", query.field.orEmpty())
-            SolrTreeQueryKind.COUNT_VALUES -> SolrBundle.message("collections.query.count", query.field.orEmpty())
-        }
-        return object : DumbAwareAction(label) {
-            override fun actionPerformed(event: AnActionEvent) {
-                openQuery(query)
-            }
-
-            override fun update(event: AnActionEvent) {
-                event.presentation.isEnabled = settings.selectedConnection != null
-            }
-
-            override fun getActionUpdateThread() = ActionUpdateThread.EDT
-        }
-    }
-
-    /**
-     * Opens [query] where *Open queries in* says, and runs nothing.
-     *
-     * In the HTTP Client, the default: a request in a scratch file rather than a project file, so
-     * choosing a query changes nothing in the repository; and a new one each time, so a request the
-     * user edited is never overwritten. In the query console: the collection's tab, its form filled
-     * in by the same rules.
-     *
-     * @param query the query to open
-     * @return the file opened, or null where there is no connection to address it to
-     */
-    internal fun openQuery(query: SolrTreeQuery): VirtualFile? {
-        val connection = settings.selectedConnection ?: return null
-        if (settings.openQueriesIn == SolrQueryDestination.CONSOLE) {
-            val fill = SolrTreeQueries.consoleState(query, SolrQueryScreenSpec.bundled)
-            return SolrQueryScreens.getInstance(project).open(connection, query.collection, fill)
-        }
-        val file = ScratchRootType.getInstance().createScratchFile(
-            project,
-            SolrTreeQueries.scratchFileName(query),
-            HttpRequestLanguage.INSTANCE,
-            SolrTreeQueries.requestText(query, connection),
-            ScratchFileService.Option.create_new_always,
+    val file =
+      ScratchRootType.getInstance()
+        .createScratchFile(
+          project,
+          SolrTreeQueries.scratchFileName(query),
+          HttpRequestLanguage.INSTANCE,
+          SolrTreeQueries.requestText(query, connection),
+          ScratchFileService.Option.create_new_always,
         ) ?: return null
-        FileEditorManager.getInstance(project).openFile(file, true)
-        return file
-    }
+    FileEditorManager.getInstance(project).openFile(file, true)
+    return file
+  }
 
-    /**
-     * Reads the collection's schema, then offers a document to index into it.
-     *
-     * The schema is read rather than taken from a configset, because the document is checked against
-     * what the collection actually has — which is the thing that will accept or silently reshape it.
-     */
-    internal fun indexTestDocument() {
-        val collection = selectedCollection() ?: return
-        val connection = settings.selectedConnection ?: return
+  /**
+   * Reads the collection's schema, then offers a document to index into it.
+   *
+   * The schema is read rather than taken from a configset, because the document is checked against
+   * what the collection actually has — which is the thing that will accept or silently reshape it.
+   */
+  internal fun indexTestDocument() {
+    val collection = selectedCollection() ?: return
+    val connection = settings.selectedConnection ?: return
 
-        project.service<SolrCollectionsScope>().scope.launch {
-            val response = SolrServerReader.getInstance(project).read(connection, collection)
-            withContext(Dispatchers.EDT) {
-                val facts = valueIn(response)?.facts
-                if (facts == null) {
-                    showBanner(failureMessageFor(response).orEmpty())
-                    return@withContext
-                }
-                val dialog = SolrIndexDocumentDialog(project, collection, connection.displayName, facts)
-                if (dialog.showAndGet()) sendDocument(connection, collection, dialog.document, dialog.commitMode)
-            }
+    project.service<SolrCollectionsScope>().scope.launch {
+      val response = SolrServerReader.getInstance(project).read(connection, collection)
+      withContext(Dispatchers.EDT) {
+        val facts = valueIn(response)?.facts
+        if (facts == null) {
+          showBanner(failureMessageFor(response).orEmpty())
+          return@withContext
         }
+        val dialog = SolrIndexDocumentDialog(project, collection, connection.displayName, facts)
+        if (dialog.showAndGet())
+          sendDocument(connection, collection, dialog.document, dialog.commitMode)
+      }
     }
+  }
 
-    private fun sendDocument(
-        connection: org.apache.solr.ide.server.connection.SolrConnection,
-        collection: String,
-        document: String,
-        commit: SolrCommitMode,
-    ) {
-        project.service<SolrCollectionsScope>().scope.launch {
-            val result = SolrDocumentIndexer.getInstance(project).index(connection, collection, document, commit)
-            withContext(Dispatchers.EDT) {
-                showBanner(
-                    failureMessageFor(result)
-                        ?: SolrBundle.message("indexing.indexed", collection, commit.label),
-                )
-            }
-        }
+  private fun sendDocument(
+    connection: org.apache.solr.ide.server.connection.SolrConnection,
+    collection: String,
+    document: String,
+    commit: SolrCommitMode,
+  ) {
+    project.service<SolrCollectionsScope>().scope.launch {
+      val result =
+        SolrDocumentIndexer.getInstance(project).index(connection, collection, document, commit)
+      withContext(Dispatchers.EDT) {
+        showBanner(
+          failureMessageFor(result)
+            ?: SolrBundle.message("indexing.indexed", collection, commit.label)
+        )
+      }
     }
+  }
 
-    /**
-     * Shows [view], and nothing about how it was arrived at.
-     *
-     * Reachable rather than private because it is the whole of what the panel does with a result,
-     * and driving it directly is how every state gets exercised without a server to produce one.
-     *
-     * @param view what to show
-     */
-    internal fun render(view: SolrCollectionsView) {
-        when (view) {
-            SolrCollectionsView.NoConnection -> showTree(emptyList(), SolrBundle.message("collections.empty.noConnection"), null)
-            SolrCollectionsView.Loading -> showTree(emptyList(), SolrBundle.message("collections.empty.loading"), null)
-            is SolrCollectionsView.Loaded ->
-                showTree(view.roots, SolrBundle.message("collections.empty.nothingHere"), view.warning)
-            // The tree is emptied rather than left showing a previous server's topology under a
-            // failure banner, which would read as the failure being partial rather than total.
-            is SolrCollectionsView.Failed -> showTree(emptyList(), SolrBundle.message("collections.empty.failed"), view.message)
-        }
+  /**
+   * Shows [view], and nothing about how it was arrived at.
+   *
+   * Reachable rather than private because it is the whole of what the panel does with a result, and
+   * driving it directly is how every state gets exercised without a server to produce one.
+   *
+   * @param view what to show
+   */
+  internal fun render(view: SolrCollectionsView) {
+    when (view) {
+      SolrCollectionsView.NoConnection ->
+        showTree(emptyList(), SolrBundle.message("collections.empty.noConnection"), null)
+      SolrCollectionsView.Loading ->
+        showTree(emptyList(), SolrBundle.message("collections.empty.loading"), null)
+      is SolrCollectionsView.Loaded ->
+        showTree(view.roots, SolrBundle.message("collections.empty.nothingHere"), view.warning)
+      // The tree is emptied rather than left showing a previous server's topology under a
+      // failure banner, which would read as the failure being partial rather than total.
+      is SolrCollectionsView.Failed ->
+        showTree(emptyList(), SolrBundle.message("collections.empty.failed"), view.message)
     }
+  }
 
-    private fun showTree(roots: List<SolrTopologyNode>, emptyText: String, message: String?) {
-        root.removeAllChildren()
-        roots.forEach { root.add(nodeFor(it)) }
-        treeModel.reload()
-        // Expanded to the depth a user came for: collections and their shards are the question, and
-        // a tree that opens fully collapsed makes them click to find out it worked.
-        repeat(tree.rowCount) { tree.expandRow(it) }
-        tree.emptyText.text = emptyText
-        banner.text = message.orEmpty()
-        banner.isVisible = message != null
-        banner.foreground = if (message != null) UIUtil.getErrorForeground() else UIUtil.getLabelForeground()
-    }
+  private fun showTree(roots: List<SolrTopologyNode>, emptyText: String, message: String?) {
+    root.removeAllChildren()
+    roots.forEach { root.add(nodeFor(it)) }
+    treeModel.reload()
+    // Expanded to the depth a user came for: collections and their shards are the question, and
+    // a tree that opens fully collapsed makes them click to find out it worked.
+    repeat(tree.rowCount) { tree.expandRow(it) }
+    tree.emptyText.text = emptyText
+    banner.text = message.orEmpty()
+    banner.isVisible = message != null
+    banner.foreground =
+      if (message != null) UIUtil.getErrorForeground() else UIUtil.getLabelForeground()
+  }
 
-    // A row is openable when it already has children or is the one that fetches them on being
-    // opened. Everything else says no: with the model asking rather than counting, a default of yes
-    // would hang an empty handle off every field and every replica in the tree.
-    private fun nodeFor(node: SolrTopologyNode): DefaultMutableTreeNode =
-        DefaultMutableTreeNode(node, node.children.isNotEmpty() || node.kind == SolrTopologyNodeKind.FIELDS)
-            .apply { node.children.forEach { add(nodeFor(it)) } }
+  // A row is openable when it already has children or is the one that fetches them on being
+  // opened. Everything else says no: with the model asking rather than counting, a default of yes
+  // would hang an empty handle off every field and every replica in the tree.
+  private fun nodeFor(node: SolrTopologyNode): DefaultMutableTreeNode =
+    DefaultMutableTreeNode(
+        node,
+        node.children.isNotEmpty() || node.kind == SolrTopologyNodeKind.FIELDS,
+      )
+      .apply { node.children.forEach { add(nodeFor(it)) } }
 
-    /** The rows currently on screen, top level first. */
-    internal val rootLabels: List<String>
-        get() = (0 until root.childCount).map {
-            ((root.getChildAt(it) as DefaultMutableTreeNode).userObject as SolrTopologyNode).label
-        }
+  /** The rows currently on screen, top level first. */
+  internal val rootLabels: List<String>
+    get() =
+      (0 until root.childCount).map {
+        ((root.getChildAt(it) as DefaultMutableTreeNode).userObject as SolrTopologyNode).label
+      }
 
-    /** What the banner is saying, or null where it is hidden. */
-    internal val bannerMessage: String? get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
+  /** What the banner is saying, or null where it is hidden. */
+  internal val bannerMessage: String?
+    get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
 
-    /** Selects [path], as clicking that row would. */
-    internal fun selectPath(path: javax.swing.tree.TreePath) {
-        tree.selectionPath = path
-    }
+  /** Selects [path], as clicking that row would. */
+  internal fun selectPath(path: javax.swing.tree.TreePath) {
+    tree.selectionPath = path
+  }
 
-    /** The tree's invisible root, so a test can walk to the row it means to exercise. */
-    internal val treeRoot: DefaultMutableTreeNode get() = root
+  /** The tree's invisible root, so a test can walk to the row it means to exercise. */
+  internal val treeRoot: DefaultMutableTreeNode
+    get() = root
 
-    /**
-     * Whether the tree will offer [node] an expand handle.
-     *
-     * The property a lazily-filled row depends on and cannot demonstrate for itself: its children
-     * arrive on expansion, so it is empty until it is opened, and a row nothing will open stays
-     * empty forever.
-     *
-     * @param node the row to ask about
-     * @return true where the tree will let it be opened
-     */
-    internal fun willOfferExpansion(node: DefaultMutableTreeNode): Boolean = !treeModel.isLeaf(node)
+  /**
+   * Whether the tree will offer [node] an expand handle.
+   *
+   * The property a lazily-filled row depends on and cannot demonstrate for itself: its children
+   * arrive on expansion, so it is empty until it is opened, and a row nothing will open stays empty
+   * forever.
+   *
+   * @param node the row to ask about
+   * @return true where the tree will let it be opened
+   */
+  internal fun willOfferExpansion(node: DefaultMutableTreeNode): Boolean = !treeModel.isLeaf(node)
 
-    /**
-     * Whether [node] is currently open.
-     *
-     * Separate from [willOfferExpansion] because the two answers must differ after a render: the
-     * fields row has to be openable and has to stay shut, or every redraw fetches.
-     *
-     * @param node the row to ask about
-     * @return true where the row is expanded
-     */
-    internal fun isExpandedRow(node: DefaultMutableTreeNode): Boolean =
-        tree.isExpanded(javax.swing.tree.TreePath(node.path))
+  /**
+   * Whether [node] is currently open.
+   *
+   * Separate from [willOfferExpansion] because the two answers must differ after a render: the
+   * fields row has to be openable and has to stay shut, or every redraw fetches.
+   *
+   * @param node the row to ask about
+   * @return true where the row is expanded
+   */
+  internal fun isExpandedRow(node: DefaultMutableTreeNode): Boolean =
+    tree.isExpanded(javax.swing.tree.TreePath(node.path))
 
-    /**
-     * The connections the selector is offering, by display name.
-     *
-     * Reachable because what the selector holds is not visible from the settings it was built from —
-     * which is exactly how it came to hold a list that was already out of date.
-     */
-    internal val offeredConnections: List<String>
-        get() = (0 until connectionCombo.itemCount).map { connectionCombo.getItemAt(it).displayName }
+  /**
+   * The connections the selector is offering, by display name.
+   *
+   * Reachable because what the selector holds is not visible from the settings it was built from —
+   * which is exactly how it came to hold a list that was already out of date.
+   */
+  internal val offeredConnections: List<String>
+    get() = (0 until connectionCombo.itemCount).map { connectionCombo.getItemAt(it).displayName }
 
-    /**
-     * Whether the selector can be operated.
-     *
-     * Separate from [offeredConnections] because a combo left disabled from an empty model is the
-     * half a user actually meets: the list may be right and the control still refuse the click.
-     */
-    internal val selectorIsUsable: Boolean
-        get() = connectionCombo.isEnabled
+  /**
+   * Whether the selector can be operated.
+   *
+   * Separate from [offeredConnections] because a combo left disabled from an empty model is the
+   * half a user actually meets: the list may be right and the control still refuse the click.
+   */
+  internal val selectorIsUsable: Boolean
+    get() = connectionCombo.isEnabled
 
-    /** Releases the panel; the fetch scope belongs to the project and is cancelled with it. */
-    override fun dispose() = Unit
+  /** Releases the panel; the fetch scope belongs to the project and is cancelled with it. */
+  override fun dispose() = Unit
 
-    private companion object {
-        const val TOOLBAR_PLACE = "SolrCollectionsToolWindow"
-        const val POPUP_PLACE = "SolrCollectionsToolWindowPopup"
-    }
+  private companion object {
+    const val TOOLBAR_PLACE = "SolrCollectionsToolWindow"
+    const val POPUP_PLACE = "SolrCollectionsToolWindowPopup"
+  }
 }
 
 /**
@@ -576,43 +612,46 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
  * shard's hash range is on hover too, beside its health, rather than in the row.
  */
 internal class SolrTopologyNodeRenderer : ColoredTreeCellRenderer() {
-    override fun customizeCellRenderer(
-        tree: JTree,
-        value: Any?,
-        selected: Boolean,
-        expanded: Boolean,
-        leaf: Boolean,
-        row: Int,
-        hasFocus: Boolean,
-    ) {
-        // Cleared on every row, because one renderer draws them all: a replica drawn after its
-        // collection would otherwise inherit the collection's dot and report a health it never had.
-        icon = null
-        toolTipText = null
-        val node = (value as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode ?: return
-        node.health?.let { icon = SolrHealthPresentation.iconOf(it) }
-        // Escaped line by line, because the lines are joined as HTML and the range is the server's
-        // own text: a server that answered with markup in it would otherwise have Swing render it,
-        // remote images included.
-        val hover = listOfNotNull(
-            node.health?.let(SolrHealthPresentation::tooltipOf),
-            node.range?.let { SolrBundle.message("collections.shard.range.tooltip", it) },
-        ).map(StringUtil::escapeXmlEntities)
-        if (hover.isNotEmpty()) toolTipText = hover.joinToString("<br>", "<html>", "</html>")
-        append(node.label)
-        node.detail?.let { append("  $it", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
-    }
+  override fun customizeCellRenderer(
+    tree: JTree,
+    value: Any?,
+    selected: Boolean,
+    expanded: Boolean,
+    leaf: Boolean,
+    row: Int,
+    hasFocus: Boolean,
+  ) {
+    // Cleared on every row, because one renderer draws them all: a replica drawn after its
+    // collection would otherwise inherit the collection's dot and report a health it never had.
+    icon = null
+    toolTipText = null
+    val node = (value as? DefaultMutableTreeNode)?.userObject as? SolrTopologyNode ?: return
+    node.health?.let { icon = SolrHealthPresentation.iconOf(it) }
+    // Escaped line by line, because the lines are joined as HTML and the range is the server's
+    // own text: a server that answered with markup in it would otherwise have Swing render it,
+    // remote images included.
+    val hover =
+      listOfNotNull(
+          node.health?.let(SolrHealthPresentation::tooltipOf),
+          node.range?.let { SolrBundle.message("collections.shard.range.tooltip", it) },
+        )
+        .map(StringUtil::escapeXmlEntities)
+    if (hover.isNotEmpty()) toolTipText = hover.joinToString("<br>", "<html>", "</html>")
+    append(node.label)
+    node.detail?.let { append("  $it", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
+  }
 }
 
 /** A connection in the selector, named as the user named it. */
-internal class SolrConnectionComboRenderer : com.intellij.ui.SimpleListCellRenderer<SolrConnection>() {
-    override fun customize(
-        list: javax.swing.JList<out SolrConnection>,
-        value: SolrConnection?,
-        index: Int,
-        selected: Boolean,
-        hasFocus: Boolean,
-    ) {
-        text = value?.displayName ?: SolrBundle.message("collections.connection.none")
-    }
+internal class SolrConnectionComboRenderer :
+  com.intellij.ui.SimpleListCellRenderer<SolrConnection>() {
+  override fun customize(
+    list: javax.swing.JList<out SolrConnection>,
+    value: SolrConnection?,
+    index: Int,
+    selected: Boolean,
+    hasFocus: Boolean,
+  ) {
+    text = value?.displayName ?: SolrBundle.message("collections.connection.none")
+  }
 }

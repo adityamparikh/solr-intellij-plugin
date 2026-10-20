@@ -11,59 +11,68 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrDanglingCopyFieldInspectionTest : SolrConfigsetTestCase() {
 
-    private val schema = """
-        <schema name='t'>
-          <fieldType name="string" class="solr.StrField"/>
-          <fieldType name="text_general" class="solr.TextField"/>
-          <field name="id" type="string"/>
-          <field name="name" type="text_general"/>
-          <field name="text" type="text_general"/>
-          <dynamicField name="*_s" type="string"/>
-          BODY
-        </schema>
-    """.trimIndent()
+  private val schema =
+    """
+    <schema name='t'>
+      <fieldType name="string" class="solr.StrField"/>
+      <fieldType name="text_general" class="solr.TextField"/>
+      <field name="id" type="string"/>
+      <field name="name" type="text_general"/>
+      <field name="text" type="text_general"/>
+      <dynamicField name="*_s" type="string"/>
+      BODY
+    </schema>
+    """
+      .trimIndent()
 
-    private fun check(body: String) {
-        myFixture.enableInspections(SolrDanglingCopyFieldInspection())
-        myFixture.configureByText("managed-schema.xml", schema.replace("BODY", body))
-        myFixture.checkHighlighting(true, false, false)
-    }
+  private fun check(body: String) {
+    myFixture.enableInspections(SolrDanglingCopyFieldInspection())
+    myFixture.configureByText("managed-schema.xml", schema.replace("BODY", body))
+    myFixture.checkHighlighting(true, false, false)
+  }
 
-    fun testADanglingSourceIsFlagged() {
-        check("""<copyField source="<error descr="Solr: no field named 'manufacturer' is declared in this configset">manufacturer</error>" dest="text"/>""")
-    }
+  fun testADanglingSourceIsFlagged() {
+    check(
+      """<copyField source="<error descr="Solr: no field named 'manufacturer' is declared in this configset">manufacturer</error>" dest="text"/>"""
+    )
+  }
 
-    fun testADanglingDestinationIsFlagged() {
-        check("""<copyField source="name" dest="<error descr="Solr: no field named 'missing' is declared in this configset">missing</error>"/>""")
-    }
+  fun testADanglingDestinationIsFlagged() {
+    check(
+      """<copyField source="name" dest="<error descr="Solr: no field named 'missing' is declared in this configset">missing</error>"/>"""
+    )
+  }
 
-    fun testACopyFieldBetweenDeclaredFieldsIsClean() {
-        check("""<copyField source="name" dest="text"/>""")
-    }
+  fun testACopyFieldBetweenDeclaredFieldsIsClean() {
+    check("""<copyField source="name" dest="text"/>""")
+  }
 
-    /** A dynamic field supplies the name, so nothing is dangling. */
-    fun testACopyFieldOntoADynamicFieldIsClean() {
-        check("""<copyField source="name" dest="title_s"/>""")
-    }
+  /** A dynamic field supplies the name, so nothing is dangling. */
+  fun testACopyFieldOntoADynamicFieldIsClean() {
+    check("""<copyField source="name" dest="title_s"/>""")
+  }
 
-    /**
-     * A glob source is a pattern over dynamic fields. Whether anything matches it is not a question
-     * the schema alone answers, so it must not be reported either way.
-     */
-    fun testAGlobSourceIsNotReported() {
-        check("""<copyField source="*_s" dest="text"/><copyField source="*" dest="text"/>""")
-    }
+  /**
+   * A glob source is a pattern over dynamic fields. Whether anything matches it is not a question
+   * the schema alone answers, so it must not be reported either way.
+   */
+  fun testAGlobSourceIsNotReported() {
+    check("""<copyField source="*_s" dest="text"/><copyField source="*" dest="text"/>""")
+  }
 
-    /** Outside a Solr project every inspection is inert, like every other surface. */
-    fun testNothingIsReportedOutsideASolrProject() {
-        givenNoSolrOnTheClasspath()
-        check("""<copyField source="manufacturer" dest="text"/>""")
-    }
+  /** Outside a Solr project every inspection is inert, like every other surface. */
+  fun testNothingIsReportedOutsideASolrProject() {
+    givenNoSolrOnTheClasspath()
+    check("""<copyField source="manufacturer" dest="text"/>""")
+  }
 
-    /** A file that is not part of a configset is not inspected, whatever it contains. */
-    fun testNothingIsReportedInAFileThatIsNotAConfigset() {
-        myFixture.enableInspections(SolrDanglingCopyFieldInspection())
-        myFixture.configureByText("notes.xml", schema.replace("BODY", """<copyField source="manufacturer" dest="text"/>"""))
-        myFixture.checkHighlighting(true, false, false)
-    }
+  /** A file that is not part of a configset is not inspected, whatever it contains. */
+  fun testNothingIsReportedInAFileThatIsNotAConfigset() {
+    myFixture.enableInspections(SolrDanglingCopyFieldInspection())
+    myFixture.configureByText(
+      "notes.xml",
+      schema.replace("BODY", """<copyField source="manufacturer" dest="text"/>"""),
+    )
+    myFixture.checkHighlighting(true, false, false)
+  }
 }

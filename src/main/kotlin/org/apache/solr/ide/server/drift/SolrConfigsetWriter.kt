@@ -9,7 +9,6 @@ import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.reading.SolrServerMode
 import org.apache.solr.ide.server.reading.SolrServerReader
-import org.apache.solr.ide.server.transport.SolrCredential
 import org.apache.solr.ide.server.transport.SolrHttpTransport
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -18,123 +17,130 @@ import org.apache.solr.ide.server.transport.SolrResponse
  *
  * **Neither reports success on its own answer.** A write that returns HTTP 200 with
  * `responseHeader.status` 0 proves the request was accepted, not that the server now reflects it —
- * and that is not a hypothetical. Uploading a configset lacking `_version_` returns status 0 and the
- * name appears in `action=LIST`, and Solr then refuses to build a collection from it. Reload timing
- * and a multi-replica collection still propagating are two more gaps between the two facts. So the
- * caller re-reads, and the drift view reports from the read rather than from the write.
+ * and that is not a hypothetical. Uploading a configset lacking `_version_` returns status 0 and
+ * the name appears in `action=LIST`, and Solr then refuses to build a collection from it. Reload
+ * timing and a multi-replica collection still propagating are two more gaps between the two facts.
+ * So the caller re-reads, and the drift view reports from the read rather than from the write.
  *
  * **Upload is a SolrCloud operation and the mode is checked before asking.** A standalone server
- * answers every `/admin/configs` action with HTTP 400 and "Solr instance is not running in SolrCloud
- * mode" — verified — so a writer that tried anyway would report a hard failure against a healthy
- * server, and catching that 400 would also swallow the genuinely different one a malformed request
- * produces.
+ * answers every `/admin/configs` action with HTTP 400 and "Solr instance is not running in
+ * SolrCloud mode" — verified — so a writer that tried anyway would report a hard failure against a
+ * healthy server, and catching that 400 would also swallow the genuinely different one a malformed
+ * request produces.
  */
 @Service(Service.Level.PROJECT)
 class SolrConfigsetWriter(private val project: Project) {
 
-    /**
-     * Uploads [archive] as the configset named [name].
-     *
-     * @param connection the server to write to
-     * @param name the configset name to create or replace
-     * @param archive the zipped configset, as [SolrConfigsetArchive] produces it
-     * @param overwrite whether to replace a configset of that name that already exists
-     * @return what Solr answered, which is not on its own proof the server now agrees
-     */
-    suspend fun upload(
-        connection: SolrConnection,
-        name: String,
-        archive: ByteArray,
-        overwrite: Boolean = true,
-    ): SolrResponse<Unit> {
-        val mode = SolrServerReader.getInstance(project).topology(connection).let {
-            (it as? SolrResponse.Success)?.value?.mode ?: (it as? SolrResponse.Partial)?.value?.mode
-        }
-        // A mode that was read and is not SolrCloud refuses — including `UNKNOWN`, which means the
-        // server answered and would not say. Both supported lines always report one, so a server
-        // that does not is one this plugin has not identified, and guessing is worse for a write
-        // than for a read. A *null* mode is the other case entirely: nothing answered, so there is
-        // nothing to go on, and the upload's own failure will describe what actually happened
-        // rather than blaming a mode nobody could read.
-        if (mode != null && mode != SolrServerMode.SOLR_CLOUD) {
-            return SolrResponse.TransportFailure(NOT_SOLR_CLOUD)
-        }
-
-        val path = "/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
-        return SolrHttpTransport.getInstance(project)
-            .post(connection.baseUrl, path, archive, SolrHttpTransport.OCTET_STREAM, SolrConnectionSettings.getInstance(project).credentialFor(connection))
-            .map { }
+  /**
+   * Uploads [archive] as the configset named [name].
+   *
+   * @param connection the server to write to
+   * @param name the configset name to create or replace
+   * @param archive the zipped configset, as [SolrConfigsetArchive] produces it
+   * @param overwrite whether to replace a configset of that name that already exists
+   * @return what Solr answered, which is not on its own proof the server now agrees
+   */
+  suspend fun upload(
+    connection: SolrConnection,
+    name: String,
+    archive: ByteArray,
+    overwrite: Boolean = true,
+  ): SolrResponse<Unit> {
+    val mode =
+      SolrServerReader.getInstance(project).topology(connection).let {
+        (it as? SolrResponse.Success)?.value?.mode ?: (it as? SolrResponse.Partial)?.value?.mode
+      }
+    // A mode that was read and is not SolrCloud refuses — including `UNKNOWN`, which means the
+    // server answered and would not say. Both supported lines always report one, so a server
+    // that does not is one this plugin has not identified, and guessing is worse for a write
+    // than for a read. A *null* mode is the other case entirely: nothing answered, so there is
+    // nothing to go on, and the upload's own failure will describe what actually happened
+    // rather than blaming a mode nobody could read.
+    if (mode != null && mode != SolrServerMode.SOLR_CLOUD) {
+      return SolrResponse.TransportFailure(NOT_SOLR_CLOUD)
     }
 
-    /**
-     * Reloads [collection] so the server picks up a configset that changed underneath it.
-     *
-     * **The collection form rather than the core form**, though both answer. A pairing names a
-     * collection, and reaching for the cores underneath it would mean resolving replicas this
-     * plugin has no reason to know about — and getting that wrong on a multi-replica collection
-     * would reload one replica and report the collection reloaded.
-     *
-     * @param connection the server to write to
-     * @param collection the collection to reload
-     * @return what Solr answered
-     */
-    suspend fun reload(connection: SolrConnection, collection: String): SolrResponse<Unit> =
-        SolrHttpTransport.getInstance(project)
-            .get(
-                connection.baseUrl,
-                "/admin/collections?action=RELOAD&name=${encode(collection)}",
-                SolrConnectionSettings.getInstance(project).credentialFor(connection),
-            )
-            .map { }
+    val path = "/admin/configs?action=UPLOAD&name=${encode(name)}&overwrite=$overwrite"
+    return SolrHttpTransport.getInstance(project)
+      .post(
+        connection.baseUrl,
+        path,
+        archive,
+        SolrHttpTransport.OCTET_STREAM,
+        SolrConnectionSettings.getInstance(project).credentialFor(connection),
+      )
+      .map {}
+  }
+
+  /**
+   * Reloads [collection] so the server picks up a configset that changed underneath it.
+   *
+   * **The collection form rather than the core form**, though both answer. A pairing names a
+   * collection, and reaching for the cores underneath it would mean resolving replicas this plugin
+   * has no reason to know about — and getting that wrong on a multi-replica collection would reload
+   * one replica and report the collection reloaded.
+   *
+   * @param connection the server to write to
+   * @param collection the collection to reload
+   * @return what Solr answered
+   */
+  suspend fun reload(connection: SolrConnection, collection: String): SolrResponse<Unit> =
+    SolrHttpTransport.getInstance(project)
+      .get(
+        connection.baseUrl,
+        "/admin/collections?action=RELOAD&name=${encode(collection)}",
+        SolrConnectionSettings.getInstance(project).credentialFor(connection),
+      )
+      .map {}
+
+  /**
+   * Posts [request] to [collection]'s Schema API.
+   *
+   * **What it sends is whatever it is handed**, and the decision about what may be sent lives in
+   * [SolrSchemaApi] rather than here. That separation matters: the rule protecting the index is
+   * about which commands are safe, and a writer that also decided would be a second place for that
+   * judgement to live and a second place for it to be got wrong.
+   *
+   * Works against a standalone server as well as SolrCloud — the Schema API belongs to a core or a
+   * collection, unlike the ConfigSets API, so there is no mode to check.
+   *
+   * @param connection the server to write to
+   * @param collection the collection whose schema to change
+   * @param request the Schema API request body, as [SolrSchemaApi.requestFor] builds it
+   * @return what Solr answered, which is not on its own proof the server now agrees
+   */
+  suspend fun applySchemaChanges(
+    connection: SolrConnection,
+    collection: String,
+    request: String,
+  ): SolrResponse<Unit> =
+    SolrHttpTransport.getInstance(project)
+      .post(
+        connection.baseUrl,
+        "/${encode(collection)}/schema",
+        request.toByteArray(),
+        SolrHttpTransport.JSON,
+        SolrConnectionSettings.getInstance(project).credentialFor(connection),
+      )
+      .map {}
+
+  // Names come from a user and from a directory on disk, so they carry whatever characters those
+  // allow. Encoded rather than trusted: an unencoded `&` would silently truncate the request into
+  // a different one, which for a write is a different write.
+  private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
+
+  /** Service lookup. */
+  companion object {
+    /** What a standalone server is told, in the plugin's words because Solr was never asked. */
+    const val NOT_SOLR_CLOUD: String =
+      "this server is not running in SolrCloud mode, and only SolrCloud accepts a configset upload"
 
     /**
-     * Posts [request] to [collection]'s Schema API.
+     * The writer for [project].
      *
-     * **What it sends is whatever it is handed**, and the decision about what may be sent lives in
-     * [SolrSchemaApi] rather than here. That separation matters: the rule protecting the index is
-     * about which commands are safe, and a writer that also decided would be a second place for that
-     * judgement to live and a second place for it to be got wrong.
-     *
-     * Works against a standalone server as well as SolrCloud — the Schema API belongs to a core or a
-     * collection, unlike the ConfigSets API, so there is no mode to check.
-     *
-     * @param connection the server to write to
-     * @param collection the collection whose schema to change
-     * @param request the Schema API request body, as [SolrSchemaApi.requestFor] builds it
-     * @return what Solr answered, which is not on its own proof the server now agrees
+     * @param project the project whose connections it writes through
+     * @return the project-level service
      */
-    suspend fun applySchemaChanges(
-        connection: SolrConnection,
-        collection: String,
-        request: String,
-    ): SolrResponse<Unit> =
-        SolrHttpTransport.getInstance(project)
-            .post(
-                connection.baseUrl,
-                "/${encode(collection)}/schema",
-                request.toByteArray(),
-                SolrHttpTransport.JSON,
-                SolrConnectionSettings.getInstance(project).credentialFor(connection),
-            )
-            .map { }
-
-    // Names come from a user and from a directory on disk, so they carry whatever characters those
-    // allow. Encoded rather than trusted: an unencoded `&` would silently truncate the request into
-    // a different one, which for a write is a different write.
-    private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
-
-    /** Service lookup. */
-    companion object {
-        /** What a standalone server is told, in the plugin's words because Solr was never asked. */
-        const val NOT_SOLR_CLOUD: String =
-            "this server is not running in SolrCloud mode, and only SolrCloud accepts a configset upload"
-
-        /**
-         * The writer for [project].
-         *
-         * @param project the project whose connections it writes through
-         * @return the project-level service
-         */
-        fun getInstance(project: Project): SolrConfigsetWriter = project.service()
-    }
+    fun getInstance(project: Project): SolrConfigsetWriter = project.service()
+  }
 }

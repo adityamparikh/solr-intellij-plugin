@@ -21,46 +21,49 @@ import org.apache.solr.ide.server.drift.SolrDriftPanel
  */
 class SolrCollectionsToolWindowFactoryTest : SolrConfigsetTestCase() {
 
-    fun testTheFactoryAddsATabForEachSurface() {
-        val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+  fun testTheFactoryAddsATabForEachSurface() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
 
-        SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
+    SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
 
-        val contents = toolWindow.contentManager.contents
-        assertEquals(2, contents.size)
-        assertTrue(contents[0].component.toString(), contents[0].component is SolrCollectionsPanel)
-        assertTrue(contents[1].component.toString(), contents[1].component is SolrDriftPanel)
+    val contents = toolWindow.contentManager.contents
+    assertEquals(2, contents.size)
+    assertTrue(contents[0].component.toString(), contents[0].component is SolrCollectionsPanel)
+    assertTrue(contents[1].component.toString(), contents[1].component is SolrDriftPanel)
+  }
+
+  /**
+   * Both tabs are named.
+   *
+   * A tab with no title renders as a blank strip, which reads as a rendering fault rather than as a
+   * tab — and the second tab is the one nobody will look for unless it is labelled.
+   */
+  fun testBothTabsAreNamed() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+
+    SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
+
+    assertEquals(
+      listOf("Collections", "Drift"),
+      toolWindow.contentManager.contents.map { it.displayName },
+    )
+  }
+
+  /**
+   * The tab disposes the panel it holds.
+   *
+   * Without the disposer the panel outlives its tab, and `BasePlatformTestCase`'s own leak checking
+   * is what would eventually notice — in some unrelated test, long after the cause.
+   */
+  fun testClosingTheTabDisposesThePanel() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
+
+    toolWindow.contentManager.contents.forEach { content ->
+      assertNotNull(
+        "every tab must dispose what it holds: ${content.displayName}",
+        content.disposer,
+      )
     }
-
-    /**
-     * Both tabs are named.
-     *
-     * A tab with no title renders as a blank strip, which reads as a rendering fault rather than as
-     * a tab — and the second tab is the one nobody will look for unless it is labelled.
-     */
-    fun testBothTabsAreNamed() {
-        val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
-
-        SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
-
-        assertEquals(
-            listOf("Collections", "Drift"),
-            toolWindow.contentManager.contents.map { it.displayName },
-        )
-    }
-
-    /**
-     * The tab disposes the panel it holds.
-     *
-     * Without the disposer the panel outlives its tab, and `BasePlatformTestCase`'s own leak
-     * checking is what would eventually notice — in some unrelated test, long after the cause.
-     */
-    fun testClosingTheTabDisposesThePanel() {
-        val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
-        SolrCollectionsToolWindowFactory().createToolWindowContent(project, toolWindow)
-
-        toolWindow.contentManager.contents.forEach { content ->
-            assertNotNull("every tab must dispose what it holds: ${content.displayName}", content.disposer)
-        }
-    }
+  }
 }

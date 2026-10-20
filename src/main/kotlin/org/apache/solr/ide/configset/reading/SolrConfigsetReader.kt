@@ -40,134 +40,135 @@ import org.apache.solr.ide.model.SolrFieldModel
 @Service(Service.Level.PROJECT)
 class SolrConfigsetReader(private val project: Project) {
 
-    /**
-     * The field model for [configset], parsed if the cache has nothing current.
-     *
-     * @param configset the configset to model
-     * @return its model, which is empty rather than null when the configset holds no readable files
-     */
-    fun modelFor(configset: SolrConfigset): SolrFieldModel =
-        directoryOf(configset)?.let { modelFor(it) } ?: EMPTY
+  /**
+   * The field model for [configset], parsed if the cache has nothing current.
+   *
+   * @param configset the configset to model
+   * @return its model, which is empty rather than null when the configset holds no readable files
+   */
+  fun modelFor(configset: SolrConfigset): SolrFieldModel =
+    directoryOf(configset)?.let { modelFor(it) } ?: EMPTY
 
-    /**
-     * The cached model for a configset directory.
-     *
-     * **The cache lives on the directory, not in a map this class owns.** That is the difference
-     * that matters: a map keyed by path outlives the thing it describes, so a deleted-and-recreated
-     * configset — or, in tests, the next test method sharing the same light project — finds an entry
-     * built against a filesystem that no longer exists. Hanging the cache on the [PsiDirectory]
-     * makes its lifetime exactly the directory's, and deletes the bookkeeping along with the map.
-     *
-     * **The dependency list is the rest of the design**, and each half is load-bearing:
-     *
-     *  - **the source files**, as PSI. This is what rebuilds the model when *this* schema changes
-     *    and leaves it alone when anything else does. The obvious alternative,
-     *    [com.intellij.psi.util.PsiModificationTracker.MODIFICATION_COUNT], is wrong here: it
-     *    advances on any PSI change in the project, so a keystroke in unrelated Java would reparse
-     *    both configset files.
-     *  - **the VFS structure count**, which advances when files are created, deleted, renamed or
-     *    moved, but not when one is edited. Without it a `solrconfig.xml` added to a configset that
-     *    had none would never be noticed, because the dependency list can only name files that
-     *    existed when the model was built.
-     */
-    private fun modelFor(directory: PsiDirectory): SolrFieldModel =
-        CachedValuesManager.getCachedValue(directory) {
-            val sources = sourcesOf(directory)
-            val facts = sources.fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
-            CachedValueProvider.Result.create(
-                SolrFieldModel.of(facts),
-                sources.map { it.file } + VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
-            )
-        }
-
-    /** The configset root as PSI, or null once it has stopped existing. */
-    private fun directoryOf(configset: SolrConfigset): PsiDirectory? =
-        configset.root.takeIf { it.isValid }?.let { PsiManager.getInstance(project).findDirectory(it) }
-
-    /**
-     * The raw repository facts for [configset], before merging with any server half.
-     *
-     * Exposed for the drift comparison, which needs the two halves separately rather than the
-     * merged model.
-     *
-     * @param configset the configset to read
-     * @return the facts its files declare
-     */
-    fun factsFor(configset: SolrConfigset): SolrConfigsetFacts =
-        directoryOf(configset)
-            ?.let { sourcesOf(it) }
-            .orEmpty()
-            .fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
-
-    /**
-     * The files in [directory] that contribute to the model, each carrying the parser that reads it,
-     * in a stable order.
-     *
-     * PSI rather than `VirtualFile` because these double as the cache's dependencies, and a
-     * dependency has to be something the platform can ask for a modification count. Taking the text
-     * from the same objects also removes a discrepancy the previous implementation had to document:
-     * it read the in-memory document while stamping the file, so the two could disagree on first
-     * read.
-     *
-     * **The parser travels with the file** rather than being chosen again later. Selecting the
-     * files by kind and then dispatching on kind a second time needs a branch for *a file that
-     * passed the filter and is neither* — which nothing can reach, no test can cover, and which
-     * would silently contribute no facts if a third kind were ever added to the filter alone.
-     */
-    private fun sourcesOf(directory: PsiDirectory): List<SolrSource> =
-        directory.files
-            .mapNotNull { file -> parserFor(file)?.let { SolrSource(file, it) } }
-            .sortedBy { it.file.name }
-
-    /**
-     * The parser for [file], or null when the model takes nothing from it.
-     *
-     * Only the schema and `solrconfig.xml` are read today. The other identifying files —
-     * `elevate.xml`, `currency.xml` — describe things the field model does not yet represent, and
-     * reading them would add facts nothing consumes.
-     */
-    private fun parserFor(file: PsiFile): ((CharSequence) -> SolrConfigsetFacts)? {
-        val kind = SolrConfigsetFileKind.forFileName(file.name) ?: return null
-        return when {
-            kind.isSchema -> SolrSchemaParser::parse
-            kind == SolrConfigsetFileKind.SOLR_CONFIG -> SolrConfigParser::parse
-            else -> null
-        }
+  /**
+   * The cached model for a configset directory.
+   *
+   * **The cache lives on the directory, not in a map this class owns.** That is the difference that
+   * matters: a map keyed by path outlives the thing it describes, so a deleted-and-recreated
+   * configset — or, in tests, the next test method sharing the same light project — finds an entry
+   * built against a filesystem that no longer exists. Hanging the cache on the [PsiDirectory] makes
+   * its lifetime exactly the directory's, and deletes the bookkeeping along with the map.
+   *
+   * **The dependency list is the rest of the design**, and each half is load-bearing:
+   *
+   * - **the source files**, as PSI. This is what rebuilds the model when *this* schema changes and
+   *   leaves it alone when anything else does. The obvious alternative,
+   *   [com.intellij.psi.util.PsiModificationTracker.MODIFICATION_COUNT], is wrong here: it advances
+   *   on any PSI change in the project, so a keystroke in unrelated Java would reparse both
+   *   configset files.
+   * - **the VFS structure count**, which advances when files are created, deleted, renamed or
+   *   moved, but not when one is edited. Without it a `solrconfig.xml` added to a configset that
+   *   had none would never be noticed, because the dependency list can only name files that existed
+   *   when the model was built.
+   */
+  private fun modelFor(directory: PsiDirectory): SolrFieldModel =
+    CachedValuesManager.getCachedValue(directory) {
+      val sources = sourcesOf(directory)
+      val facts =
+        sources.fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
+      CachedValueProvider.Result.create(
+        SolrFieldModel.of(facts),
+        sources.map { it.file } + VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
+      )
     }
 
-    /** One file the model is built from, and the parser that reads it. */
-    private class SolrSource(val file: PsiFile, val parse: (CharSequence) -> SolrConfigsetFacts) {
-        /** The facts this file declares, read from the PSI the cache also depends on. */
-        fun facts(): SolrConfigsetFacts = parse(file.text)
+  /** The configset root as PSI, or null once it has stopped existing. */
+  private fun directoryOf(configset: SolrConfigset): PsiDirectory? =
+    configset.root.takeIf { it.isValid }?.let { PsiManager.getInstance(project).findDirectory(it) }
+
+  /**
+   * The raw repository facts for [configset], before merging with any server half.
+   *
+   * Exposed for the drift comparison, which needs the two halves separately rather than the merged
+   * model.
+   *
+   * @param configset the configset to read
+   * @return the facts its files declare
+   */
+  fun factsFor(configset: SolrConfigset): SolrConfigsetFacts =
+    directoryOf(configset)
+      ?.let { sourcesOf(it) }
+      .orEmpty()
+      .fold(SolrConfigsetFacts()) { accumulated, source -> accumulated + source.facts() }
+
+  /**
+   * The files in [directory] that contribute to the model, each carrying the parser that reads it,
+   * in a stable order.
+   *
+   * PSI rather than `VirtualFile` because these double as the cache's dependencies, and a
+   * dependency has to be something the platform can ask for a modification count. Taking the text
+   * from the same objects also removes a discrepancy the previous implementation had to document:
+   * it read the in-memory document while stamping the file, so the two could disagree on first
+   * read.
+   *
+   * **The parser travels with the file** rather than being chosen again later. Selecting the files
+   * by kind and then dispatching on kind a second time needs a branch for *a file that passed the
+   * filter and is neither* — which nothing can reach, no test can cover, and which would silently
+   * contribute no facts if a third kind were ever added to the filter alone.
+   */
+  private fun sourcesOf(directory: PsiDirectory): List<SolrSource> =
+    directory.files
+      .mapNotNull { file -> parserFor(file)?.let { SolrSource(file, it) } }
+      .sortedBy { it.file.name }
+
+  /**
+   * The parser for [file], or null when the model takes nothing from it.
+   *
+   * Only the schema and `solrconfig.xml` are read today. The other identifying files —
+   * `elevate.xml`, `currency.xml` — describe things the field model does not yet represent, and
+   * reading them would add facts nothing consumes.
+   */
+  private fun parserFor(file: PsiFile): ((CharSequence) -> SolrConfigsetFacts)? {
+    val kind = SolrConfigsetFileKind.forFileName(file.name) ?: return null
+    return when {
+      kind.isSchema -> SolrSchemaParser::parse
+      kind == SolrConfigsetFileKind.SOLR_CONFIG -> SolrConfigParser::parse
+      else -> null
     }
+  }
+
+  /** One file the model is built from, and the parser that reads it. */
+  private class SolrSource(val file: PsiFile, val parse: (CharSequence) -> SolrConfigsetFacts) {
+    /** The facts this file declares, read from the PSI the cache also depends on. */
+    fun facts(): SolrConfigsetFacts = parse(file.text)
+  }
+
+  /**
+   * The model for the configset owning [file], or null when [file] belongs to none.
+   *
+   * The convenience every editor feature wants: it folds the activation gate, configset resolution
+   * and model lookup into the one question a feature actually asks. It lives here rather than
+   * beside any one feature, because inspections, completion, hints, documentation and references
+   * all ask it, and whichever feature owned it would be imported by the other four.
+   *
+   * @param file the file being edited
+   * @return the model, or null outside a configset — which includes outside a Solr project
+   */
+  fun modelFor(file: PsiFile): SolrFieldModel? {
+    if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
+    val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
+    return modelFor(configset)
+  }
+
+  /** Service lookup, and the answer for a configset that has stopped existing. */
+  companion object {
+    private val EMPTY = SolrFieldModel.of(SolrConfigsetFacts())
 
     /**
-     * The model for the configset owning [file], or null when [file] belongs to none.
+     * The reader for [project].
      *
-     * The convenience every editor feature wants: it folds the activation gate, configset
-     * resolution and model lookup into the one question a feature actually asks. It lives here
-     * rather than beside any one feature, because inspections, completion, hints, documentation and
-     * references all ask it, and whichever feature owned it would be imported by the other four.
-     *
-     * @param file the file being edited
-     * @return the model, or null outside a configset — which includes outside a Solr project
+     * @param project the project whose configsets are being modelled
+     * @return the project-level reader service
      */
-    fun modelFor(file: PsiFile): SolrFieldModel? {
-        if (!SolrConfigsetDetector.isConfigsetFile(file)) return null
-        val configset = SolrConfigsetDetector.configsetFor(file) ?: return null
-        return modelFor(configset)
-    }
-
-    /** Service lookup, and the answer for a configset that has stopped existing. */
-    companion object {
-        private val EMPTY = SolrFieldModel.of(SolrConfigsetFacts())
-
-        /**
-         * The reader for [project].
-         *
-         * @param project the project whose configsets are being modelled
-         * @return the project-level reader service
-         */
-        fun getInstance(project: Project): SolrConfigsetReader = project.service()
-    }
+    fun getInstance(project: Project): SolrConfigsetReader = project.service()
+  }
 }

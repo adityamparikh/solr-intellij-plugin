@@ -964,7 +964,7 @@ get wrong by hand: the DOM parser is configured to refuse doctypes and external 
 ever touches the string, because a configset is read from a project that may have just been cloned,
 and leaving entity resolution on would let a crafted file reach the local filesystem or the network
 during what the user experiences as simply opening a file in the editor
-(`src/main/kotlin/org/apache/solr/ide/configset/reading/SolrXmlDocuments.kt:39-46`).
+(`src/main/kotlin/org/apache/solr/ide/configset/reading/SolrXmlDocuments.kt:40-47`).
 
 If you're building a plugin whose correctness matters as much as this one's — anything with a "must
 never produce a false positive" requirement — this split is worth copying; if your format is smaller
@@ -978,10 +978,10 @@ moves on. This repo treats it as a standing rule with two different mechanisms, 
 itself exposes two:
 
 - `LocalInspectionTool` and `CompletionContributor` — override `isDumbAware(): Boolean = true`. See
-  `SolrDanglingCopyFieldInspection.kt:30` or `SolrSchemaCompletionContributor.kt:58` for the shape.
+  `SolrDanglingCopyFieldInspection.kt:30` or `SolrSchemaCompletionContributor.kt:59` for the shape.
 - `DocumentationProvider`, inlay providers, `Annotator` and `IntentionAction` — implement the
-  `DumbAware` marker interface instead. See `SolrMatchInlayHintsProvider.kt:39`,
-  `SolrSchemaDocumentationProvider.kt:51`, or `SolrRestatedDefaultAnnotator.kt:42`.
+  `DumbAware` marker interface instead. See `SolrMatchInlayHintsProvider.kt:40`,
+  `SolrSchemaDocumentationProvider.kt:49`, or `SolrRestatedDefaultAnnotator.kt:43`.
 
 Every extension in this plugin declares itself dumb-aware, and it's a defensible promise rather than a
 box ticked without thinking, because nothing on the editor path reads a project index — the whole

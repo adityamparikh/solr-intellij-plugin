@@ -15,123 +15,139 @@ import javax.swing.tree.DefaultMutableTreeNode
  */
 class SolrTopologyNodeRendererTest : BasePlatformTestCase() {
 
-    private val renderer = SolrTopologyNodeRenderer()
-    private val tree = Tree()
+  private val renderer = SolrTopologyNodeRenderer()
+  private val tree = Tree()
 
-    private fun render(node: SolrTopologyNode) {
-        renderer.getTreeCellRendererComponent(tree, DefaultMutableTreeNode(node), false, false, true, 0, false)
-    }
+  private fun render(node: SolrTopologyNode) {
+    renderer.getTreeCellRendererComponent(
+      tree,
+      DefaultMutableTreeNode(node),
+      false,
+      false,
+      true,
+      0,
+      false,
+    )
+  }
 
-    private fun text() = renderer.getCharSequence(false).toString()
+  private fun text() = renderer.getCharSequence(false).toString()
 
-    private fun books(health: SolrHealth?) = SolrTopologyNode(
-        label = "books",
-        detail = "books_config",
-        kind = SolrTopologyNodeKind.COLLECTION,
-        health = health,
+  private fun books(health: SolrHealth?) =
+    SolrTopologyNode(
+      label = "books",
+      detail = "books_config",
+      kind = SolrTopologyNodeKind.COLLECTION,
+      health = health,
     )
 
-    // The colour at the icon's centre, which is inside the dot whatever the scale.
-    private fun centreColourOf(icon: Icon): Color {
-        val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_ARGB)
-        val graphics = image.createGraphics()
-        try {
-            icon.paintIcon(null, graphics, 0, 0)
-        } finally {
-            graphics.dispose()
-        }
-        return Color(image.getRGB(icon.iconWidth / 2, icon.iconHeight / 2), true)
+  // The colour at the icon's centre, which is inside the dot whatever the scale.
+  private fun centreColourOf(icon: Icon): Color {
+    val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_ARGB)
+    val graphics = image.createGraphics()
+    try {
+      icon.paintIcon(null, graphics, 0, 0)
+    } finally {
+      graphics.dispose()
     }
+    return Color(image.getRGB(icon.iconWidth / 2, icon.iconHeight / 2), true)
+  }
 
-    fun testAHealthyCollectionShowsADotRatherThanTheWord() {
-        render(books(SolrHealth.GREEN))
+  fun testAHealthyCollectionShowsADotRatherThanTheWord() {
+    render(books(SolrHealth.GREEN))
 
-        assertFalse(text(), text().contains("GREEN"))
-        assertTrue(text(), text().contains("books"))
-        assertTrue(text(), text().contains("books_config"))
-        assertNotNull("a recognised health is drawn", renderer.icon)
-        assertEquals(SolrHealthPresentation.colourOf(SolrHealth.GREEN).rgb, centreColourOf(renderer.icon).rgb)
-    }
+    assertFalse(text(), text().contains("GREEN"))
+    assertTrue(text(), text().contains("books"))
+    assertTrue(text(), text().contains("books_config"))
+    assertNotNull("a recognised health is drawn", renderer.icon)
+    assertEquals(
+      SolrHealthPresentation.colourOf(SolrHealth.GREEN).rgb,
+      centreColourOf(renderer.icon).rgb,
+    )
+  }
 
-    /**
-     * The word is still there to be found, on hover.
-     *
-     * A colour alone says nothing to a reader who cannot tell green from red, and nothing to a screen
-     * reader; the tooltip is what keeps the dot from being the only place the fact lives.
-     */
-    fun testTheHealthWordMovesToTheTooltip() {
-        render(books(SolrHealth.ORANGE))
+  /**
+   * The word is still there to be found, on hover.
+   *
+   * A colour alone says nothing to a reader who cannot tell green from red, and nothing to a screen
+   * reader; the tooltip is what keeps the dot from being the only place the fact lives.
+   */
+  fun testTheHealthWordMovesToTheTooltip() {
+    render(books(SolrHealth.ORANGE))
 
-        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("ORANGE"))
-    }
+    assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("ORANGE"))
+  }
 
-    /**
-     * One renderer draws every row, so what the last row set must not leak into the next.
-     *
-     * A replica drawn after its collection would otherwise inherit the collection's dot and tooltip,
-     * and report a health Solr never gave it.
-     */
-    fun testARowWithNoHealthCarriesNoDotAndNoTooltip() {
-        render(books(SolrHealth.RED))
-        render(books(null))
+  /**
+   * One renderer draws every row, so what the last row set must not leak into the next.
+   *
+   * A replica drawn after its collection would otherwise inherit the collection's dot and tooltip,
+   * and report a health Solr never gave it.
+   */
+  fun testARowWithNoHealthCarriesNoDotAndNoTooltip() {
+    render(books(SolrHealth.RED))
+    render(books(null))
 
-        assertNull(renderer.icon)
-        assertNull(renderer.toolTipText)
-    }
+    assertNull(renderer.icon)
+    assertNull(renderer.toolTipText)
+  }
 
-    private fun shard(health: SolrHealth?, range: String?) = SolrTopologyNode(
-        label = "shard1",
-        detail = "active",
-        kind = SolrTopologyNodeKind.SHARD,
-        health = health,
-        range = range,
+  private fun shard(health: SolrHealth?, range: String?) =
+    SolrTopologyNode(
+      label = "shard1",
+      detail = "active",
+      kind = SolrTopologyNodeKind.SHARD,
+      health = health,
+      range = range,
     )
 
-    /** The hash range is not in the row, and is on hover beside the health. */
-    fun testAShardsHashRangeIsOnHoverNotInTheRow() {
-        render(shard(SolrHealth.GREEN, "80000000-7fffffff"))
+  /** The hash range is not in the row, and is on hover beside the health. */
+  fun testAShardsHashRangeIsOnHoverNotInTheRow() {
+    render(shard(SolrHealth.GREEN, "80000000-7fffffff"))
 
-        assertFalse(text(), text().contains("80000000"))
-        assertTrue(text(), text().contains("active"))
-        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
-        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("GREEN"))
-    }
+    assertFalse(text(), text().contains("80000000"))
+    assertTrue(text(), text().contains("active"))
+    assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+    assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("GREEN"))
+  }
 
-    /** A shard on an older line reports a range and no health, and the range alone is the hover. */
-    fun testARangeWithNoHealthIsStillOnHover() {
-        render(shard(null, "80000000-7fffffff"))
+  /** A shard on an older line reports a range and no health, and the range alone is the hover. */
+  fun testARangeWithNoHealthIsStillOnHover() {
+    render(shard(null, "80000000-7fffffff"))
 
-        assertNull(renderer.icon)
-        assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
-    }
+    assertNull(renderer.icon)
+    assertTrue(renderer.toolTipText, renderer.toolTipText.orEmpty().contains("80000000-7fffffff"))
+  }
 
-    /**
-     * The range is the server's text, and it reaches the tooltip as text, not as markup.
-     *
-     * The tooltip is HTML so its two lines can stack, and Swing renders HTML it is handed — an
-     * `<img>` included, which would fetch whatever URL a misbehaving server named.
-     */
-    fun testMarkupInARangeIsShownAsText() {
-        render(shard(SolrHealth.GREEN, "<img src='http://example.invalid/x'>"))
+  /**
+   * The range is the server's text, and it reaches the tooltip as text, not as markup.
+   *
+   * The tooltip is HTML so its two lines can stack, and Swing renders HTML it is handed — an
+   * `<img>` included, which would fetch whatever URL a misbehaving server named.
+   */
+  fun testMarkupInARangeIsShownAsText() {
+    render(shard(SolrHealth.GREEN, "<img src='http://example.invalid/x'>"))
 
-        val tooltip = renderer.toolTipText.orEmpty()
-        assertFalse(tooltip, tooltip.contains("<img"))
-        assertTrue(tooltip, tooltip.contains("&lt;img"))
-    }
+    val tooltip = renderer.toolTipText.orEmpty()
+    assertFalse(tooltip, tooltip.contains("<img"))
+    assertTrue(tooltip, tooltip.contains("&lt;img"))
+  }
 
-    fun testEachHealthIsDrawnInItsOwnColour() {
-        val colours = SolrHealth.entries.map {
-            render(books(it))
-            centreColourOf(renderer.icon).rgb
-        }
+  fun testEachHealthIsDrawnInItsOwnColour() {
+    val colours =
+      SolrHealth.entries.map {
+        render(books(it))
+        centreColourOf(renderer.icon).rgb
+      }
 
-        assertEquals(colours.toString(), SolrHealth.entries.size, colours.toSet().size)
-    }
+    assertEquals(colours.toString(), SolrHealth.entries.size, colours.toSet().size)
+  }
 
-    /** The test IDE runs light, so the dark half is asked for directly rather than left unexercised. */
-    fun testTheDarkThemeKeepsThemDistinctToo() {
-        val dark = SolrHealth.entries.map { SolrHealthPresentation.colourOf(it).darkVariant.rgb }
+  /**
+   * The test IDE runs light, so the dark half is asked for directly rather than left unexercised.
+   */
+  fun testTheDarkThemeKeepsThemDistinctToo() {
+    val dark = SolrHealth.entries.map { SolrHealthPresentation.colourOf(it).darkVariant.rgb }
 
-        assertEquals(dark.toString(), SolrHealth.entries.size, dark.toSet().size)
-    }
+    assertEquals(dark.toString(), SolrHealth.entries.size, dark.toSet().size)
+  }
 }

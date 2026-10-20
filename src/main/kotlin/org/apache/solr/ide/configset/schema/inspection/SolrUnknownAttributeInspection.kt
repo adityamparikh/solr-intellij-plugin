@@ -31,43 +31,44 @@ import org.apache.solr.ide.model.vocabulary.SolrAttributeVocabulary
  */
 class SolrUnknownAttributeInspection : LocalInspectionTool() {
 
-    /**
-     * Runs while the project is still indexing.
-     *
-     * The vocabulary comes from a hand-maintained table and a generated resource, neither of which
-     * is an index, so there is nothing to wait for.
-     */
-    override fun isDumbAware(): Boolean = true
+  /**
+   * Runs while the project is still indexing.
+   *
+   * The vocabulary comes from a hand-maintained table and a generated resource, neither of which is
+   * an index, so there is nothing to wait for.
+   */
+  override fun isDumbAware(): Boolean = true
 
-    /**
-     * @param holder collects the problems found
-     * @param isOnTheFly whether this is an editor pass rather than a batch run
-     * @return a visitor over schema elements, or an empty one outside a configset
-     */
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        val model = SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
-            ?: return PsiElementVisitor.EMPTY_VISITOR
-        val version = model.solrVersion
-        return object : XmlElementVisitor() {
-            override fun visitXmlTag(tag: XmlTag) {
-                val className = tag.getAttributeValue("class")
-                val legal = SolrAttributeVocabulary.closedVocabularyFor(tag.name, className, version)
-                    ?: return
-                for (attribute in tag.attributes) {
-                    if (attribute.name in legal) continue
-                    // The name element, not the value: the value may well be correct, and
-                    // underlining it would point at the half that is not wrong.
-                    holder.registerProblem(
-                        attribute.nameElement,
-                        SolrBundle.message("inspection.attribute.unknown", attribute.name, tag.name),
-                        *SolrInspections.replacementFixes(
-                            attribute.name,
-                            legal,
-                            SolrBundle.message("quickfix.attribute.family"),
-                        ),
-                    )
-                }
-            }
+  /**
+   * @param holder collects the problems found
+   * @param isOnTheFly whether this is an editor pass rather than a batch run
+   * @return a visitor over schema elements, or an empty one outside a configset
+   */
+  override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+    val model =
+      SolrConfigsetReader.getInstance(holder.project).modelFor(holder.file)
+        ?: return PsiElementVisitor.EMPTY_VISITOR
+    val version = model.solrVersion
+    return object : XmlElementVisitor() {
+      override fun visitXmlTag(tag: XmlTag) {
+        val className = tag.getAttributeValue("class")
+        val legal =
+          SolrAttributeVocabulary.closedVocabularyFor(tag.name, className, version) ?: return
+        for (attribute in tag.attributes) {
+          if (attribute.name in legal) continue
+          // The name element, not the value: the value may well be correct, and
+          // underlining it would point at the half that is not wrong.
+          holder.registerProblem(
+            attribute.nameElement,
+            SolrBundle.message("inspection.attribute.unknown", attribute.name, tag.name),
+            *SolrInspections.replacementFixes(
+              attribute.name,
+              legal,
+              SolrBundle.message("quickfix.attribute.family"),
+            ),
+          )
         }
+      }
     }
+  }
 }

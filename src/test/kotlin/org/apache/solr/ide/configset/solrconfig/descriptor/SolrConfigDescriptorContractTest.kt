@@ -16,148 +16,160 @@ import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
  */
 class SolrConfigDescriptorContractTest : SolrConfigsetTestCase() {
 
-    private fun configWith(body: String): XmlFile {
-        myFixture.addFileToProject(
-            "managed-schema.xml",
-            """<schema name="t" version="1.7"><fieldType name="string" class="solr.StrField"/></schema>""",
-        )
-        return myFixture.configureByText("solrconfig.xml", body) as XmlFile
-    }
+  private fun configWith(body: String): XmlFile {
+    myFixture.addFileToProject(
+      "managed-schema.xml",
+      """<schema name="t" version="1.7"><fieldType name="string" class="solr.StrField"/></schema>""",
+    )
+    return myFixture.configureByText("solrconfig.xml", body) as XmlFile
+  }
 
-    private fun tagNamed(file: XmlFile, name: String): XmlTag {
-        val root = requireNonNull(file.rootTag)
-        if (root.name == name) return root
-        return requireNonNull(
-            generateSequence(listOf(root)) { level -> level.flatMap { it.subTags.toList() }.ifEmpty { null } }
-                .flatten()
-                .firstOrNull { it.name == name },
-        )
-    }
+  private fun tagNamed(file: XmlFile, name: String): XmlTag {
+    val root = requireNonNull(file.rootTag)
+    if (root.name == name) return root
+    return requireNonNull(
+      generateSequence(listOf(root)) { level ->
+          level.flatMap { it.subTags.toList() }.ifEmpty { null }
+        }
+        .flatten()
+        .firstOrNull { it.name == name }
+    )
+  }
 
-    private fun <T : Any> requireNonNull(value: T?): T = value ?: error("no such element in the fixture")
+  private fun <T : Any> requireNonNull(value: T?): T =
+    value ?: error("no such element in the fixture")
 
-    private fun descriptorFor(body: String, tagName: String): SolrConfigTagDescriptor {
-        val file = configWith(body)
-        val tag = tagNamed(file, tagName)
-        return requireNonNull(tag.descriptor as? SolrConfigTagDescriptor)
-    }
+  private fun descriptorFor(body: String, tagName: String): SolrConfigTagDescriptor {
+    val file = configWith(body)
+    val tag = tagNamed(file, tagName)
+    return requireNonNull(tag.descriptor as? SolrConfigTagDescriptor)
+  }
 
-    /** The name a descriptor reports is the element's, by all three spellings the platform asks with. */
-    fun testADescriptorReportsTheElementsName() {
-        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
-        assertEquals("query", descriptor.name)
-        assertEquals("query", descriptor.qualifiedName)
-        assertEquals("query", descriptor.defaultName)
-        assertEquals("query", descriptor.getName(null))
-    }
+  /**
+   * The name a descriptor reports is the element's, by all three spellings the platform asks with.
+   */
+  fun testADescriptorReportsTheElementsName() {
+    val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+    assertEquals("query", descriptor.name)
+    assertEquals("query", descriptor.qualifiedName)
+    assertEquals("query", descriptor.defaultName)
+    assertEquals("query", descriptor.getName(null))
+  }
 
-    /**
-     * Solr's configuration has no namespaces, no element groups and no defaults on an element.
-     *
-     * Answering anything else would be inventing a structure the file does not have. `CONTENT_TYPE_ANY`
-     * is the same decision in the platform's vocabulary: the descriptor never rejects an element for
-     * what it contains, because the plugin's inspections own every such judgement.
-     */
-    fun testADescriptorClaimsNoStructureSolrDoesNotHave() {
-        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
-        assertNull(descriptor.nsDescriptor)
-        assertNull(descriptor.topGroup)
-        assertNull(descriptor.defaultValue)
-        assertEquals(
-            com.intellij.xml.XmlElementDescriptor.CONTENT_TYPE_ANY,
-            descriptor.contentType,
-        )
-    }
+  /**
+   * Solr's configuration has no namespaces, no element groups and no defaults on an element.
+   *
+   * Answering anything else would be inventing a structure the file does not have.
+   * `CONTENT_TYPE_ANY` is the same decision in the platform's vocabulary: the descriptor never
+   * rejects an element for what it contains, because the plugin's inspections own every such
+   * judgement.
+   */
+  fun testADescriptorClaimsNoStructureSolrDoesNotHave() {
+    val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+    assertNull(descriptor.nsDescriptor)
+    assertNull(descriptor.topGroup)
+    assertNull(descriptor.defaultValue)
+    assertEquals(
+      com.intellij.xml.XmlElementDescriptor.CONTENT_TYPE_ANY,
+      descriptor.contentType,
+    )
+  }
 
-    /**
-     * Every attribute resolves, declared or not — the rule that keeps a custom component unpainted.
-     *
-     * The declared set feeds completion and is asserted elsewhere. What matters here is the answer for
-     * a name no catalog contains, since returning null is how the platform is told an attribute is
-     * wrong.
-     */
-    fun testEveryAttributeNameResolvesIncludingOnesNoCatalogCarries() {
-        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
-        assertNotNull(descriptor.getAttributeDescriptor("acmeUnheardOf", null))
-        assertNotNull(descriptor.getAttributeDescriptor("size", null))
-    }
+  /**
+   * Every attribute resolves, declared or not — the rule that keeps a custom component unpainted.
+   *
+   * The declared set feeds completion and is asserted elsewhere. What matters here is the answer
+   * for a name no catalog contains, since returning null is how the platform is told an attribute
+   * is wrong.
+   */
+  fun testEveryAttributeNameResolvesIncludingOnesNoCatalogCarries() {
+    val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+    assertNotNull(descriptor.getAttributeDescriptor("acmeUnheardOf", null))
+    assertNotNull(descriptor.getAttributeDescriptor("size", null))
+  }
 
-    /** An element the reader has not written yet describes itself, and nothing inside it. */
-    fun testAnOfferedChildNamesItselfAndDescribesNoContents() {
-        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
-        val child = requireNonNull(
-            descriptor.getElementsDescriptors(null).firstOrNull { it.name == "filterCache" },
-        )
-        assertEquals("filterCache", child.qualifiedName)
-        assertEquals("filterCache", child.defaultName)
-        assertTrue(child.getElementsDescriptors(null).isEmpty())
-        assertTrue(child.getAttributesDescriptors(null).isEmpty())
-        assertNotNull(child.getAttributeDescriptor("anything", null))
-    }
+  /** An element the reader has not written yet describes itself, and nothing inside it. */
+  fun testAnOfferedChildNamesItselfAndDescribesNoContents() {
+    val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+    val child =
+      requireNonNull(
+        descriptor.getElementsDescriptors(null).firstOrNull { it.name == "filterCache" }
+      )
+    assertEquals("filterCache", child.qualifiedName)
+    assertEquals("filterCache", child.defaultName)
+    assertTrue(child.getElementsDescriptors(null).isEmpty())
+    assertTrue(child.getAttributesDescriptors(null).isEmpty())
+    assertNotNull(child.getAttributeDescriptor("anything", null))
+  }
 
-    /**
-     * The provider declines a schema outright, which is what keeps this vocabulary out of that file.
-     *
-     * Both files sit in the same configset and both are XML, so the name is the only thing separating
-     * them. Answering here would offer `<requestHandler>` inside `<schema>`.
-     */
-    fun testTheProviderDeclinesAFileThatIsNotSolrconfig() {
-        myFixture.addFileToProject("solrconfig.xml", "<config/>")
-        val schema = myFixture.configureByText(
-            "managed-schema.xml",
-            """<schema name="t" version="1.7"><field name="id" type="string"/></schema>""",
-        ) as XmlFile
-        val field = tagNamed(schema, "field")
-        assertNull(SolrConfigElementDescriptorProvider().getDescriptor(field))
-    }
+  /**
+   * The provider declines a schema outright, which is what keeps this vocabulary out of that file.
+   *
+   * Both files sit in the same configset and both are XML, so the name is the only thing separating
+   * them. Answering here would offer `<requestHandler>` inside `<schema>`.
+   */
+  fun testTheProviderDeclinesAFileThatIsNotSolrconfig() {
+    myFixture.addFileToProject("solrconfig.xml", "<config/>")
+    val schema =
+      myFixture.configureByText(
+        "managed-schema.xml",
+        """<schema name="t" version="1.7"><field name="id" type="string"/></schema>""",
+      ) as XmlFile
+    val field = tagNamed(schema, "field")
+    assertNull(SolrConfigElementDescriptorProvider().getDescriptor(field))
+  }
 
-    /**
-     * Asked with no context, a descriptor answers about its own tag.
-     *
-     * The platform passes null on some paths and the tag on others, and the two must agree — an
-     * attribute list that emptied out when context was omitted would drop completion inside exactly
-     * the element the descriptor was built for.
-     */
-    fun testAnOmittedContextMeansTheDescriptorsOwnTag() {
-        val file = configWith("<config>\n  <query>\n    <filterCache/>\n  </query>\n</config>")
-        val tag = tagNamed(file, "filterCache")
-        val descriptor = requireNonNull(tag.descriptor as? SolrConfigTagDescriptor)
+  /**
+   * Asked with no context, a descriptor answers about its own tag.
+   *
+   * The platform passes null on some paths and the tag on others, and the two must agree — an
+   * attribute list that emptied out when context was omitted would drop completion inside exactly
+   * the element the descriptor was built for.
+   */
+  fun testAnOmittedContextMeansTheDescriptorsOwnTag() {
+    val file = configWith("<config>\n  <query>\n    <filterCache/>\n  </query>\n</config>")
+    val tag = tagNamed(file, "filterCache")
+    val descriptor = requireNonNull(tag.descriptor as? SolrConfigTagDescriptor)
 
-        val withoutContext = descriptor.getAttributesDescriptors(null).map { it.name }.toSet()
-        val withTag = descriptor.getAttributesDescriptors(tag).map { it.name }.toSet()
-        assertEquals(withTag, withoutContext)
-        assertTrue("expected filterCache to declare attributes, got $withoutContext", withoutContext.isNotEmpty())
-    }
+    val withoutContext = descriptor.getAttributesDescriptors(null).map { it.name }.toSet()
+    val withTag = descriptor.getAttributesDescriptors(tag).map { it.name }.toSet()
+    assertEquals(withTag, withoutContext)
+    assertTrue(
+      "expected filterCache to declare attributes, got $withoutContext",
+      withoutContext.isNotEmpty(),
+    )
+  }
 
-    /**
-     * An attribute descriptor claims none of the XML identity roles.
-     *
-     * `solrconfig.xml` has no `ID`/`IDREF` notion, and claiming one would have the platform resolve
-     * and rename attribute *values* as though they pointed at each other.
-     */
-    fun testAnAttributeIsNeverAnIdOrAReferenceToOne() {
-        val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
-        val attribute = descriptor.getAttributeDescriptor("size", null)
-        assertFalse(attribute.hasIdType())
-        assertFalse(attribute.hasIdRefType())
-        assertFalse(attribute.isRequired)
-        assertFalse(attribute.isFixed)
-        assertFalse(attribute.isEnumerated)
-        assertNull(attribute.enumeratedValues)
-    }
+  /**
+   * An attribute descriptor claims none of the XML identity roles.
+   *
+   * `solrconfig.xml` has no `ID`/`IDREF` notion, and claiming one would have the platform resolve
+   * and rename attribute *values* as though they pointed at each other.
+   */
+  fun testAnAttributeIsNeverAnIdOrAReferenceToOne() {
+    val descriptor = descriptorFor("<config>\n  <query/>\n</config>", "query")
+    val attribute = descriptor.getAttributeDescriptor("size", null)
+    assertFalse(attribute.hasIdType())
+    assertFalse(attribute.hasIdRefType())
+    assertFalse(attribute.isRequired)
+    assertFalse(attribute.isFixed)
+    assertFalse(attribute.isEnumerated)
+    assertNull(attribute.enumeratedValues)
+  }
 
-    /**
-     * A child of an unknown element still gets a descriptor, one level down.
-     *
-     * The permissiveness rule has to survive nesting, or a custom component's own children would be
-     * painted wrong even though the component itself is not.
-     */
-    fun testAnElementInsideAnUnknownOneIsStillDescribed() {
-        val file = configWith("<config>\n  <acmeComponent>\n    <acmeChild/>\n  </acmeComponent>\n</config>")
-        val parent = tagNamed(file, "acmeComponent")
-        val child = tagNamed(file, "acmeChild")
-        val descriptor = requireNonNull(parent.descriptor as? SolrConfigTagDescriptor)
-        assertNotNull(descriptor.getElementDescriptor(child, parent))
-        assertEquals("acmeChild", descriptor.getElementDescriptor(child, parent).name)
-    }
+  /**
+   * A child of an unknown element still gets a descriptor, one level down.
+   *
+   * The permissiveness rule has to survive nesting, or a custom component's own children would be
+   * painted wrong even though the component itself is not.
+   */
+  fun testAnElementInsideAnUnknownOneIsStillDescribed() {
+    val file =
+      configWith("<config>\n  <acmeComponent>\n    <acmeChild/>\n  </acmeComponent>\n</config>")
+    val parent = tagNamed(file, "acmeComponent")
+    val child = tagNamed(file, "acmeChild")
+    val descriptor = requireNonNull(parent.descriptor as? SolrConfigTagDescriptor)
+    assertNotNull(descriptor.getElementDescriptor(child, parent))
+    assertEquals("acmeChild", descriptor.getElementDescriptor(child, parent).name)
+  }
 }

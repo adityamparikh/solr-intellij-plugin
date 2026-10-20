@@ -6,139 +6,142 @@ import org.junit.Test
 /**
  * Every class `plugin.xml` names exists.
  *
- * **The gap this closes is specific and was reached by a real defect.** A registration names its class
- * as a *string*, so a wrong name compiles, and every fixture test builds its subject directly —
- * `myFixture.enableInspections(SomeInspection())` — so the whole suite passes while the platform finds
- * nothing to load. A package rename moved three inspections and left three registrations pointing at
- * the package that used to hold them; the build was green and all three were dead in the IDE.
+ * **The gap this closes is specific and was reached by a real defect.** A registration names its
+ * class as a *string*, so a wrong name compiles, and every fixture test builds its subject directly
+ * — `myFixture.enableInspections(SomeInspection())` — so the whole suite passes while the platform
+ * finds nothing to load. A package rename moved three inspections and left three registrations
+ * pointing at the package that used to hold them; the build was green and all three were dead in
+ * the IDE.
  *
  * **`verifyPlugin` does not close it**, which was checked rather than assumed: with one
- * `implementationClass` pointed at a deleted package, the IntelliJ Plugin Verifier reports nothing and
- * the task succeeds. It verifies API compatibility against IDE builds, not that this descriptor's own
- * class names resolve.
+ * `implementationClass` pointed at a deleted package, the IntelliJ Plugin Verifier reports nothing
+ * and the task succeeds. It verifies API compatibility against IDE builds, not that this
+ * descriptor's own class names resolve.
  *
  * **Every attribute naming one of ours is checked, rather than a list of the spellings the platform
  * uses.** A list would drift the first time an extension point wanted a different attribute, and
  * drifting silently is the failure this test exists to stop. A value is treated as a class when its
- * final segment starts upper-case, which is what separates `implementationClass` from the plugin's own
- * `<id>` and from a `groupPath`.
+ * final segment starts upper-case, which is what separates `implementationClass` from the plugin's
+ * own `<id>` and from a `groupPath`.
  *
- * Plain JUnit and reflection, so it costs milliseconds and runs in `./gradlew build` beside everything
- * else. Classes are loaded without initialization: this asks whether the name resolves, and running a
- * static initializer outside a platform application would prove something else and fail for its own
- * reasons.
+ * Plain JUnit and reflection, so it costs milliseconds and runs in `./gradlew build` beside
+ * everything else. Classes are loaded without initialization: this asks whether the name resolves,
+ * and running a static initializer outside a platform application would prove something else and
+ * fail for its own reasons.
  */
 class SolrPluginDescriptorTest {
 
-    @Test
-    fun `every class named in plugin xml resolves`() {
-        for (descriptor in SolrDescriptors.ALL) resolveEveryClassIn(descriptor)
+  @Test
+  fun `every class named in plugin xml resolves`() {
+    for (descriptor in SolrDescriptors.ALL) resolveEveryClassIn(descriptor)
+  }
+
+  /**
+   * Every registered inspection has the description file the IDE shows beside it.
+   *
+   * **The failure is silent in the place a user meets it.** A missing file is not a load error: the
+   * inspection works, and the Settings → Inspections pane simply shows an empty panel where the
+   * explanation should be. Nothing in the build notices, and nobody adding an inspection sees the
+   * pane, because the fixture tests construct the tool directly and never render it.
+   *
+   * The description is also the plugin's published catalog entry on the JetBrains Marketplace, so
+   * the omission is user-facing twice over.
+   *
+   * Keyed on `shortName`, which is what the platform resolves the file by — the file has to be
+   * `inspectionDescriptions/<shortName>.html` and the name in the registration is the only place
+   * that pairing is written down. A registration that omits `shortName` altogether fails here
+   * rather than being passed over: the attribute is optional to the platform, so leaving it out
+   * would otherwise take the inspection out of this check without taking it out of the plugin.
+   */
+  @Test
+  fun `every registered inspection has a description file`() {
+    val shortNames = SolrDescriptors.attributesOf("plugin.xml", "localInspection", "shortName")
+    assertTrue("expected plugin.xml to register inspections", shortNames.isNotEmpty())
+
+    val missing = shortNames.filter {
+      javaClass.getResource("/inspectionDescriptions/$it.html") == null
+    }
+    assertTrue(
+      "inspections registered with no description file:\n" +
+        missing.joinToString("\n") { "  inspectionDescriptions/$it.html" },
+      missing.isEmpty(),
+    )
+  }
+
+  /**
+   * **Every descriptor, not only `plugin.xml`.** An optional dependency puts its extensions in a
+   * separate file, and a registration nobody checks is exactly what this test exists to catch — so
+   * [SolrDescriptors.ALL] has to grow with them. A missing file fails rather than passing
+   * vacuously, because a descriptor that stops being on the classpath is itself the defect.
+   */
+  private fun resolveEveryClassIn(name: String) {
+    val document = SolrDescriptors.parse(name)
+
+    val names = mutableListOf<Pair<String, String>>()
+    val elements = document.getElementsByTagName("*")
+    for (i in 0 until elements.length) {
+      val element = elements.item(i)
+      val attributes = element.attributes ?: continue
+      for (a in 0 until attributes.length) {
+        val attribute = attributes.item(a)
+        // Every attribute naming one of ours, rather than a list of the spellings the
+        // platform currently uses for it. `implementationClass` and `implementation` are what
+        // this descriptor writes today, and an extension point registered tomorrow under a
+        // third spelling is covered without anyone remembering to add it here.
+        val value = attribute.nodeValue ?: continue
+        if (!value.startsWith("$OUR_PACKAGE.")) continue
+        // A class, not a package or an id: `<id>org.apache.solr.ide</id>` and a `groupPath`
+        // are legitimately not resolvable, and only a final segment starting upper-case is
+        // claiming to be a type.
+        if (value.substringAfterLast('.').firstOrNull()?.isUpperCase() != true) continue
+        names += "${element.nodeName}/${attribute.nodeName}" to value
+      }
     }
 
-    /**
-     * Every registered inspection has the description file the IDE shows beside it.
-     *
-     * **The failure is silent in the place a user meets it.** A missing file is not a load error: the
-     * inspection works, and the Settings → Inspections pane simply shows an empty panel where the
-     * explanation should be. Nothing in the build notices, and nobody adding an inspection sees the
-     * pane, because the fixture tests construct the tool directly and never render it.
-     *
-     * The description is also the plugin's published catalog entry on the JetBrains Marketplace, so
-     * the omission is user-facing twice over.
-     *
-     * Keyed on `shortName`, which is what the platform resolves the file by — the file has to be
-     * `inspectionDescriptions/<shortName>.html` and the name in the registration is the only place
-     * that pairing is written down. A registration that omits `shortName` altogether fails here
-     * rather than being passed over: the attribute is optional to the platform, so leaving it out
-     * would otherwise take the inspection out of this check without taking it out of the plugin.
-     */
-    @Test
-    fun `every registered inspection has a description file`() {
-        val shortNames = SolrDescriptors.attributesOf("plugin.xml", "localInspection", "shortName")
-        assertTrue("expected plugin.xml to register inspections", shortNames.isNotEmpty())
+    // A guard against the walk silently finding nothing — a namespace-aware parser, a moved
+    // resource or a typo in the attribute scan would otherwise make this test vacuously green.
+    assertTrue("expected $name to name at least one of our classes", names.isNotEmpty())
 
-        val missing = shortNames.filter { javaClass.getResource("/inspectionDescriptions/$it.html") == null }
-        assertTrue(
-            "inspections registered with no description file:\n" +
-                missing.joinToString("\n") { "  inspectionDescriptions/$it.html" },
-            missing.isEmpty(),
-        )
-    }
+    val missing = names.filter { (_, fqn) -> !resolves(fqn) }
+    assertTrue(
+      "$name names classes that do not exist:\n" +
+        missing.joinToString("\n") { (where, fqn) -> "  $where → $fqn" },
+      missing.isEmpty(),
+    )
+  }
 
-    /**
-     * **Every descriptor, not only `plugin.xml`.** An optional dependency puts its extensions in a
-     * separate file, and a registration nobody checks is exactly what this test exists to catch — so
-     * [SolrDescriptors.ALL] has to grow with them. A missing file fails rather than passing
-     * vacuously, because a descriptor that stops being on the classpath is itself the defect.
-     */
-    private fun resolveEveryClassIn(name: String) {
-        val document = SolrDescriptors.parse(name)
+  /**
+   * The tool window names its icon, and the name reaches a field that exists.
+   *
+   * Asserted separately from the general walk because an absent attribute is not a wrong one: a
+   * `<toolWindow>` with no `icon` is valid to the platform, which then draws a generic placeholder
+   * in the stripe — the "circle with four dots" a tester reported, and nothing a build notices.
+   */
+  @Test
+  fun `the tool window names an icon that resolves`() {
+    val icons = SolrDescriptors.attributesOf("plugin.xml", "toolWindow", "icon")
 
-        val names = mutableListOf<Pair<String, String>>()
-        val elements = document.getElementsByTagName("*")
-        for (i in 0 until elements.length) {
-            val element = elements.item(i)
-            val attributes = element.attributes ?: continue
-            for (a in 0 until attributes.length) {
-                val attribute = attributes.item(a)
-                // Every attribute naming one of ours, rather than a list of the spellings the
-                // platform currently uses for it. `implementationClass` and `implementation` are what
-                // this descriptor writes today, and an extension point registered tomorrow under a
-                // third spelling is covered without anyone remembering to add it here.
-                val value = attribute.nodeValue ?: continue
-                if (!value.startsWith("$OUR_PACKAGE.")) continue
-                // A class, not a package or an id: `<id>org.apache.solr.ide</id>` and a `groupPath`
-                // are legitimately not resolvable, and only a final segment starting upper-case is
-                // claiming to be a type.
-                if (value.substringAfterLast('.').firstOrNull()?.isUpperCase() != true) continue
-                names += "${element.nodeName}/${attribute.nodeName}" to value
-            }
-        }
+    assertTrue(icons.toString(), icons.isNotEmpty() && icons.all(::resolves))
+  }
 
-        // A guard against the walk silently finding nothing — a namespace-aware parser, a moved
-        // resource or a typo in the attribute scan would otherwise make this test vacuously green.
-        assertTrue("expected $name to name at least one of our classes", names.isNotEmpty())
+  /**
+   * Whether [fqn] names a class of ours, or a static field on one.
+   *
+   * **A field is the other thing a registration can name.** An icon attribute reads
+   * `org.apache.solr.ide.SolrIcons.ToolWindow`, which is a class followed by a field rather than a
+   * nested class, and would otherwise fail here for being exactly what the platform expects. The
+   * field is looked up without initializing its class, for the same reason classes are loaded that
+   * way: this asks whether the name resolves, not whether an icon can be drawn outside an IDE.
+   */
+  private fun resolves(fqn: String): Boolean {
+    val loader = javaClass.classLoader
+    if (runCatching { Class.forName(fqn, false, loader) }.isSuccess) return true
+    val owner = fqn.substringBeforeLast('.')
+    val member = fqn.substringAfterLast('.')
+    return runCatching { Class.forName(owner, false, loader).getField(member) }.isSuccess
+  }
 
-        val missing = names.filter { (_, fqn) -> !resolves(fqn) }
-        assertTrue(
-            "$name names classes that do not exist:\n" +
-                missing.joinToString("\n") { (where, fqn) -> "  $where → $fqn" },
-            missing.isEmpty(),
-        )
-    }
-
-    /**
-     * The tool window names its icon, and the name reaches a field that exists.
-     *
-     * Asserted separately from the general walk because an absent attribute is not a wrong one: a
-     * `<toolWindow>` with no `icon` is valid to the platform, which then draws a generic placeholder
-     * in the stripe — the "circle with four dots" a tester reported, and nothing a build notices.
-     */
-    @Test
-    fun `the tool window names an icon that resolves`() {
-        val icons = SolrDescriptors.attributesOf("plugin.xml", "toolWindow", "icon")
-
-        assertTrue(icons.toString(), icons.isNotEmpty() && icons.all(::resolves))
-    }
-
-    /**
-     * Whether [fqn] names a class of ours, or a static field on one.
-     *
-     * **A field is the other thing a registration can name.** An icon attribute reads
-     * `org.apache.solr.ide.SolrIcons.ToolWindow`, which is a class followed by a field rather than a
-     * nested class, and would otherwise fail here for being exactly what the platform expects. The
-     * field is looked up without initializing its class, for the same reason classes are loaded that
-     * way: this asks whether the name resolves, not whether an icon can be drawn outside an IDE.
-     */
-    private fun resolves(fqn: String): Boolean {
-        val loader = javaClass.classLoader
-        if (runCatching { Class.forName(fqn, false, loader) }.isSuccess) return true
-        val owner = fqn.substringBeforeLast('.')
-        val member = fqn.substringAfterLast('.')
-        return runCatching { Class.forName(owner, false, loader).getField(member) }.isSuccess
-    }
-
-    private companion object {
-        const val OUR_PACKAGE = "org.apache.solr.ide"
-    }
+  private companion object {
+    const val OUR_PACKAGE = "org.apache.solr.ide"
+  }
 }

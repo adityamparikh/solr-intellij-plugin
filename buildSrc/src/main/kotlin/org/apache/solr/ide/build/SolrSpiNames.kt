@@ -13,15 +13,15 @@ package org.apache.solr.ide.build
  */
 internal object SolrSpiNames {
 
-    /** The field every SPI-registered analysis factory declares its short name in. */
-    private const val NAME_FIELD = "NAME"
+  /** The field every SPI-registered analysis factory declares its short name in. */
+  private const val NAME_FIELD = "NAME"
 
-    /**
-     * The SPI name among [constants], or null if the class declares none.
-     *
-     * @param constants every string constant on the class, as field name to value
-     * @return the value of the `NAME` field, or null if there is no such field
-     */
-    fun of(constants: List<Pair<String, String>>): String? =
-        constants.firstOrNull { (field, _) -> field == NAME_FIELD }?.second
+  /**
+   * The SPI name among [constants], or null if the class declares none.
+   *
+   * @param constants every string constant on the class, as field name to value
+   * @return the value of the `NAME` field, or null if there is no such field
+   */
+  fun of(constants: List<Pair<String, String>>): String? =
+    constants.firstOrNull { (field, _) -> field == NAME_FIELD }?.second
 }

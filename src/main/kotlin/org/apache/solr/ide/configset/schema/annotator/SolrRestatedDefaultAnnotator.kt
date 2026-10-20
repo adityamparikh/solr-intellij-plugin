@@ -15,9 +15,10 @@ import org.apache.solr.ide.model.schema.SolrFieldProperties
  *
  * **Not an inspection, and the distinction is the whole design.** A restated default is *correct*
  * Solr, so underlining it would be the plugin manufacturing a problem in order to have something to
- * say — the standing rule is that inspections do not fire on correct files. The platform already has
- * an idiom for "true but removable": the dimmed rendering it gives redundant code. This uses it, at
- * information severity and silently, so nothing reaches the Problems view and no problem count moves.
+ * say — the standing rule is that inspections do not fire on correct files. The platform already
+ * has an idiom for "true but removable": the dimmed rendering it gives redundant code. This uses
+ * it, at information severity and silently, so nothing reaches the Problems view and no problem
+ * count moves.
  *
  * **What it claims is narrow on purpose: that deleting the attribute would leave the same field.**
  * Not that it *should* be deleted — a schema author may restate a default precisely to record that
@@ -42,40 +43,42 @@ import org.apache.solr.ide.model.schema.SolrFieldProperties
  */
 class SolrRestatedDefaultAnnotator : Annotator, DumbAware {
 
+  /**
+   * Dims [element] when it is an attribute restating what its element resolves to without it.
+   *
+   * @param element every element in the file, in turn
+   * @param holder collects the annotations produced
+   */
+  override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+    val attribute = element as? XmlAttribute ?: return
+    if (!SolrRestatedAttribute.isRestated(attribute)) return
+
+    holder
+      .newSilentAnnotation(HighlightSeverity.INFORMATION)
+      .range(attribute)
+      .textAttributes(RESTATED_DEFAULT)
+      .create()
+  }
+
+  /** The colour the dim is drawn in. */
+  companion object {
+
     /**
-     * Dims [element] when it is an attribute restating what its element resolves to without it.
+     * Grey text and nothing else, in every scheme.
      *
-     * @param element every element in the file, in turn
-     * @param holder collects the annotations produced
+     * **Its own key rather than the platform's unused-code one, because that one may underline.**
+     * `NOT_USED_ELEMENT_ATTRIBUTES` is grey in the default schemes and grey *with a wave* in High
+     * Contrast, and a restated default is correct Solr: an underline reads as a finding, which is
+     * what the second sandbox pass reported. So the plugin ships grey-only values for Default and
+     * Darcula — every bundled scheme inherits from one of them — and for High Contrast, which
+     * inherits from Darcula but must stay as bright as its own grey. The platform key remains the
+     * fallback for a third-party scheme, and the colour is still the user's to change.
      */
-    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-        val attribute = element as? XmlAttribute ?: return
-        if (!SolrRestatedAttribute.isRestated(attribute)) return
-
-        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-            .range(attribute)
-            .textAttributes(RESTATED_DEFAULT)
-            .create()
-    }
-
-    /** The colour the dim is drawn in. */
-    companion object {
-
-        /**
-         * Grey text and nothing else, in every scheme.
-         *
-         * **Its own key rather than the platform's unused-code one, because that one may underline.**
-         * `NOT_USED_ELEMENT_ATTRIBUTES` is grey in the default schemes and grey *with a wave* in High
-         * Contrast, and a restated default is correct Solr: an underline reads as a finding, which is
-         * what the second sandbox pass reported. So the plugin ships grey-only values for Default and
-         * Darcula — every bundled scheme inherits from one of them — and for High Contrast, which
-         * inherits from Darcula but must stay as bright as its own grey. The platform key remains the
-         * fallback for a third-party scheme, and the colour is still the user's to change.
-         */
-        @JvmField
-        val RESTATED_DEFAULT: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
-            "SOLR_RESTATED_DEFAULT",
-            CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES,
-        )
-    }
+    @JvmField
+    val RESTATED_DEFAULT: TextAttributesKey =
+      TextAttributesKey.createTextAttributesKey(
+        "SOLR_RESTATED_DEFAULT",
+        CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES,
+      )
+  }
 }

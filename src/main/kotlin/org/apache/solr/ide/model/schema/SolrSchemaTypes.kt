@@ -3,46 +3,50 @@ package org.apache.solr.ide.model.schema
 /**
  * One component of an analyzer chain — a char filter, a tokenizer or a token filter.
  *
- * @property className the factory named by the `class` attribute, as written (`solr.LowerCaseFilterFactory`)
+ * @property className the factory named by the `class` attribute, as written
+ *   (`solr.LowerCaseFilterFactory`)
  * @property attributes every other attribute on the element, by name
  */
 data class SolrAnalyzerComponent(
-    val className: String,
-    val attributes: Map<String, String> = emptyMap(),
+  val className: String,
+  val attributes: Map<String, String> = emptyMap(),
 ) {
-    /**
-     * The value of the attribute naming an external resource, or null if this component names none.
-     *
-     * The attribute differs by factory — `words` on a stop filter, `synonyms` on a synonym filter,
-     * `protected` on a stemmer — so all three are checked rather than the caller guessing. This is
-     * what makes a filter's resource navigable to the file beside it.
-     */
-    val resourceAttribute: String?
-        get() = RESOURCE_ATTRIBUTES.firstNotNullOfOrNull { attributes[it] }
+  /**
+   * The value of the attribute naming an external resource, or null if this component names none.
+   *
+   * The attribute differs by factory — `words` on a stop filter, `synonyms` on a synonym filter,
+   * `protected` on a stemmer — so all three are checked rather than the caller guessing. This is
+   * what makes a filter's resource navigable to the file beside it.
+   */
+  val resourceAttribute: String?
+    get() = RESOURCE_ATTRIBUTES.firstNotNullOfOrNull { attributes[it] }
 
-    /** Attribute names that name a file inside the configset. */
-    private companion object {
-        val RESOURCE_ATTRIBUTES = listOf("words", "synonyms", "protected", "dictionary", "stopwords")
-    }
+  /** Attribute names that name a file inside the configset. */
+  private companion object {
+    val RESOURCE_ATTRIBUTES = listOf("words", "synonyms", "protected", "dictionary", "stopwords")
+  }
 }
 
 /**
  * An index-time or query-time analyzer chain.
  *
  * @property charFilters char filters, in declaration order
- * @property tokenizer the tokenizer, or null if the chain declares none (`class` on the analyzer itself)
+ * @property tokenizer the tokenizer, or null if the chain declares none (`class` on the analyzer
+ *   itself)
  * @property filters token filters, in declaration order
  * @property className the analyzer's own `class`, set when a chain is declared as a single class
  */
 data class SolrAnalyzerChain(
-    val charFilters: List<SolrAnalyzerComponent> = emptyList(),
-    val tokenizer: SolrAnalyzerComponent? = null,
-    val filters: List<SolrAnalyzerComponent> = emptyList(),
-    val className: String? = null,
+  val charFilters: List<SolrAnalyzerComponent> = emptyList(),
+  val tokenizer: SolrAnalyzerComponent? = null,
+  val filters: List<SolrAnalyzerComponent> = emptyList(),
+  val className: String? = null,
 ) {
-    /** Every component in pipeline order, which is the order that determines what the field matches. */
-    val components: List<SolrAnalyzerComponent>
-        get() = charFilters + listOfNotNull(tokenizer) + filters
+  /**
+   * Every component in pipeline order, which is the order that determines what the field matches.
+   */
+  val components: List<SolrAnalyzerComponent>
+    get() = charFilters + listOfNotNull(tokenizer) + filters
 }
 
 /**
@@ -55,19 +59,20 @@ data class SolrAnalyzerChain(
  * @property queryAnalyzer the query-time chain, or null if none is declared
  */
 data class SolrFieldType(
-    val name: String,
-    val className: String,
-    val attributes: Map<String, String> = emptyMap(),
-    val indexAnalyzer: SolrAnalyzerChain? = null,
-    val queryAnalyzer: SolrAnalyzerChain? = null,
+  val name: String,
+  val className: String,
+  val attributes: Map<String, String> = emptyMap(),
+  val indexAnalyzer: SolrAnalyzerChain? = null,
+  val queryAnalyzer: SolrAnalyzerChain? = null,
 ) {
-    /**
-     * Whether this type analyzes its input at all.
-     *
-     * A type with no chain — `StrField`, the numeric and date types — matches whole values only,
-     * which is the distinction match analysis is built on.
-     */
-    val isAnalyzed: Boolean get() = indexAnalyzer != null || queryAnalyzer != null
+  /**
+   * Whether this type analyzes its input at all.
+   *
+   * A type with no chain — `StrField`, the numeric and date types — matches whole values only,
+   * which is the distinction match analysis is built on.
+   */
+  val isAnalyzed: Boolean
+    get() = indexAnalyzer != null || queryAnalyzer != null
 }
 
 /**
@@ -90,15 +95,15 @@ data class SolrFieldType(
  *   documentation has to answer for all of them rather than the handful with accessors here
  */
 data class SolrField(
-    val name: String,
-    val type: String,
-    val indexed: Boolean? = null,
-    val stored: Boolean? = null,
-    val docValues: Boolean? = null,
-    val multiValued: Boolean? = null,
-    val required: Boolean? = null,
-    val defaultValue: String? = null,
-    val attributes: Map<String, String> = emptyMap(),
+  val name: String,
+  val type: String,
+  val indexed: Boolean? = null,
+  val stored: Boolean? = null,
+  val docValues: Boolean? = null,
+  val multiValued: Boolean? = null,
+  val required: Boolean? = null,
+  val defaultValue: String? = null,
+  val attributes: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -109,26 +114,27 @@ data class SolrField(
  */
 data class SolrDynamicField(val pattern: String, val field: SolrField) {
 
-    /**
-     * Whether [fieldName] matches this pattern.
-     *
-     * Solr's globs are deliberately impoverished — a single `*` at one end, or the bare `*` — so
-     * this is prefix and suffix matching rather than a regular expression. Matching a name against
-     * a pattern that is neither is treated as an exact comparison, which is what Solr does with a
-     * `dynamicField` whose name contains no wildcard at all.
-     *
-     * @param fieldName the concrete field name to test
-     * @return true if this dynamic field would supply [fieldName]
-     */
-    fun matches(fieldName: String): Boolean = SolrGlob.matches(pattern, fieldName)
+  /**
+   * Whether [fieldName] matches this pattern.
+   *
+   * Solr's globs are deliberately impoverished — a single `*` at one end, or the bare `*` — so this
+   * is prefix and suffix matching rather than a regular expression. Matching a name against a
+   * pattern that is neither is treated as an exact comparison, which is what Solr does with a
+   * `dynamicField` whose name contains no wildcard at all.
+   *
+   * @param fieldName the concrete field name to test
+   * @return true if this dynamic field would supply [fieldName]
+   */
+  fun matches(fieldName: String): Boolean = SolrGlob.matches(pattern, fieldName)
 
-    /**
-     * How specific this pattern is, used to pick a winner when several match.
-     *
-     * Solr resolves a name against the *longest* matching pattern, so a name matching both `*_str`
-     * and `*_s` takes the former. Length of the literal part is exactly that ordering.
-     */
-    val specificity: Int get() = pattern.count { it != '*' }
+  /**
+   * How specific this pattern is, used to pick a winner when several match.
+   *
+   * Solr resolves a name against the *longest* matching pattern, so a name matching both `*_str`
+   * and `*_s` takes the former. Length of the literal part is exactly that ordering.
+   */
+  val specificity: Int
+    get() = pattern.count { it != '*' }
 }
 
 /**
@@ -139,9 +145,9 @@ data class SolrDynamicField(val pattern: String, val field: SolrField) {
  * @property maxChars the `maxChars` limit, or null if unset
  */
 data class SolrCopyField(
-    val source: String,
-    val destination: String,
-    val maxChars: Int? = null,
+  val source: String,
+  val destination: String,
+  val maxChars: Int? = null,
 )
 
 /**
@@ -156,10 +162,10 @@ data class SolrCopyField(
  * @property boost the `^`-suffixed boost, when the parameter carries one
  */
 data class SolrFieldReference(
-    val handlerName: String,
-    val parameterName: String,
-    val fieldName: String,
-    val boost: String? = null,
+  val handlerName: String,
+  val parameterName: String,
+  val fieldName: String,
+  val boost: String? = null,
 )
 
 /**
@@ -171,20 +177,21 @@ data class SolrFieldReference(
  */
 object SolrGlob {
 
-    /**
-     * Whether [name] matches [pattern].
-     *
-     * A pattern with no wildcard is compared exactly, which is what Solr does with a `dynamicField`
-     * whose name contains no `*`.
-     *
-     * @param pattern a Solr glob, or a literal name
-     * @param name the concrete name to test
-     * @return true if the pattern covers the name
-     */
-    fun matches(pattern: String, name: String): Boolean = when {
-        pattern == "*" -> true
-        pattern.startsWith("*") -> name.endsWith(pattern.substring(1))
-        pattern.endsWith("*") -> name.startsWith(pattern.dropLast(1))
-        else -> name == pattern
+  /**
+   * Whether [name] matches [pattern].
+   *
+   * A pattern with no wildcard is compared exactly, which is what Solr does with a `dynamicField`
+   * whose name contains no `*`.
+   *
+   * @param pattern a Solr glob, or a literal name
+   * @param name the concrete name to test
+   * @return true if the pattern covers the name
+   */
+  fun matches(pattern: String, name: String): Boolean =
+    when {
+      pattern == "*" -> true
+      pattern.startsWith("*") -> name.endsWith(pattern.substring(1))
+      pattern.endsWith("*") -> name.startsWith(pattern.dropLast(1))
+      else -> name == pattern
     }
 }

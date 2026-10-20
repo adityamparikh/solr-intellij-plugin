@@ -11,101 +11,104 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.models.productInfo
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    // Versioned in settings.gradle.kts, not the catalog: the IntelliJ Platform settings plugin
-    // applied there must match this one, and a settings `plugins` block cannot read the catalog.
-    id("org.jetbrains.intellij.platform")
-    alias(libs.plugins.changelog)
-    alias(libs.plugins.kover)
-    alias(libs.plugins.sonarqube)
-    alias(libs.plugins.dokka)
-    alias(libs.plugins.spotless)
+  alias(libs.plugins.kotlin.jvm)
+  // Versioned in settings.gradle.kts, not the catalog: the IntelliJ Platform settings plugin
+  // applied there must match this one, and a settings `plugins` block cannot read the catalog.
+  id("org.jetbrains.intellij.platform")
+  alias(libs.plugins.changelog)
+  alias(libs.plugins.kover)
+  alias(libs.plugins.sonarqube)
+  alias(libs.plugins.dokka)
+  alias(libs.plugins.spotless)
 }
 
-// The IDE release this plugin compiles against, and so the oldest it claims: the patched descriptor's
+// The IDE release this plugin compiles against, and so the oldest it claims: the patched
+// descriptor's
 // `since-build` is derived from it. Named rather than written inline so the compatibility page's
 // drift test below can be handed the same value the platform dependency uses.
 val targetIdeVersion = "2026.2"
 
 kotlin {
-    // JDK 21 is the floor set by the version-support policy (see specs/0002-solr-intellij-plugin.md
-    // "Version-support policy"): Solr 10 requires Java 21, and the reference-data generator reflects
-    // over Solr artifacts from every supported line. A JDK 21 toolchain also loads the previous
-    // major's lower-baseline classes, so one toolchain spans all supported lines.
-    jvmToolchain(21)
+  // JDK 21 is the floor set by the version-support policy (see specs/0002-solr-intellij-plugin.md
+  // "Version-support policy"): Solr 10 requires Java 21, and the reference-data generator reflects
+  // over Solr artifacts from every supported line. A JDK 21 toolchain also loads the previous
+  // major's lower-baseline classes, so one toolchain spans all supported lines.
+  jvmToolchain(21)
 }
 
 dependencies {
-    testImplementation(libs.junit)
-    // **Three of Testcontainers' transitive dependencies are also the platform's, in older
-    // versions, and the platform loses.** Its whole tree is six artifacts, so this list is bounded
-    // and readable rather than open-ended — but each exclusion is here because leaving it out broke
-    // tests that have nothing to do with containers, in ways whose messages named no cause:
+  testImplementation(libs.junit)
+  // **Three of Testcontainers' transitive dependencies are also the platform's, in older
+  // versions, and the platform loses.** Its whole tree is six artifacts, so this list is bounded
+  // and readable rather than open-ended — but each exclusion is here because leaving it out broke
+  // tests that have nothing to do with containers, in ways whose messages named no cause:
+  //
+  //  - **JNA**: the platform's native calls fail with "JNA library is not available", taking out
+  //    every fixture test that touches the UI.
+  //  - **jackson-annotations**: Testcontainers pins 2.10.3, which predates
+  // `JsonProperty.namespace()`,
+  //    so the platform's databind fails resolving a method that exists in the version it expects.
+  //  - **slf4j-api**: Testcontainers pins 1.7.x against the platform's 2.x, and the 1.x binder
+  //    lookup cannot see the platform's provider.
+  //
+  // The cost is that Testcontainers' own diagnostics go unlogged, which matters exactly once —
+  // when a container will not start. `DOCKER_API_VERSION` below is the answer to the one cause
+  // this project has actually met.
+  testImplementation(libs.testcontainers) {
+    exclude(group = "net.java.dev.jna")
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+    exclude(group = "org.slf4j", module = "slf4j-api")
+  }
+  testImplementation(libs.testcontainers.solr) {
+    exclude(group = "net.java.dev.jna")
+    exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+    exclude(group = "org.slf4j", module = "slf4j-api")
+  }
+
+  // IntelliJ Platform Gradle Plugin Dependencies Extension - read more:
+  // https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
+  intellijPlatform {
+    // IntelliJ IDEA is a single unified distribution as of 2025.3 (Community/Ultimate merged),
+    // so we target the unified `intellijIdea(...)` artifact. XML PSI (configset parsing) is part
+    // of platform core.
+    intellijIdea(targetIdeVersion)
+
+    // Java PSI, for resolving the class a `class` attribute names — needed to compile the
+    // reference provider and to test it, and matched by a hard `<depends>` in `plugin.xml`. It
+    // was optional there, so the provider registered only where Java PSI existed; the plugin
+    // targets IntelliJ IDEA, which bundles Java, so that condition was true wherever it was ever
+    // evaluated. This is the dependency the comment above used to defer to Phase 3, which needs
+    // it unconditionally in any case.
+    bundledPlugin("com.intellij.java")
+
+    // The IDE's own HTTP Client, which is where saved Solr queries live and run. The argument
+    // for depending on it is the one made for Java PSI directly above: it ships in the same
+    // unified distribution this plugin already targets, and it carries no `<product-descriptor>`,
+    // so it is not separately licensed. Matched by a hard `<depends>` in `plugin.xml`.
     //
-    //  - **JNA**: the platform's native calls fail with "JNA library is not available", taking out
-    //    every fixture test that touches the UI.
-    //  - **jackson-annotations**: Testcontainers pins 2.10.3, which predates `JsonProperty.namespace()`,
-    //    so the platform's databind fails resolving a method that exists in the version it expects.
-    //  - **slf4j-api**: Testcontainers pins 1.7.x against the platform's 2.x, and the 1.x binder
-    //    lookup cannot see the platform's provider.
+    // This is another plugin's API rather than platform API, and its extension points may be
+    // undocumented and may change between releases. `verifyPlugin` against every entry in
+    // `verifiedIdeBuilds` is the gate that makes such a change fail a pull request raising the
+    // target rather than a user's editor. If that gate is weakened, this dependency is revisited.
+    bundledPlugin("com.jetbrains.restClient")
+    testFramework(TestFrameworkType.Platform)
+
+    // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this
+    // executable, and without a declaration it only ran where a previous build had already left
+    // it in the Gradle cache — which is every local machine, and a CI runner only sometimes. The
+    // verify job restores its cache read-only, so on a runner whose cache lacked the CLI the
+    // task failed with *IntelliJ Plugin Verifier executable not found*, having resolved nothing
+    // and produced no report. A gate that passes according to what a cache happens to hold is
+    // not a gate.
     //
-    // The cost is that Testcontainers' own diagnostics go unlogged, which matters exactly once —
-    // when a container will not start. `DOCKER_API_VERSION` below is the answer to the one cause
-    // this project has actually met.
-    testImplementation(libs.testcontainers) {
-        exclude(group = "net.java.dev.jna")
-        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
-        exclude(group = "org.slf4j", module = "slf4j-api")
-    }
-    testImplementation(libs.testcontainers.solr) {
-        exclude(group = "net.java.dev.jna")
-        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
-        exclude(group = "org.slf4j", module = "slf4j-api")
-    }
-
-    // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
-    intellijPlatform {
-        // IntelliJ IDEA is a single unified distribution as of 2025.3 (Community/Ultimate merged),
-        // so we target the unified `intellijIdea(...)` artifact. XML PSI (configset parsing) is part
-        // of platform core.
-        intellijIdea(targetIdeVersion)
-
-        // Java PSI, for resolving the class a `class` attribute names — needed to compile the
-        // reference provider and to test it, and matched by a hard `<depends>` in `plugin.xml`. It
-        // was optional there, so the provider registered only where Java PSI existed; the plugin
-        // targets IntelliJ IDEA, which bundles Java, so that condition was true wherever it was ever
-        // evaluated. This is the dependency the comment above used to defer to Phase 3, which needs
-        // it unconditionally in any case.
-        bundledPlugin("com.intellij.java")
-
-        // The IDE's own HTTP Client, which is where saved Solr queries live and run. The argument
-        // for depending on it is the one made for Java PSI directly above: it ships in the same
-        // unified distribution this plugin already targets, and it carries no `<product-descriptor>`,
-        // so it is not separately licensed. Matched by a hard `<depends>` in `plugin.xml`.
-        //
-        // This is another plugin's API rather than platform API, and its extension points may be
-        // undocumented and may change between releases. `verifyPlugin` against every entry in
-        // `verifiedIdeBuilds` is the gate that makes such a change fail a pull request raising the
-        // target rather than a user's editor. If that gate is weakened, this dependency is revisited.
-        bundledPlugin("com.jetbrains.restClient")
-        testFramework(TestFrameworkType.Platform)
-
-        // The Plugin Verifier CLI, declared rather than assumed. `verifyPlugin` needs this
-        // executable, and without a declaration it only ran where a previous build had already left
-        // it in the Gradle cache — which is every local machine, and a CI runner only sometimes. The
-        // verify job restores its cache read-only, so on a runner whose cache lacked the CLI the
-        // task failed with *IntelliJ Plugin Verifier executable not found*, having resolved nothing
-        // and produced no report. A gate that passes according to what a cache happens to hold is
-        // not a gate.
-        //
-        // **Pinned, and that is the same argument carried one step further.** The argument-less
-        // overload defaults to `Constraints.LATEST_VERSION`, which resolves whatever the newest
-        // published verifier is at build time — so the gate's answer could change with no commit in
-        // this repository, and would change on each machine as its dynamic-version cache expired.
-        // Declaring the tool but not its version leaves the same hole a shape smaller. Bumping this
-        // is a commit, exactly as the action SHAs in `.github/workflows` are.
-        pluginVerifier("1.409")
-    }
+    // **Pinned, and that is the same argument carried one step further.** The argument-less
+    // overload defaults to `Constraints.LATEST_VERSION`, which resolves whatever the newest
+    // published verifier is at build time — so the gate's answer could change with no commit in
+    // this repository, and would change on each machine as its dynamic-version cache expired.
+    // Declaring the tool but not its version leaves the same hole a shape smaller. Bumping this
+    // is a commit, exactly as the action SHAs in `.github/workflows` are.
+    pluginVerifier("1.409")
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -121,22 +124,22 @@ dependencies {
 val verifiedIdeBuilds = listOf("2026.2")
 
 intellijPlatform {
-    pluginVerification {
-        ides {
-            // Declared rather than defaulted. Left unconfigured, the task verifies against whatever
-            // the build happens to target — which is the same class of hole the pinned verifier
-            // version above closed: a gate whose subject is decided somewhere else changes answer
-            // without a commit here.
-            //
-            // **IntelliJ IDEA only, and that is the product decision rather than an omission.** The
-            // plugin targets IDEA and nothing else, so this list is complete rather than a first
-            // entry. Stated here because a one-item list otherwise reads as one somebody forgot to
-            // extend — and because the descriptor used to imply a wider claim, taking
-            // `com.intellij.modules.java` optionally so the plugin would load in an IDE without
-            // Java PSI. That is now a hard dependency, so the two agree: one IDE, said once.
-            verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
-        }
+  pluginVerification {
+    ides {
+      // Declared rather than defaulted. Left unconfigured, the task verifies against whatever
+      // the build happens to target — which is the same class of hole the pinned verifier
+      // version above closed: a gate whose subject is decided somewhere else changes answer
+      // without a commit here.
+      //
+      // **IntelliJ IDEA only, and that is the product decision rather than an omission.** The
+      // plugin targets IDEA and nothing else, so this list is complete rather than a first
+      // entry. Stated here because a one-item list otherwise reads as one somebody forgot to
+      // extend — and because the descriptor used to imply a wider claim, taking
+      // `com.intellij.modules.java` optionally so the plugin would load in an IDE without
+      // Java PSI. That is now a hard dependency, so the two agree: one IDE, said once.
+      verifiedIdeBuilds.forEach { create(IntelliJPlatformType.IntellijIdea, it) }
     }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -144,29 +147,30 @@ intellijPlatform {
 // a file: the plugin's change notes, and the build range it claims.
 // ---------------------------------------------------------------------------------------------
 
-// `<change-notes>` comes from CHANGELOG.md rather than being written twice. Keeping them separate is
+// `<change-notes>` comes from CHANGELOG.md rather than being written twice. Keeping them separate
+// is
 // how a release ships notes that describe the previous one: the changelog is what a contributor
 // edits, so it is the copy that stays true, and this renders it rather than restating it.
 tasks.patchPluginXml {
-    changeNotes = provider {
-        with(changelog) {
-            renderItem(
-                // The released section when this build is one, the unreleased section otherwise, so
-                // a snapshot build shows what is *about* to ship rather than an empty element.
-                (getOrNull(project.version.toString()) ?: getUnreleased())
-                    .withHeader(false)
-                    .withEmptySections(false),
-                Changelog.OutputType.HTML,
-            )
-        }
+  changeNotes = provider {
+    with(changelog) {
+      renderItem(
+        // The released section when this build is one, the unreleased section otherwise, so
+        // a snapshot build shows what is *about* to ship rather than an empty element.
+        (getOrNull(project.version.toString()) ?: getUnreleased())
+          .withHeader(false)
+          .withEmptySections(false),
+        Changelog.OutputType.HTML,
+      )
     }
+  }
 }
 
 changelog {
-    // The file already follows Keep a Changelog and predates this block; these two lines only tell
-    // the plugin what it is reading, so `patchPluginXml` above can find a version's section.
-    path = file("CHANGELOG.md").canonicalPath
-    repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
+  // The file already follows Keep a Changelog and predates this block; these two lines only tell
+  // the plugin what it is reading, so `patchPluginXml` above can find a version's section.
+  path = file("CHANGELOG.md").canonicalPath
+  repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
 }
 
 // Open the demo fixture in the sandbox IDE instead of whatever project the sandbox happened to
@@ -178,105 +182,111 @@ changelog {
 // configset, or reproducing a bug report:
 //
 //   ./gradlew runIde -PrunIdeProject=/path/to/project    open something else
-//   ./gradlew runIde -PrunIdeProject=                    open nothing; sandbox restores its own state
+//   ./gradlew runIde -PrunIdeProject=                    open nothing; sandbox restores its own
+// state
 tasks.runIde {
-    // Resolved through providers only. An earlier version called `file(path)` inside the argument
-    // provider, which captures the Gradle `Project` — a script object reference the configuration
-    // cache cannot serialize, so `runIde` failed the moment the cache had to be rebuilt.
-    val requested = providers.gradleProperty("runIdeProject")
-        .orElse(layout.projectDirectory.dir("demo").asFile.absolutePath)
-        .map { path ->
-            // A blank value is the documented opt-out, and a path to a directory that does not
-            // exist must not become an argument the IDE tries to interpret as a file to create.
-            if (path.isNotBlank() && File(path).isDirectory) listOf(path) else emptyList()
-        }
-    argumentProviders.add(CommandLineArgumentProvider { requested.get() })
+  // Resolved through providers only. An earlier version called `file(path)` inside the argument
+  // provider, which captures the Gradle `Project` — a script object reference the configuration
+  // cache cannot serialize, so `runIde` failed the moment the cache had to be rebuilt.
+  val requested =
+    providers
+      .gradleProperty("runIdeProject")
+      .orElse(layout.projectDirectory.dir("demo").asFile.absolutePath)
+      .map { path ->
+        // A blank value is the documented opt-out, and a path to a directory that does not
+        // exist must not become an argument the IDE tries to interpret as a file to create.
+        if (path.isNotBlank() && File(path).isDirectory) listOf(path) else emptyList()
+      }
+  argumentProviders.add(CommandLineArgumentProvider { requested.get() })
 }
 
 // SonarCloud analysis. Runs from CI rather than SonarCloud's Automatic Analysis, because
 // Automatic Analysis cannot ingest a coverage report — the two modes are mutually exclusive.
 sonar {
-    properties {
-        property("sonar.projectKey", "adityamparikh_solr-intellij-plugin")
-        property("sonar.organization", "adityamparikh")
-        property("sonar.host.url", "https://sonarcloud.io")
-        // Kover writes a JaCoCo-format XML report; this is the property that makes coverage
-        // visible in SonarCloud at all.
-        property(
-            "sonar.coverage.jacoco.xmlReportPaths",
-            layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path,
-        )
-        // The configsets Apache Solr ships, vendored verbatim as the zero-findings fixture. They are
-        // not this project's code and must not be edited to satisfy an analyser — the whole point of
-        // them is that nobody here wrote them. Excluded rather than merely exempted from duplication
-        // detection, which they would otherwise dominate: `_default`'s schema is byte-identical on
-        // both supported lines, because Solr did not change it between them.
-        property("sonar.exclusions", "src/test/resources/shipped-configsets/**")
-    }
+  properties {
+    property("sonar.projectKey", "adityamparikh_solr-intellij-plugin")
+    property("sonar.organization", "adityamparikh")
+    property("sonar.host.url", "https://sonarcloud.io")
+    // Kover writes a JaCoCo-format XML report; this is the property that makes coverage
+    // visible in SonarCloud at all.
+    property(
+      "sonar.coverage.jacoco.xmlReportPaths",
+      layout.buildDirectory.file("reports/kover/report.xml").get().asFile.path,
+    )
+    // The configsets Apache Solr ships, vendored verbatim as the zero-findings fixture. They are
+    // not this project's code and must not be edited to satisfy an analyser — the whole point of
+    // them is that nobody here wrote them. Excluded rather than merely exempted from duplication
+    // detection, which they would otherwise dominate: `_default`'s schema is byte-identical on
+    // both supported lines, because Solr did not change it between them.
+    property("sonar.exclusions", "src/test/resources/shipped-configsets/**")
+  }
 }
 
 // Code coverage. SonarCloud cannot compute coverage itself — it ingests a report, so the XML
 // variant must stay enabled for `sonar.coverage.jacoco.xmlReportPaths` to resolve.
 kover {
-    reports {
-        total {
-            xml {
-                // Uploaded as an artifact by the Test job in .github/workflows/build.yml. Once
-                // CI-based Sonar analysis replaces Automatic Analysis, this is the path
-                // `sonar.coverage.jacoco.xmlReportPaths` will point at.
-                xmlFile = layout.buildDirectory.file("reports/kover/report.xml")
-            }
-            html {
-                onCheck = false
-            }
+  reports {
+    total {
+      xml {
+        // Uploaded as an artifact by the Test job in .github/workflows/build.yml. Once
+        // CI-based Sonar analysis replaces Automatic Analysis, this is the path
+        // `sonar.coverage.jacoco.xmlReportPaths` will point at.
+        xmlFile = layout.buildDirectory.file("reports/kover/report.xml")
+      }
+      html {
+        onCheck = false
+      }
 
-            filters {
-                excludes {
-                    // Thin DynamicBundle wrapper: platform resource-bundle plumbing with no branches
-                    // of our own, and exercising it meaningfully needs a running IDE.
-                    classes("org.apache.solr.ide.SolrBundle*")
-                }
-            }
-
-            // Coverage floor, enforced as part of `check`. Set at 80% against 100% actual: the
-            // headroom is deliberate, so that adding UI and PSI code — which is awkward to unit
-            // test — does not block a PR the moment it lands. Sonar's new-code gate is what
-            // catches gradual erosion; this rule is the backstop against a sharp drop.
-            verify {
-                onCheck = true
-                rule {
-                    bound {
-                        minValue = 80
-                        coverageUnits = CoverageUnit.LINE
-                    }
-                }
-            }
+      filters {
+        excludes {
+          // Thin DynamicBundle wrapper: platform resource-bundle plumbing with no branches
+          // of our own, and exercising it meaningfully needs a running IDE.
+          classes("org.apache.solr.ide.SolrBundle*")
         }
+      }
+
+      // Coverage floor, enforced as part of `check`. Set at 80% against 100% actual: the
+      // headroom is deliberate, so that adding UI and PSI code — which is awkward to unit
+      // test — does not block a PR the moment it lands. Sonar's new-code gate is what
+      // catches gradual erosion; this rule is the backstop against a sharp drop.
+      verify {
+        onCheck = true
+        rule {
+          bound {
+            minValue = 80
+            coverageUnits = CoverageUnit.LINE
+          }
+        }
+      }
     }
+  }
 }
+
 // API documentation. `reportUndocumented` emits a warning for every public declaration without
 // KDoc and `failOnWarning` turns those warnings into a build failure, so undocumented public API
 // cannot merge. Only the `main` source set is gated — tests are exempt by design.
 dokka {
-    moduleName = "Solr IntelliJ Plugin"
+  moduleName = "Solr IntelliJ Plugin"
 
-    dokkaPublications.html {
-        failOnWarning = true
+  dokkaPublications.html {
+    failOnWarning = true
+  }
+
+  dokkaSourceSets.main {
+    reportUndocumented = true
+
+    // Module and package overviews (the landing page and per-package headers).
+    includes.from("docs/Module.md")
+
+    // Deep-link every documented symbol to its exact line on GitHub.
+    sourceLink {
+      localDirectory = file("src/main/kotlin")
+      remoteUrl(
+        "${providers.gradleProperty("pluginRepositoryUrl").get()}/tree/main/src/main/kotlin"
+      )
+      remoteLineSuffix = "#L"
     }
-
-    dokkaSourceSets.main {
-        reportUndocumented = true
-
-        // Module and package overviews (the landing page and per-package headers).
-        includes.from("docs/Module.md")
-
-        // Deep-link every documented symbol to its exact line on GitHub.
-        sourceLink {
-            localDirectory = file("src/main/kotlin")
-            remoteUrl("${providers.gradleProperty("pluginRepositoryUrl").get()}/tree/main/src/main/kotlin")
-            remoteLineSuffix = "#L"
-        }
-    }
+  }
 }
 
 // **Google style, checked by `check`.** Spotless wires `spotlessCheck` into `check` itself, so an
@@ -286,25 +296,25 @@ dokka {
 // for. buildSrc and the demo are separate builds with no plugin of their own, so this build formats
 // their files by path.
 spotless {
-    kotlin {
-        target("src/**/*.kt", "buildSrc/src/**/*.kt")
-        ktfmt(libs.versions.ktfmt.get()).googleStyle()
-    }
-    kotlinGradle {
-        target("*.gradle.kts", "buildSrc/*.gradle.kts", "demo/*.gradle.kts")
-        ktfmt(libs.versions.ktfmt.get()).googleStyle()
-    }
-    java {
-        target("demo/src/**/*.java")
-        googleJavaFormat(libs.versions.google.java.format.get())
-    }
+  kotlin {
+    target("src/**/*.kt", "buildSrc/src/**/*.kt")
+    ktfmt(libs.versions.ktfmt.get()).googleStyle()
+  }
+  kotlinGradle {
+    target("*.gradle.kts", "buildSrc/*.gradle.kts", "demo/*.gradle.kts")
+    ktfmt(libs.versions.ktfmt.get()).googleStyle()
+  }
+  java {
+    target("demo/src/**/*.java")
+    googleJavaFormat(libs.versions.google.java.format.get())
+  }
 }
 
 // Documentation coverage joins the coverage floor as part of `check`, so both gates fire together
 // on `./gradlew build` locally and in the CI step that runs `check` — no separate workflow to
 // keep in sync.
 tasks.check {
-    dependsOn(tasks.dokkaGenerate)
+  dependsOn(tasks.dokkaGenerate)
 }
 
 // Where the committed demo configset is, told to the tests that read it rather than inferred by
@@ -317,7 +327,10 @@ tasks.check {
 // Resolved at configuration time to a plain String, which is what keeps the configuration cache
 // able to store it.
 tasks.test {
-    systemProperty("demo.configset.dir", layout.projectDirectory.dir("demo/solr/conf").asFile.absolutePath)
+  systemProperty(
+    "demo.configset.dir",
+    layout.projectDirectory.dir("demo/solr/conf").asFile.absolutePath,
+  )
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -326,24 +339,27 @@ tasks.test {
 // which Solr lines are supported — and wires the task in.
 // ---------------------------------------------------------------------------------------------
 
-// The Solr lines this plugin supports, newest first. **This is the single place they are declared**,
+// The Solr lines this plugin supports, newest first. **This is the single place they are
+// declared**,
 // so adding a line or dropping an end-of-life one is one edit. The policy itself lives in the
 // specification's "Version support" section: whatever Apache Solr has not declared EOL.
-val supportedSolrLines = mapOf(
+val supportedSolrLines =
+  mapOf(
     "10" to "10.0.0",
     "9" to "9.10.1",
-)
+  )
 
 supportedSolrLines.forEach { (line, version) ->
-    val configuration = configurations.create("solrArtifacts$line") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
+  val configuration =
+    configurations.create("solrArtifacts$line") {
+      isCanBeConsumed = false
+      isCanBeResolved = true
     }
-    dependencies.add(configuration.name, "org.apache.solr:solr-core:$version")
-    // Chinese (smartcn), ICU, Stempel and Morfologik ship in Solr's analysis-extras module rather
-    // than in core, so resolving core alone produced a catalog with Japanese and Korean support and
-    // no Chinese at all. A configset can name these, so the catalog has to know them.
-    dependencies.add(configuration.name, "org.apache.solr:solr-analysis-extras:$version")
+  dependencies.add(configuration.name, "org.apache.solr:solr-core:$version")
+  // Chinese (smartcn), ICU, Stempel and Morfologik ship in Solr's analysis-extras module rather
+  // than in core, so resolving core alone produced a catalog with Japanese and Korean support and
+  // no Chinese at all. A configset can name these, so the catalog has to know them.
+  dependencies.add(configuration.name, "org.apache.solr:solr-analysis-extras:$version")
 }
 
 /**
@@ -357,61 +373,74 @@ supportedSolrLines.forEach { (line, version) ->
  * configuration-cache hit skips the configuration phase entirely, so this resolves once per cache
  * entry and not on every invocation that happens to need the catalog.
  *
- * A component with no published sources — Solr's own transitive dependencies chief among them —
- * is silently absent from the result, the same decline-rather-than-guess rule the generator's
+ * A component with no published sources — Solr's own transitive dependencies chief among them — is
+ * silently absent from the result, the same decline-rather-than-guess rule the generator's
  * attribute pass already follows.
  */
 fun resolveSources(configuration: Configuration): List<File> {
-    val components = configuration.incoming.resolutionResult.allComponents
-        .mapNotNull { it.id as? ModuleComponentIdentifier }
-    val resolved = dependencies.createArtifactResolutionQuery()
-        .forComponents(components)
-        .withArtifacts(JvmLibrary::class.java, SourcesArtifact::class.java)
-        .execute()
-    return resolved.resolvedComponents.flatMap { component ->
-        component.getArtifacts(SourcesArtifact::class.java)
-            .filterIsInstance<ResolvedArtifactResult>()
-            .map { it.file }
+  val components =
+    configuration.incoming.resolutionResult.allComponents.mapNotNull {
+      it.id as? ModuleComponentIdentifier
     }
+  val resolved =
+    dependencies
+      .createArtifactResolutionQuery()
+      .forComponents(components)
+      .withArtifacts(JvmLibrary::class.java, SourcesArtifact::class.java)
+      .execute()
+  return resolved.resolvedComponents.flatMap { component ->
+    component
+      .getArtifacts(SourcesArtifact::class.java)
+      .filterIsInstance<ResolvedArtifactResult>()
+      .map { it.file }
+  }
 }
 
-val generateSolrCatalog = tasks.register<GenerateSolrCatalogTask>("generateSolrCatalog") {
+val generateSolrCatalog =
+  tasks.register<GenerateSolrCatalogTask>("generateSolrCatalog") {
     group = "build"
     description = "Reads each supported Solr line's artifacts into the shipped class catalog."
     outputDirectory = layout.buildDirectory.dir("generated/solr-catalog-resources")
     supportedSolrLines.forEach { (line, version) ->
-        val configuration = configurations.named("solrArtifacts$line").get()
-        solrLine(line, version, configuration, resolveSources(configuration))
+      val configuration = configurations.named("solrArtifacts$line").get()
+      solrLine(line, version, configuration, resolveSources(configuration))
     }
-}
+  }
 
 // The catalog ships with the plugin, so it is a resource of the main source set. This is what makes
 // `processResources` depend on the generator, and therefore what makes a clean build regenerate it.
 sourceSets.named("main") { resources.srcDir(generateSolrCatalog) }
 
-// The two paths `SolrCatalogResourceTest` needs to hold the sentence above to more than intent: where
+// The two paths `SolrCatalogResourceTest` needs to hold the sentence above to more than intent:
+// where
 // the generator writes, and what `clean` removes. Read off the task and the layout rather than
-// restated, so the test is checking this wiring rather than a second copy of it — an `outputDirectory`
-// moved out from under the build directory fails the test instead of quietly ending the regeneration.
+// restated, so the test is checking this wiring rather than a second copy of it — an
+// `outputDirectory`
+// moved out from under the build directory fails the test instead of quietly ending the
+// regeneration.
 tasks.test {
-    // **Why the Docker API version is pinned, and why it is a floor rather than a preference.**
-    // Testcontainers' bundled docker-java negotiates an API version with the daemon, and a recent
-    // Docker Engine answers its `/info` call with HTTP 400 and an empty body — so every strategy
-    // fails and the only message a developer sees is "Could not find a valid Docker environment",
-    // which names neither the cause nor the fix. Measured against Docker Engine 29.7.2, API 1.55.
-    //
-    // 1.44 is old enough for every engine this plugin's tests need and new enough for everything
-    // they ask of one. Remove it when Testcontainers ships a docker-java that negotiates correctly;
-    // the contract tests failing to find Docker is how you will know it was removed too early.
-    systemProperty("api.version", providers.environmentVariable("DOCKER_API_VERSION").orElse("1.44").get())
-    systemProperty(
-        "solr.catalog.generated.dir",
-        generateSolrCatalog.get().outputDirectory.get().asFile.absolutePath,
-    )
-    systemProperty("solr.build.dir", layout.buildDirectory.get().asFile.absolutePath)
+  // **Why the Docker API version is pinned, and why it is a floor rather than a preference.**
+  // Testcontainers' bundled docker-java negotiates an API version with the daemon, and a recent
+  // Docker Engine answers its `/info` call with HTTP 400 and an empty body — so every strategy
+  // fails and the only message a developer sees is "Could not find a valid Docker environment",
+  // which names neither the cause nor the fix. Measured against Docker Engine 29.7.2, API 1.55.
+  //
+  // 1.44 is old enough for every engine this plugin's tests need and new enough for everything
+  // they ask of one. Remove it when Testcontainers ships a docker-java that negotiates correctly;
+  // the contract tests failing to find Docker is how you will know it was removed too early.
+  systemProperty(
+    "api.version",
+    providers.environmentVariable("DOCKER_API_VERSION").orElse("1.44").get(),
+  )
+  systemProperty(
+    "solr.catalog.generated.dir",
+    generateSolrCatalog.get().outputDirectory.get().asFile.absolutePath,
+  )
+  systemProperty("solr.build.dir", layout.buildDirectory.get().asFile.absolutePath)
 }
 
-// **The compatibility page is checked against the declarations it names.** It promises an IDE range,
+// **The compatibility page is checked against the declarations it names.** It promises an IDE
+// range,
 // a verified build, two Solr releases and a toolchain, each declared once in this file; a page that
 // drifted from them would be believed, which is worse than no page. `SolrCompatibilityPageTest`
 // reads the page and is handed every declared value here — plus the descriptor `patchPluginXml`
@@ -423,28 +452,35 @@ tasks.test {
 // (`IU-262.8665.258`), because that is what a reader can look up — and a page naming a build the
 // Verifier never ran against is exactly the drift this exists to catch, which comparing releases by
 // branch would miss. So the full notation is read from the `product-info.json` of each IDE
-// `verifyPlugin` itself resolves. Those are the same coordinates as the platform dependency, so this
+// `verifyPlugin` itself resolves. Those are the same coordinates as the platform dependency, so
+// this
 // resolves nothing the compile classpath has not already.
 tasks.test {
-    val patchedDescriptor = tasks.patchPluginXml.flatMap { it.outputFile }
-    val verifiedBuilds = tasks.verifyPlugin.flatMap { it.ides.elements }.map { ides ->
-        ides.map { ide -> ide.asFile.toPath().productInfo().let { "${it.productCode}-${it.buildNumber}" } }
-            .sorted()
-            .joinToString(",")
-    }
-    inputs.property("verifiedBuilds", verifiedBuilds)
-    inputs.file(patchedDescriptor).withPropertyName("patchedDescriptor")
-    inputs.file("docs/compatibility.md").withPropertyName("compatibilityPage")
-    systemProperty("compat.page", file("docs/compatibility.md").absolutePath)
-    systemProperty("compat.pluginVersion", project.version.toString())
-    systemProperty("compat.targetIde", targetIdeVersion)
-    systemProperty("compat.verifiedIdes", verifiedIdeBuilds.joinToString(","))
-    systemProperty("compat.solrReleases", supportedSolrLines.values.joinToString(","))
-    systemProperty("compat.toolchain", java.toolchain.languageVersion.get().asInt().toString())
-    jvmArgumentProviders += CommandLineArgumentProvider {
-        listOf(
-            "-Dcompat.descriptor=${patchedDescriptor.get().asFile.absolutePath}",
-            "-Dcompat.verifiedBuilds=${verifiedBuilds.get()}",
-        )
-    }
+  val patchedDescriptor = tasks.patchPluginXml.flatMap { it.outputFile }
+  val verifiedBuilds =
+    tasks.verifyPlugin
+      .flatMap { it.ides.elements }
+      .map { ides ->
+        ides
+          .map { ide ->
+            ide.asFile.toPath().productInfo().let { "${it.productCode}-${it.buildNumber}" }
+          }
+          .sorted()
+          .joinToString(",")
+      }
+  inputs.property("verifiedBuilds", verifiedBuilds)
+  inputs.file(patchedDescriptor).withPropertyName("patchedDescriptor")
+  inputs.file("docs/compatibility.md").withPropertyName("compatibilityPage")
+  systemProperty("compat.page", file("docs/compatibility.md").absolutePath)
+  systemProperty("compat.pluginVersion", project.version.toString())
+  systemProperty("compat.targetIde", targetIdeVersion)
+  systemProperty("compat.verifiedIdes", verifiedIdeBuilds.joinToString(","))
+  systemProperty("compat.solrReleases", supportedSolrLines.values.joinToString(","))
+  systemProperty("compat.toolchain", java.toolchain.languageVersion.get().asInt().toString())
+  jvmArgumentProviders += CommandLineArgumentProvider {
+    listOf(
+      "-Dcompat.descriptor=${patchedDescriptor.get().asFile.absolutePath}",
+      "-Dcompat.verifiedBuilds=${verifiedBuilds.get()}",
+    )
+  }
 }

@@ -30,105 +30,115 @@ import org.apache.solr.ide.configset.activation.SolrProjectDetector
  */
 class SolrJModuleGateTest : HeavyPlatformTestCase() {
 
-    private lateinit var withClientRoot: VirtualFile
-    private lateinit var withoutClientRoot: VirtualFile
+  private lateinit var withClientRoot: VirtualFile
+  private lateinit var withoutClientRoot: VirtualFile
 
-    override fun setUp() {
-        super.setUp()
-        val withClient: Module = module
-        withClientRoot = sourceRootFor(withClient, "searching")
-        withoutClientRoot = sourceRootFor(createModule("stranger"), "stranger")
+  override fun setUp() {
+    super.setUp()
+    val withClient: Module = module
+    withClientRoot = sourceRootFor(withClient, "searching")
+    withoutClientRoot = sourceRootFor(createModule("stranger"), "stranger")
 
-        // The library carries no jar: the gate matches the name a build tool would generate, which
-        // is what makes it answerable without an index.
-        PsiTestUtil.addProjectLibrary(withClient, "Gradle: org.apache.solr:solr-solrj:9.10.0", emptyList())
-        SolrProjectDetector.getInstance(project).dropCache()
+    // The library carries no jar: the gate matches the name a build tool would generate, which
+    // is what makes it answerable without an index.
+    PsiTestUtil.addProjectLibrary(
+      withClient,
+      "Gradle: org.apache.solr:solr-solrj:9.10.0",
+      emptyList(),
+    )
+    SolrProjectDetector.getInstance(project).dropCache()
 
-        // Declared in both modules, so the class resolves on either side and the only thing that can
-        // separate the two files is which module owns them.
-        listOf(withClientRoot, withoutClientRoot).forEach { root ->
-            VfsTestUtil.createFile(
-                root,
-                "org/apache/solr/client/solrj/SolrQuery.java",
-                """
-                package org.apache.solr.client.solrj;
-                public class SolrQuery {
-                    public SolrQuery(String q) {}
-                    public SolrQuery addFilterQuery(String... fq) { return this; }
-                }
-                """.trimIndent(),
-            )
+    // Declared in both modules, so the class resolves on either side and the only thing that can
+    // separate the two files is which module owns them.
+    listOf(withClientRoot, withoutClientRoot).forEach { root ->
+      VfsTestUtil.createFile(
+        root,
+        "org/apache/solr/client/solrj/SolrQuery.java",
+        """
+        package org.apache.solr.client.solrj;
+        public class SolrQuery {
+            public SolrQuery(String q) {}
+            public SolrQuery addFilterQuery(String... fq) { return this; }
+        }
+        """
+          .trimIndent(),
+      )
+    }
+  }
+
+  private fun sourceRootFor(target: Module, name: String): VirtualFile {
+    val root = VfsTestUtil.createDir(getOrCreateProjectBaseDir(), name)
+    PsiTestUtil.addSourceContentToRoots(target, root)
+    return root
+  }
+
+  private fun fileIn(root: VirtualFile, name: String, text: String): PsiFile =
+    PsiManager.getInstance(project).findFile(VfsTestUtil.createFile(root, name, text))!!
+
+  private val searching =
+    """
+    import org.apache.solr.client.solrj.SolrQuery;
+    class Search {
+        void go() {
+            SolrQuery q = new SolrQuery("*:*");
+            q.addFilterQuery("categry:books");
         }
     }
+    """
+      .trimIndent()
 
-    private fun sourceRootFor(target: Module, name: String): VirtualFile {
-        val root = VfsTestUtil.createDir(getOrCreateProjectBaseDir(), name)
-        PsiTestUtil.addSourceContentToRoots(target, root)
-        return root
-    }
+  /**
+   * The module with the client is read; the module beside it is not.
+   *
+   * The two files are byte-identical, so module membership is the only thing that can separate them
+   * — which is exactly the claim.
+   */
+  fun testOnlyTheModuleCarryingTheClientIsRead() {
+    val ours = fileIn(withClientRoot, "Search.java", searching)
+    val theirs = fileIn(withoutClientRoot, "Search.java", searching)
 
-    private fun fileIn(root: VirtualFile, name: String, text: String): PsiFile =
-        PsiManager.getInstance(project).findFile(VfsTestUtil.createFile(root, name, text))!!
+    assertEquals(listOf("categry"), SolrRecognizers.fieldUsagesIn(ours).map { it.fieldName })
+    assertEmpty(SolrRecognizers.fieldUsagesIn(theirs))
+  }
 
-    private val searching = """
-        import org.apache.solr.client.solrj.SolrQuery;
-        class Search {
-            void go() {
-                SolrQuery q = new SolrQuery("*:*");
-                q.addFilterQuery("categry:books");
+  /**
+   * Endpoints obey the same gate as field names.
+   *
+   * Stated separately because they are read through a different entry point, and a gate applied to
+   * one of the two would leak a server URL out of a module that never named one.
+   */
+  fun testTheGateCoversEndpointsToo() {
+    listOf(withClientRoot, withoutClientRoot).forEach { root ->
+      VfsTestUtil.createFile(
+        root,
+        "org/apache/solr/client/solrj/impl/Http2SolrClient.java",
+        """
+        package org.apache.solr.client.solrj.impl;
+        public class Http2SolrClient {
+            public static class Builder {
+                public Builder(String url) {}
+                public Http2SolrClient build() { return new Http2SolrClient(); }
             }
         }
-    """.trimIndent()
-
-    /**
-     * The module with the client is read; the module beside it is not.
-     *
-     * The two files are byte-identical, so module membership is the only thing that can separate
-     * them — which is exactly the claim.
-     */
-    fun testOnlyTheModuleCarryingTheClientIsRead() {
-        val ours = fileIn(withClientRoot, "Search.java", searching)
-        val theirs = fileIn(withoutClientRoot, "Search.java", searching)
-
-        assertEquals(listOf("categry"), SolrRecognizers.fieldUsagesIn(ours).map { it.fieldName })
-        assertEmpty(SolrRecognizers.fieldUsagesIn(theirs))
+        """
+          .trimIndent(),
+      )
     }
+    val connecting =
+      """
+      import org.apache.solr.client.solrj.impl.Http2SolrClient;
+      class Connect {
+          void go() {
+              new Http2SolrClient.Builder("http://localhost:8983/solr").build();
+          }
+      }
+      """
+        .trimIndent()
 
-    /**
-     * Endpoints obey the same gate as field names.
-     *
-     * Stated separately because they are read through a different entry point, and a gate applied to
-     * one of the two would leak a server URL out of a module that never named one.
-     */
-    fun testTheGateCoversEndpointsToo() {
-        listOf(withClientRoot, withoutClientRoot).forEach { root ->
-            VfsTestUtil.createFile(
-                root,
-                "org/apache/solr/client/solrj/impl/Http2SolrClient.java",
-                """
-                package org.apache.solr.client.solrj.impl;
-                public class Http2SolrClient {
-                    public static class Builder {
-                        public Builder(String url) {}
-                        public Http2SolrClient build() { return new Http2SolrClient(); }
-                    }
-                }
-                """.trimIndent(),
-            )
-        }
-        val connecting = """
-            import org.apache.solr.client.solrj.impl.Http2SolrClient;
-            class Connect {
-                void go() {
-                    new Http2SolrClient.Builder("http://localhost:8983/solr").build();
-                }
-            }
-        """.trimIndent()
+    val ours = fileIn(withClientRoot, "Connect.java", connecting)
+    val theirs = fileIn(withoutClientRoot, "Connect.java", connecting)
 
-        val ours = fileIn(withClientRoot, "Connect.java", connecting)
-        val theirs = fileIn(withoutClientRoot, "Connect.java", connecting)
-
-        assertSize(1, SolrRecognizers.endpointsIn(ours))
-        assertEmpty(SolrRecognizers.endpointsIn(theirs))
-    }
+    assertSize(1, SolrRecognizers.endpointsIn(ours))
+    assertEmpty(SolrRecognizers.endpointsIn(theirs))
+  }
 }

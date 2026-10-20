@@ -17,4 +17,4 @@ import com.intellij.psi.PsiElement
  * @return true when it is a Solr declaration target
  */
 internal fun isSolrDeclarationTarget(element: PsiElement?): Boolean =
-    (element as? PomTargetPsiElement)?.target is SolrDeclarationTarget
+  (element as? PomTargetPsiElement)?.target is SolrDeclarationTarget

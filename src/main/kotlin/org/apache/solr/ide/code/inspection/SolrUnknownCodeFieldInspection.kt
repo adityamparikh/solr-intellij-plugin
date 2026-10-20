@@ -40,76 +40,88 @@ import org.jetbrains.uast.UastFacade
  */
 class SolrUnknownCodeFieldInspection : LocalInspectionTool() {
 
-    /**
-     * Waits for indexing, unlike every other inspection in this plugin.
-     *
-     * The others parse a configset's own text and need nothing else. This one has to find the
-     * project's configsets first, which goes through the filename index, and that index answers
-     * nothing during indexing. Running early would not degrade the check, it would invert it: every
-     * field name would be undeclared until the index finished.
-     */
-    override fun isDumbAware(): Boolean = false
+  /**
+   * Waits for indexing, unlike every other inspection in this plugin.
+   *
+   * The others parse a configset's own text and need nothing else. This one has to find the
+   * project's configsets first, which goes through the filename index, and that index answers
+   * nothing during indexing. Running early would not degrade the check, it would invert it: every
+   * field name would be undeclared until the index finished.
+   */
+  override fun isDumbAware(): Boolean = false
 
-    /**
-     * Checks a whole file rather than visiting elements one at a time.
-     *
-     * The recognizer's unit is a file: it builds a UAST view once and reads every usage out of it,
-     * which is the expensive part. Registering an element visitor would rebuild that view for each
-     * node and ask it about one.
-     *
-     * @param file the Java or Kotlin file being inspected
-     * @param manager creates the problem descriptors
-     * @param isOnTheFly whether this is an editor pass rather than a batch run
-     * @return the problems found, or null where there are none
-     */
-    override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
-        // Registered without a language, so every file the IDE inspects arrives here. A file no JVM
-        // language reads has no UAST view to build and no call to recognize, and turning it away
-        // first keeps the module-library walk behind it off every editor pass in the project.
-        if (UastFacade.findPlugin(file.language) == null) return null
+  /**
+   * Checks a whole file rather than visiting elements one at a time.
+   *
+   * The recognizer's unit is a file: it builds a UAST view once and reads every usage out of it,
+   * which is the expensive part. Registering an element visitor would rebuild that view for each
+   * node and ask it about one.
+   *
+   * @param file the Java or Kotlin file being inspected
+   * @param manager creates the problem descriptors
+   * @param isOnTheFly whether this is an editor pass rather than a batch run
+   * @return the problems found, or null where there are none
+   */
+  override fun checkFile(
+    file: PsiFile,
+    manager: InspectionManager,
+    isOnTheFly: Boolean,
+  ): Array<ProblemDescriptor>? {
+    // Registered without a language, so every file the IDE inspects arrives here. A file no JVM
+    // language reads has no UAST view to build and no call to recognize, and turning it away
+    // first keeps the module-library walk behind it off every editor pass in the project.
+    if (UastFacade.findPlugin(file.language) == null) return null
 
-        val usages = SolrRecognizers.fieldUsagesIn(file).filter { SolrInspections.isCheckableFieldName(it.fieldName) }
-        if (usages.isEmpty()) return null
+    val usages =
+      SolrRecognizers.fieldUsagesIn(file).filter {
+        SolrInspections.isCheckableFieldName(it.fieldName)
+      }
+    if (usages.isEmpty()) return null
 
-        // Asked once for the file, not once per finding. `checkFile` runs on every editor pass, and
-        // finding the project's configsets goes through the filename index; repeating that per
-        // problem made a file with ten typos pay for ten index queries to answer one question.
-        val declaring = configsetModelsIn(file.project) ?: return null
+    // Asked once for the file, not once per finding. `checkFile` runs on every editor pass, and
+    // finding the project's configsets goes through the filename index; repeating that per
+    // problem made a file with ten typos pay for ten index queries to answer one question.
+    val declaring = configsetModelsIn(file.project) ?: return null
 
-        val unknown = usages.filterNot { usage -> declaring.any { it.resolve(usage.fieldName) != null } }
-        if (unknown.isEmpty()) return null
-
-        // Built only once something is actually being reported, so a clean file never pays for it.
-        val candidates = declaring.flatMapTo(mutableSetOf()) { it.fields.keys }
-        return unknown.map { usage ->
-            manager.createProblemDescriptor(
-                usage.element,
-                // The name inside the expression rather than the expression itself: a warning over
-                // `"categry:books"` entire underlines the quotes and the value a reader already
-                // knows are fine, and hides which half is wrong.
-                usage.rangeInElement,
-                SolrBundle.message("inspection.codeField.unknown", usage.fieldName),
-                ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                isOnTheFly,
-                *SolrInspections.replacementFixes(
-                    usage.fieldName,
-                    candidates,
-                    SolrBundle.message("inspection.codeField.family"),
-                ),
-            )
-        }.toTypedArray()
+    val unknown = usages.filterNot { usage ->
+      declaring.any { it.resolve(usage.fieldName) != null }
     }
+    if (unknown.isEmpty()) return null
 
-    /**
-     * A model per configset the project holds, or null where it holds none.
-     *
-     * **Null rather than an empty list, because the two mean opposite things.** An empty list reads
-     * as "no configset declares this name", which is true of every name and would condemn all of
-     * them; null says the question cannot be asked at all. Collapsing the two is how a check that
-     * cannot see becomes a check that accuses.
-     */
-    private fun configsetModelsIn(project: Project) =
-        SolrProjectConfigsets.getInstance(project).all()
-            .takeIf { it.isNotEmpty() }
-            ?.map { SolrConfigsetReader.getInstance(project).modelFor(it) }
+    // Built only once something is actually being reported, so a clean file never pays for it.
+    val candidates = declaring.flatMapTo(mutableSetOf()) { it.fields.keys }
+    return unknown
+      .map { usage ->
+        manager.createProblemDescriptor(
+          usage.element,
+          // The name inside the expression rather than the expression itself: a warning over
+          // `"categry:books"` entire underlines the quotes and the value a reader already
+          // knows are fine, and hides which half is wrong.
+          usage.rangeInElement,
+          SolrBundle.message("inspection.codeField.unknown", usage.fieldName),
+          ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+          isOnTheFly,
+          *SolrInspections.replacementFixes(
+            usage.fieldName,
+            candidates,
+            SolrBundle.message("inspection.codeField.family"),
+          ),
+        )
+      }
+      .toTypedArray()
+  }
+
+  /**
+   * A model per configset the project holds, or null where it holds none.
+   *
+   * **Null rather than an empty list, because the two mean opposite things.** An empty list reads
+   * as "no configset declares this name", which is true of every name and would condemn all of
+   * them; null says the question cannot be asked at all. Collapsing the two is how a check that
+   * cannot see becomes a check that accuses.
+   */
+  private fun configsetModelsIn(project: Project) =
+    SolrProjectConfigsets.getInstance(project)
+      .all()
+      .takeIf { it.isNotEmpty() }
+      ?.map { SolrConfigsetReader.getInstance(project).modelFor(it) }
 }

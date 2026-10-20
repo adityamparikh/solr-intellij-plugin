@@ -17,8 +17,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SolrConfig {
 
-    @Bean
-    SolrClient solrClient(@Value("${app.solr.url}") String url) {
-        return new Http2SolrClient.Builder(url).build();
-    }
+  @Bean
+  SolrClient solrClient(@Value("${app.solr.url}") String url) {
+    return new Http2SolrClient.Builder(url).build();
+  }
 }

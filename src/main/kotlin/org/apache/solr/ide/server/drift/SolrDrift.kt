@@ -15,28 +15,28 @@ import org.apache.solr.ide.model.vocabulary.SolrClassCatalog
 /** What kind of declaration a drift entry is about. */
 enum class SolrDriftKind {
 
-    /** A field declared by name. */
-    FIELD,
+  /** A field declared by name. */
+  FIELD,
 
-    /** A dynamic pattern. */
-    DYNAMIC_FIELD,
+  /** A dynamic pattern. */
+  DYNAMIC_FIELD,
 
-    /** A field type. */
-    FIELD_TYPE,
+  /** A field type. */
+  FIELD_TYPE,
 
-    /** A copy-field directive. */
-    COPY_FIELD,
+  /** A copy-field directive. */
+  COPY_FIELD,
 
-    /** The schema's unique key. */
-    UNIQUE_KEY,
+  /** The schema's unique key. */
+  UNIQUE_KEY,
 }
 
 /**
  * One declaration, and how the configset and the server disagree about it.
  *
- * **Both sides are rendered and kept**, never resolved to one. `SolrFact.effective` silently prefers
- * the repository — it exists for the inline surfaces that have one line to fill — so using it here
- * would hide the disagreement in the one view whose entire purpose is showing it.
+ * **Both sides are rendered and kept**, never resolved to one. `SolrFact.effective` silently
+ * prefers the repository — it exists for the inline surfaces that have one line to fill — so using
+ * it here would hide the disagreement in the one view whose entire purpose is showing it.
  *
  * @property kind what sort of declaration this is
  * @property name the declaration's name, as both sources call it
@@ -49,12 +49,12 @@ enum class SolrDriftKind {
  *   would be the disabled button with a tooltip this design rejects
  */
 data class SolrDriftEntry(
-    val kind: SolrDriftKind,
-    val name: String,
-    val agreement: SolrAgreement,
-    val repository: String? = null,
-    val server: String? = null,
-    val change: SolrSchemaApiChange? = null,
+  val kind: SolrDriftKind,
+  val name: String,
+  val agreement: SolrAgreement,
+  val repository: String? = null,
+  val server: String? = null,
+  val change: SolrSchemaApiChange? = null,
 )
 
 /**
@@ -70,153 +70,176 @@ data class SolrDriftEntry(
  * @property entries every declaration the two sources disagree about, in a stable order
  * @property agreeingCount how many they agree about, which is not shown but is worth saying
  * @property solrVersion the line the comparison resolved against, and where that came from. Where
- *   the server named one it wins, because a configset claiming to target 9 while the collection runs
- *   10 is precisely the disagreement this view exists to surface — resolving against the claim there
- *   would describe a server other than the one being compared
+ *   the server named one it wins, because a configset claiming to target 9 while the collection
+ *   runs 10 is precisely the disagreement this view exists to surface — resolving against the claim
+ *   there would describe a server other than the one being compared
  */
 data class SolrDrift(
-    val entries: List<SolrDriftEntry> = emptyList(),
-    val agreeingCount: Int = 0,
-    val solrVersion: SolrVersionSelection = SolrVersionSelection.DEFAULT,
+  val entries: List<SolrDriftEntry> = emptyList(),
+  val agreeingCount: Int = 0,
+  val solrVersion: SolrVersionSelection = SolrVersionSelection.DEFAULT,
 ) {
-    /** Whether the configset and the collection say the same thing. */
-    val isClean: Boolean get() = entries.isEmpty()
+  /** Whether the configset and the collection say the same thing. */
+  val isClean: Boolean
+    get() = entries.isEmpty()
 
-    /** How many entries fall in each category, for a summary that does not require counting rows. */
-    val countsByAgreement: Map<SolrAgreement, Int>
-        get() = entries.groupingBy { it.agreement }.eachCount()
+  /** How many entries fall in each category, for a summary that does not require counting rows. */
+  val countsByAgreement: Map<SolrAgreement, Int>
+    get() = entries.groupingBy { it.agreement }.eachCount()
 
-    /** How this comparison is made. */
-    companion object {
+  /** How this comparison is made. */
+  companion object {
 
-        /**
-         * Compares [repository] against [server].
-         *
-         * The agreement itself comes from `SolrFact` exactly as the model already computes it — this
-         * adds no new agreement state and no per-property diff. What it adds is a rendering of each
-         * side and an order to show them in.
-         *
-         * @param repository the facts parsed from the configset on disk
-         * @param server the facts read from a live collection
-         * @param serverVersion the Solr the collection reported running, where it said
-         * @return what the two disagree about
-         */
-        fun between(
-            repository: SolrConfigsetFacts,
-            server: SolrConfigsetFacts,
-            serverVersion: String? = null,
-        ): SolrDrift {
-            // Resolved before comparing, never compared as written. Solr reports an analyzer
-            // component under its SPI name — `lowercase` — while a configset may name the factory
-            // class it stands for, and both spellings mean the same thing. Compared as strings,
-            // every analyzer-carrying field type in a classically written configset would read as
-            // drift; a view that reports differences that are not there is one users stop reading.
-            // The server's own version travels with the facts. It is the one place in this plugin
-            // that can produce `SolrVersionSource.SERVER`: the value's only other consumer is quick
-            // documentation, which builds a repository-only model because nothing on the editor path
-            // may see a server — so the source could be *shown* there and never *produced*. Here it
-            // is both produced and shown, in a surface that is about a server by definition.
-            val model = SolrFieldModel.of(
-                resolveSpellings(repository),
-                resolveSpellings(server),
-                serverVersion,
+    /**
+     * Compares [repository] against [server].
+     *
+     * The agreement itself comes from `SolrFact` exactly as the model already computes it — this
+     * adds no new agreement state and no per-property diff. What it adds is a rendering of each
+     * side and an order to show them in.
+     *
+     * @param repository the facts parsed from the configset on disk
+     * @param server the facts read from a live collection
+     * @param serverVersion the Solr the collection reported running, where it said
+     * @return what the two disagree about
+     */
+    fun between(
+      repository: SolrConfigsetFacts,
+      server: SolrConfigsetFacts,
+      serverVersion: String? = null,
+    ): SolrDrift {
+      // Resolved before comparing, never compared as written. Solr reports an analyzer
+      // component under its SPI name — `lowercase` — while a configset may name the factory
+      // class it stands for, and both spellings mean the same thing. Compared as strings,
+      // every analyzer-carrying field type in a classically written configset would read as
+      // drift; a view that reports differences that are not there is one users stop reading.
+      // The server's own version travels with the facts. It is the one place in this plugin
+      // that can produce `SolrVersionSource.SERVER`: the value's only other consumer is quick
+      // documentation, which builds a repository-only model because nothing on the editor path
+      // may see a server — so the source could be *shown* there and never *produced*. Here it
+      // is both produced and shown, in a surface that is about a server by definition.
+      val model =
+        SolrFieldModel.of(
+          resolveSpellings(repository),
+          resolveSpellings(server),
+          serverVersion,
+        )
+      val entries = buildList {
+        addAll(
+          model.fields.map { (name, fact) ->
+            entryFor(SolrDriftKind.FIELD, name, fact, ::describeField)
+          }
+        )
+        addAll(
+          model.dynamicFields.map { (name, fact) ->
+            entryFor(SolrDriftKind.DYNAMIC_FIELD, name, fact) { describeField(it.field) }
+          }
+        )
+        addAll(
+          model.fieldTypes.map { (name, fact) ->
+            entryFor(SolrDriftKind.FIELD_TYPE, name, fact, ::describeType)
+          }
+        )
+        addAll(
+          model.copyFields.map { fact ->
+            val copy = fact.repository ?: fact.server
+            entryFor(
+              SolrDriftKind.COPY_FIELD,
+              "${copy?.source} → ${copy?.destination}",
+              fact,
+              ::describeCopy,
             )
-            val entries = buildList {
-                addAll(model.fields.map { (name, fact) -> entryFor(SolrDriftKind.FIELD, name, fact, ::describeField) })
-                addAll(
-                    model.dynamicFields.map { (name, fact) ->
-                        entryFor(SolrDriftKind.DYNAMIC_FIELD, name, fact) { describeField(it.field) }
-                    },
-                )
-                addAll(model.fieldTypes.map { (name, fact) -> entryFor(SolrDriftKind.FIELD_TYPE, name, fact, ::describeType) })
-                addAll(
-                    model.copyFields.map { fact ->
-                        val copy = fact.repository ?: fact.server
-                        entryFor(SolrDriftKind.COPY_FIELD, "${copy?.source} → ${copy?.destination}", fact, ::describeCopy)
-                    },
-                )
-                model.uniqueKey?.let { add(entryFor(SolrDriftKind.UNIQUE_KEY, "uniqueKey", it) { it }) }
-            }
-            return SolrDrift(
-                // Agreeing declarations are counted and dropped: a schema of two hundred fields
-                // where three drifted should show three rows, not two hundred with three worth
-                // reading. The count is what says the comparison actually ran.
-                entries = entries.filterNot { it.agreement == SolrAgreement.AGREEING }
-                    .sortedWith(compareBy({ it.kind }, { it.name })),
-                agreeingCount = entries.count { it.agreement == SolrAgreement.AGREEING },
-                solrVersion = model.solrVersion,
-            )
-        }
-
-        private fun <T : Any> entryFor(
-            kind: SolrDriftKind,
-            name: String,
-            fact: SolrFact<T>,
-            describe: (T) -> String,
-        ) = SolrDriftEntry(
-            kind = kind,
-            name = name,
-            // Read from the model rather than recomputed, so there is one definition of what
-            // agreement means and this view cannot drift from the rest of the plugin about it.
-            agreement = fact.agreement,
-            repository = fact.repository?.let(describe),
-            server = fact.server?.let(describe),
-            change = SolrSchemaApi.changeFor(fact.agreement, fact.repository, fact.server),
+          }
         )
-
-        /**
-         * The same facts with every analyzer component named by its factory class.
-         *
-         * **Only for comparison.** The editor surfaces show a user the spelling they wrote, which is
-         * the right answer there; this exists because two sources writing the same thing differently
-         * is a question only a comparison has to answer.
-         *
-         * A component the catalog does not know — a custom factory — is left exactly as written.
-         * Resolving is how two spellings are recognised as one thing; inventing a resolution would
-         * be how two different things become one.
-         */
-        private fun resolveSpellings(facts: SolrConfigsetFacts): SolrConfigsetFacts =
-            facts.copy(fieldTypes = facts.fieldTypes.map(::resolveSpellings))
-
-        private fun resolveSpellings(type: SolrFieldType): SolrFieldType = type.copy(
-            indexAnalyzer = type.indexAnalyzer?.let(::resolveSpellings),
-            queryAnalyzer = type.queryAnalyzer?.let(::resolveSpellings),
-        )
-
-        private fun resolveSpellings(chain: SolrAnalyzerChain): SolrAnalyzerChain = chain.copy(
-            charFilters = chain.charFilters.map(::resolveSpellings),
-            tokenizer = chain.tokenizer?.let(::resolveSpellings),
-            filters = chain.filters.map(::resolveSpellings),
-            className = chain.className?.let(::resolvedName),
-        )
-
-        private fun resolveSpellings(component: SolrAnalyzerComponent): SolrAnalyzerComponent =
-            component.copy(className = resolvedName(component.className))
-
-        // Any of a factory's three spellings resolves to the one class it means. Version-free, for
-        // the reason the catalog gives: a factory's class does not change between lines that both
-        // have it, so narrowing by version could only turn a resolvable name into an unresolvable
-        // one.
-        private fun resolvedName(name: String): String = SolrClassCatalog.canonicalClassFor(name) ?: name
-
-        private fun describeField(field: SolrField): String = buildList {
-            add("type=${field.type}")
-            field.indexed?.let { add("indexed=$it") }
-            field.stored?.let { add("stored=$it") }
-            field.docValues?.let { add("docValues=$it") }
-            field.multiValued?.let { add("multiValued=$it") }
-            field.required?.let { add("required=$it") }
-            field.defaultValue?.let { add("default=$it") }
-        }.joinToString(" ")
-
-        private fun describeType(type: SolrFieldType): String = buildList {
-            add("class=${type.className}")
-            // Sorted, because a map's order is not a fact about the schema and two identical types
-            // rendering differently would read as a difference where there is none.
-            type.attributes.toSortedMap().forEach { (key, value) -> add("$key=$value") }
-        }.joinToString(" ")
-
-        private fun describeCopy(copy: SolrCopyField): String =
-            copy.maxChars?.let { "maxChars=$it" } ?: "declared"
+        model.uniqueKey?.let { add(entryFor(SolrDriftKind.UNIQUE_KEY, "uniqueKey", it) { it }) }
+      }
+      return SolrDrift(
+        // Agreeing declarations are counted and dropped: a schema of two hundred fields
+        // where three drifted should show three rows, not two hundred with three worth
+        // reading. The count is what says the comparison actually ran.
+        entries =
+          entries
+            .filterNot { it.agreement == SolrAgreement.AGREEING }
+            .sortedWith(compareBy({ it.kind }, { it.name })),
+        agreeingCount = entries.count { it.agreement == SolrAgreement.AGREEING },
+        solrVersion = model.solrVersion,
+      )
     }
+
+    private fun <T : Any> entryFor(
+      kind: SolrDriftKind,
+      name: String,
+      fact: SolrFact<T>,
+      describe: (T) -> String,
+    ) =
+      SolrDriftEntry(
+        kind = kind,
+        name = name,
+        // Read from the model rather than recomputed, so there is one definition of what
+        // agreement means and this view cannot drift from the rest of the plugin about it.
+        agreement = fact.agreement,
+        repository = fact.repository?.let(describe),
+        server = fact.server?.let(describe),
+        change = SolrSchemaApi.changeFor(fact.agreement, fact.repository, fact.server),
+      )
+
+    /**
+     * The same facts with every analyzer component named by its factory class.
+     *
+     * **Only for comparison.** The editor surfaces show a user the spelling they wrote, which is
+     * the right answer there; this exists because two sources writing the same thing differently is
+     * a question only a comparison has to answer.
+     *
+     * A component the catalog does not know — a custom factory — is left exactly as written.
+     * Resolving is how two spellings are recognised as one thing; inventing a resolution would be
+     * how two different things become one.
+     */
+    private fun resolveSpellings(facts: SolrConfigsetFacts): SolrConfigsetFacts =
+      facts.copy(fieldTypes = facts.fieldTypes.map(::resolveSpellings))
+
+    private fun resolveSpellings(type: SolrFieldType): SolrFieldType =
+      type.copy(
+        indexAnalyzer = type.indexAnalyzer?.let(::resolveSpellings),
+        queryAnalyzer = type.queryAnalyzer?.let(::resolveSpellings),
+      )
+
+    private fun resolveSpellings(chain: SolrAnalyzerChain): SolrAnalyzerChain =
+      chain.copy(
+        charFilters = chain.charFilters.map(::resolveSpellings),
+        tokenizer = chain.tokenizer?.let(::resolveSpellings),
+        filters = chain.filters.map(::resolveSpellings),
+        className = chain.className?.let(::resolvedName),
+      )
+
+    private fun resolveSpellings(component: SolrAnalyzerComponent): SolrAnalyzerComponent =
+      component.copy(className = resolvedName(component.className))
+
+    // Any of a factory's three spellings resolves to the one class it means. Version-free, for
+    // the reason the catalog gives: a factory's class does not change between lines that both
+    // have it, so narrowing by version could only turn a resolvable name into an unresolvable
+    // one.
+    private fun resolvedName(name: String): String =
+      SolrClassCatalog.canonicalClassFor(name) ?: name
+
+    private fun describeField(field: SolrField): String = buildList {
+      add("type=${field.type}")
+      field.indexed?.let { add("indexed=$it") }
+      field.stored?.let { add("stored=$it") }
+      field.docValues?.let { add("docValues=$it") }
+      field.multiValued?.let { add("multiValued=$it") }
+      field.required?.let { add("required=$it") }
+      field.defaultValue?.let { add("default=$it") }
+    }
+      .joinToString(" ")
+
+    private fun describeType(type: SolrFieldType): String = buildList {
+      add("class=${type.className}")
+      // Sorted, because a map's order is not a fact about the schema and two identical types
+      // rendering differently would read as a difference where there is none.
+      type.attributes.toSortedMap().forEach { (key, value) -> add("$key=$value") }
+    }
+      .joinToString(" ")
+
+    private fun describeCopy(copy: SolrCopyField): String =
+      copy.maxChars?.let { "maxChars=$it" } ?: "declared"
+  }
 }

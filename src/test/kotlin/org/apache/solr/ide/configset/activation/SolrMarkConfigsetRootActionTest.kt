@@ -10,100 +10,109 @@ import com.intellij.testFramework.TestActionEvent
 /**
  * *Mark Directory as Solr Configset Root*, in the Project view's context menu.
  *
- * The one gesture for a configset detection misses — a directory of Solr XML in a repository with no
- * Solr client on its classpath, which the dependency gate turns away. It toggles: on a marked root
- * the same menu entry unmarks it.
+ * The one gesture for a configset detection misses — a directory of Solr XML in a repository with
+ * no Solr client on its classpath, which the dependency gate turns away. It toggles: on a marked
+ * root the same menu entry unmarks it.
  */
 class SolrMarkConfigsetRootActionTest : SolrConfigsetTestCase() {
 
-    private val action = SolrMarkConfigsetRootAction()
+  private val action = SolrMarkConfigsetRootAction()
 
-    private fun eventOn(vararg files: VirtualFile) = TestActionEvent.createTestEvent(
-        action,
-        SimpleDataContext.builder()
-            .add(CommonDataKeys.PROJECT, project)
-            .add(CommonDataKeys.VIRTUAL_FILE_ARRAY, arrayOf(*files))
-            .build(),
+  private fun eventOn(vararg files: VirtualFile) =
+    TestActionEvent.createTestEvent(
+      action,
+      SimpleDataContext.builder()
+        .add(CommonDataKeys.PROJECT, project)
+        .add(CommonDataKeys.VIRTUAL_FILE_ARRAY, arrayOf(*files))
+        .build(),
     )
 
-    private fun directory(name: String) = myFixture.addFileToProject("$name/schema.xml", "<schema/>").virtualFile.parent
+  private fun directory(name: String) =
+    myFixture.addFileToProject("$name/schema.xml", "<schema/>").virtualFile.parent
 
-    fun testOffersToMarkAnUnmarkedDirectory() {
-        val event = eventOn(directory("legacy"))
+  fun testOffersToMarkAnUnmarkedDirectory() {
+    val event = eventOn(directory("legacy"))
 
-        action.update(event)
+    action.update(event)
 
-        assertTrue(event.presentation.isEnabledAndVisible)
-        assertEquals("Mark Directory as Solr Configset Root", event.presentation.text)
-    }
+    assertTrue(event.presentation.isEnabledAndVisible)
+    assertEquals("Mark Directory as Solr Configset Root", event.presentation.text)
+  }
 
-    fun testMarkingThenUnmarkingRoundTrips() {
-        val dir = directory("legacy")
+  fun testMarkingThenUnmarkingRoundTrips() {
+    val dir = directory("legacy")
 
-        action.actionPerformed(eventOn(dir))
-        assertEquals(listOf(dir.path), settings.manualRoots)
+    action.actionPerformed(eventOn(dir))
+    assertEquals(listOf(dir.path), settings.manualRoots)
 
-        val again = eventOn(dir)
-        action.update(again)
-        assertEquals("Unmark Solr Configset Root", again.presentation.text)
+    val again = eventOn(dir)
+    action.update(again)
+    assertEquals("Unmark Solr Configset Root", again.presentation.text)
 
-        action.actionPerformed(again)
-        assertEmpty(settings.manualRoots)
-    }
+    action.actionPerformed(again)
+    assertEmpty(settings.manualRoots)
+  }
 
-    /** A file is not a root, and the entry does not appear for one. */
-    fun testIsHiddenForAFile() {
-        val file = myFixture.addFileToProject("legacy/schema.xml", "<schema/>").virtualFile
-        val event = eventOn(file)
+  /** A file is not a root, and the entry does not appear for one. */
+  fun testIsHiddenForAFile() {
+    val file = myFixture.addFileToProject("legacy/schema.xml", "<schema/>").virtualFile
+    val event = eventOn(file)
 
-        action.update(event)
+    action.update(event)
 
-        assertFalse(event.presentation.isVisible)
-    }
+    assertFalse(event.presentation.isVisible)
+  }
 
-    /** Marking several at once would make the toggle ambiguous when they disagree, so it is one at a time. */
-    fun testIsHiddenForSeveralDirectories() {
-        val event = eventOn(directory("one"), directory("two"))
+  /**
+   * Marking several at once would make the toggle ambiguous when they disagree, so it is one at a
+   * time.
+   */
+  fun testIsHiddenForSeveralDirectories() {
+    val event = eventOn(directory("one"), directory("two"))
 
-        action.update(event)
+    action.update(event)
 
-        assertFalse(event.presentation.isVisible)
-    }
+    assertFalse(event.presentation.isVisible)
+  }
 
-    /** With no project in the event there is nothing to mark against, so the entry is hidden. */
-    fun testIsHiddenWithoutAProject() {
-        val event = TestActionEvent.createTestEvent(
-            action,
-            SimpleDataContext.builder().add(CommonDataKeys.VIRTUAL_FILE_ARRAY, arrayOf(directory("legacy"))).build(),
-        )
+  /** With no project in the event there is nothing to mark against, so the entry is hidden. */
+  fun testIsHiddenWithoutAProject() {
+    val event =
+      TestActionEvent.createTestEvent(
+        action,
+        SimpleDataContext.builder()
+          .add(CommonDataKeys.VIRTUAL_FILE_ARRAY, arrayOf(directory("legacy")))
+          .build(),
+      )
 
-        action.update(event)
+    action.update(event)
 
-        assertFalse(event.presentation.isVisible)
-    }
+    assertFalse(event.presentation.isVisible)
+  }
 
-    /**
-     * Marking moves the PSI modification count, which is what redraws the inlay hints.
-     *
-     * The declarative hints pass skips a file whose PSI modification count has not moved, and a daemon
-     * restart does not move it. The sandbox pass found the consequence: after *Unmark*, a file that
-     * was plain XML again still showed the Solr hint it had while marked, until its tab was switched.
-     */
-    fun testMarkingAndUnmarkingEachMoveThePsiModificationCount() {
-        val dir = directory("legacy")
-        val tracker = PsiModificationTracker.getInstance(project)
+  /**
+   * Marking moves the PSI modification count, which is what redraws the inlay hints.
+   *
+   * The declarative hints pass skips a file whose PSI modification count has not moved, and a
+   * daemon restart does not move it. The sandbox pass found the consequence: after *Unmark*, a file
+   * that was plain XML again still showed the Solr hint it had while marked, until its tab was
+   * switched.
+   */
+  fun testMarkingAndUnmarkingEachMoveThePsiModificationCount() {
+    val dir = directory("legacy")
+    val tracker = PsiModificationTracker.getInstance(project)
 
-        val beforeMark = tracker.modificationCount
-        action.actionPerformed(eventOn(dir))
-        assertTrue("marking", tracker.modificationCount > beforeMark)
+    val beforeMark = tracker.modificationCount
+    action.actionPerformed(eventOn(dir))
+    assertTrue("marking", tracker.modificationCount > beforeMark)
 
-        val beforeUnmark = tracker.modificationCount
-        action.actionPerformed(eventOn(dir))
-        assertTrue("unmarking", tracker.modificationCount > beforeUnmark)
-    }
+    val beforeUnmark = tracker.modificationCount
+    action.actionPerformed(eventOn(dir))
+    assertTrue("unmarking", tracker.modificationCount > beforeUnmark)
+  }
 
-    /** The update reads settings, so it asks to run off the EDT, where the platform wants updates. */
-    fun testUpdatesOnABackgroundThread() {
-        assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
-    }
+  /** The update reads settings, so it asks to run off the EDT, where the platform wants updates. */
+  fun testUpdatesOnABackgroundThread() {
+    assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+  }
 }

@@ -4,8 +4,8 @@ package org.apache.solr.ide.server.query
  * A query's answer, in the shape a table needs.
  *
  * Distinct from everything in `server.reading`: those readers turn a response into facts about a
- * *configuration*, which outlive the request. This is one answer to one query, and exists only to be
- * shown.
+ * *configuration*, which outlive the request. This is one answer to one query, and exists only to
+ * be shown.
  *
  * @property status what Solr put in `responseHeader.status`, or null where it said none
  * @property queryTimeMillis what Solr spent, as it reported it
@@ -21,13 +21,13 @@ package org.apache.solr.ide.server.query
  * @property parsedQuery how Solr understood the query, where `debugQuery` asked
  */
 data class SolrQueryResult(
-    val status: Int? = null,
-    val queryTimeMillis: Int? = null,
-    val numFound: Long? = null,
-    val start: Long? = null,
-    val columns: List<String> = emptyList(),
-    val hiddenColumns: List<String> = emptyList(),
-    val rows: List<Map<String, String>> = emptyList(),
-    val explanations: Map<String, String> = emptyMap(),
-    val parsedQuery: String? = null,
+  val status: Int? = null,
+  val queryTimeMillis: Int? = null,
+  val numFound: Long? = null,
+  val start: Long? = null,
+  val columns: List<String> = emptyList(),
+  val hiddenColumns: List<String> = emptyList(),
+  val rows: List<Map<String, String>> = emptyList(),
+  val explanations: Map<String, String> = emptyMap(),
+  val parsedQuery: String? = null,
 )

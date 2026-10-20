@@ -10,17 +10,17 @@ import java.net.URI
  */
 enum class SolrConnectionProblem {
 
-    /** No base URL was entered at all. */
-    BASE_URL_MISSING,
+  /** No base URL was entered at all. */
+  BASE_URL_MISSING,
 
-    /** The base URL is not a URL — it does not parse. */
-    BASE_URL_MALFORMED,
+  /** The base URL is not a URL — it does not parse. */
+  BASE_URL_MALFORMED,
 
-    /** The base URL parses but is not an HTTP or HTTPS address of some host. */
-    BASE_URL_NOT_HTTP,
+  /** The base URL parses but is not an HTTP or HTTPS address of some host. */
+  BASE_URL_NOT_HTTP,
 
-    /** A secret was entered with no user to send it as, which cannot authenticate anything. */
-    PASSWORD_WITHOUT_USERNAME,
+  /** A secret was entered with no user to send it as, which cannot authenticate anything. */
+  PASSWORD_WITHOUT_USERNAME,
 }
 
 /**
@@ -37,35 +37,39 @@ enum class SolrConnectionProblem {
  */
 object SolrConnectionValidation {
 
-    /**
-     * The first problem with the values entered, or null where there is none.
-     *
-     * @param baseUrl the server root as typed, leading and trailing whitespace included
-     * @param username the user to authenticate as, blank where the server needs none
-     * @param hasPassword whether a secret has been entered or is already stored
-     * @return the problem to report, or null where the connection can be saved
-     */
-    fun problemIn(baseUrl: String, username: String, hasPassword: Boolean): SolrConnectionProblem? {
-        val trimmed = baseUrl.trim()
-        return when {
-            trimmed.isEmpty() -> SolrConnectionProblem.BASE_URL_MISSING
-            !isHttpAddressOfAHost(trimmed) -> problemWith(trimmed)
-            hasPassword && username.isBlank() -> SolrConnectionProblem.PASSWORD_WITHOUT_USERNAME
-            else -> null
-        }
+  /**
+   * The first problem with the values entered, or null where there is none.
+   *
+   * @param baseUrl the server root as typed, leading and trailing whitespace included
+   * @param username the user to authenticate as, blank where the server needs none
+   * @param hasPassword whether a secret has been entered or is already stored
+   * @return the problem to report, or null where the connection can be saved
+   */
+  fun problemIn(baseUrl: String, username: String, hasPassword: Boolean): SolrConnectionProblem? {
+    val trimmed = baseUrl.trim()
+    return when {
+      trimmed.isEmpty() -> SolrConnectionProblem.BASE_URL_MISSING
+      !isHttpAddressOfAHost(trimmed) -> problemWith(trimmed)
+      hasPassword && username.isBlank() -> SolrConnectionProblem.PASSWORD_WITHOUT_USERNAME
+      else -> null
     }
+  }
 
-    private fun problemWith(trimmed: String): SolrConnectionProblem =
-        // Told apart by whether it parsed at all: "not a URL" and "not a URL that reaches a Solr"
-        // are different mistakes, and a user who typed a stray space is helped by hearing which.
-        runCatching { URI(trimmed) }
-            .fold({ SolrConnectionProblem.BASE_URL_NOT_HTTP }, { SolrConnectionProblem.BASE_URL_MALFORMED })
+  private fun problemWith(trimmed: String): SolrConnectionProblem =
+  // Told apart by whether it parsed at all: "not a URL" and "not a URL that reaches a Solr"
+  // are different mistakes, and a user who typed a stray space is helped by hearing which.
+  runCatching {
+    URI(trimmed)
+  }
+    .fold({ SolrConnectionProblem.BASE_URL_NOT_HTTP }, { SolrConnectionProblem.BASE_URL_MALFORMED })
 
-    private fun isHttpAddressOfAHost(trimmed: String): Boolean =
-        runCatching { URI(trimmed) }.getOrNull()?.let { uri ->
-            // `host` is null for a URI with no authority — `http:///solr` parses and reaches nothing.
-            uri.scheme?.lowercase() in HTTP_SCHEMES && !uri.host.isNullOrEmpty()
-        } == true
+  private fun isHttpAddressOfAHost(trimmed: String): Boolean =
+    runCatching { URI(trimmed) }
+      .getOrNull()
+      ?.let { uri ->
+        // `host` is null for a URI with no authority — `http:///solr` parses and reaches nothing.
+        uri.scheme?.lowercase() in HTTP_SCHEMES && !uri.host.isNullOrEmpty()
+      } == true
 
-    private val HTTP_SCHEMES = setOf("http", "https")
+  private val HTTP_SCHEMES = setOf("http", "https")
 }
