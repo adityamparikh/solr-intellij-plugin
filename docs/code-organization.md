@@ -130,6 +130,7 @@ org.apache.solr.ide
     ├── reading                   (8)   a Solr response turned into facts
     ├── topology                  (7)   the collections tool window
     ├── query                    (12)   queries in `.http` files, and what their answers say
+    │   └── screen                (11)  the query console: Solr Admin's form in a tab, run by the plugin
     ├── drift                     (6)   configset against collection, and the writes that close a gap
     └── indexing                  (5)   a test document written for one collection, and sent there
 ```
@@ -359,6 +360,7 @@ And the parts that belong to no single file:
 | Turning a Solr response into facts | `server.reading` | [The server surface](#the-server-surface) |
 | The collections tool window | `server.topology` | [The server surface](#the-server-surface) |
 | Queries in `.http` files | `server.query` | [The server surface](#the-server-surface) |
+| The query console, Solr Admin's form in an editor tab | `server.query.screen` | [The server surface](#the-server-surface) |
 | Comparing a configset against a collection, and writing to one | `server.drift` | [The server surface](#the-server-surface) |
 | A user-visible string | `org.apache.solr.ide` (`SolrBundle`) | — |
 
@@ -780,6 +782,15 @@ already read, or from the project's configsets, and never opens a socket on a ke
 remembered per connection and collection in `SolrCollectionFields` until the connection list changes
 or the tool window refreshes.
 
+`query.screen` is the console beside it, and the one place the plugin runs a query a user typed. It
+sends through `server.transport`'s `postForm` and shows the raw answer, so it obeys the transport's
+bounds — a timeout, cancellation — rather than the HTTP Client's. Its decisions are pure and need no
+IDE: `SolrQueryScreenSpec` reads the form from `solr-query-screen.json`, transcribed from Solr's own
+query page; `SolrQueryScreenState` decides what is sent; `SolrQueryScreenRequest` builds the request
+and refuses what cannot be sent; `SolrQueryScreenAnswer` says what an answer amounts to. The tab,
+form and results are thin and `internal`. Which surface the tool window's queries open is
+`SolrConnectionSettings.openQueriesIn`, and `SolrTreeQueries` fills either one from the same rules.
+
 **Every write names its target before it happens.** Upload and reload, an additive Schema API change
 and indexing a test document each confirm first, naming the collection **and the server** — so a
 dialog appearing means something is about to change, and says where. The server integration spec
@@ -841,7 +852,7 @@ the deployed schema, and a missing unique key, which it would replace with a gen
 
 The three surfaces with views of their own. Each keeps its decisions in pure code and its Swing thin, so that what the view
 *says* can be read in a test: `SolrTopologyNodes` and `SolrCollectionsView` for the tool window, `SolrTreeQueries` for
-the queries its right-click menu offers and the request each one opens,
+the queries its right-click menu offers and the request or console form each one opens,
 `SolrQueryResultReader` and `SolrQueryResultRenderer` for query answers, `SolrDrift` and
 `SolrSchemaApi` for comparison and what may be applied.
 

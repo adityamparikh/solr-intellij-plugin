@@ -232,6 +232,23 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
   `"query"`.
 - [ ] **SRV-18** — Another JSON file offers no Solr fields.
 
+### [The query console](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+- [ ] **SRV-32** — *Open queries in* defaults to **HTTP Client**; *Query products* still opens a
+  scratch `.http` file.
+- [ ] **SRV-33** — Set it to **Query console**: *Query products* opens **Query: products**, filled in,
+  nothing run; choosing it again reuses the tab.
+- [ ] **SRV-34** — Execute: request line, summary table, raw JSON under **Response**; the request line
+  opens a `{{solrUrl}}` `.http` file that gives the same numbers.
+- [ ] **SRV-35** — A `q` holding `&` and `+` reaches Solr whole.
+- [ ] **SRV-36** — `wt=xml` shows raw XML; `/nosuch` shows *Solr answered 405*; `dismax` as handler
+  sends nothing and names `handleSelect`.
+- [ ] **SRV-37** — dismax and edismax show their parameters; back at *(handler default)* neither
+  `qf` nor `defType` is sent.
+- [ ] **SRV-38** — <kbd>⌃Space</kbd> in `fl` offers `products · local` fields plus `score`, `*`,
+  `[docid]`; a popup while typing sends nothing.
+- [ ] **SRV-39** — *Find Documents with* and *Count Values of* `category` refill the open tab.
+- [ ] **SRV-40** — Removing the connection closes the tab; set the choice back to **HTTP Client**.
+
 ### [Drift, upload and apply](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
 The writing checks go to a collection you can spare.
 - [ ] **SRV-19a** — Restarted with the Drift tab open, its configset list fills once indexing ends.

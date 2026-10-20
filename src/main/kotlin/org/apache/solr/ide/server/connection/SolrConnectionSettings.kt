@@ -86,7 +86,24 @@ class SolrConnectionSettings(private val project: Project) :
 
         /** The identifier of the connection chosen as the default, or null where none was chosen. */
         var selectedConnectionId: String? by string()
+
+        /** Where the collections tree opens a query, by [SolrQueryDestination] name; null for the default. */
+        var openQueriesIn: String? by string()
     }
+
+    /**
+     * Where the Solr tool window's right-click queries open.
+     *
+     * **One developer's preference, so it lives with their connections** in the workspace file rather
+     * than in the shared `solr.xml`. The default is not written at all, so a workspace file that never
+     * chose says nothing, and a name this version does not know reads as the default rather than as
+     * an error.
+     */
+    var openQueriesIn: SolrQueryDestination
+        get() = SolrQueryDestination.entries.firstOrNull { it.name == state.openQueriesIn } ?: SolrQueryDestination.HTTP_CLIENT
+        set(value) {
+            state.openQueriesIn = value.name.takeIf { value != SolrQueryDestination.HTTP_CLIENT }
+        }
 
     /**
      * The connection chosen as this project's default, by identifier.
@@ -318,6 +335,21 @@ class SolrConnectionSettings(private val project: Project) :
          */
         fun getInstance(project: Project): SolrConnectionSettings = project.service()
     }
+}
+
+/**
+ * Where a query chosen from the Solr tool window opens.
+ *
+ * Two surfaces, kept side by side: the HTTP Client, where a query is a request in an `.http` file
+ * that can be saved and shared; and the query console, Solr Admin's form in an editor tab.
+ */
+enum class SolrQueryDestination {
+
+    /** A scratch `.http` file, run by the HTTP Client. The default. */
+    HTTP_CLIENT,
+
+    /** The query console tab, its form filled in. */
+    CONSOLE,
 }
 
 /**

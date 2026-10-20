@@ -848,6 +848,46 @@ books` gives both, with the demo's stopped first, since both use port 8983.*
       completion inside a string. **No Solr field names may appear.** The contributor is registered
       against JSON, so every JSON file in every project reaches it, and this is the failure worth
       checking by hand.
+
+**The query console.** Against the demo's `products`, with *Index the sample products* run. Every
+check from SRV-33 on starts with Settings → Tools → **Solr Connections** → *Open queries from the
+Solr tool window in* set to **Query console**, and SRV-40 ends by setting it back.
+
+- [ ] **SRV-32** — Settings → Tools → **Solr Connections**: below the list, *Open queries from the
+      Solr tool window in* reads **HTTP Client (a scratch .http file)** on a fresh sandbox. Right-click
+      `products` → *Query products*: a scratch `solr-products.http` opens, exactly as SRV-10a says.
+      **The default must change nothing.**
+- [ ] **SRV-33** — Choose **Query console** and press OK. Right-click `products` → *Query products*:
+      a tab **Query: products** opens with the Admin's form — `common`, `debugQuery`, `defType`,
+      *Raw Query Parameters* — `q` holding `*:*` and `rows` `10`, and **nothing has run**. Right-click
+      *Query products* again: the same tab comes forward, not a second one.
+- [ ] **SRV-34** — Press **Execute** (or <kbd>⌘Enter</kbd>): the request line shows
+      `…/products/select?q=*%3A*&rows=10&indent=true`, the **Results** tab the same summary and table
+      as SRV-13, and **Response** the JSON as sent. Click the request line: a scratch `.http` file
+      opens with `POST {{solrUrl}}/{{collection}}/select` and the form body, and no host. Run it
+      through the `local` environment: it matches the console's numbers.
+- [ ] **SRV-35** — Set `q` to `name:"usb & cable"`, or any value holding `&` and `+`, and execute:
+      Solr receives it whole — the summary is a real match count, not a 400 about a parameter named
+      `cable"`. **This is the reason the console exists.**
+- [ ] **SRV-36** — Choose `wt` **xml** and execute: no table, **Response** in front, holding XML
+      highlighted as XML. Set the handler to `/nosuch` and execute: *Solr answered 405* and the error
+      page under **Response** — 405 rather than 404 because the console sends a POST, which Jetty's
+      default servlet refuses for a path no handler serves. Set the handler to `dismax`: **nothing is sent**, and the status says
+      a handler is a path and names `handleSelect`.
+- [ ] **SRV-37** — `defType` starts at *(handler default)*. Choose **dismax**: `q.alt`, `qf` … `bf`
+      appear and `pf2` does not; choose **edismax**: `uf` … `lowercaseOperators` appear too. Type
+      `name^2` into `qf`, switch back to *(handler default)* and execute: the request line has no
+      `qf` and no `defType`.
+- [ ] **SRV-38** — In `fl`, type `na` and press <kbd>⌃Space</kbd>: the collection's fields, each
+      reading `products · local`, with `score`, `*` and `[docid]` beside them. Type a letter in `sort`
+      and let the popup open by itself: it offers fields **without a request reaching Solr** (watch
+      `docker compose -f demo/compose.yaml logs -f solr`).
+- [ ] **SRV-39** — Right-click `category` → *Find Documents with category*: the open tab's form now
+      holds `q` `category:*` and `fl` `id,category`. *Count Values of category*: `rows` `0` and the
+      three facet lines under *Raw Query Parameters*; execute, and **Response** holds
+      `facet_counts`.
+- [ ] **SRV-40** — With the tab open, remove the `local` connection in Settings: the tab closes. Add
+      it back, set *Open queries in* back to **HTTP Client**, and confirm SRV-32's scratch file again.
 - [ ] **SRV-19a** — Close the IDE with the **Drift** tab showing and reopen it: once indexing ends,
       the configset chooser lists the project's configsets. Then copy a configset directory to a new
       name and open the chooser — the copy is offered, and the configset already chosen is still
@@ -997,8 +1037,7 @@ Checks join a section above when their feature ships; **which features those are
 list below is what the suite does not yet cover, and says nothing about what is built —
 finding one of these gestures alive means the suite is behind, not that something is wrong:
 
-- An interactive query console of the plugin's own. Running a query through the IDE's HTTP
-  Client is a separate route, and section 13 covers it
+- The query console's history, and its facet, highlighting and spellcheck sections
 - Framework configuration, and any Solr client that is not SolrJ — Spring Data, Camel
 - `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
   guide* today, which is the honest answer while the catalog cannot say which traits a
@@ -1125,6 +1164,7 @@ the reason this list is worth as little as its last row.
 | 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
 | 2026-09-28 | main at 888e5f5 with #246 and #250 | owner, then Claude | the owner's full pass by the checklist; then Claude re-pressed each finding's fix: BASE-1, INSP-2, DIM-1, SRV-4, SRV-19, SRV-19b, SRV-22, SRV-28, CODE-5, CODE-6 | **not completed** | the first pass run by the owner. Nine findings, each fixed on its own branch and re-pressed on the combined build, and two more found while re-pressing. See the notes below |
 | 2026-09-28 | 53d5592, then this fix | Claude | ACT-3, ACT-4, ACT-5 | **not completed** | the configset settings page and the mark action, pressed for the first time. ACT-5 green at once; ACT-3 and ACT-4 failed first and are green on the fix. Also found the Spring Boot discovery broken in a real IDE, which took it out of 0.2.0. See the notes below |
+| 2026-10-20 | d8bdf94 (#266) | owner, then Claude | SRV-10a, SRV-32 to SRV-40 | **not completed** | the query console's first pass, against the demo's SolrCloud 10.0.0 `products`. Every check green. **SRV-36 was wrong about one status, not the plugin**: a form POST to `/nosuch` is answered 405 by Jetty, not 404 — rewritten. **Two defects found that no check names**: a shard row showed its hash range as a bare hex pair (#278), and a `rows=0` answer was summarised as "showing 1 to 0" (#279). SRV-35, 36, 37 and 39 were driven through the sandbox's own MCP server and confirmed in Solr's request log. Not completed because only these eleven checks were in scope. See the notes below |
 | 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
 
 **The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
@@ -1617,3 +1657,45 @@ the fix re-pressed in a sandbox built from that combination before anything here
 
 The fresh screenshots — entries 4, 19, 23, 27, 31 and the new 32 in [the catalog](screenshots.md) — were
 taken in this session, in Islands Light, after every re-press above.
+
+### 2026-10-20 — the query console, pressed for the first time
+
+**Where it ran.** The plugin at `d8bdf94`, the head of #266, in a sandbox started from that branch,
+against the demo's SolrCloud 10.0.0 with *Index the sample products* run. The owner pressed SRV-10a and
+SRV-32 to SRV-40 by the checklist and reported them green.
+
+**Solr's request log did not bear out every report, so five were pressed again.** It held two console
+requests and two from `.http` files, and nothing at all for SRV-35 in the console, `wt=xml`, `/nosuch`,
+the parser check or the facet run. SRV-35's query had been run from an `.http` file, where it arrived
+split — `q=name:"usb&cable"+%2Bcategory:electronics=` — which is the failure the console exists to
+remove, seen from the other side.
+
+**The redo was driven through the sandbox's own MCP server**, not accessibility scripting: enabled in
+the sandbox, it accepts an `inspection.kts` whose top level runs inside the IDE, and through the
+plugin's classloader that script set the tab's form, called the editor's own Execute, and read back the
+results panel. The form the owner was watching redrew with each step. Every request was then matched
+in Solr's log.
+
+- **SRV-35** — green. Solr echoed `q` as `name:"usb & cable" +category:electronics`, whole, and three
+  documents matched.
+- **SRV-36** — green in substance. `wt=xml`: no table, **Response** in front, XML. `dismax` as handler:
+  nothing sent, and the status names `handleSelect`. **`/nosuch` answered 405, not the 404 the check
+  said**: the console sends a form POST, and Jetty's default servlet answers a POST to a path no handler
+  serves with *Method Not Allowed*. The console reported it accurately — *Solr answered 405* and the page
+  under **Response** — so the check was rewritten, not the plugin.
+- **SRV-37** — green. With `qf=name^2` typed under dismax and the parser set back to *(handler
+  default)*, Solr received `q`, `indent`, `echoParams` and `rows` only. Its echo still listed
+  `defType=edismax` and `qf=name^3 description category` — the `/select` handler's own defaults, which
+  is exactly what leaving the choice alone is meant to keep.
+- **SRV-39** — green. *Count Values of category*, filled by the code the menu calls, sent `rows=0`,
+  `facet=true`, `facet.field=category`, and **Response** held `facet_counts`: books 4, electronics 3,
+  kitchen 3.
+
+**Two defects found that no check names**, each fixed on its own branch from `main`:
+
+- **A shard row read `active · 80000000-7fffffff`.** The hash range, which on a single-shard collection
+  is the whole ring. It moved to the row's tooltip, escaped — a background security review caught that
+  the first version put the server's text into tooltip HTML unescaped. #278.
+- **A `rows=0` answer was summarised as "10 documents matched in 45 ms, showing 1 to 0."** `rows=0` is
+  how *Count Values of* asks, so the console's own facet query produced it, and the HTTP Client's
+  summary shares the renderer. It now says *none returned*. #279.

@@ -131,14 +131,18 @@ whole, and the gutter action goes with the Server track.
 
 ### Server track
 
-**Complete, and in 0.2.0** — prepared, not yet published. Every step is built, and every success criterion has
-been observed in a running IDE against a live SolrCloud — the last of them in the 2026-09-28 sandbox passes. The
-tool window's right-click queries, added to the collections tool window after those passes, have not yet been pressed
-in a sandbox.
+**In 0.2.0 — prepared, not yet published — and reopened once since.** Every step was built, and
+every success criterion observed in a running IDE against a live SolrCloud — the last of them in the
+2026-09-28 sandbox passes. The tool window's right-click queries, added after those passes, were
+pressed in the 2026-10-20 pass. [The query console](#step-13-query-console-in-progress) reopened
+Step 13 after the release: the interactive console its specification kept as a surface of its own is
+being built, in the order [its design](../../docs/design/pending/2026-09-30-query-console/design.md#delivery) sets.
 
 - [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**
 - [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**
-- [Step 13 — Query console](#step-13-query-console-done) — **done**
+- [Step 13 — Query console](#step-13-query-console-in-progress) — **in progress**; the console tab
+  and the setting that opens it have shipped, query history and the facet, highlighting and
+  spellcheck sections have not
 - [Step 14 — Drift view, upload and reload](#step-14-drift-view-upload-and-reload-done) — **done**
 - [Step 15 — Indexing test documents](#step-15-indexing-test-documents-done) — **done**
 
@@ -2004,7 +2008,7 @@ a field in the tool window and choose what to ask — a query against the collec
 the documents holding a field, or the values a field holds and how often — and a ready-to-run request
 opens in a scratch file. It needs no configset, since the collection and field names come from the tree.
 None of these was an action of this step; they are recorded here because this is where the tree they
-hang from is built. They have tests and have not yet been pressed in a sandbox.
+hang from is built. They have tests, and were pressed in the 2026-10-20 sandbox pass (`SRV-10a`).
 
 **Acceptance:**
 [demo step 36 — *browse what is actually there*](../../docs/demo/README.md#step-36-browse-what-is-actually-there).
@@ -2012,7 +2016,7 @@ Collections, cores and the server's actual fields render, and the selected conne
 
 **Dependencies:** [the server reader](#step-11-http-client-connections-and-the-server-reader-done)
 
-### Step 13: Query console (done)
+### Step 13: Query console (in progress)
 
 **Actions:**
 
@@ -2039,8 +2043,17 @@ environment agrees. The HTTP Client does know which environment its toolbar has 
 it in `HttpClientSelectedEnvironments`, which it does not publish, and
 [FR-18](../0002-solr-server-integration.md#functional) holds this plugin to the extension points it
 does. What is still unbuilt here: the scoring explanation renders as Solr's indented text rather than
-an expandable tree, and the interactive console
-[FR-16](../0002-solr-server-integration.md#functional) keeps as its own surface does not exist.
+an expandable tree.
+
+**The interactive console now exists, beside the HTTP Client rather than instead of it.** Solr
+Admin's query form in an editor tab, `Query: <collection>`, one per connection and collection; its
+queries run through the plugin's transport as a form POST, with the answer in the same tab — the
+request line, the summary table, and the response as sent. *Open queries in*, on Settings → Tools →
+Solr Connections, decides whether the Solr tool window's queries open there or as a scratch `.http`
+file, which stays the default; *Open as .http* takes a query from the console to the HTTP Client.
+[The design](../../docs/design/pending/2026-09-30-query-console/design.md) has the reasoning and the
+delivery order. **History is what holds this step open**: action 3 asks for it, and it is the
+design's next pull request.
 
 **Acceptance:** demo steps
 [37 — *run a query*](../../docs/demo/README.md#step-37-run-a-query) and
@@ -2228,7 +2241,7 @@ constructs the plugin cannot resolve produce no warning at all.
 and [46 — *run it from where it lives*](../../docs/demo/README.md#step-46-run-it-from-where-it-lives).
 
 **Dependencies:** [the recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done); the gutter action
-additionally needs [the query console](#step-13-query-console-done), which is the Code track's one dependency on the Server
+additionally needs [the query console](#step-13-query-console-in-progress), which is the Code track's one dependency on the Server
 track. The language and navigation work does not.
 
 ### Step 18: Framework configuration: the shared half, and Spring Boot

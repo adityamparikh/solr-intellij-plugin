@@ -54,10 +54,32 @@ object SolrQueryResultReader {
             hiddenColumns = hidden,
             rows = docs.map { doc -> columns.associateWith { cellOf(doc.path(it)) } },
             explanations = response.path(DEBUG).path(EXPLAIN).properties()
-                .filter { (_, value) -> value.isString }
-                .associate { (id, value) -> id to value.asString("") },
+                .mapNotNull { (id, value) ->
+                    when {
+                        value.isString -> id to value.asString("")
+                        value.isObject -> id to structuredExplanation(value)
+                        else -> null
+                    }
+                }
+                .toMap(),
             parsedQuery = response.path(DEBUG).path(PARSED_QUERY).takeIf { it.isString }?.asString(""),
         )
+    }
+
+    /**
+     * A structured explanation, written the way Solr writes the flat one.
+     *
+     * **`debug.explain.structured=true` answers with a tree of objects** — `value`, `description`,
+     * `details` — where the flat form is one indented string. Rendered back into Solr's own text, two
+     * spaces deeper per level, so a reader meets one format whichever the console asked for, and a
+     * structured answer is not dropped as if it held no explanation at all.
+     */
+    private fun structuredExplanation(node: JsonNode, depth: Int = 0): String = buildString {
+        append(EXPLANATION_INDENT.repeat(depth))
+        append(node.path(VALUE).toString())
+        append(" = ")
+        append(node.path(DESCRIPTION).asString(""))
+        node.path(DETAILS).forEach { append('\n').append(structuredExplanation(it, depth + 1)) }
     }
 
     /**
@@ -104,4 +126,8 @@ object SolrQueryResultReader {
     private const val DEBUG = "debug"
     private const val EXPLAIN = "explain"
     private const val PARSED_QUERY = "parsedquery"
+    private const val VALUE = "value"
+    private const val DESCRIPTION = "description"
+    private const val DETAILS = "details"
+    private const val EXPLANATION_INDENT = "  "
 }

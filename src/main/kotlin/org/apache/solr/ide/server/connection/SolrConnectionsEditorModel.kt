@@ -23,6 +23,9 @@ class SolrConnectionsEditorModel(private val settings: SolrConnectionSettings) {
     /** The connections as they currently stand in the editor. */
     val connections: List<SolrConnection> get() = drafts.toList()
 
+    /** Where the tool window's queries open, as the editor currently has it. */
+    var openQueriesIn: SolrQueryDestination = settings.openQueriesIn
+
     /**
      * Loads what is saved, discarding anything unapplied.
      *
@@ -33,6 +36,7 @@ class SolrConnectionsEditorModel(private val settings: SolrConnectionSettings) {
     fun reset() {
         drafts.clear()
         drafts += settings.connections
+        openQueriesIn = settings.openQueriesIn
         // Edited secrets are dropped rather than reapplied: reset means what is saved, and a secret
         // typed and not applied was never saved.
         editedPasswords.clear()
@@ -87,7 +91,8 @@ class SolrConnectionsEditorModel(private val settings: SolrConnectionSettings) {
      *
      * @return true where applying would change something
      */
-    fun isModified(): Boolean = drafts != settings.connections || editedPasswords.isNotEmpty()
+    fun isModified(): Boolean =
+        drafts != settings.connections || editedPasswords.isNotEmpty() || openQueriesIn != settings.openQueriesIn
 
     /**
      * Writes the editor's state to the settings.
@@ -104,5 +109,7 @@ class SolrConnectionsEditorModel(private val settings: SolrConnectionSettings) {
         // the username the connection used to have.
         editedPasswords.forEach { (id, password) -> settings.setPassword(id, password) }
         editedPasswords.clear()
+        // Announces nothing: no view of the connection list changes because of where queries open.
+        settings.openQueriesIn = openQueriesIn
     }
 }

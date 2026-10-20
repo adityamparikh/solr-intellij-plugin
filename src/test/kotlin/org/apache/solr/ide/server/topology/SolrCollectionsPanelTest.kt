@@ -3,6 +3,8 @@ package org.apache.solr.ide.server.topology
 import com.intellij.openapi.util.Disposer
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.server.connection.SolrConnection
+import org.apache.solr.ide.server.connection.SolrQueryDestination
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenFile
 import javax.swing.tree.DefaultMutableTreeNode
 import org.apache.solr.ide.server.reading.SolrCore
 import org.apache.solr.ide.server.reading.SolrIndexContents
@@ -530,5 +532,26 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
         val page = panel()
 
         assertNull(page.openQuery(SolrTreeQuery(SolrTreeQueryKind.QUERY, "books")))
+    }
+
+    /**
+     * With the console chosen, a query opens the collection's console tab, filled in, and writes no
+     * scratch file.
+     */
+    fun testChoosingAQueryOpensTheConsoleWhenTheSettingSaysSo() {
+        val local = connection()
+        connectionSettings.addConnection(local)
+        connectionSettings.openQueriesIn = SolrQueryDestination.CONSOLE
+        val page = panel()
+
+        val opened = page.openQuery(SolrTreeQuery(SolrTreeQueryKind.FIND_WITH_FIELD, "books", "category"))
+        try {
+            val tab = opened as SolrQueryScreenFile
+            assertEquals("books", tab.collection)
+            assertEquals("category:*", tab.state.value("q"))
+            assertEquals("id,category", tab.state.value("fl"))
+        } finally {
+            com.intellij.openapi.fileEditor.ex.FileEditorManagerEx.getInstanceEx(project).closeAllFiles()
+        }
     }
 }

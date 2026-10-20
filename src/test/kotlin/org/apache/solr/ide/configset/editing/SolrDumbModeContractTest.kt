@@ -7,9 +7,15 @@ import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementVisitor
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DumbModeTestUtils
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.configset.schema.inspection.SolrDanglingCopyFieldInspection
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenEditorProvider
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenFile
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenSpec
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenState
 
 /**
  * Every contribution that declares itself dumb-aware answers while the project is indexing.
@@ -62,6 +68,24 @@ class SolrDumbModeContractTest : SolrConfigsetTestCase() {
             val doc = documentationAtCaret()
             assertNotNull("nothing explained the class during indexing", doc)
             assertTrue("expected the class in the popup: $doc", doc!!.contains("TextField"))
+        }
+    }
+
+    /**
+     * The `DumbAware` marker, on the query console's editor provider.
+     *
+     * The provider's `accept` runs for every file the IDE opens, indexing or not, and the console
+     * reads no index; so it must open during indexing rather than leave the tab blank.
+     */
+    fun testTheQueryConsoleOpensWhileIndexing() {
+        val provider = SolrQueryScreenEditorProvider()
+        assertTrue(DumbService.isDumbAware(provider))
+        val tab = SolrQueryScreenFile("a", "books", SolrQueryScreenState(SolrQueryScreenSpec.bundled))
+
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(provider.accept(project, tab))
+            val editor = provider.createEditor(project, tab)
+            Disposer.dispose(editor)
         }
     }
 

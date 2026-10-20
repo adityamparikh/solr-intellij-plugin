@@ -2,15 +2,18 @@ package org.apache.solr.ide.server.connection
 
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import java.awt.FlowLayout
 import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
@@ -37,6 +40,23 @@ class SolrConnectionsConfigurable(private val project: Project) : Configurable {
     private val model = SolrConnectionsEditorModel(SolrConnectionSettings.getInstance(project))
     private val listModel = CollectionListModel<SolrConnection>()
     private val list = JBList(listModel)
+    private val destinationCombo = ComboBox(SolrQueryDestination.entries.toTypedArray()).apply {
+        renderer = textListCellRenderer { destination: SolrQueryDestination? ->
+            when (destination) {
+                null -> ""
+                SolrQueryDestination.HTTP_CLIENT -> SolrBundle.message("settings.connections.openQueriesIn.httpClient")
+                SolrQueryDestination.CONSOLE -> SolrBundle.message("settings.connections.openQueriesIn.console")
+            }
+        }
+        addItemListener { this@SolrConnectionsConfigurable.model.openQueriesIn = selectedItem as SolrQueryDestination }
+    }
+
+    /** Where the page currently says queries open, as its combo box holds it. */
+    internal var destination: SolrQueryDestination
+        get() = destinationCombo.selectedItem as SolrQueryDestination
+        set(value) {
+            destinationCombo.selectedItem = value
+        }
 
     /**
      * The page's name, as it appears in the Settings tree and its search.
@@ -62,15 +82,30 @@ class SolrConnectionsConfigurable(private val project: Project) : Configurable {
             .disableUpDownActions()
             .createPanel()
 
-        return JPanel(BorderLayout()).apply {
-            add(table, BorderLayout.CENTER)
+        val below = JPanel(BorderLayout()).apply {
             add(
                 JBLabel(SolrBundle.message("settings.connections.hint")).apply {
                     border = JBUI.Borders.emptyTop(8)
                     componentStyle = UIUtil.ComponentStyle.SMALL
                 },
+                BorderLayout.NORTH,
+            )
+            add(
+                JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                    border = JBUI.Borders.emptyTop(12)
+                    add(JBLabel(SolrBundle.message("settings.connections.openQueriesIn")).apply {
+                        border = JBUI.Borders.emptyRight(8)
+                        labelFor = destinationCombo
+                    })
+                    add(destinationCombo)
+                },
                 BorderLayout.SOUTH,
             )
+        }
+
+        return JPanel(BorderLayout()).apply {
+            add(table, BorderLayout.CENTER)
+            add(below, BorderLayout.SOUTH)
         }
     }
 
@@ -95,6 +130,7 @@ class SolrConnectionsConfigurable(private val project: Project) : Configurable {
     override fun reset() {
         model.reset()
         listModel.replaceAll(model.connections)
+        destination = model.openQueriesIn
     }
 
     private fun addConnection() {

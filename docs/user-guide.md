@@ -613,9 +613,17 @@ connection — and at no other time.
 
 ## Running a query
 
-Solr queries are HTTP requests, and the IDE already ships a tool for authoring and running those from
-files in a repository. So there is no query console of this plugin's own: what it adds is Solr's
-knowledge to the HTTP Client's.
+There are two places to query from, and you choose which the Solr tool window opens.
+
+- **The HTTP Client**, the default. Solr queries are HTTP requests, and the IDE already ships a tool
+  for authoring and running those from files in a repository; this plugin adds Solr's knowledge to it.
+  This is where a query is *kept*: an `.http` file is an ordinary project file you can commit.
+- **The query console**: Solr Admin's query form, in an editor tab. This is where a query is
+  *worked on*: every parameter has its own input, so a value holding `&`, `+`, `#` or `%` needs no
+  escaping. See [The query console](#the-query-console) below.
+
+**Choose under Settings → Tools → Solr Connections → *Open queries from the Solr tool window in*.**
+The choice is yours alone — it is stored with your connections, not in the shared project files.
 
 In any `.http` file, **Add Request** offers a **Solr** group — query a collection, query with a field
 list and sort, explain why documents scored, read the schema, list what the index holds, and a POST
@@ -628,6 +636,9 @@ opens the request in a new scratch `.http` file, addressed to the selected conne
 runs nothing: press the HTTP Client's run button, and the response gets the same summary as any other
 query here. A scratch file is never committed, so it names the server outright. It never holds a
 password: a connection that signs in gets a comment naming the header to add.
+
+With the query console chosen, the same items open the collection's console tab instead, with the
+form filled in to ask the same thing.
 
 **Every template addresses `{{solrUrl}}` rather than a host**, which is the whole reason saved
 queries live in `.http` files. Define the variables in `http-client.env.json` beside the requests and
@@ -668,6 +679,32 @@ configset it came from:
   templates do) and your environment files give it different values in different environments. The
   HTTP Client does not tell plugins which environment its toolbar has selected, so the plugin uses the
   value only when every environment agrees on it, rather than guess.
+
+### The query console
+
+**Right-click a collection or field in the Solr tool window, with the query console chosen.** A tab
+named `Query: <collection>` opens with Solr Admin's query form: the request handler, `q`, `q.op`,
+`fq` (one per line), `sort`, `start`, `rows`, `fl`, `df`, paramsets, `wt` and `indent`; `debugQuery`;
+a parser choice that shows dismax's parameters for dismax and edismax, and edismax's own for edismax;
+and raw parameters, one `name=value` per line. There is one tab per connection and collection —
+right-clicking again focuses it, filled in for what you chose.
+
+**Execute (<kbd>Ctrl+Enter</kbd>, <kbd>⌘Enter</kbd> on a Mac) runs it**, and the answer appears
+below the form: the request as a GET URL, the same summary table the HTTP Client shows, and under
+**Response** the answer exactly as Solr sent it — JSON, XML, CSV, or the error page behind a 404.
+Nothing runs until you press it, and a second Execute cancels one still running.
+
+**What is left at its default is not sent.** `defType` and `q.op` start at *(handler default)*, so the
+handler's own `solrconfig.xml` defaults apply until you choose otherwise; a hidden parameter is never
+sent, however it was filled in. The request handler must be a path such as `/select` or `/query`:
+the old `qt=dismax` form is refused rather than silently run as `/select`.
+
+**`fl`, `sort`, `df`, `qf`, `pf`, `pf2` and `pf3` complete field names** from the tab's collection,
+on the same terms as an `.http` file: only <kbd>Ctrl-Space</kbd> reads the server.
+
+**Open as .http** — on the toolbar, or by clicking the request line — writes the query into a scratch
+`.http` file with `{{solrUrl}}` and `{{collection}}` rather than a host, and never a password. Move
+that file into the project and it is a saved query like any other.
 
 ## Indexing a test document
 
@@ -916,8 +953,8 @@ Query*, which previews both against a string.
 ## Running a query without leaving the file
 
 A gutter icon sits beside a query. Click it and the query runs against the connection you have
-selected, and the answer appears where you are reading — the same rendering the
-[query console](#running-a-query) prints above a response.
+selected, and the answer appears where you are reading — the same summary the HTTP Client and the
+[query console](#the-query-console) show above a response.
 
 ![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
 against and listing products](images/29-code-run-from-gutter.png)

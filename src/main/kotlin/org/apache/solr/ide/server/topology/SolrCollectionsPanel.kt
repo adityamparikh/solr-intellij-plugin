@@ -47,11 +47,14 @@ import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrConnectionDialog
 import org.apache.solr.ide.server.connection.SolrConnectionSettings
 import org.apache.solr.ide.server.connection.SolrConnectionsListener
+import org.apache.solr.ide.server.connection.SolrQueryDestination
 import org.apache.solr.ide.server.reading.SolrIndexContents
 import org.apache.solr.ide.server.indexing.SolrCommitMode
 import org.apache.solr.ide.server.indexing.SolrDocumentIndexer
 import org.apache.solr.ide.server.indexing.SolrIndexDocumentDialog
 import org.apache.solr.ide.server.query.SolrCollectionFields
+import org.apache.solr.ide.server.query.screen.SolrQueryScreenSpec
+import org.apache.solr.ide.server.query.screen.SolrQueryScreens
 import org.apache.solr.ide.server.reading.SolrServerReader
 import org.apache.solr.ide.server.transport.SolrResponse
 
@@ -390,16 +393,22 @@ class SolrCollectionsPanel(private val project: Project) : SimpleToolWindowPanel
     }
 
     /**
-     * Opens [query] as an HTTP Client request in a new scratch file, and runs nothing.
+     * Opens [query] where *Open queries in* says, and runs nothing.
      *
-     * A scratch file rather than a project file, so choosing a query changes nothing in the
-     * repository; and a new one each time, so a request the user edited is never overwritten.
+     * In the HTTP Client, the default: a request in a scratch file rather than a project file, so
+     * choosing a query changes nothing in the repository; and a new one each time, so a request the
+     * user edited is never overwritten. In the query console: the collection's tab, its form filled
+     * in by the same rules.
      *
      * @param query the query to open
      * @return the file opened, or null where there is no connection to address it to
      */
     internal fun openQuery(query: SolrTreeQuery): VirtualFile? {
         val connection = settings.selectedConnection ?: return null
+        if (settings.openQueriesIn == SolrQueryDestination.CONSOLE) {
+            val fill = SolrTreeQueries.consoleState(query, SolrQueryScreenSpec.bundled)
+            return SolrQueryScreens.getInstance(project).open(connection, query.collection, fill)
+        }
         val file = ScratchRootType.getInstance().createScratchFile(
             project,
             SolrTreeQueries.scratchFileName(query),
