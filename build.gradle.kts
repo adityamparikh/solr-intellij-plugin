@@ -20,6 +20,11 @@ plugins {
     alias(libs.plugins.dokka)
 }
 
+// The IDE release this plugin compiles against, and so the oldest it claims: the patched descriptor's
+// `since-build` is derived from it. Named rather than written inline so the compatibility page's
+// drift test below can be handed the same value the platform dependency uses.
+val targetIdeVersion = "2026.2"
+
 kotlin {
     // JDK 21 is the floor set by the version-support policy (see specs/0002-solr-intellij-plugin.md
     // "Version-support policy"): Solr 10 requires Java 21, and the reference-data generator reflects
@@ -61,7 +66,7 @@ dependencies {
         // IntelliJ IDEA is a single unified distribution as of 2025.3 (Community/Ultimate merged),
         // so we target the unified `intellijIdea(...)` artifact. XML PSI (configset parsing) is part
         // of platform core.
-        intellijIdea("2026.2")
+        intellijIdea(targetIdeVersion)
 
         // Java PSI, for resolving the class a `class` attribute names — needed to compile the
         // reference provider and to test it, and matched by a hard `<depends>` in `plugin.xml`. It
@@ -103,9 +108,8 @@ dependencies {
 
 // ---------------------------------------------------------------------------------------------
 // What the Plugin Verifier checks against. **This is the single place the verified IDE builds are
-// declared**, and the compatibility matrix Step 21 writes is due to be rendered from it rather than
-// restated beside it — a matrix promising a build the Verifier never checked is worse than no
-// matrix at all.
+// declared**, and `SolrCompatibilityPageTest` holds the compatibility matrix to it — a matrix
+// promising a build the Verifier never checked is worse than no matrix at all.
 //
 // One entry today, and that is the honest number rather than a placeholder. `since-build` is 262
 // with no upper bound, so the plugin claims every build from 2026.2 onward; 2026.2 is the newest
@@ -382,4 +386,25 @@ tasks.test {
         generateSolrCatalog.get().outputDirectory.get().asFile.absolutePath,
     )
     systemProperty("solr.build.dir", layout.buildDirectory.get().asFile.absolutePath)
+}
+
+// **The compatibility page is checked against the declarations it names.** It promises an IDE range,
+// a verified build, two Solr releases and a toolchain, each declared once in this file; a page that
+// drifted from them would be believed, which is worse than no page. `SolrCompatibilityPageTest`
+// reads the page and is handed every declared value here — plus the descriptor `patchPluginXml`
+// actually writes, since the IDE range the Marketplace reads is the patched `since-build`, not a
+// value anyone typed.
+tasks.test {
+    val patchedDescriptor = tasks.patchPluginXml.flatMap { it.outputFile }
+    inputs.file(patchedDescriptor).withPropertyName("patchedDescriptor")
+    inputs.file("docs/compatibility.md").withPropertyName("compatibilityPage")
+    systemProperty("compat.page", file("docs/compatibility.md").absolutePath)
+    systemProperty("compat.pluginVersion", project.version.toString())
+    systemProperty("compat.targetIde", targetIdeVersion)
+    systemProperty("compat.verifiedIdes", verifiedIdeBuilds.joinToString(","))
+    systemProperty("compat.solrReleases", supportedSolrLines.values.joinToString(","))
+    systemProperty("compat.toolchain", java.toolchain.languageVersion.get().asInt().toString())
+    jvmArgumentProviders += CommandLineArgumentProvider {
+        listOf("-Dcompat.descriptor=${patchedDescriptor.get().asFile.absolutePath}")
+    }
 }
