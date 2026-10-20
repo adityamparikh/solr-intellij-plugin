@@ -131,7 +131,9 @@ internal class SolrQueryScreenEditor(
                 settings.credentialFor(connection),
                 CONSOLE_TIMEOUT,
             )
-            withContext(Dispatchers.EDT) { results.show(SolrQueryScreenAnswer.of(answer)) }
+            // Parsed here too: a large answer read on the EDT would freeze the IDE while it parses.
+            val shown = SolrQueryScreenAnswer.of(answer)
+            withContext(Dispatchers.EDT) { results.show(shown) }
         }
         running = run
         return run

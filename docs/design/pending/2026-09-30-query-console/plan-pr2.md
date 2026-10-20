@@ -26,7 +26,7 @@
 ## Review Focus
 
 1. **A choice left at the handler's default is not sent.** A handler whose `solrconfig.xml` defaults `defType=edismax` keeps edismax unless the user picks a parser. → Task 2, `a choice left at the handler default is not sent`.
-2. **A checkbox on by default and turned off sends `false`** (`indent`, `stopwords`, `lowercaseOperators`), or turning it off would change nothing. → Task 2, `a checkbox on by default sends false when turned off`.
+2. **A checkbox on by default and turned off sends `false`** (`indent`, `stopwords`), or turning it off would change nothing. `lowercaseOperators` is not one: Solr turned it off by default from `luceneMatchVersion` 7. → Task 2, `a checkbox on by default sends false when turned off`.
 3. **An `&` in a raw line is part of its value.** One parameter per line, split on the first `=`. → Task 2, `an ampersand in a raw line is part of its value`.
 4. **A body with `\r\n` line endings is shown**, not thrown at by a `Document` that refuses `\r`. → Task 6, `testABodyWithCarriageReturnsIsShown`.
 5. **Two connections with the same collection name get a tab each**, and removing one connection closes only its tab. → Task 5, `testRemovingAConnectionClosesOnlyItsTabs`.

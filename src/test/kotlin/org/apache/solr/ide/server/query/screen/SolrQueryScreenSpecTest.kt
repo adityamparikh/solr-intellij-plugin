@@ -51,6 +51,28 @@ class SolrQueryScreenSpecTest {
         assertEquals(mapOf("defType" to listOf("dismax", "edismax")), spec.field("qf")!!.showWhen)
     }
 
+    /**
+     * A checkbox's starting state must be what Solr does when the parameter is absent, or the box
+     * misstates the request: one shown off while Solr treats it as on can never be turned off.
+     * `indent` is the exception the admin form makes, and the console copies it.
+     */
+    @Test
+    fun `every checkbox starts where Solr's own default is`() {
+        val checkboxes = spec.fields
+            .filter { it.kind == SolrQueryScreenFieldKind.CHECKBOX }
+            .associate { it.name to (it.default == "true") }
+
+        assertEquals(
+            mapOf(
+                "indent" to true,
+                "debug.explain.structured" to false,
+                "stopwords" to true,
+                "lowercaseOperators" to false,
+            ),
+            checkboxes,
+        )
+    }
+
     @Test
     fun `a parser choice defaults to the handler's own`() {
         assertEquals("", spec.field("defType")!!.default)

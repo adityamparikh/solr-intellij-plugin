@@ -48,8 +48,16 @@ class SolrQueryScreenStateTest {
     fun `a checkbox off by default sends nothing when off`() {
         val edismax = blank.with("defType", "edismax")
 
-        assertFalse("stopwords" in edismax.parameters().map { it.first })
-        assertEquals("true", edismax.with("stopwords", "true").parameters().toMap()["stopwords"])
+        assertFalse("lowercaseOperators" in edismax.parameters().map { it.first })
+        assertEquals("true", edismax.with("lowercaseOperators", "true").parameters().toMap()["lowercaseOperators"])
+    }
+
+    @Test
+    fun `edismax stopwords start on and can be turned off`() {
+        val edismax = blank.with("defType", "edismax")
+
+        assertTrue(edismax.isOn("stopwords"))
+        assertEquals("false", edismax.with("stopwords", "false").parameters().toMap()["stopwords"])
     }
 
     @Test
