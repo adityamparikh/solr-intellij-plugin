@@ -88,7 +88,8 @@ org.apache.solr.ide
 │
 ├── model                         (3) what a configset MEANS — no IntelliJ types anywhere in here
 │   ├── schema                    (8)   what a field IS: its type, what it can match, what it can do
-│   └── vocabulary                (2)   what a FILE may legally contain: element names, class names
+│   ├── vocabulary                (2)   what a FILE may legally contain: element names, class names
+│   └── query                     (4)   a query string read for its field names and operators
 │
 ├── configset                           the files in the repository — one of two sources of the model
 │   ├── activation                (6)   is this even a Solr project, and which configset owns this file
@@ -114,6 +115,14 @@ org.apache.solr.ide
 │       ├── reference             (1)
 │       ├── descriptor            (1)     the structure completion replacing the schema-less guess
 │       └── documentation         (2)     the two positions the schema provider declines
+│
+├── code                          (2)   the project's own Java and Kotlin — which Solr it calls, for which fields
+│   ├── solrj                     (3)     the first recognizer: SolrJ client and query calls, read through UAST
+│   ├── inspection                (1)     a field name in code that no configset declares
+│   ├── completion                (2)     field names where code is naming one
+│   ├── navigation                (1)     Ctrl+Click from a name in code to the schema
+│   ├── highlighting              (3)     a query string, coloured by structure
+│   └── run                       (2)     the gutter icon that runs a query string
 │
 └── server                             nothing on the editor path may import any of this
     ├── connection                (5)   how to reach a running Solr, and remembering it
@@ -566,8 +575,8 @@ feature.
 and filing it under either would be wrong. A fact is a `SolrFact` holding both halves and reporting
 how they relate (`SolrAgreement`), rather than a value with the disagreement already resolved away.
 Where only one can be shown the repository wins, because the editor's job is to reason about the file
-in front of the user; the difference is surfaced rather than hidden. The server half is empty until
-the server reader lands.
+in front of the user; the difference is surfaced rather than hidden. Only a server surface fills the server half —
+the drift view is the one that does — because nothing on the editor path may contact a server.
 
 `SolrMatchAnalysis` derives what a field can actually match from its index-time analyzer chain. The
 factories that decide it are named in code rather than read from the generated catalog, because that

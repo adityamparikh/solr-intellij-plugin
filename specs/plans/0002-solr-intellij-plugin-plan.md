@@ -10,11 +10,11 @@ spec-file: specs/0002-solr-intellij-plugin.md
 Deliver the plugin described in the spec: configuration intelligence, a live Solr connection, and Java/Kotlin code
 support, unified by one field model.
 
-**Current state.** The build, CI and documentation tooling are complete and stay as they are. Foundation is built apart
-from its settings page. Of the three tracks the work then splits into, the Editor one is finished, and what it built
+**Current state.** The build, CI and documentation tooling are complete and stay as they are. Foundation is built,
+settings page included. Of the three tracks the work then splits into, the Editor one is finished, and what it built
 is real rather than scaffolding: a configset parses into a field model, and that model reaches the screen as
 match-capability inlay hints, quick documentation on schema elements, field types and
-`class` values, eight inspections — several of them offering the valid names rather than only reporting the invalid one —
+`class` values, inspections over both configuration files — several of them offering the valid names rather than only reporting the invalid one —
 and completion for both the schema's own vocabulary and the catalog's classes and factory attributes. Two Alt-Enter
 intentions now *write* rather than only describe — the `_prefix` and `_exact` companion patterns, generated from the
 field that lacks them — which is the first time the plugin edits a configset rather than explaining one. The generated
@@ -29,8 +29,9 @@ version number beside the Solr line and `luceneMatchVersion`.
 documentation over 340 generated parameter names, the closed set `defType` accepts, completion and quick
 documentation and Ctrl-click on the classes it names, schema field names offered inside the sixteen parameters
 known to hold them, and two inspections that fire where a *broken* configuration would previously have passed
-silently — a `facet.field` or `sort` naming a field that cannot serve it. Eleven inspection classes are now
-registered in total. **This paragraph used to end here by saying the file still lacked its own structure, and
+silently — a `facet.field` or `sort` naming a field that cannot serve it. Eleven inspection classes over the
+configset were registered when that work finished; the Code track has since added a twelfth, over field names in
+Java and Kotlin. **This paragraph used to end here by saying the file still lacked its own structure, and
 that sentence outlived what it described.** Action 1 of [step 25](#step-25-solrconfigxml-as-a-first-class-surface-done)
 shipped in `#141`: typing `<` inside `<config>` offers Solr's own top-level vocabulary —
 `requestHandler`, `query`, `directoryFactory`, `luceneMatchVersion` and the rest the generator read out
@@ -58,33 +59,20 @@ all. A field attribute that decides nothing is dimmed where it stands, with an i
 time the plugin says something about a line without being asked, and it says it only where the model can prove the
 field would be unchanged.
 
-**The Server track is built and the Code track has started**, and this paragraph said the opposite for as long as
-that was false. It read that neither had started and that `server/` held `SolrConnectionSettings` and nothing else —
-true when it was written, and left standing through every pull request that made it untrue.
-[The track index](#build-order) was right the whole time, which is the point: a status sentence kept away from the list
-that owns status goes stale in silence, and this is the second such sentence this section has had to correct.
+**Beyond the editor, the plugin reaches a live Solr and the code that calls it.** A configset can be compared
+with a live collection, uploaded and reloaded; the tool window browses what a server actually holds and opens a
+ready-to-run query for any collection or field in it; and field names in plain Java and Kotlin using SolrJ are
+checked, completed and navigable, with a query string coloured by structure and runnable from the gutter. A
+framework application — Spring Boot, Quarkus, Micronaut, MicroProfile, Apache Camel — gets those field checks, and
+not the connection its configuration already names; that is what the framework steps add. Release 0.2.0 carries
+what is built today and is prepared but not yet published; [the release guide](../../docs/how-to/releasing.md) says
+what publishing still needs.
 
-**The Server track shipped all five of its steps** —
-[the HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done),
-[the collections tool window](#step-12-collections-tool-window-done),
-[the query console](#step-13-query-console-done),
-[the drift view, upload and reload](#step-14-drift-view-upload-and-reload-done), and
-[indexing test documents](#step-15-indexing-test-documents-done). **What it has not had is a sandbox pass**, and that
-is the whole of what is outstanding: all thirty-one checks in
-[the manual suite's connections and tool window section](../../docs/manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
-are unpressed, and the six success criteria still open across those steps are open for that reason alone. Each is a
-claim about observed behaviour — that the topology renders, that an unreachable server degrades inline rather than to a
-popup, that a confirmation naming its target server actually appears — and no JVM test discharges a claim of that
-shape. Nothing is left to build there; something is left to watch.
-
-**The Code track has its SolrJ half and none of its framework half.**
-[The recognizer interface and SolrJ](#step-16-recognizer-interface-and-solrj-done) and
-[query syntax and the console bridge](#step-17-query-syntax-and-the-console-bridge-done) are both done: field names
-in Java and Kotlin are checked, completed and navigable, a query string is coloured by structure, and a query runs
-from the gutter. Framework configuration and Apache Camel are unstarted, so a Spring or Quarkus application gets
-the field checks and not yet the connection its configuration already names. An earlier revision of this paragraph
-said the track had met two of Step 16's five criteria, and stood through both steps closing — the third status
-sentence this section has had to correct, for the reason the paragraph above gives.
+**This section no longer says which steps are done, and that is deliberate.** It said so four times, and four times
+the sentence outlived the work it described — that neither the Server nor the Code track had started, that the server
+steps had never had a sandbox pass, that the Code track had met two of its first step's five criteria. Each stood
+through every pull request that made it untrue, while [the build order](#build-order) was right the whole time. Status
+is read there and in each step's heading, never here.
 
 Neither track is blocked by the other, and neither is blocked by the Editor track.
 [The build order](#build-order) explains what cutting one whole would cost.
@@ -170,8 +158,10 @@ whole, and the gutter action goes with the Server track.
 
 ### Server track
 
-**Complete, and shipped in 0.2.0.** Every step is built, and every success criterion has been observed
-in a running IDE against a live SolrCloud — the last of them in the 2026-09-28 sandbox passes.
+**Complete, and in 0.2.0** — prepared, not yet published. Every step is built, and every success criterion has
+been observed in a running IDE against a live SolrCloud — the last of them in the 2026-09-28 sandbox passes. The
+tool window's right-click queries, added to the collections tool window after those passes, have not yet been pressed
+in a sandbox.
 
 - [Step 11 — HTTP client, connections and the server reader](#step-11-http-client-connections-and-the-server-reader-done) — **done**
 - [Step 12 — Collections tool window](#step-12-collections-tool-window-done) — **done**
@@ -181,7 +171,7 @@ in a running IDE against a live SolrCloud — the last of them in the 2026-09-28
 
 ### Code track
 
-**Complete for plain Java and Kotlin using SolrJ, and shipped in 0.2.0**: Steps 16 and 17. The
+**Complete for plain Java and Kotlin using SolrJ, and in 0.2.0**: Steps 16 and 17. The
 framework steps below are the next release's, and they stay one framework per release — Spring Boot
 first, as an Ultimate-only feature, for the reasons Step 18 records.
 
@@ -2036,6 +2026,13 @@ it could not close, which are worth reading before the container fixture is writ
 - [x] The topology renders; the selected connection is always visible. Pressed against SolrCloud 9.10.1 and 10.0.0.
 - [x] An unreachable server degrades to an inline message, not a popup.
 
+**Added after the criteria closed: a query from where the thing is.** Right-click a collection, a core or
+a field in the tool window and choose what to ask — a query against the collection, its scoring explained,
+the documents holding a field, or the values a field holds and how often — and a ready-to-run request
+opens in a scratch file. It needs no configset, since the collection and field names come from the tree.
+None of these was an action of this step; they are recorded here because this is where the tree they
+hang from is built. They have tests and have not yet been pressed in a sandbox.
+
 **Acceptance:**
 [demo step 36 — *browse what is actually there*](../../docs/demo/README.md#step-36-browse-what-is-actually-there).
 Collections, cores and the server's actual fields render, and the selected connection stays visible.
@@ -2550,6 +2547,14 @@ description leads with it rather than apologising for it.
   a recording of the headline features does not, and is the one release-blocking item this step cannot
   claim.
 
+**What 0.2.0 needs, and what it has.** The release adds the Server track and the SolrJ half of the Code
+track, and its documentation was written with them: the user guide covers every server and code
+gesture, `CHANGELOG.md` carries them under *Unreleased* — `patchChangelog` turns that into the 0.2.0
+section when the release is published, not before — and [the release guide](../../docs/how-to/releasing.md)
+records what publishing still needs, which is accounts and credentials rather than documents. The
+recording is still missing, for the same reason as before: it is the one item here a build cannot
+produce.
+
 **Acceptance:** No demo step. The compatibility matrix written here is what makes the version-drift check
 in [CI gates](#step-20-ci-gates-in-progress) meaningful rather than vacuous.
 
@@ -2564,12 +2569,19 @@ The cross-track invariants no single step owns. Each step's own success criteria
 
 - [x] Build, CI, coverage and documentation gates in place.
 - [x] Package namespace decided — stays `org.apache.solr.ide`; see the activation gate overhaul.
-- [ ] Editor features work with no connection.
-- [ ] Server features work with no configset in the project.
-- [ ] Code features stay silent where they cannot resolve.
-- [ ] Zero false positives on both shipped configsets, CI-enforced.
-- [ ] No write occurs without explicit human invocation naming its target.
-- [ ] Release documentation published.
+- [x] Editor features work with no connection — held by `SolrServerBoundaryContractTest`, which fails the build if
+  anything on the editor path imports the server packages.
+- [x] Server features work with no configset in the project — the query console step's completion criterion.
+- [x] Code features stay silent where they cannot resolve — the recognizer step's silence criteria, asserted in Java
+  and Kotlin fixtures.
+- [x] Zero false positives on both shipped configsets, CI-enforced — the CI gates step, with one rule held out by name.
+- [x] No write occurs without explicit human invocation naming its target — the drift view step, pressed against a
+  live SolrCloud.
+- [ ] Release documentation published. Written for 0.2.0 apart from the Marketplace recording, and not published
+  until the release is.
+
+**These boxes stayed empty after every step they summarise had been ticked**, which is the same failure the
+Overview records: a list kept away from where status is decided is not updated when status changes.
 
 ## Risks
 
