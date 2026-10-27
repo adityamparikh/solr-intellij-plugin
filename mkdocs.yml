@@ -1,0 +1,82 @@
+site_name: Solr Support for IntelliJ
+site_description: IDE tooling for Apache Solr development in IntelliJ IDEA
+site_url: https://adityamparikh.github.io/solr-intellij-plugin/
+repo_url: https://github.com/adityamparikh/solr-intellij-plugin
+repo_name: adityamparikh/solr-intellij-plugin
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: build/site
+
+theme:
+  name: material
+  palette:
+    # Follows the reader's OS setting first; the header toggle overrides it.
+    - media: "(prefers-color-scheme)"
+      toggle: { icon: material/brightness-auto, name: Switch to light mode }
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/brightness-7, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/brightness-4, name: Switch to system preference }
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+
+extra_css: [stylesheets/extra.css]
+
+hooks: [site-tools/hooks.py]
+
+exclude_docs: |
+  Module.md
+  presentation/
+  design/
+  demo/
+  *.pptx
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.keys
+  - pymdownx.superfences
+  - pymdownx.tabbed: { alternate_style: true }
+
+# Contributor pages link to specs and source outside docs/; the hook fixes the common cases and the
+# rest are reported rather than failing the build.
+validation:
+  links: { not_found: info, unrecognized_links: info }
+  anchors: info
+
+nav:
+  - Home: index.md
+  - Using the plugin:
+      - Installing: installing.md
+      - User guide: user-guide.md
+      - Inspection catalog: inspection-catalog.md
+      - Compatibility: compatibility.md
+      - FAQ: faq.md
+  - Reference:
+      - Solr configuration files: solr-configuration-files.md
+      - Glossary: glossary.md
+      - Platform mechanisms: platform-mechanisms.md
+      - API reference (KDoc): https://adityamparikh.github.io/solr-intellij-plugin/api/index.html
+  - Contributing:
+      - Contributing: contributing.md
+      - Project orientation: project-orientation.md
+      - Code organization: code-organization.md
+      - Adding an editor feature: how-to/add-an-editor-feature.md
+      - Extending the field model: how-to/extend-the-field-model.md
+      - Testing and the build gates: how-to/testing-and-the-build-gates.md
+      - Releasing: how-to/releasing.md
+      - Manual test suite: manual-test-suite.md
+      - Manual test checklist: manual-test-checklist.md
+      - Screenshot catalog: screenshots.md
+      - Modern plugin development: modern-intellij-plugin-development.md
