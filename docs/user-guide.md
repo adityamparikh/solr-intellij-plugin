@@ -185,7 +185,9 @@ is fetched at edit time or copied out of the guide it links to — see [the FAQ]
 (Verified by [the quick-documentation check on a class value](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class.png)
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-light.png#only-light)
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-dark.png#only-dark)
 
 ### On the schema's own elements
 
@@ -257,7 +259,10 @@ hover or ⌃J is the reliable gesture. (Verified by
 
 ![Quick documentation on the schema's version attribute: the general rule, then what this
 configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
-off](images/16-hover-schema-version.png)
+off](images/16-hover-schema-version-light.png#only-light)
+![Quick documentation on the schema's version attribute: the general rule, then what this
+configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
+off](images/16-hover-schema-version-dark.png#only-dark)
 
 ### On a `solrconfig.xml` parameter or parser name
 
@@ -319,7 +324,10 @@ already declares them). Undo the space afterwards. (Verified by
 
 ![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
 luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](images/06-completion-factory-attributes.png)
+from](images/06-completion-factory-attributes-light.png#only-light)
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
+luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
+from](images/06-completion-factory-attributes-dark.png#only-dark)
 
 ### `solrconfig.xml`'s own structure
 
@@ -338,7 +346,10 @@ typed character afterwards. (Verified by
 
 ![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
 vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
-tags](images/10-completion-solrconfig-structure.png)
+tags](images/10-completion-solrconfig-structure-light.png#only-light)
+![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
+vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
+tags](images/10-completion-solrconfig-structure-dark.png#only-dark)
 
 ### Field names inside `solrconfig.xml` parameters
 
@@ -360,7 +371,9 @@ same rule the schema-vocabulary completion above documents. (Verified by
 [the checks on field-name completion inside solrconfig.xml parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
-their types, including the *_t dynamic pattern](images/13-completion-parameter-fields.png)
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-light.png#only-light)
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-dark.png#only-dark)
 
 **Try the parameter-name half too** — add a new `<str name="` line inside `<lst name="defaults">`
 and invoke completion there instead of inside a value: Solr's own parameter names are offered, each
@@ -371,7 +384,9 @@ which is this behaving correctly rather than a sparse or broken popup. (Verified
 [the checks on parameter-name completion](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
-terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names.png)
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-light.png#only-light)
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-dark.png#only-dark)
 
 ---
 
@@ -414,7 +429,8 @@ declaring this type'](images/07-find-usages-field-type-light.png#only-light)
 ![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
 declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 
-![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference.png)
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-light.png#only-light)
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-dark.png#only-dark)
 
 **What does not navigate, and why that is correct.** `class="solr.SearchHandler"` in the demo's
 `/select` handler resolves nowhere, and draws no warning for failing to — the demo depends only on
@@ -448,10 +464,14 @@ undoes both files as one refactoring — confirm with `git status --short demo/`
 [the rename checks that the dialog is labelled correctly and the cross-file update follows](manual-test-suite.md#4a-rename-ren).)
 
 ![solrconfig.xml's qf parameter before a rename, reading name^3 description
-category](images/14-rename-cross-file-before.png)
+category](images/14-rename-cross-file-before-light.png#only-light)
+![solrconfig.xml's qf parameter before a rename, reading name^3 description
+category](images/14-rename-cross-file-before-dark.png#only-dark)
 
 ![The same qf parameter immediately after renaming category to product_category from the schema
-declaration — updated with no separate edit](images/14-rename-cross-file-after.png)
+declaration — updated with no separate edit](images/14-rename-cross-file-after-light.png#only-light)
+![The same qf parameter immediately after renaming category to product_category from the schema
+declaration — updated with no separate edit](images/14-rename-cross-file-after-dark.png#only-dark)
 
 ---
 
@@ -562,7 +582,10 @@ still parses. (Verified by
 
 ![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
 prefix-capable companion field' intentions, with the exact-match explanation shown
-alongside](images/12-intention-companion-fields.png)
+alongside](images/12-intention-companion-fields-light.png#only-light)
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
+prefix-capable companion field' intentions, with the exact-match explanation shown
+alongside](images/12-intention-companion-fields-dark.png#only-dark)
 
 ---
 
@@ -859,7 +882,9 @@ and returns nothing — Solr answers a query against a field that does not exist
 rather than an error, so the typo arrives as an empty page in production.
 
 ![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
-each marked, while id and name in the same string are left alone](images/26-code-field-warning.png)
+each marked, while id and name in the same string are left alone](images/26-code-field-warning-light.png#only-light)
+![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
+each marked, while id and name in the same string are left alone](images/26-code-field-warning-dark.png#only-dark)
 
 The mark covers the name and stops at the colon — not the string, not the line. `categry` is a typo
 for a field that exists; `price` is spelled correctly and has never existed. Both compile.
@@ -896,7 +921,10 @@ string in your code keeps the IDE's usual rule of not opening a popup while you 
 
 ![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
 on its own, offering description from the solr configset with its type,
-text_general](images/32-code-completion-popup.png)
+text_general](images/32-code-completion-popup-light.png#only-light)
+![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
+on its own, offering description from the solr configset with its type,
+text_general](images/32-code-completion-popup-dark.png#only-dark)
 
 **Only where a field name goes, not everywhere in the string.** In a query that is before the colon
 of each clause: `setQuery("category:books AND n` offers fields, `setQuery("category:b` does not,
@@ -945,7 +973,9 @@ A query in a string is one colour end to end, so you do the parsing. The field n
 operators are now told apart:
 
 ![A setQuery call in which category and name are in the field colour and AND in the operator colour,
-picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour.png)
+picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-light.png#only-light)
+![A setQuery call in which category and name are in the field colour and AND in the operator colour,
+picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-dark.png#only-dark)
 
 **This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
 scan that reads field names for the check decides what to colour, so a name the check reports is a

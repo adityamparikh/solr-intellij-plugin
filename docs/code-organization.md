@@ -213,13 +213,17 @@ that value came from, what it accepts, and what it means](images/02-quick-doc-fi
 from Solr's own Javadoc at build time, and a Reference Guide link at the declared version.
 
 ![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class.png)
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-light.png#only-light)
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-dark.png#only-dark)
 
 **16 — and on the schema's own `version`.** What the attribute decides in general, then what *this*
 declared value decides here.
 
 ![Quick documentation on the schema version attribute: the general rule, then what this configset's
-declared 1.6 decides](images/16-hover-schema-version.png)
+declared 1.6 decides](images/16-hover-schema-version-light.png#only-light)
+![Quick documentation on the schema version attribute: the general rule, then what this configset's
+declared 1.6 decides](images/16-hover-schema-version-dark.png#only-dark)
 
 **5 — `configset.schema.completion`.** Which attributes a `<field>` accepts, each with what it takes,
 and those already written withheld. Read from the property table in `model.schema`.
@@ -234,7 +238,10 @@ recovered from its constructor bytecode at build time rather than hand-maintaine
 
 ![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
 luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](images/06-completion-factory-attributes.png)
+from](images/06-completion-factory-attributes-light.png#only-light)
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
+luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
+from](images/06-completion-factory-attributes-dark.png#only-dark)
 
 **4 — `configset.schema.inspection`.** A dangling `copyField`, underlined, with Alt-Enter offering the
 declared fields closest in spelling — the same set the inspection computed to decide it was wrong.
@@ -254,7 +261,9 @@ defaults, while stored=false on name_prefix stays normal](images/11-dimmed-resta
 generated companion field, its type, and the `copyField` joining them.
 
 ![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
-prefix-capable companion field'](images/12-intention-companion-fields.png)
+prefix-capable companion field'](images/12-intention-companion-fields-light.png#only-light)
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
+prefix-capable companion field'](images/12-intention-companion-fields-dark.png#only-dark)
 
 **9 — `configset.schema.reference`.** A filter's `words=` is a real reference to the file it names.
 
@@ -270,38 +279,50 @@ pictures.
 
 ![Element completion inside the config element in solrconfig.xml, offering Solr's own top-level
 vocabulary — directoryFactory, dataDir, luceneMatchVersion, requestHandler,
-query](images/10-completion-solrconfig-structure.png)
+query](images/10-completion-solrconfig-structure-light.png#only-light)
+![Element completion inside the config element in solrconfig.xml, offering Solr's own top-level
+vocabulary — directoryFactory, dataDir, luceneMatchVersion, requestHandler,
+query](images/10-completion-solrconfig-structure-dark.png#only-dark)
 
 **17 — the same package, one level down.** Inside `<query>` the offer is different again, because the
 catalog keys every element to its parent path. `dataDir` is absent here; `filterCache` is not.
 
 ![Element completion inside the query element offering eighteen elements including filterCache,
-cache, featureVectorCache, HashDocSet and listener](images/17-completion-query-nesting.png)
+cache, featureVectorCache, HashDocSet and listener](images/17-completion-query-nesting-light.png#only-light)
+![Element completion inside the query element offering eighteen elements including filterCache,
+cache, featureVectorCache, HashDocSet and listener](images/17-completion-query-nesting-dark.png#only-dark)
 
 **18 — and what it refuses to offer.** Inside `<indexConfig>`, only `deletionPolicy`. `nrtMode` is
 read by Solr at exactly this position and is still never offered, because completion filters to what
 Solr still accepts — knowing where an element belongs and recommending it are different questions.
 
-![Element completion inside indexConfig offering only deletionPolicy](images/18-completion-indexconfig-nesting.png)
+![Element completion inside indexConfig offering only deletionPolicy](images/18-completion-indexconfig-nesting-light.png#only-light)
+![Element completion inside indexConfig offering only deletionPolicy](images/18-completion-indexconfig-nesting-dark.png#only-dark)
 
 **15 — `configset.solrconfig.completion`.** Parameter names inside `<lst name="defaults">`, each
 labelled with the Solr class that declares it.
 
 ![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
-terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names.png)
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-light.png#only-light)
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-dark.png#only-dark)
 
 **13 — the same package, reaching across.** Inside a `qf`, the *schema's* field names — which is the
 one place this aspect consults the other, and it does it through the shared model rather than by
 importing `configset.schema`.
 
 ![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
-their types, including the *_t dynamic pattern](images/13-completion-parameter-fields.png)
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-light.png#only-light)
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-dark.png#only-dark)
 
 **8 — `configset.solrconfig.reference`.** A field name written in a parameter is a reference into the
 schema, and navigates there.
 
 ![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it
-names](images/08-nav-solrconfig-field-reference.png)
+names](images/08-nav-solrconfig-field-reference-light.png#only-light)
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it
+names](images/08-nav-solrconfig-field-reference-dark.png#only-dark)
 
 ### Crossing both — `configset.navigation`
 
@@ -318,10 +339,14 @@ declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 `solrconfig.xml`'s `qf` as part of the same refactoring, undone by a single Cmd+Z.
 
 ![solrconfig.xml's qf parameter before the rename, reading name^3 description
-category](images/14-rename-cross-file-before.png)
+category](images/14-rename-cross-file-before-light.png#only-light)
+![solrconfig.xml's qf parameter before the rename, reading name^3 description
+category](images/14-rename-cross-file-before-dark.png#only-dark)
 
 ![The same qf parameter after renaming category to product_category from the schema declaration,
-updated with no separate edit](images/14-rename-cross-file-after.png)
+updated with no separate edit](images/14-rename-cross-file-after-light.png#only-light)
+![The same qf parameter after renaming category to product_category from the schema declaration,
+updated with no separate edit](images/14-rename-cross-file-after-dark.png#only-dark)
 
 **This is why the package exists.** A capability that crosses the configset has no single aspect to
 live in, and filing it under either would force that aspect to import the other — the one thing the
