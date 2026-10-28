@@ -861,10 +861,14 @@ accepted the request, not that the server now agrees — the two really do come 
 this is worth saying twice.
 
 ![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
-pane below](images/21-drift-apply-before.png)
+pane below](images/21-drift-apply-before-light.png#only-light)
+![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
+pane below](images/21-drift-apply-before-dark.png#only-dark)
 
 ![The same comparison after applying: no rows, and the summary saying books and books agree across 22
-declarations](images/21-drift-apply-after.png)
+declarations](images/21-drift-apply-after-light.png#only-light)
+![The same comparison after applying: no rows, and the summary saying books and books agree across 22
+declarations](images/21-drift-apply-after-dark.png#only-dark)
 
 **Try it.** You need a configset in the project *and* a collection on the server that was created
 from it. Add a field to that configset's schema, open **Drift**, choose the configset, choose the
