@@ -255,7 +255,9 @@ change the name to *_t, category, description, legacy, name or notes](images/04-
 supplied anyway, dimmed. Correct rather than wrong, so it never reaches the Problems view.
 
 ![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
-defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default.png)
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-light.png#only-light)
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-dark.png#only-dark)
 
 **12 — `configset.schema.intention`.** The first capability that *writes* rather than explains: a
 generated companion field, its type, and the `copyField` joining them.
@@ -267,7 +269,8 @@ prefix-capable companion field'](images/12-intention-companion-fields-dark.png#o
 
 **9 — `configset.schema.reference`.** A filter's `words=` is a real reference to the file it names.
 
-![Navigation from a filter resource attribute to the stopwords file it names](images/09-nav-resource-file.png)
+![Navigation from a filter resource attribute to the stopwords file it names](images/09-nav-resource-file-light.png#only-light)
+![Navigation from a filter resource attribute to the stopwords file it names](images/09-nav-resource-file-dark.png#only-dark)
 
 ### The `solrconfig.xml` aspect — `configset.solrconfig.*`
 

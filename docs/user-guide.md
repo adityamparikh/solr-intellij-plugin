@@ -558,7 +558,9 @@ full strength. (Verified by
 [the restated-default dimming checks](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).)
 
 ![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
-defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default.png)
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-light.png#only-light)
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-dark.png#only-dark)
 
 ---
 
@@ -599,7 +601,9 @@ a URL and optionally a username; the password goes to the IDE's password safe an
 file, so a workspace that leaks is an inventory of hostnames rather than of credentials.
 
 ![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
-the text under it saying a password is stored](images/22-connections-settings.png)
+the text under it saying a password is stored](images/22-connections-settings-light.png#only-light)
+![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
+the text under it saying a password is stored](images/22-connections-settings-dark.png#only-dark)
 
 Two things worth knowing before you wonder whether something is broken:
 
@@ -704,7 +708,9 @@ Inside a JSON request body, **field names complete** in `fields`, `sort` and a f
 Each entry reads `books · local`, so it is always clear which server answered.
 
 ![Completion inside a JSON request body's fields array, offering the books collection's fields each
-labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema.png)
+labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-light.png#only-light)
+![Completion inside a JSON request body's fields array, offering the books collection's fields each
+labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-dark.png#only-dark)
 
 **Only <kbd>Ctrl-Space</kbd> contacts the server.** The first time you ask, the plugin reads that
 collection's schema once and remembers it; every popup after that, including the ones that open while
@@ -782,7 +788,10 @@ you:
 
 ![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
 declares with a sample value of each field's type, and saying the document matches the collection's
-schema](images/31-index-test-document.png)
+schema](images/31-index-test-document-light.png#only-light)
+![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
+declares with a sample value of each field's type, and saying the document matches the collection's
+schema](images/31-index-test-document-dark.png#only-dark)
 
 A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
 one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
@@ -972,7 +981,9 @@ connects. A field name in code and its declaration in XML are related by convent
 the tooling can see.
 
 ![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
-declaring category](images/28-code-navigate-to-schema.png)
+declaring category](images/28-code-navigate-to-schema-light.png#only-light)
+![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
+declaring category](images/28-code-navigate-to-schema-dark.png#only-dark)
 
 It works from all four places a name is written: a query-builder call, a field list, a document being
 built, and a `@Field` binding. Where the project holds several configsets it resolves against the
@@ -1014,7 +1025,9 @@ selected, and the answer appears where you are reading — the same summary the 
 [query console](#the-query-console) show above a response.
 
 ![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
-against and listing products](images/29-code-run-from-gutter.png)
+against and listing products](images/29-code-run-from-gutter-light.png#only-light)
+![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
+against and listing products](images/29-code-run-from-gutter-dark.png#only-dark)
 
 **A query in code names no collection**, so you are asked which one, from the list the server
 actually holds. `setQuery("category:books")` says what to match and nothing about where; the
