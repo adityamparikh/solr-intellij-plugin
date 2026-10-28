@@ -617,7 +617,10 @@ replicas for a SolrCloud server, or cores for a standalone one.
 
 ![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
 health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
-icon on the stripe](images/23-collections-topology.png)
+icon on the stripe](images/23-collections-topology-light.png#only-light)
+![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
+health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
+icon on the stripe](images/23-collections-topology-dark.png#only-dark)
 
 **A collection's and a shard's health is the coloured dot before its name**: green, yellow, orange
 or red, as SolrCloud reports it. Hover the row for the word itself — `Health: GREEN` — so the colour
@@ -803,7 +806,10 @@ Three kinds of difference, and the plugin treats them very differently:
 
 ![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
 only on the server, category not deployed, and description differing, selected, with the reason the
-plugin will not send its replace-field request shown above the request](images/19-drift-three-states.png)
+plugin will not send its replace-field request shown above the request](images/19-drift-three-states-light.png#only-light)
+![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
+only on the server, category not deployed, and description differing, selected, with the reason the
+plugin will not send its replace-field request shown above the request](images/19-drift-three-states-dark.png#only-dark)
 
 **The collection chooser lists what the selected server holds**, read when you open it, and says
 which configset each collection was built from. Compare a configset against a collection built
@@ -821,7 +827,9 @@ offered — because "why can this not be applied" deserves a better answer than 
 and because reading what a tool would do before deciding is the point.
 
 ![A Differs row selected, the pane below it saying This plugin will not send this request, then the
-reason, then the replace-field request](images/20-drift-refused-payload.png)
+reason, then the replace-field request](images/20-drift-refused-payload-light.png#only-light)
+![A Differs row selected, the pane below it saying This plugin will not send this request, then the
+reason, then the replace-field request](images/20-drift-refused-payload-dark.png#only-dark)
 
 **Why a changed field is never applied for you.** Solr accepts a `replace-field` that changes a
 field's type, and reports success. Every document already indexed keeps the encoding it was written
