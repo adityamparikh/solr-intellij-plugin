@@ -687,7 +687,10 @@ Run one and the response gains a readable summary above its raw JSON:
 
 ![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
 a table of three TV shows, the parsed query, and the start of each document's scoring
-explanation](images/25-query-and-results.png)
+explanation](images/25-query-and-results-light.png#only-light)
+![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
+a table of three TV shows, the parsed query, and the start of each document's scoring
+explanation](images/25-query-and-results-dark.png#only-dark)
 
 **Matches and returned rows are stated separately** because they routinely differ — conflating them
 is how someone concludes their query found three documents when it found nine thousand and showed
