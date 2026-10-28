@@ -197,13 +197,17 @@ Every capability here fires with the caret in `managed-schema.xml`, and none of 
 in `model.schema` from each field's analyzer chain. No gesture: they render themselves.
 
 ![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
-matches and how it is stored](images/01-hints-match-capability.png)
+matches and how it is stored](images/01-hints-match-capability-light.png#only-light)
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
+matches and how it is stored](images/01-hints-match-capability-dark.png#only-dark)
 
 **2 — `configset.schema.documentation`.** Quick documentation on a field, resolving every property
 and **where each value came from** — the field, its type, or Solr's default at this schema's version.
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](images/02-quick-doc-field.png)
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-light.png#only-light)
+![Quick documentation for the field category: a properties table giving each property's value, where
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-dark.png#only-dark)
 
 **3 — the same package, on a `class` value.** Short name, kind, fully-qualified name, a summary read
 from Solr's own Javadoc at build time, and a Reference Guide link at the declared version.
@@ -221,7 +225,9 @@ declared 1.6 decides](images/16-hover-schema-version.png)
 and those already written withheld. Read from the property table in `model.schema`.
 
 ![Attribute completion inside a field tag in managed-schema.xml, listing docValues, sortMissingLast,
-default, large, multiValued and omitNorms](images/05-completion-field-properties.png)
+default, large, multiValued and omitNorms](images/05-completion-field-properties-light.png#only-light)
+![Attribute completion inside a field tag in managed-schema.xml, listing docValues, sortMissingLast,
+default, large, multiValued and omitNorms](images/05-completion-field-properties-dark.png#only-dark)
 
 **6 — the same package, catalog-backed.** Inside a `<filter>`, the attributes *that factory* accepts,
 recovered from its constructor bytecode at build time rather than hand-maintained.
@@ -234,7 +240,9 @@ from](images/06-completion-factory-attributes.png)
 declared fields closest in spelling — the same set the inspection computed to decide it was wrong.
 
 ![A copyField whose source names manufacturer, highlighted, with the Alt-Enter menu offering to
-change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix.png)
+change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix-light.png#only-light)
+![A copyField whose source names manufacturer, highlighted, with the Alt-Enter menu offering to
+change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix-dark.png#only-dark)
 
 **11 — `configset.schema.annotator`.** An attribute whose written value equals what Solr would have
 supplied anyway, dimmed. Correct rather than wrong, so it never reaches the Problems view.
@@ -302,7 +310,9 @@ the `qf` parameter in the other file, labelled in Solr's vocabulary rather than 
 generic fallback.
 
 ![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
-declaring this type'](images/07-find-usages-field-type.png)
+declaring this type'](images/07-find-usages-field-type-light.png#only-light)
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
+declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 
 **14 — rename, before and after.** Renaming `category` from its schema declaration updates
 `solrconfig.xml`'s `qf` as part of the same refactoring, undone by a single Cmd+Z.

@@ -142,7 +142,9 @@ in the schema) shows nothing at all. (Verified by
 [the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).)
 
 ![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
-matches and how it is stored](images/01-hints-match-capability.png)
+matches and how it is stored](images/01-hints-match-capability-light.png#only-light)
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
+matches and how it is stored](images/01-hints-match-capability-dark.png#only-dark)
 
 ---
 
@@ -166,7 +168,9 @@ restating the property name.
 [the quick-documentation checks on a field](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](images/02-quick-doc-field.png)
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-light.png#only-light)
+![Quick documentation for the field category: a properties table giving each property's value, where
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-dark.png#only-dark)
 
 ### On a class value
 
@@ -294,7 +298,10 @@ Undo the space afterwards. (Verified by
 
 ![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
 multiValued, omitNorms and more, each with a one-line summary and the values it
-accepts](images/05-completion-field-properties.png)
+accepts](images/05-completion-field-properties-light.png#only-light)
+![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
+multiValued, omitNorms and more, each with a one-line summary and the values it
+accepts](images/05-completion-field-properties-dark.png#only-dark)
 
 ### Catalog-backed classes and factory attributes
 
@@ -403,7 +410,9 @@ itself, which the platform's own word index cannot find on its own.
   [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 
 ![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
-declaring this type'](images/07-find-usages-field-type.png)
+declaring this type'](images/07-find-usages-field-type-light.png#only-light)
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
+declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 
 ![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference.png)
 
@@ -502,7 +511,10 @@ shows none. Both are deliberate fixtures and should never be "fixed." (Verified 
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
 open above it offering to change the name to *_t, category, description, legacy, name or
-notes](images/04-inspection-copyfield-quickfix.png)
+notes](images/04-inspection-copyfield-quickfix-light.png#only-light)
+![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
+open above it offering to change the name to *_t, category, description, legacy, name or
+notes](images/04-inspection-copyfield-quickfix-dark.png#only-dark)
 
 ---
 
