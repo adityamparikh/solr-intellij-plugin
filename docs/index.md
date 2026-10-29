@@ -56,6 +56,27 @@ Short clips of the IDE in the theme you have selected. Each one is a single gest
     <video src="videos/drift-dark.mp4#only-dark" controls loop muted playsinline preload="metadata" aria-label="Drift against a server: Compare a configset with a live collection and see why a change is refused."></video>
 
     Compare a configset with a live collection and see why a change is refused.
+- **Connections**
+
+    <video src="videos/connections-light.mp4#only-light" controls loop muted playsinline preload="metadata" aria-label="Connections: Settings → Tools → Solr Connections: the servers this project talks to, with passwords kept in the IDE's password safe."></video>
+    <video src="videos/connections-dark.mp4#only-dark" controls loop muted playsinline preload="metadata" aria-label="Connections: Settings → Tools → Solr Connections: the servers this project talks to, with passwords kept in the IDE's password safe."></video>
+
+    Settings → Tools → Solr Connections: the servers this project talks to, with passwords kept in the IDE's password safe.
+
+- **Index a test document**
+
+    <video src="videos/test-document-light.mp4#only-light" controls loop muted playsinline preload="metadata" aria-label="Index a test document: A starting document written from the collection's schema, checked before it is sent."></video>
+    <video src="videos/test-document-dark.mp4#only-dark" controls loop muted playsinline preload="metadata" aria-label="Index a test document: A starting document written from the collection's schema, checked before it is sent."></video>
+
+    A starting document written from the collection's schema, checked before it is sent.
+
+- **Run a query**
+
+    <video src="videos/query-light.mp4#only-light" controls loop muted playsinline preload="metadata" aria-label="Run a query: Right-click a collection, run the generated request, and read the answer in the HTTP Client."></video>
+    <video src="videos/query-dark.mp4#only-dark" controls loop muted playsinline preload="metadata" aria-label="Run a query: Right-click a collection, run the generated request, and read the answer in the HTTP Client."></video>
+
+    Right-click a collection, run the generated request, and read the answer in the HTTP Client.
+
 </div>
 
 ## Where to go next
