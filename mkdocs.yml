@@ -44,7 +44,10 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - tables
-  - toc: { permalink: true }
+  - toc:
+      permalink: true
+      # GitHub-style slugs, so anchors written for the repository view keep working on the site.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
   - pymdownx.keys
   - pymdownx.superfences:
       custom_fences:
