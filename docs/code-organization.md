@@ -56,13 +56,16 @@ of its job, and `configset.navigation` names both aspects' reference types becau
 provider has to label a hit from either. That is not a leak — it is the composition the shared layer
 exists to perform, and it is the reason those capabilities sit above the aspects rather than inside
 one. The test is direction, not co-occurrence: sideways between aspects is forbidden, downward from
-the shared layer into both is the design.
+the shared layer into both is the design. `SolrPackageBoundaryContractTest` walks the source tree
+and fails on any file in either aspect that names the other.
 
 `org.apache.solr.ide.model` is outside the surfaces, and earns it twice over. It is what both
 sources read — `SolrFact` exists precisely to hold a repository value *and* a server value — so
 filing it under either would be wrong. And it is the only tree with no IntelliJ types anywhere in
 it, which is what lets the correctness-critical code be tested as a plain unit test over a string
-rather than inside a running IDE.
+rather than inside a running IDE. The plain tests would not notice if that stopped being true —
+the platform is on their classpath either way — so `SolrPackageBoundaryContractTest` holds it
+instead, for `model`, both `parsing` packages and the `SolrXmlDocuments` they are built on.
 
 Inside `model` the same distinction runs again. `model.schema` is what a field *is*, whichever
 source described it; `model.vocabulary` is what a configuration file may legally contain. The test
