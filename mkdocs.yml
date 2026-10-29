@@ -46,7 +46,11 @@ markdown_extensions:
   - tables
   - toc: { permalink: true }
   - pymdownx.keys
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed: { alternate_style: true }
 
 # Contributor pages link to specs and source outside docs/; the hook fixes the common cases and the
@@ -67,7 +71,7 @@ nav:
       - Solr configuration files: solr-configuration-files.md
       - Glossary: glossary.md
       - Platform mechanisms: platform-mechanisms.md
-      - API reference (KDoc): https://adityamparikh.github.io/solr-intellij-plugin/api/index.html
+      - API reference: api-reference.md
   - Contributing:
       - Contributing: contributing.md
       - Project orientation: project-orientation.md
