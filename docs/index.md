@@ -18,7 +18,7 @@ a live view of a Solr server, and field-name checking in the Java and Kotlin tha
 
 | Surface | What you get |
 |---|---|
-| **Configuration files** | Eleven inspections with quick-fixes, completion over Solr's own vocabulary, cross-file navigation and rename, quick documentation, and inline hints saying what each field can match. |
+| **Configuration files** | Twelve inspections with quick-fixes, completion over Solr's own vocabulary, cross-file navigation and rename, quick documentation, and inline hints saying what each field can match. |
 | **A live server** | Connections kept in the IDE's password safe, a collections/shards/replicas tool window, queries through the HTTP Client or a query console, a drift view with upload and reload, and a test-document editor. |
 | **Java and Kotlin using SolrJ** | Unknown field names flagged, completion offering only the fields a call can use, navigation to the declaration, coloured query strings, and a run-from-gutter action. |
 
