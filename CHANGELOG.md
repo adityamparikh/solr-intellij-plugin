@@ -28,6 +28,16 @@ Ultimate — is the next release.
   summary above each response, with the scoring explanation when asked; and field-name completion in
   a JSON request body. Right-click a collection, core or field in the Solr tool window to open a
   ready-to-run request for it in a scratch file.
+- **A query console with Solr Admin's query form**, in an editor tab named `Query: <collection>`:
+  the request handler, `q`, `fq`, `sort`, `fl` and the rest, a parser choice that shows dismax's and
+  edismax's own parameters, and raw `name=value` lines — each value in its own input, so `&`, `+`
+  and `#` need no escaping. <kbd>Ctrl+Enter</kbd> runs it and the answer appears below the form: the
+  request line, the same summary table, and the response exactly as Solr sent it. A parameter left
+  at its default is not sent, so the handler's own defaults apply. Field names complete in `fl`,
+  `sort`, `df` and the dismax fields, on <kbd>Ctrl-Space</kbd> only. *Open as .http* turns a query
+  into a scratch `.http` file to keep. Settings → Tools → Solr Connections → *Open queries from the
+  Solr tool window in* decides which of the two the tool window's right-click items open; the HTTP
+  Client stays the default.
 - **The drift view.** A configset compared with a collection: fields not deployed, only on the
   server, or defined differently, with both sides shown. Upload and reload, and additive Schema API
   changes — each confirming its target first, and each followed by a fresh read of the server rather
