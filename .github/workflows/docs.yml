@@ -36,7 +36,7 @@ jobs:
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       - name: Setup Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -46,7 +46,7 @@ jobs:
           cache-dependency-path: site-tools/requirements.txt
 
       - name: Install MkDocs
-        run: pip install -r site-tools/requirements.txt
+        run: pip install --only-binary :all: --require-hashes -r site-tools/requirements.txt
 
       - name: Generate API reference
         run: ./gradlew dokkaGenerate
