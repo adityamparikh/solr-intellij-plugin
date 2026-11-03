@@ -46,7 +46,7 @@ jobs:
           cache-dependency-path: site-tools/requirements.txt
 
       - name: Install MkDocs
-        run: pip install --only-binary :all: --require-hashes -r site-tools/requirements.txt
+        run: "pip install --only-binary :all: --require-hashes -r site-tools/requirements.txt"
 
       - name: Generate API reference
         run: ./gradlew dokkaGenerate
