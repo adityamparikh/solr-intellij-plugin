@@ -68,6 +68,7 @@ validation:
 nav:
   - Home: index.md
   - Using the plugin:
+      - Quick start: quick-start.md
       - Installing: installing.md
       - User guide: user-guide.md
       - Inspection catalog: inspection-catalog.md

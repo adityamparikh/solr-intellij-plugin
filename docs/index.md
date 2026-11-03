@@ -9,7 +9,7 @@ a live view of a Solr server, and field-name checking in the Java and Kotlin tha
 
 - **Trying it for the first time**
 
-    [Installing](installing.md) — what you need, how to build and install it, and why a silent IDE is the
+    [Quick start](quick-start.md) — ten minutes in the demo project. Or [Installing](installing.md) — what you need, how to build and install it, and why a silent IDE is the
     expected first surprise. Then [the user guide](user-guide.md).
 
 - **Using it every day**
