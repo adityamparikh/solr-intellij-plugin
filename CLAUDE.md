@@ -83,14 +83,16 @@ inspections and completion override `isDumbAware()`, documentation and inlay pro
 **Nothing in the `org.apache.solr.ide.model` tree imports an IntelliJ type.** That is what lets a
 third of the suite be plain JUnit 4 with no fixture. Inside it, `model.schema` is what a field *is*
 and `model.vocabulary` is what a configuration file may legally contain — the test being whether a
-server reader would need the thing to interpret what it fetched.
+server reader would need the thing to interpret what it fetched. `SolrPackageBoundaryContractTest`
+holds this, and the same for both `parsing` packages.
 
 **`configset.schema` and `configset.solrconfig` must never import each other.** That is the whole
 prohibition, and it is one-directional rather than a ban on the two aspects appearing together: a
 shared package **may** import both, because composing them is what makes it shared.
 `configset.reading` imports both parsers, since dispatching on the file kind is its job, and
 `configset.navigation` imports both aspects' reference types, since labelling usages from either is
-its job. What neither aspect may do is reach sideways for the other.
+its job. What neither aspect may do is reach sideways for the other, and
+`SolrPackageBoundaryContractTest` fails the build if one does.
 
 A capability falls under an aspect when the caret that triggers it is always in that aspect's file;
 one that traverses the configset — Find Usages, rename — belongs to `configset.navigation`, because
