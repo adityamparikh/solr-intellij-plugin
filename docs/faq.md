@@ -28,7 +28,10 @@ rest of the page is the follow-up questions it provokes.
 
 ![Quick documentation on a class value, with five regions marked: the short name and kind, the
 fully-qualified class name, the one-sentence Javadoc summary, the accepted attributes, and the
-Reference Guide link](images/03-quick-doc-class-annotated.png)
+Reference Guide link](images/03-quick-doc-class-annotated-light.png#only-light)
+![Quick documentation on a class value, with five regions marked: the short name and kind, the
+fully-qualified class name, the one-sentence Javadoc summary, the accepted attributes, and the
+Reference Guide link](images/03-quick-doc-class-annotated-dark.png#only-dark)
 
 | | What you see | Where it came from |
 |---|---|---|
@@ -44,7 +47,9 @@ fetched, and no prose was copied from the guide the popup links to.
 **A field.** Hovering `name="category"` asks a different question, and gets a different mix:
 
 ![Quick documentation on a field, with four regions marked: the field and type header, the match
-summary, the Value and From columns, and the Accepts and Meaning columns](images/02-quick-doc-field-annotated.png)
+summary, the Value and From columns, and the Accepts and Meaning columns](images/02-quick-doc-field-annotated-light.png#only-light)
+![Quick documentation on a field, with four regions marked: the field and type header, the match
+summary, the Value and From columns, and the Accepts and Meaning columns](images/02-quick-doc-field-annotated-dark.png#only-dark)
 
 | | What you see | Where it came from |
 |---|---|---|
