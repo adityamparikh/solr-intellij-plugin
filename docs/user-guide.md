@@ -643,8 +643,10 @@ a server holding thirty of them would turn opening this window into thirty reque
 **What that row shows is not the schema.** It is what the index actually holds, which includes every
 field a dynamic pattern created at index time:
 
-![A collection's Fields row expanded: 10 fields, 2 from dynamic patterns, 4 documents; author_s marked
-as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields.png)
+![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked
+as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-light.png#only-light)
+![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked
+as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-dark.png#only-dark)
 
 `author_s` appears in no configset anywhere — the configset declares `*_s`, and the index holds what
 matched it. `price_f` shows no document count because Solr reports none for a point field, having no
