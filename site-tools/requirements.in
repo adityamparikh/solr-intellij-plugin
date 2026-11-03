@@ -1,0 +1,5 @@
+# Direct dependencies. Regenerate the hash-locked requirements.txt beside it with:
+#   pip-compile --generate-hashes --strip-extras --output-file=site-tools/requirements.txt site-tools/requirements.in
+# (run under the Python version docs.yml uses). Pinned so a Pages build is reproducible.
+mkdocs-material==9.7.7
+mkdocs==1.6.1
