@@ -142,7 +142,9 @@ in the schema) shows nothing at all. (Verified by
 [the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).)
 
 ![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
-matches and how it is stored](images/01-hints-match-capability.png)
+matches and how it is stored](images/01-hints-match-capability-light.png#only-light)
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
+matches and how it is stored](images/01-hints-match-capability-dark.png#only-dark)
 
 ---
 
@@ -166,7 +168,9 @@ restating the property name.
 [the quick-documentation checks on a field](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](images/02-quick-doc-field.png)
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-light.png#only-light)
+![Quick documentation for the field category: a properties table giving each property's value, where
+that value came from, what it accepts, and what it means](images/02-quick-doc-field-dark.png#only-dark)
 
 ### On a class value
 
@@ -181,7 +185,9 @@ is fetched at edit time or copied out of the guide it links to — see [the FAQ]
 (Verified by [the quick-documentation check on a class value](manual-test-suite.md#5-quick-documentation-doc).)
 
 ![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class.png)
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-light.png#only-light)
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
+name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-dark.png#only-dark)
 
 ### On the schema's own elements
 
@@ -253,7 +259,10 @@ hover or ⌃J is the reliable gesture. (Verified by
 
 ![Quick documentation on the schema's version attribute: the general rule, then what this
 configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
-off](images/16-hover-schema-version.png)
+off](images/16-hover-schema-version-light.png#only-light)
+![Quick documentation on the schema's version attribute: the general rule, then what this
+configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
+off](images/16-hover-schema-version-dark.png#only-dark)
 
 ### On a `solrconfig.xml` parameter or parser name
 
@@ -294,7 +303,10 @@ Undo the space afterwards. (Verified by
 
 ![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
 multiValued, omitNorms and more, each with a one-line summary and the values it
-accepts](images/05-completion-field-properties.png)
+accepts](images/05-completion-field-properties-light.png#only-light)
+![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
+multiValued, omitNorms and more, each with a one-line summary and the values it
+accepts](images/05-completion-field-properties-dark.png#only-dark)
 
 ### Catalog-backed classes and factory attributes
 
@@ -312,7 +324,10 @@ already declares them). Undo the space afterwards. (Verified by
 
 ![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
 luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](images/06-completion-factory-attributes.png)
+from](images/06-completion-factory-attributes-light.png#only-light)
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
+luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
+from](images/06-completion-factory-attributes-dark.png#only-dark)
 
 ### `solrconfig.xml`'s own structure
 
@@ -331,7 +346,10 @@ typed character afterwards. (Verified by
 
 ![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
 vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
-tags](images/10-completion-solrconfig-structure.png)
+tags](images/10-completion-solrconfig-structure-light.png#only-light)
+![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
+vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
+tags](images/10-completion-solrconfig-structure-dark.png#only-dark)
 
 ### Field names inside `solrconfig.xml` parameters
 
@@ -353,7 +371,9 @@ same rule the schema-vocabulary completion above documents. (Verified by
 [the checks on field-name completion inside solrconfig.xml parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
-their types, including the *_t dynamic pattern](images/13-completion-parameter-fields.png)
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-light.png#only-light)
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
+their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-dark.png#only-dark)
 
 **Try the parameter-name half too** — add a new `<str name="` line inside `<lst name="defaults">`
 and invoke completion there instead of inside a value: Solr's own parameter names are offered, each
@@ -364,7 +384,9 @@ which is this behaving correctly rather than a sparse or broken popup. (Verified
 [the checks on parameter-name completion](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
 
 ![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
-terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names.png)
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-light.png#only-light)
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
+terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-dark.png#only-dark)
 
 ---
 
@@ -403,9 +425,12 @@ itself, which the platform's own word index cannot find on its own.
   [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).)
 
 ![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
-declaring this type'](images/07-find-usages-field-type.png)
+declaring this type'](images/07-find-usages-field-type-light.png#only-light)
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
+declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 
-![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference.png)
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-light.png#only-light)
+![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-dark.png#only-dark)
 
 **What does not navigate, and why that is correct.** `class="solr.SearchHandler"` in the demo's
 `/select` handler resolves nowhere, and draws no warning for failing to — the demo depends only on
@@ -439,10 +464,14 @@ undoes both files as one refactoring — confirm with `git status --short demo/`
 [the rename checks that the dialog is labelled correctly and the cross-file update follows](manual-test-suite.md#4a-rename-ren).)
 
 ![solrconfig.xml's qf parameter before a rename, reading name^3 description
-category](images/14-rename-cross-file-before.png)
+category](images/14-rename-cross-file-before-light.png#only-light)
+![solrconfig.xml's qf parameter before a rename, reading name^3 description
+category](images/14-rename-cross-file-before-dark.png#only-dark)
 
 ![The same qf parameter immediately after renaming category to product_category from the schema
-declaration — updated with no separate edit](images/14-rename-cross-file-after.png)
+declaration — updated with no separate edit](images/14-rename-cross-file-after-light.png#only-light)
+![The same qf parameter immediately after renaming category to product_category from the schema
+declaration — updated with no separate edit](images/14-rename-cross-file-after-dark.png#only-dark)
 
 ---
 
@@ -502,7 +531,10 @@ shows none. Both are deliberate fixtures and should never be "fixed." (Verified 
 
 ![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
 open above it offering to change the name to *_t, category, description, legacy, name or
-notes](images/04-inspection-copyfield-quickfix.png)
+notes](images/04-inspection-copyfield-quickfix-light.png#only-light)
+![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
+open above it offering to change the name to *_t, category, description, legacy, name or
+notes](images/04-inspection-copyfield-quickfix-dark.png#only-dark)
 
 ---
 
@@ -526,7 +558,9 @@ full strength. (Verified by
 [the restated-default dimming checks](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).)
 
 ![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
-defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default.png)
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-light.png#only-light)
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
+defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-dark.png#only-dark)
 
 ---
 
@@ -550,7 +584,10 @@ still parses. (Verified by
 
 ![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
 prefix-capable companion field' intentions, with the exact-match explanation shown
-alongside](images/12-intention-companion-fields.png)
+alongside](images/12-intention-companion-fields-light.png#only-light)
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
+prefix-capable companion field' intentions, with the exact-match explanation shown
+alongside](images/12-intention-companion-fields-dark.png#only-dark)
 
 ---
 
@@ -564,7 +601,9 @@ a URL and optionally a username; the password goes to the IDE's password safe an
 file, so a workspace that leaks is an inventory of hostnames rather than of credentials.
 
 ![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
-the text under it saying a password is stored](images/22-connections-settings.png)
+the text under it saying a password is stored](images/22-connections-settings-light.png#only-light)
+![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
+the text under it saying a password is stored](images/22-connections-settings-dark.png#only-dark)
 
 Two things worth knowing before you wonder whether something is broken:
 
@@ -582,7 +621,10 @@ replicas for a SolrCloud server, or cores for a standalone one.
 
 ![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
 health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
-icon on the stripe](images/23-collections-topology.png)
+icon on the stripe](images/23-collections-topology-light.png#only-light)
+![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
+health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
+icon on the stripe](images/23-collections-topology-dark.png#only-dark)
 
 **A collection's and a shard's health is the coloured dot before its name**: green, yellow, orange
 or red, as SolrCloud reports it. Hover the row for the word itself — `Health: GREEN` — so the colour
@@ -649,7 +691,10 @@ Run one and the response gains a readable summary above its raw JSON:
 
 ![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
 a table of three TV shows, the parsed query, and the start of each document's scoring
-explanation](images/25-query-and-results.png)
+explanation](images/25-query-and-results-light.png#only-light)
+![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
+a table of three TV shows, the parsed query, and the start of each document's scoring
+explanation](images/25-query-and-results-dark.png#only-dark)
 
 **Matches and returned rows are stated separately** because they routinely differ — conflating them
 is how someone concludes their query found three documents when it found nine thousand and showed
@@ -663,7 +708,9 @@ Inside a JSON request body, **field names complete** in `fields`, `sort` and a f
 Each entry reads `books · local`, so it is always clear which server answered.
 
 ![Completion inside a JSON request body's fields array, offering the books collection's fields each
-labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema.png)
+labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-light.png#only-light)
+![Completion inside a JSON request body's fields array, offering the books collection's fields each
+labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-dark.png#only-dark)
 
 **Only <kbd>Ctrl-Space</kbd> contacts the server.** The first time you ask, the plugin reads that
 collection's schema once and remembers it; every popup after that, including the ones that open while
@@ -741,7 +788,10 @@ you:
 
 ![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
 declares with a sample value of each field's type, and saying the document matches the collection's
-schema](images/31-index-test-document.png)
+schema](images/31-index-test-document-light.png#only-light)
+![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
+declares with a sample value of each field's type, and saying the document matches the collection's
+schema](images/31-index-test-document-dark.png#only-dark)
 
 A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
 one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
@@ -768,7 +818,10 @@ Three kinds of difference, and the plugin treats them very differently:
 
 ![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
 only on the server, category not deployed, and description differing, selected, with the reason the
-plugin will not send its replace-field request shown above the request](images/19-drift-three-states.png)
+plugin will not send its replace-field request shown above the request](images/19-drift-three-states-light.png#only-light)
+![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
+only on the server, category not deployed, and description differing, selected, with the reason the
+plugin will not send its replace-field request shown above the request](images/19-drift-three-states-dark.png#only-dark)
 
 **The collection chooser lists what the selected server holds**, read when you open it, and says
 which configset each collection was built from. Compare a configset against a collection built
@@ -786,7 +839,9 @@ offered — because "why can this not be applied" deserves a better answer than 
 and because reading what a tool would do before deciding is the point.
 
 ![A Differs row selected, the pane below it saying This plugin will not send this request, then the
-reason, then the replace-field request](images/20-drift-refused-payload.png)
+reason, then the replace-field request](images/20-drift-refused-payload-light.png#only-light)
+![A Differs row selected, the pane below it saying This plugin will not send this request, then the
+reason, then the replace-field request](images/20-drift-refused-payload-dark.png#only-dark)
 
 **Why a changed field is never applied for you.** Solr accepts a `replace-field` that changes a
 field's type, and reports success. Every document already indexed keeps the encoding it was written
@@ -818,10 +873,14 @@ accepted the request, not that the server now agrees — the two really do come 
 this is worth saying twice.
 
 ![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
-pane below](images/21-drift-apply-before.png)
+pane below](images/21-drift-apply-before-light.png#only-light)
+![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
+pane below](images/21-drift-apply-before-dark.png#only-dark)
 
 ![The same comparison after applying: no rows, and the summary saying books and books agree across 22
-declarations](images/21-drift-apply-after.png)
+declarations](images/21-drift-apply-after-light.png#only-light)
+![The same comparison after applying: no rows, and the summary saying books and books agree across 22
+declarations](images/21-drift-apply-after-dark.png#only-dark)
 
 **Try it.** You need a configset in the project *and* a collection on the server that was created
 from it. Add a field to that configset's schema, open **Drift**, choose the configset, choose the
@@ -847,7 +906,9 @@ and returns nothing — Solr answers a query against a field that does not exist
 rather than an error, so the typo arrives as an empty page in production.
 
 ![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
-each marked, while id and name in the same string are left alone](images/26-code-field-warning.png)
+each marked, while id and name in the same string are left alone](images/26-code-field-warning-light.png#only-light)
+![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
+each marked, while id and name in the same string are left alone](images/26-code-field-warning-dark.png#only-dark)
 
 The mark covers the name and stops at the colon — not the string, not the line. `categry` is a typo
 for a field that exists; `price` is spelled correctly and has never existed. Both compile.
@@ -884,7 +945,10 @@ string in your code keeps the IDE's usual rule of not opening a popup while you 
 
 ![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
 on its own, offering description from the solr configset with its type,
-text_general](images/32-code-completion-popup.png)
+text_general](images/32-code-completion-popup-light.png#only-light)
+![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
+on its own, offering description from the solr configset with its type,
+text_general](images/32-code-completion-popup-dark.png#only-dark)
 
 **Only where a field name goes, not everywhere in the string.** In a query that is before the colon
 of each clause: `setQuery("category:books AND n` offers fields, `setQuery("category:b` does not,
@@ -917,7 +981,9 @@ connects. A field name in code and its declaration in XML are related by convent
 the tooling can see.
 
 ![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
-declaring category](images/28-code-navigate-to-schema.png)
+declaring category](images/28-code-navigate-to-schema-light.png#only-light)
+![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
+declaring category](images/28-code-navigate-to-schema-dark.png#only-dark)
 
 It works from all four places a name is written: a query-builder call, a field list, a document being
 built, and a `@Field` binding. Where the project holds several configsets it resolves against the
@@ -933,7 +999,9 @@ A query in a string is one colour end to end, so you do the parsing. The field n
 operators are now told apart:
 
 ![A setQuery call in which category and name are in the field colour and AND in the operator colour,
-picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour.png)
+picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-light.png#only-light)
+![A setQuery call in which category and name are in the field colour and AND in the operator colour,
+picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-dark.png#only-dark)
 
 **This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
 scan that reads field names for the check decides what to colour, so a name the check reports is a
@@ -957,7 +1025,9 @@ selected, and the answer appears where you are reading — the same summary the 
 [query console](#the-query-console) show above a response.
 
 ![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
-against and listing products](images/29-code-run-from-gutter.png)
+against and listing products](images/29-code-run-from-gutter-light.png#only-light)
+![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
+against and listing products](images/29-code-run-from-gutter-dark.png#only-dark)
 
 **A query in code names no collection**, so you are asked which one, from the list the server
 actually holds. `setQuery("category:books")` says what to match and nothing about where; the

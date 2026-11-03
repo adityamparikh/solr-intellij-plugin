@@ -29,9 +29,14 @@ gets published.
 
 ## Conventions
 
-**Light theme, default font size.** GitHub renders these on white for most readers, and a dark-theme
-capture inverts badly beside light-theme prose. Default font size keeps successive captures
-comparable and readable when scaled down.
+**Light and dark, default font size.** The published site has a theme toggle, so a capture is taken
+twice, once per theme, and named `<name>-light.png` and `<name>-dark.png`. Embed the pair together:
+`![alt](images/<name>-light.png#only-light)` followed by `![alt](images/<name>-dark.png#only-dark)`.
+The site shows the one matching the reader's theme; GitHub's file view shows both, one after the
+other. Take both in the same session so the chrome matches. Switch with **Switch…** (<kbd>Ctrl-`</kbd>):
+*Theme* → **Light with Light Header** with *Editor Color Scheme* → **Light**, and **Islands Dark**
+for both on the dark side. Default font size keeps successive captures comparable and readable when
+scaled down. Images that predate the pairs are light-only and are named `<name>.png`.
 
 **Crop to the feature.** Exclude the IDE title bar, the project name, and the branch chip. They date
 the image, leak whatever branch you happened to be on, and add nothing — the first capture in this
