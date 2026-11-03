@@ -49,6 +49,9 @@ markdown_extensions:
       # GitHub-style slugs, so anchors written for the repository view keep working on the site.
       slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
   - pymdownx.keys
+  - pymdownx.snippets:
+      base_path: ['.']
+      check_paths: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -70,11 +73,13 @@ nav:
       - Inspection catalog: inspection-catalog.md
       - Compatibility: compatibility.md
       - FAQ: faq.md
+      - Release notes: changelog.md
   - Reference:
       - Solr configuration files: solr-configuration-files.md
       - Glossary: glossary.md
       - Platform mechanisms: platform-mechanisms.md
       - API reference: api-reference.md
+      - Extension points: extension-points.md
   - Contributing:
       - Contributing: contributing.md
       - Project orientation: project-orientation.md
