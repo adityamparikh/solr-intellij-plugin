@@ -19,3 +19,7 @@
 # nine of them reached main in one commit because a `git add -A` ran where they were sitting.
 .playwright-mcp/
 check*.png
+
+# MkDocs hook bytecode
+__pycache__/
+*.pyc

@@ -1,0 +1,3 @@
+/* Screenshots are captured per IDE theme; pair them with #only-light / #only-dark. */
+.md-typeset img { border-radius: 6px; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
+.md-typeset img[src*="#only-"] { max-width: 100%; height: auto; }
