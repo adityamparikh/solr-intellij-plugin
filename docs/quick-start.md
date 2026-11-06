@@ -32,21 +32,22 @@ field's real analyzer chain; it does not guess from the type's name.
 
 ## 3. Ask where a value came from
 
-Put the caret in `name="category"` on line 70 and press <kbd>Ctrl-J</kbd> (<kbd>F1</kbd> on some
-keymaps). The popup lists every property with its value and **From** column: set on this field, set
+Put the caret in `name="category"` on line 70 and press <kbd>Ctrl-J</kbd> (the Control key on a
+Mac too; <kbd>F1</kbd> on some keymaps). The popup lists every property with its value and **From** column: set on this field, set
 by its type, or Solr's own default. This is the one thing the Reference Guide cannot tell you.
 
 ## 4. Get a typo caught
 
 Line 92 is `<copyField source="manufacturer" …>`, and no field called `manufacturer` exists. It is
-underlined. Press <kbd>Alt-Enter</kbd> on it for the quick-fix menu, which offers the fields that do
+underlined. Press <kbd>Alt-Enter</kbd> (<kbd>⌥⏎</kbd> on a Mac) on it for the quick-fix menu, which offers the fields that do
 exist. A `copyField` like this fails only when a core reloads, so catching it in the editor moves the
 discovery to the moment the file is open.
 
 ## 5. Complete from Solr's own vocabulary
 
 On line 70, put the caret after `stored="true"` and before the `/`, type a space, then press
-<kbd>Ctrl-Space</kbd>. The popup offers the field properties Solr reads, each with a one-line summary.
+<kbd>Ctrl-Space</kbd> (Control on a Mac too; if nothing happens, macOS may have claimed it for
+switching input sources). The popup offers the field properties Solr reads, each with a one-line summary.
 Undo the space afterwards.
 
 ## 6. Catch the same mistake in Java
