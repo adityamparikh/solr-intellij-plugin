@@ -1,3 +1,8 @@
+---
+hide:
+  - toc
+---
+
 # Solr Support for IntelliJ
 
 IDE tooling for Apache Solr development in IntelliJ IDEA: language intelligence for configset XML,
@@ -103,12 +108,26 @@ Compare a configset with a live collection, and see the request that would close
 
 A starting document written from the collection's schema, checked before anything is sent.
 
-**Run a query**
+**Index a document and find it**
+
+<video src="videos/index-document-light.mp4#only-light" poster="videos/posters/index-document-light.jpg" controls loop muted playsinline preload="none" aria-label="Index a document and find it: Send a test document, then search the console for it: one document, the one just indexed."></video>
+<video src="videos/index-document-light.mp4#only-dark" poster="videos/posters/index-document-light.jpg" controls loop muted playsinline preload="none" aria-label="Index a document and find it: Send a test document, then search the console for it: one document, the one just indexed."></video>
+
+Send a test document, then search the console for it: one document, the one just indexed.
+
+**Run a query in the HTTP Client**
 
 <video src="videos/query-light.mp4#only-light" poster="videos/posters/query-light.jpg" controls loop muted playsinline preload="none" aria-label="Run a query: Right-click a collection, run the generated request, and read the answer in the HTTP Client."></video>
 <video src="videos/query-dark.mp4#only-dark" poster="videos/posters/query-dark.jpg" controls loop muted playsinline preload="none" aria-label="Run a query: Right-click a collection, run the generated request, and read the answer in the HTTP Client."></video>
 
 Right-click a collection, run the generated request, and read the answer in the HTTP Client.
+
+**Run a query in the console**
+
+<video src="videos/query-console-light.mp4#only-light" poster="videos/posters/query-console-light.jpg" controls loop muted playsinline preload="none" aria-label="Run a query in the console: The query console is the Admin UI's form inside the IDE: edit q and fq, Execute with ⌘Enter, and read the results or Solr's raw response."></video>
+<video src="videos/query-console-light.mp4#only-dark" poster="videos/posters/query-console-light.jpg" controls loop muted playsinline preload="none" aria-label="Run a query in the console: The query console is the Admin UI's form inside the IDE: edit q and fq, Execute with ⌘Enter, and read the results or Solr's raw response."></video>
+
+The query console is the Admin UI's form inside the IDE: edit q and fq, Execute with ⌘Enter, and read the results or Solr's raw response.
 
 ### Code
 
