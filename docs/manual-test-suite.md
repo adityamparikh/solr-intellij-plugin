@@ -89,7 +89,7 @@ correct file is a bug.
       match claim. `legacy` (undeclared type `discontinued`) shows no hint at all.
 - [ ] 📸 **`docs/images/01-hints-match-capability.png`** — the field block at lines 66–77, all nine
       fields, no interaction.
-      [Catalog entry 1](screenshots.md#1-match-capability-hints--01-hints-match-capabilitypng).
+      [Catalog entry 1](screenshots.md#the-catalog).
 
 ## 4. Navigation and [Find Usages](glossary.md#find-usages) (NAV)
 
@@ -127,14 +127,14 @@ correct file is a bug.
       index.*
 - [ ] 📸 **`docs/images/07-find-usages-field-type.png`** — NAV-3's window, invoked from the
       `<fieldType name="text_general">` declaration.
-      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
+      [Catalog entry 7](screenshots.md#the-catalog).
 - [ ] 📸 **`docs/images/08-nav-solrconfig-field-reference.png`** — Cmd+hover `name` at
       `solrconfig.xml:28`, framing the tooltip.
-      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
+      [Catalog entry 8](screenshots.md#the-catalog).
 - [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** — caret on `words="stopwords.txt"` at
       `managed-schema.xml:34`, then **Quick Definition**. Do not publish the hover: its tooltip is an
       absolute path through your home directory.
-      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
+      [Catalog entry 9](screenshots.md#the-catalog).
 
 ## 4a. [Rename](glossary.md#rename-refactoring) (REN)
 
@@ -197,7 +197,7 @@ Quick documentation is F1, ⌃J or hover.
 - [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** — caret in `name="category"` at line 70,
       F1, cropped to the popup including the `uninvertible` row. Check the catalog entry first: it waits
       on `omitNorms` and `docValues` resolving from the field type's class.
-      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
+      [Catalog entry 2](screenshots.md#the-catalog).
 
 ## 6. [Inspections](glossary.md#inspection) and [quick-fixes](glossary.md#quick-fix) (INSP)
 
@@ -213,7 +213,7 @@ Every check ends with **undo until [the baseline](#2-zero-false-positive-baselin
 - [ ] 📸 **`docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted* `manufacturer` rule at
       line 92, so no undo is needed. Frame the underline and the open Alt-Enter menu, then Escape —
       every item rewrites the file.
-      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
+      [Catalog entry 4](screenshots.md#the-catalog).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: a red wave; the fix offers the declared
       types, and applying one leaves a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field: its copy rule is flagged at once, without saving.
@@ -279,7 +279,7 @@ Every check ends with **undo until [the baseline](#2-zero-false-positive-baselin
       **false**. Undo. *DOC-5 and DOC-6's claim, where a reader meets it first.*
 - [ ] 📸 **`docs/images/05-completion-field-properties.png`** — caret after `stored="true"` on line 70,
       before the `/`, type a space; frame the summaries and accepted values. Undo the space.
-      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--05-completion-field-propertiespng).
+      [Catalog entry 5](screenshots.md#the-catalog).
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -291,7 +291,7 @@ Every check ends with **undo until [the baseline](#2-zero-false-positive-baselin
 - [ ] 📸 **`docs/images/06-completion-factory-attributes.png`** — the `EdgeNGramFilterFactory` at line
       48, caret before the closing `/`, space; frame `luceneMatchVersion` and `preserveOriginal`, which
       it does not already declare.
-      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--06-completion-factory-attributespng).
+      [Catalog entry 6](screenshots.md#the-catalog).
 - [ ] **CAT-3** — `class=` on a `<requestHandler>` in `solrconfig.xml` offers `solr.SearchHandler` and
       `solr.UpdateRequestHandler`, and no `solr.SchemaCodecFactory` or field type. `<directoryFactory>`
       and `<codecFactory>` each offer their own handful.

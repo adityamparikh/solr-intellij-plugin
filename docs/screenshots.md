@@ -1,927 +1,110 @@
 # Screenshot catalog
 
-> **Who this is for.** Someone about to take or verify a screenshot for this repo's documentation,
-> mid-capture in the sandbox — not someone browsing for an explanation of a feature.
-> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
-> [Manual test suite](manual-test-suite.md), whose gestures every capture here follows
-
-The images that document what this plugin does, and how to reproduce each one. This document owns
-three things: **what each image must show**, **the gesture that produces it**, and **what change
-invalidates it**.
-
-It deliberately does not own two things. The gestures themselves belong to
-[the manual test suite](manual-test-suite.md) — every capture below is a check that suite already
-describes, and the wording there is the authority on what the feature is supposed to do. Which
-features exist belongs to [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md); an image
-joins the catalog when its feature ships, the same rule the test suite follows.
-
-**Capture them during a manual pass.** The gestures are identical, the [sandbox](glossary.md#sandbox) is already open, and
-a screenshot is evidence that the check passed rather than a separate errand. A pass that produces
-no new images is fine; a pass that produces images without running the checks is how a stale picture
-gets published.
-
-> **In Java terms.** A capture in this catalog behaves like a golden-file test's expected output —
-> evidence a specific gesture produced a specific result, tied to a commit. Unlike a golden file,
-> nothing here diffs it automatically, so it can go stale in two independent ways that no build
-> catches: its **crop** (leaking a branch name, or framing the wrong popup) and its **contents**
-> (the feature it shows having since changed). Entry 10 went stale both ways within the same hour,
-> which is worth knowing before assuming a correct-looking crop means a correct picture.
+What each documentation image shows, the gesture that produces it, and what change makes it stale.
+The gestures follow [the manual test suite](manual-test-suite.md), which is the authority on what a
+feature should do; take captures during a manual pass, so an image is evidence the check passed.
 
 ## Conventions
 
-**Light and dark, default font size.** The published site has a theme toggle, so a capture is taken
-twice, once per theme, and named `<name>-light.png` and `<name>-dark.png`. Embed the pair together:
-`![alt](images/<name>-light.png#only-light)` followed by `![alt](images/<name>-dark.png#only-dark)`.
-The site shows the one matching the reader's theme; GitHub's file view shows both, one after the
-other. Take both in the same session so the chrome matches. Switch with **Switch…** (<kbd>Ctrl-`</kbd>):
-*Theme* → **Light with Light Header** with *Editor Color Scheme* → **Light**, and **Islands Dark**
-for both on the dark side. Default font size keeps successive captures comparable and readable when
-scaled down. Images that predate the pairs are light-only and are named `<name>.png`.
+**Light and dark, default font size.** Take every capture twice in the same session, named
+`<name>-light.png` and `<name>-dark.png`, and embed the pair together:
+`![alt](images/<name>-light.png#only-light)` then `![alt](images/<name>-dark.png#only-dark)`. The
+site shows the one matching the reader's theme; GitHub shows both. Switch with **Switch…**
+(<kbd>Ctrl-`</kbd>): *Theme* **Light with Light Header** with *Editor Color Scheme* **Light**, and
+**Islands Dark** for both. The unsuffixed `<name>.png` files are older light-only captures.
 
-**Crop to the feature.** Exclude the IDE title bar, the project name, and the branch chip. They date
-the image, leak whatever branch you happened to be on, and add nothing — the first capture in this
-catalog leaked `feat/catalog-attribute-de` in its top-left corner before it was cropped out.
+**Crop to the feature.** Leave out the title bar, project name, branch chip and editor tabs that
+name unrelated files: they date the image and leak whatever you happened to be working on. Prefer
+gestures that do not show an absolute path, which is someone's home directory.
 
-**Names describe the capability, not the gesture.** `hints-match-capability`, not
-`inlay-hover-demo`. Kebab-case, `.png`, in `docs/images/`.
+**Name the capability, not the gesture**: `hints-match-capability`, not `inlay-hover-demo`.
+Kebab-case `.png` in `docs/images/`, with a two-digit prefix carrying the entry number below. A
+before/after or annotated variant shares its entry's number.
 
-**A two-digit prefix carries the catalog entry number**, so the directory lists in the order this
-document reads and a file says which entry owns it: `01-hints-match-capability.png` for entry 1. An
-annotated pair takes its entry's number rather than one of its own — `02-quick-doc-field.png` and
-`02-quick-doc-field-annotated.png` sort together because they document the same popup. The prefix is
-positional and the name is not: renumbering an entry renames its file, which is the cost of having
-the order visible, and the reason the name still has to stand on its own.
+**Annotate only where prose explains the markers.** Bake numbered markers into the pixels and put
+every word of explanation in the Markdown beside the image, so a reshoot never invalidates the text.
+An annotated image is a second file (`<name>-annotated`), never a replacement;
+[how quick documentation works](faq.md) is the worked example.
 
-**Annotate only where the prose needs it.** Bake numbered markers into the pixels and nothing else;
-every word of explanation lives in the markdown beside the image. A re-shot screenshot then never
-invalidates the text around it. `docs/faq.md` is the worked example.
+**Every image carries alt text** that says what it shows, so a reader who cannot see it loses only
+the illustration.
 
-**An annotated image is a second file, never a replacement.** `<name>.png` is the clean capture that
-shows the capability; `<name>-annotated.png` carries the markers and belongs only where the prose
-explains what they mean. Publishing a marked-up image somewhere without that explanation leaves a
-reader with numbered circles and no key.
+**[Dokka](glossary.md#dokka) needs absolute URLs.** `docs/Module.md` is a Dokka input, so images
+there use `https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/images/<name>.png`.
 
-**[Dokka](glossary.md#dokka) needs absolute URLs.** `docs/Module.md` is a Dokka input, so a relative image path breaks in
-the rendered API docs. Reference images there as
-`https://github.com/adityamparikh/solr-intellij-plugin/blob/main/docs/images/<name>.png`, matching
-how that file already links. Relative paths are correct everywhere else.
+**Leave the demo clean.** The demo's defects are deliberate. Undo any typing, and after a gesture
+that edits a file run `git checkout -- demo/` and confirm `git status --short demo/` is empty.
 
-**Every image carries alt text** describing what it shows, because the image is additive: a reader
-who cannot see it should lose nothing but the illustration.
-
----
+**Relaunch the sandbox after a catalog change.** A running `runIde` does not reload a regenerated
+catalog, so it will reproduce the old popup exactly.
 
 ## The catalog
 
-Every capture starts the same way: `./gradlew runIde`, then open [`demo/solr/conf/managed-schema.xml`](glossary.md#managed-schema)
-in the sandbox. The demo project is built for this — several defects in it are deliberate.
-
-### 1. Match-capability hints — `01-hints-match-capability.png`
-
-**✅ Captured.**
-
-**Shows** the feature nothing else in the ecosystem does — what each field can *actually* match —
-and, beside it, the storage shape that decides whether a matched document can be returned at all,
-including the two shapes that silence part or all of the hint. Inline, without a hover. This is
-the lead image for the README.
-
-**Capture** the field block at `managed-schema.xml:66-77` with no interaction at all — the hints
-render themselves. Frame all nine fields so every contrast is visible in one shot: `id`/`sku`/
-`category` read as whole-value and case-sensitive, `name`/`description`/`text` as tokenised and
-case-insensitive, `name_prefix` as prefix-capable; `name_prefix`/`text` read as `not stored`
-where the rest read `stored`, with `text` alone reading `multi-valued`; `notes` carries only the
-storage-shape phrases, with no match claim, because its analyser names a factory the plugin does
-not recognise; and `legacy` carries no hint at all, because its `type` is undeclared. `legacy`
-will also show the undeclared-field-type inspection's underline in frame — that is correct and
-not something to crop out; see
-[the zero-false-positive baseline check on the schema](manual-test-suite.md#2-zero-false-positive-baseline-base).
-
-**Redo when** the hint wording changes, a property's inline phrase changes, a new analysis
-capability is recognised, or the demo schema's field list changes.
-
-**Verifies** [the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).
-
-### 2. [Quick documentation](glossary.md#documentation-provider) on a field — `02-quick-doc-field.png`
-
-**✅ Captured.**
-
-*Annotated pair: `02-quick-doc-field-annotated.png`, marked from this capture and used by
-[the FAQ](faq.md) with a four-marker key — the header, the match summary, the **Value**/**From**
-pair, and the hand-maintained columns.*
-
-**Shows** the question the Reference Guide cannot answer: each property's value *and where it came
-from* — this field, its type, or Solr's default.
-
-**Capture** caret inside `name="category"` at `managed-schema.xml:70`, then Quick Documentation. Crop
-to the popup, **including the `uninvertible` row**.
-
-**The popup will not hold the table at its default size.** At the size it opens, the property names
-wrap mid-word and the table ends around `termVectors`, which is the crop this entry has warned about
-twice. Drag its right edge out until every row is one line, then its bottom edge down; the popup
-remembers the size, so this is a once-per-machine adjustment rather than a step in the gesture.
-
-**Redo when** the field property vocabulary in `SolrFieldProperties` gains or loses entries, or the
-`From` column's wording changes.
-
-**Verifies** [the quick-documentation check on a field](manual-test-suite.md#5-quick-documentation-doc).
-
-### 3. Quick documentation on a class value — `03-quick-doc-class.png`
-
-**✅ Captured.**
-
-*Annotated pair: `03-quick-doc-class-annotated.png`, marked from this capture and used by
-[the FAQ](faq.md) with a five-marker key, one per build-time source. It is framed wider than the
-plain file, because its markers sit in the editor margin to the right of the popup.*
-
-**Shows** all four build-time sources in one popup: short name and kind, the fully-qualified Lucene
-class, the one-sentence Javadoc summary, the attributes read from constructor bytecode, and the
-constructed Reference Guide link.
-
-**Capture** caret inside any `class="solr.…"` value — `solr.StandardTokenizerFactory` at
-`managed-schema.xml:33` is the clearest — then Quick Documentation.
-
-**Redo when** the catalog's columns change. **Not when the catalog gains a column.** The catalog has
-carried each attribute's default and required marker since
-`feat: record factory attribute defaults and required markers in the catalog`, and the `Accepts`
-table still shows name and value type alone, because that is all the popup renders. The image is
-correct for what the plugin displays; it goes stale when the per-attribute hover and the
-complete-configuration popup put those facts on screen.
-
-**Verifies** [the quick-documentation checks on a field's Reference Guide link and on a class value](manual-test-suite.md#5-quick-documentation-doc).
-
-### 4. [Inspection](glossary.md#inspection) and [quick-fix](glossary.md#quick-fix) — `04-inspection-copyfield-quickfix.png`
-
-**✅ Captured, 2026-09-28.** Retaken when the unresolved-name inspections became errors: the name is
-now a red wavy underline and each fix carries the error icon, where the warning drew only a tinted
-background in the light schemes.
-
-**Shows** a dangling `copyField` underlined and the Alt-Enter menu offering the declared fields
-closest in spelling — the plugin catching the failure that would otherwise surface only at core
-reload.
-
-**Closest-spelling ranking decides *which* names are offered, not the order they appear in.**
-`SolrInspections.replacementFixes` sorts by edit distance to `manufacturer` and keeps the nearest
-six, which is why `sku`, `id` and `text` are absent. The IDE then renders the intention list
-alphabetically — a correct image of a correct ranking, and not evidence that the ranking was
-ignored.
-
-**`*_t` is in that six, and `name_prefix` is not.** Dynamic patterns are candidates alongside
-fields, because `copyField` may legitimately name a glob. `*_t` and `name_prefix` tie at edit
-distance 11, and the tie breaks alphabetically, where `*` sorts ahead of every letter. So the
-capture reads `*_t`, `category`, `description`, `legacy`, `name`, `notes`. A pattern leading a
-list of replacements for `manufacturer` looks arbitrary and is: at that distance the ranking has
-no real signal left, and the tiebreak is doing the choosing.
-
-**Capture** `managed-schema.xml:92` carries a **deliberate** dangling `manufacturer` copyField that
-the demo's header comment says must not be fixed, so no editing is needed. Put the caret on
-`manufacturer`, press Alt-Enter, and frame both the underline and the open menu. Undo nothing —
-there is nothing to undo.
-
-**Redo when** the quick-fix ordering or the inspection message changes.
-
-**Verifies** [the dangling-copyField inspection check](manual-test-suite.md#6-inspections-and-quick-fixes-insp).
-
-**The count is the claim, and the demo schema now plants two.** `DemoConfigsetTest` pins that
-exactly one reference in the committed demo configset is dangling and exactly one field names an
-undeclared type — the dangling `manufacturer` copyField this entry captures, and the `legacy`
-field's undeclared type, which is `legacy`'s own defect and belongs to image 1, not this one. A
-correct capture of this entry frames the `manufacturer` underline and, if `legacy` falls in the
-same frame, its underline too — but no underline this pass did not already know about. A third
-kind of underline anywhere in frame is a false positive, and the screenshot should not be
-published until it is gone.
-
-### 5. [Completion](glossary.md#completion-contributor) over the schema's own vocabulary — `05-completion-field-properties.png`
-
-**✅ Captured.**
-
-**Shows** attribute completion inside an opening `<field>` tag: every property with its one-line
-summary and what it accepts, and the attributes already on the tag omitted — `indexed` and `stored`
-are absent from the list precisely because line 70 already declares them.
-
-**Capture** put the caret after `stored="true"` on `managed-schema.xml:70` and **before the `/`**,
-type a space, and let completion open. A space typed between `/` and `>` opens element completion
-instead — `fieldType`, `field`, `copyField` — which is the wrong popup and an easy mistake to
-publish. Undo the space afterwards; the demo configset is a committed fixture.
-
-**The `(default)` marking is not in this popup, and this entry used to ask for it.** The attribute
-*name* list carries `Property`, summary and accepted values; the default marking
-[the check on marking the default boolean value](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp)
-covers belongs to value completion, which is a different gesture and, if it is wanted as an image, a
-different entry.
-
-**Redo when** the property vocabulary changes, or the `(default)` marking rule changes.
-
-**Verifies** [the completion checks on omitting already-present attributes and marking the default boolean value](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp).
-
-### 6. Catalog-backed [factory](glossary.md#factory) attributes — `06-completion-factory-attributes.png`
-
-**✅ Captured.**
-
-**Shows** the end of the pipeline that starts in `buildSrc`: completion offering a factory's *own*
-attributes, read from its constructor bytecode at build time —
-[the catalog-backed factory-attribute check](manual-test-suite.md#8-completion--catalog-backed-cat) in
-the manual suite spells out what that build-time pass actually does — each labelled with the factory
-it came from.
-
-**Capture** inside the `<filter class="solr.EdgeNGramFilterFactory" …>` tag at
-`managed-schema.xml:48`, put the caret before the closing `/`, type a space, and let completion
-open. What appears is `luceneMatchVersion` and `preserveOriginal`, both attributed to
-`solr.EdgeNGramFilterFactory`. Undo the space afterwards.
-
-**Not `minGramSize` and `maxGramSize`, which this entry used to promise.** The demo declares both on
-that filter, and completion omits what the tag already carries — the same rule that makes image 5
-show no `indexed` or `stored`. The two rules cannot both be demonstrated on one tag: an attribute
-already written is the proof of one and invisible to the other. `preserveOriginal` reaches the popup
-by the identical constructor-bytecode route, so the claim this image makes is unchanged.
-
-**Redo when** the catalog gains columns — the same trigger as image 3, and for the same reason.
-
-**Exercises the same path as
-[the check that a factory's constructor-bytecode attributes complete](manual-test-suite.md#8-completion--catalog-backed-cat),
-with a different factory.** That check names `solr.WordDelimiterGraphFilterFactory`, which the demo
-configset does not declare — pressing it has you type the class first. A screenshot should not require
-editing the fixture, so this captures `EdgeNGramFilterFactory`, which the demo declares at line 48 and
-which reaches the editor by exactly the same constructor-bytecode route. Capturing that check verbatim
-means adding the WordDelimiter filter to the demo, which is a fixture change and belongs there, not
-here.
-
-### 7. [Find Usages](glossary.md#find-usages) on a [field type](glossary.md#field-type) — `07-find-usages-field-type.png`
-
-**✅ Captured, current.** Reshot with both corrections below already made: invoked from the
-declaration, and framing four results rather than the three an earlier caption promised.
-
-**Shows** the shared model doing cross-file work: every field declared with a given type, listed from
-one gesture — `name`, `description`, `text` and `*_t`, four results.
-
-**Capture** caret inside the `<fieldType name="text_general">` **declaration**
-(`managed-schema.xml:31`), press ⌥F7, frame the Find Usages tool window with its results.
-
-**Invoke it from the declaration.** An earlier revision of this entry said to invoke from a
-reference instead, because the declaration answered *Cannot search for usages from this location*.
-[Declarations as targets](../specs/plans/0002-solr-intellij-plugin-plan.md#step-28-declarations-as-targets-done)
-closed that: the declaration is a search target now, and demo step 27 performs the gesture from there.
-The reference position (`managed-schema.xml:68`) still works and lists the same four — the
-declaration is simply the one worth showing, being the one that used to refuse.
-
-**The count moved for an unrelated reason.** This entry once promised three results; the answer is
-four from either caret, because the `*_t` dynamic field joined the demo schema declaring
-`type="text_general"` and references the type like any other field.
-
-**Redo when** the demo schema's fields change, or the usage grouping changes.
-
-**Verifies** [the Find Usages check on a field type declaration](manual-test-suite.md#4-navigation-and-find-usages-nav).
-[The Find Usages check on a dynamic field](manual-test-suite.md#4-navigation-and-find-usages-nav)
-exercises the same declaration-target machinery from a *different*
-declaration — a `dynamicField` rather than this `fieldType` — and has no image of its own;
-the usage list this one frames is the same machinery answering the easier question.
-
-### 8. Navigation from [`solrconfig.xml`](glossary.md#solrconfigxml) into the schema — `08-nav-solrconfig-field-reference.png`
-
-**✅ Captured.**
-
-**Shows** the cross-file link that catches the silent failure the README opens with: a `qf` parameter
-naming a field, resolving to that field's schema declaration.
-
-**Capture** `solrconfig.xml:28` holds `<str name="qf">name^3 description category</str>`, written for
-this purpose. Cmd+hover `name` to raise the navigation tooltip, or Cmd+Click it and capture the
-landing in `managed-schema.xml`. The tooltip version reads better in one frame; each name in
-`name^3 description` navigates on its own, which is the point worth showing.
-
-**Redo when** the demo's handler parameters change, or boost syntax handling changes.
-
-**Verifies** [the check that a solrconfig.xml parameter navigates into the schema](manual-test-suite.md#4-navigation-and-find-usages-nav).
-
-### 9. Navigation to a resource file — `09-nav-resource-file.png` *(optional)*
-
-**✅ Captured.**
-
-**Shows** a filter's `words="stopwords.txt"` opening the file it names, including through `lang/`.
-
-**Capture** caret on the resource path of a `<filter>` that declares one —
-`managed-schema.xml:34` — then Quick Definition, which frames the resolved file's own contents
-beside the reference.
-
-**Cmd+hover raises a tooltip that is the absolute path, and that path is somebody's home
-directory.** It is the faster gesture and the right one for checking
-[the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav)
-by hand; it is the wrong
-one to publish, for the same reason this catalog crops out the branch chip. Quick Definition shows
-the same resolution as the file it opens, named `stopwords.txt` and nothing more.
-
-**Redo when** resource attribute coverage changes.
-
-**Verifies** [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).
-Lower priority — it demonstrates the same navigation machinery as image 8 and
-earns a place only if the README wants a second navigation example.
-
-### 10. `solrconfig.xml`'s own structure — `10-completion-solrconfig-structure.png`
-
-**✅ Captured, and reshot against the fixed catalog.** This image has now gone stale twice for two
-different reasons, which is worth recording because they are the two ways a screenshot rots. First the
-*crop* leaked `settings.gradle.kts (solr-plugin-demo)` from the tab bar. Then the *contents* went
-stale within the hour: the catalog generator's element-placement fix moved `cache`,
-`featureVectorCache` and `HashDocSet` out from under `<config>` and under `<query>`, where Solr
-actually reads them — so the capture began demonstrating the bug the fix removed rather than the
-feature. The current image is from a sandbox rebuilt after that fix, and all three are absent from it.
-
-**The reshoot needed a fresh sandbox, not just a rebuild.** A running `runIde` does not reload a
-regenerated catalog resource, so the first attempt reproduced the old popup perfectly and looked like
-the fix had failed. Anyone redoing this capture after a generator change must relaunch the sandbox,
-and should check `build/generated/solr-catalog-resources/solr-catalog/elements-10.tsv` on disk before
-concluding anything from what the popup shows.
-
-**Shows** the failure the platform's schema-less mode produces, replaced: typing `<` inside `<config>`
-offers Solr's own top-level vocabulary — `directoryFactory`, `dataDir`, `luceneMatchVersion`,
-`requestHandler`, `query`, `circuitBreaker`, `codecFactory`, `expressible`, `indexConfig` among them —
-not an echo of the handful of sibling tags actually written above the caret, and **not** `cache`,
-`featureVectorCache` or `HashDocSet`, which now complete only inside `<query>`. This is the capture
-that settled [the plan's stale claim](../specs/plans/0002-solr-intellij-plugin-plan.md#overview) that
-`solrconfig.xml` structure completion was still gated on the schema; Build order and step 25 were
-correct, and the opening paragraph has since been corrected to match.
-
-**Capture** put the caret on a blank line directly inside `<config>` in `solr/conf/solrconfig.xml`
-and type `<`. Frame the completion popup.
-
-**Redo when** the generated element vocabulary changes, or the demo's `solrconfig.xml` gains or loses
-top-level children.
-
-**Verifies** [the check that top-level completion inside `<config>` offers Solr's own vocabulary](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
-
-### 11. An attribute that restates its default — `11-dimmed-restated-default.png`
-
-**✅ Captured.**
-
-**Shows** the dimmed rendering
-[the check that a restated default renders dimmed](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim)
-describes, needing no edit: `indexed="true"` and
-`stored="true"` render fully greyed — name and value both — on the field block, while
-`stored="false"` on `name_prefix` renders at full strength. A restated default is correct Solr, so
-nothing here reaches the Problems view; the dim is the only claim being made.
-
-**Capture** open `managed-schema.xml` untouched and frame the field block at lines 66-73. No
-interaction — the dim renders itself, exactly like image 1's hints.
-
-**Redo when** the demo schema's declared attributes change, or the dimming rule's set of properties
-changes.
-
-**Verifies** [the check that a restated default renders dimmed](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).
-
-### 12. [Intentions](glossary.md#intention) — companion fields — `12-intention-companion-fields.png`
-
-**✅ Captured.**
-
-**Shows** Alt-Enter on a tokenised field offering to generate the two companions the field lacks:
-**Add exact-match companion field (string)** and **Add prefix-capable companion field
-(text_prefix)**, both above the platform's own generic items. Captured with the documentation
-preview pane open, which shows the exact-match intention's explanation alongside the menu.
-
-**Capture** caret inside `description` (`managed-schema.xml:71`, a `text_general` field), press
-Alt-Enter (⌥⏎), and optionally open the doc-preview pane (⌃J) before framing. Dismiss with Escape —
-either item in the menu writes a new `<field>` and `<fieldType>` into the schema.
-
-**Redo when** the intentions' wording changes, or the demo's `description` field stops being
-tokenised.
-
-**Verifies** [the companion-field intention check that a tokenised field offers to add its missing companions](manual-test-suite.md#12-intentions--companion-fields-int).
-
-### 13. Field-name completion inside a `solrconfig.xml` parameter — `13-completion-parameter-fields.png`
-
-**✅ Captured.**
-
-**Shows** the inverse of
-[the check that a handler parameter naming an undeclared field is flagged](manual-test-suite.md#6-inspections-and-quick-fixes-insp):
-the schema's own fields offered inside a handler parameter
-known to hold them, each labelled with its type, and the dynamic pattern `*_t` offered alongside the
-literal fields rather than only literal spellings.
-
-**Capture** caret immediately after `category` in `solrconfig.xml:28`'s
-`<str name="qf">name^3 description category</str>`, **type a space**, then trigger completion. **The
-space is not optional** — completion did not fire with the caret directly adjacent to existing text
-and no trailing whitespace, the same rule [image 5](#5-completion-over-the-schemas-own-vocabulary--05-completion-field-propertiespng)
-already documents for attribute completion, confirmed true here too. Undo the space afterwards.
-
-**Redo when** the demo schema's field list changes.
-
-**Verifies** [the check that field-name completion inside a qf parameter offers the schema's fields](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).
-
-### 14. [Rename](glossary.md#rename-refactoring)'s cross-file update — `14-rename-cross-file-before.png` / `14-rename-cross-file-after.png`
-
-**✅ Captured.** A before/after pair sharing one entry number, on the same rule an annotated pair
-follows: they document one gesture and belong together.
-
-**Shows** the half a hand-edit misses: renaming a field from its schema declaration updates the
-`qf` line in `solrconfig.xml` with no separate action, and the platform's own rename-confirmation
-dialog names the refactoring as one operation across both files — a single Cmd+Z undoes both.
-
-**Capture** caret on `category` in `<field name="category">` at `managed-schema.xml:70`, Shift+F6,
-apply directly (no Preview step) to rename to `product_category`. `-before` frames
-`solrconfig.xml:28` reading `...description category`; `-after` frames the same line reading
-`...description product_category`, highlighted. Undo with one Cmd+Z, confirm `git status --short
-demo/` is clean.
-
-**Redo when** the demo's `qf` value or the `category` field changes.
-
-**Verifies** [the rename check that a cross-file field reference follows the rename](manual-test-suite.md#4a-rename-ren).
-
-### 15. Parameter-name completion — `15-completion-parameter-names.png`
-
-**✅ Captured.**
-
-**Shows** the position the request-parameter vocabulary is learnable from in the first place: the
-`name` of a new `<str>` inside `<lst name="defaults">` offers Solr's own parameter names, each
-labelled with the Params class that declares it and, where the name is part of a family, a one-line
-description distinguishing it from its siblings.
-
-**Capture** add a new `<str name="` line inside the `/select` handler's `<lst name="defaults">`
-(`solrconfig.xml`, after line 32), type `sort`, trigger completion: `sort` (*sort order*,
-`CommonParams`) heads the list, followed by `expand.sort`, `facet.sort`, `group.sort` and
-`terms.sort`. Undo the added line afterwards.
-
-**A parameter already set on the same list is withheld, and that is
-[the check that an already-set parameter is not offered again](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm)
-rather than a broken popup.** Typing `qf` at the same position offers only `mlt.qf` and
-`hl.queryFieldPattern` — plain `qf` is absent because line 28 already declares it in the same
-`<lst name="defaults">`. Worth knowing before reusing this gesture: an apparently generic, sparse
-list at this position is more often that check firing correctly than a capture gone wrong.
-
-**Redo when** the generated parameter catalog changes.
-
-**Verifies** [the check that a defaults list's own name offers Solr's request parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).
-
-### 16. Quick documentation on the schema's `version` — `16-hover-schema-version.png`
-
-**✅ Captured.**
-
-**Shows** the two-paragraph structure
-[the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc)
-describes: what `version` decides in general, then what
-the demo's declared `1.6` decides here — `docValues` off, `uninvertible` on, `autoGeneratePhraseQueries`
-off.
-
-**Capture** hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`.
-**F1 does not open Quick Documentation on the default macOS keymap** — it opens a browser tab to the
-platform's own Help page instead, which has nothing to do with this plugin. **Ctrl+J** is what raises
-the popup reliably.
-
-**On this sandbox, the popup rendered as a full-width docked panel rather than a floating box** —
-cosmetic, and this image is framed to that shape rather than to a floating popup's. If a reshoot
-produces a floating popup instead, that is an IDE-version difference in presentation, not a
-regression to chase.
-
-**Redo when** the demo schema's declared version changes, or the version-dependent property list
-changes.
-
-**Verifies** [the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc).
-
-### 17. Nesting — what completes inside `<query>` — `17-completion-query-nesting.png`
-
-**✅ Captured.**
-
-**Shows** the half of structure completion that entry 10 cannot: not what the plugin *declines* to
-offer at the root, but what it offers in the right place instead. Typing `<` inside `<query>` offers
-eighteen elements — `boolTofilterOptimizer`, `cache`, `documentCache`, `enableLazyFieldLoading`,
-`featureVectorCache`, `fieldValueCache`, `filterCache`, `HashDocSet`, `listener`, `maxBooleanClauses`,
-`maxWarmingSearchers`, `minPrefixQueryTermLength`, `queryResultCache`, `queryResultMaxDocsCached`,
-`queryResultWindowSize`, `slowQueryThresholdMillis`, `useColdSearcher`, `useFilterForSortedQuery` —
-and `dataDir` is not among them. Set beside entry 10, the two images are the whole claim: the
-vocabularies differ by position, which is what a schema-less sibling echo can never do.
-
-**This is the capture that closes a real gap in the evidence.** Every other artifact verifying the
-element-placement fix — the tests, the whole-catalog diff, entry 10 — observes only what *left*
-`<config>`. Had those elements left without arriving anywhere, all of it would still have read green.
-This is the only thing that shows they arrived.
-
-**Capture** the demo declares no `<query>`, so type `<query></query>` inside `<config>` first, put the
-caret between the tags and type `<`. Frame the popup. **Revert the file afterwards** — `git checkout
--- demo/solr/conf/solrconfig.xml` — and confirm `git status --short demo/` is empty. IntelliJ's
-autosave can put an intermediate typing state on disk even when the editor looks clean; refocusing the
-sandbox after the revert makes it reload from disk.
-
-**A running sandbox does not reload a regenerated catalog.** After any generator change, relaunch
-`runIde` before capturing, and use entry 10's `<config>` popup as the canary: if `cache`,
-`featureVectorCache` or `HashDocSet` appear there, the sandbox predates the fix and nothing seen in it
-means anything.
-
-**Redo when** the generated element vocabulary changes, or `SolrConfig` changes which elements it
-reads off the query node.
-
-**Verifies** [the check that completion inside `<query>` offers what belongs there and not `dataDir`](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
-
-### 18. Nesting — `<indexConfig>`, and what is never offered — `18-completion-indexconfig-nesting.png`
-
-**✅ Captured.**
-
-**Shows** `<indexConfig>` offering exactly one element, `deletionPolicy`, beside entry 17's eighteen.
-The contrast is the point twice over. It is nesting again at a parent with almost no live children —
-and it is the visible half of
-[the check that a discontinued element is never offered](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str):
-`nrtMode` and `unlockOnStartup` are read by Solr at this exact
-position, are keyed to it in the catalog, are reported by the discontinued-element inspection when
-written here, and are **still not offered**, because `SolrElementCatalog.offerableChildrenOf` filters
-to what Solr still accepts. Knowing where an element belongs and recommending it are different
-questions, and this image is the one place both answers are visible at once.
-
-**Not a regression, and do not report it as one:** `lockType`, `httpCaching` and `infoStream` appear
-in all four shipped configsets and in neither catalog, because `SolrConfig` does not read them. A
-reader whose own file contains `<lockType>` sees it offered nowhere. That gap predates the placement
-fix and is recorded in the manual suite's 2026-08-16 note.
-
-**Capture** as entry 17, with `<indexConfig></indexConfig>` in place of `<query></query>`. Same revert
-discipline.
-
-**Redo when** entry 17 is redone.
-
-**Verifies** [the check that a discontinued element is never offered](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).
-
----
-
-### 19. The drift view — three kinds of difference — `19-drift-three-states.png`
-
-**✅ Captured, 2026-09-28.** The demo's `solr` configset compared, read-only, against an unrelated
-SolrCloud 9.10.1 collection, `shows`, built from `_default` — so all three states appear without
-editing either side, and the summary names the line it resolved against: *Solr 9.10, from the
-connected server*. The *Differs* row for `description` is selected, so the pane below shows the
-reason first and the refused `replace-field` request under it. Shot with the tool window widened, so
-the definition columns read. The earlier capture used a throwaway SolrCloud 10.0.0 container and a
-deployable copy of the configset, since **the demo's own configset cannot be deployed**: its planted
-defects stop a core starting.
-**Narrow the State, Kind and Name columns by hand before shooting**: at the default widths the two
-definition columns truncate to the same `type=text_general indexed=true stor…`, and a *Differs* row
-whose two cells read alike shows nothing.
-
-**Shows** the whole claim of the drift view in one frame: a configset compared against a collection,
-with all three states visible at once — a row reading *Not deployed*, one reading *Only on server*,
-and one reading *Differs* whose **In the configset** and **On the server** columns hold different
-text. The summary line above must name both sides and the counts.
-
-**A frame showing only one state proves much less than it appears to.** The reason both columns exist
-is that a `DISAGREEING` fact must never be resolved to one side, and only a *Differs* row with two
-populated cells shows that it was not.
-
-**Capture** add a field to `demo/solr/conf/managed-schema.xml` and do not deploy it; add a second
-field to the collection through the Schema API and not to the configset; change a third field's
-`stored` in the configset only. Compare, and frame the table with the summary line above it.
-
-**Redo when** the state labels change, or a column is added or removed.
-
-**Verifies** [SRV-19](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 20. A refused change, and why — `20-drift-refused-payload.png`
-
-**✅ Captured.** The frame keeps the empty band between the table and the payload pane, because the
-layout has no splitter to close it. The reason's second sentence runs past the right edge instead of
-wrapping — a defect in the pane rather than in the crop, recorded in the pass log.
-
-**Shows** a *Differs* row selected, with the payload pane below it holding the refusal reason **first**
-and the `replace-field` request underneath. The ordering is the point: a reader who meets the JSON
-before the warning may copy it.
-
-**This is the image that documents a deliberate omission**, which is the hardest kind of behaviour to
-show. The absence of an enabled Apply button proves nothing on its own — a viewer cannot tell a
-refusal from a bug. The reason text is what makes the refusal legible as a decision.
-
-**Capture** produce a *Differs* row as in entry 19, select it, and frame the table row together with
-the payload pane. Include the toolbar so the disabled state of **Apply Additive Changes** is visible.
-
-**Redo when** the refusal wording changes, or the payload pane moves.
-
-**Verifies** [SRV-25](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 21. An addition, applied — `21-drift-apply-before.png` / `21-drift-apply-after.png`
-
-**✅ Captured.** Between the two frames the plugin asks first, naming the collection and the server —
-*Send 1 additive change(s) to books on "local"?* — and after the write it reads the collection back
-by itself, which is what puts the agreeing count in the second frame.
-
-**Shows** a pair. Before: a *Not deployed* row selected, its `add-field` payload in the pane, **Apply
-Additive Changes** enabled. After: the same comparison re-run, with that row gone and the summary
-saying the two agree.
-
-**The pair is the evidence, not either half.** The after frame alone cannot distinguish a comparison
-that succeeded from one that was never run — which is exactly the ambiguity the summary's agreeing
-count exists to resolve, so that count must be legible in the second frame.
-
-**Capture** add a field to the configset, compare, select the row, capture; apply, and capture the
-result without touching the choosers.
-
-**Redo when** the summary wording changes, or the apply flow gains a step.
-
-**Verifies** [SRV-26](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 22. The connections settings page — `22-connections-settings.png`
-
-**✅ Captured.**
-
-**Shows** Settings → Tools → Solr Connections with one connection saved, and the editor open on it.
-
-**The frame must include the password field and the text under it.** The field is empty and says a
-password is stored — that pairing is the whole design, and a frame showing only an empty field
-documents something that looks like a bug.
-
-**Capture** add a connection with a username, save a password, reopen it for editing.
-
-**Redo when** the field layout or the stored-password wording changes.
-
-**Verifies** [SRV-1 and SRV-3](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 23. The collections tree — `23-collections-topology.png`
-
-**✅ Captured, 2026-09-28**, against SolrCloud 9.10.1. **Due a reshoot**: the shard row in it still
-shows its hash range, `80000000-7fffffff`, which has since moved to the row's tooltip. Slide 46 of
-the deck embeds this file, so the reshoot updates both.
-
-**Shows** the Solr tool window on a SolrCloud server: a collection expanded to its shards and one
-shard to its replicas, with the leader marked, and the connection selector visible in the toolbar.
-Health is **a coloured dot** before the collection and the shard — its word is the row's tooltip,
-and so is a shard's hash range —
-and the stripe button on the right carries the tool window's own icon, the plugin's sunburst.
-
-**A standalone capture would show a different vocabulary and is a separate image**, if anyone wants
-one — the point of this frame is the cloud tree, since the mode check exists precisely because the
-two are not interchangeable.
-
-**Capture** `docker run -e SOLR_MODE=solrcloud solr:10.0.0`, create a collection, expand it.
-
-**Redo when** the row detail changes, the toolbar gains a control, or the health colours or the icon
-change.
-
-**Verifies** [SRV-4](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 24. What the index actually holds — `24-luke-fields.png`
-
-**✅ Captured.**
-
-**Shows** a collection's **Fields** row expanded, with a dynamic instance marked `← *_s` and the
-group's detail naming how many of the fields came from patterns.
-
-**The row that carries the claim is the dynamic one.** A frame of ordinary declared fields shows
-nothing the schema view could not — this image exists to show a field that appears in no configset
-anywhere. Include a point field too, whose document count is absent rather than zero.
-
-**Capture** index a document with an undeclared `author_s` and a `price_f`, expand Fields.
-
-**Redo when** the detail format changes, or the pattern marker changes.
-
-**Verifies** [SRV-8 and SRV-9](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 25. A Solr query and its rendered answer — `25-query-and-results.png`
-
-**✅ Captured.** Against a collection of 61 TV shows rather than the demo's books, with
-`q=description:family&rows=3` — a query matching more documents than it returns, which is the only
-kind that shows the summary line doing its job.
-
-**Shows** an `.http` file with a Solr request, run, and the response pane holding the summary line,
-the aligned table, and — if it fits — the start of a scoring explanation.
-
-**The summary line is the point, not the table.** It states matches and returned rows separately,
-which is the one thing raw JSON says plainly and a careless reading loses.
-
-**Capture** insert *Explain why documents scored*, define `http-client.env.json`, run it.
-
-**Redo when** the summary wording changes, or a column is added to the table.
-
-**Verifies** [SRV-13 and SRV-14](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 26. A field name in code that no configset declares — `26-code-field-warning.png`
-
-**✅ Captured.**
-
-**Shows** both planted defects in `findBooks` at once: `categry` marked inside the filter query, and
-`price` marked inside the comma-separated field list, while `id` and `name` in that same literal are
-left alone.
-
-**The boundaries are the image, not the presence of a mark.** The highlight covers the name and stops
-at the colon — not the string, not the argument, not the line. Marking `"categry:books"` would tell a
-reader the string is wrong; marking `categry` names the field, which is the only thing the plugin
-actually knows. `price` earns the same treatment for the opposite reason: it is spelled correctly and
-has never existed.
-
-**Capture** open `ProductSearch.java` and frame lines 43–47. There is no interaction — the check
-renders itself once the module has SolrJ on its classpath and the project holds a configset. Crop
-tight enough that a reader can see where each highlight starts and ends, and keep `id` and `name`
-unmarked in shot, because the restraint is half the claim.
-
-**Redo when** the inspection's severity changes, the demo schema gains `price` or loses `category`,
-the platform restyles warning highlights, or `ProductSearch.java`'s lines move.
-
-**Verifies** [CODE-1 and CODE-3](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
-
-### 27. The shape of a query, in colour — `27-code-query-colour.png`
-
-**✅ Captured, 2026-09-28.**
-
-**Shows** `q.setQuery("category:books AND name:solr")` with `category` and `name` in the field colour
-and `AND` in the operator colour, both picked out from `books` and `solr`, which keep the editor's
-ordinary string colour. Retaken after the operator was found to render in the string's own colour in
-the light schemes and in plain-text grey in the new dark ones.
-
-**What it is careful not to claim.** This is colour, not a parser — no grammar, no injected language,
-no folding. Read it as *the fields and the operator are told apart*, and nothing further. The scan
-behind it is the same one the check above uses, which is why the two can never disagree about which
-characters are a field.
-
-**Shoot it in the default light theme.** The plugin's two keys, *Solr Query* in the colour settings,
-fall back to the scheme's instance-field and keyword colours, so a custom theme photographs a claim
-about that theme rather than about this plugin.
-
-**Capture** frame lines 37–39 with no interaction, and keep the caret out of frame — a caret line
-adds a lightbulb in the gutter and a band across the row, and both read as part of the feature.
-
-**Redo when** the scan changes which characters it reports, a new operator is recognised, or the
-platform restyles its default palette.
-
-**Verifies** [CODE-5](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
-
-### 28. From Java to the schema that declares the field — `28-code-navigate-to-schema.png`
-
-**✅ Captured.**
-
-**Shows** `ProductSearch.java` left and `managed-schema.xml` right, the caret landed on
-`<field name="category">` after a <kbd>Ctrl-click</kbd> on `category` inside the Java string.
-
-**The split is the point.** Either pane alone is unremarkable; the two together are the one boundary
-nothing else in the IDE crosses. The Java file belongs to no configset, the configset knows nothing
-about Java, and the only thing joining them is a name spelled the same in both — which is exactly the
-join that fails silently in production once the spellings drift apart.
-
-**The reference is silent wherever the check is silent**, because both read the same recognizer.
-Ctrl-clicking `categry` in the method below resolves to nothing, and that agreement is deliberate:
-two different answers about one name would be the plugin contradicting itself.
-
-**Capture** Ctrl-click `category` in `findSolrBooks`, then *Window → Editor Tabs → Split and Move
-Right* to give the schema its own pane, and select `ProductSearch.java` in the left one. Include both
-tab rows, so a reader can name each file without reading the caption.
-
-**Redo when** the demo schema's field block moves, the reference stops resolving, or the demo's
-directory layout changes.
-
-**Verifies** [CODE-7](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
-
-### 29. Running a query from the line that writes it — `29-code-run-from-gutter.png`
-
-**✅ Captured.**
-
-**Shows** the gutter icon beside the `setQuery` in `findSolrBooks` — and beside nothing else in the
-file — with the collection chooser open, listing what the selected connection actually holds.
-
-**The chooser is the subject, not the result.** A query written in code **names no collection**:
-`setQuery("category:books")` says what to match and nothing about where, because the collection was
-chosen when the client was built, usually in another file and often from configuration. So the plugin
-has to ask, and it asks with the list the server answered rather than a box to type into. The result
-popup would show a table and hide the interesting problem.
-
-**The chooser opens at the editor's top-right corner, not beside the icon.** `SolrRunQuery` anchors
-its popups north-east of the editor component, so the gesture and its answer sit at opposite corners
-and the crop has to hold both. Frame accordingly — a tight crop on the gutter loses half the image.
-
-**Capture** start a Solr holding at least one collection, select that connection in the Solr tool
-window, then click the icon; frame from the gutter icon up to the chooser.
-
-**Redo when** the popup's anchor or its title changes, the demo's collection list changes, or the
-icon moves to a different call.
-
-**Verifies** [CODE-9 and CODE-10](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
-
-### 30. Field names from the collection a query is about to reach — `30-completion-live-schema.png`
-
-**✅ Captured.**
-
-**Shows** <kbd>Ctrl-Space</kbd> inside a JSON request body's `"fields"` array, offering the fields of
-the collection the request line names, each reading `books · local` — the collection and the
-connection it was read from — with the dynamic patterns in italics.
-
-**The source label is the image.** Before this completion read the live schema, the same popup offered
-the project's configsets and labelled each entry with a configset's name. A reader comparing the two
-should be able to tell which one answered without being told, and the label is the only thing that
-says so. `subtitle` is in this frame because it had just been added to the server through the drift
-view's Apply, and appears in no file in the project — the plainest evidence the list came from the
-server.
-
-**Capture** select a connection, write a request line naming a collection that exists on it, put the
-caret inside `"fields": [""]`, and press <kbd>Ctrl-Space</kbd> — not a letter: the popup that opens
-while typing never asks the server, so it would show the configsets instead.
-
-**Redo when** the source label's format changes, the popup's renderer changes, or completion starts
-merging the collection's fields with the configsets'.
-
-**Verifies** [SRV-16b](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 31. A test document, ready to send — `31-index-test-document.png`
-
-**✅ Captured, 2026-09-28**, against the SolrCloud 9.10.1 collection `shows`.
-
-**Shows** the *Index a test document* dialog as it opens: its title naming the collection and the
-connection, and a document carrying every field the collection declares — the unique key first, then
-each field with a value of its type's shape, a list for a multi-valued one — and *The document matches
-the collection's schema* below it. Solr's own fields and copy-field destinations are left out.
-
-**The earlier frame showed the refusal instead**, which is the half of this dialog worth arguing for:
-a misspelt field name, the reason below the editor, and **OK disabled**. SRV-29 still presses that.
-
-**The refusal is the point, not the dialog.** Solr answers a document with an unknown field by
-guessing a type and adding the field to the deployed schema — `status: 0`, no error — so the typo
-becomes a permanent schema change that then shows up as drift. The plugin refuses before sending, and
-the reason says exactly that. A frame with OK enabled shows a form; this one shows a decision.
-
-**The dialog stretches to the width of its message.** The reason does not wrap, so a long one widens
-the whole dialog towards the screen edge. Recorded as a defect in the pass log; crop to the dialog
-regardless.
-
-**Capture** select a collection in the Solr tool window, press **Index a Test Document**, and frame
-the dialog as it opens. Press **Cancel** afterwards — OK writes a document into the collection.
-
-**Redo when** the validation wording changes, the commit-mode chooser changes, or the sample document
-the dialog starts from changes.
-
-**Verifies** [SRV-28 and SRV-29](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).
-
-### 32. Field completion as you type, in a query string — `32-code-completion-popup.png`
-
-**✅ Captured, 2026-09-28.**
-
-**Shows** `q.setQuery("category:books AND de…")` with the completion popup open **by itself**, having
-been typed into rather than invoked, offering `description` from the `solr` configset with its type.
-Only fields the call can use are offered — a query position wants searchable fields — and no dynamic
-pattern such as `*_t` appears, since a pattern is not a name anyone can write in a query.
-
-**Why this is its own image.** Inside a Java or Kotlin string the platform suppresses the completion
-popup, so before this the list appeared only on <kbd>Ctrl-Space</kbd>, which nobody presses inside a
-string. A frame of the popup open with no key pressed is the claim.
-
-**Capture** put the caret after `AND ` in `findSolrBooks`, type `de`, and frame the line with the
-popup. Undo the typing afterwards.
-
-**Redo when** the popup's contents or the positions it opens in change.
-
-**Verifies** [CODE-6](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code).
+Start with `./gradlew runIde` and open [`demo/solr/conf/managed-schema.xml`](glossary.md#managed-schema).
+Server entries need a running Solr (`docker compose -f demo/compose.yaml up -d`); code entries use
+`demo/src/main/java/com/example/demo/ProductSearch.java`.
+
+| # | Image | Shows, and how to get it | Redo when |
+|---|---|---|---|
+| 01 | `hints-match-capability` | The inline match and storage hints on the `<field>` block, no interaction. Frame all nine fields: `notes` carries only storage phrases and `legacy` none, and `legacy`'s underline belongs in frame. | Hint wording, a recognised capability, or the demo's fields change |
+| 02 | `quick-doc-field` (+ `-annotated`) | Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a Mac) in `name="category"`: each property's **Value** and **From**. Drag the popup wider and taller until every row is one line and `uninvertible` shows; it remembers the size. | The field property vocabulary or **From** wording changes |
+| 03 | `quick-doc-class` (+ `-annotated`) | Quick Documentation on `solr.StandardTokenizerFactory`: kind, Lucene class, Javadoc summary, accepted attributes, Reference Guide link. The annotated file is framed wider for its margin markers. | The popup renders different catalog columns |
+| 04 | `inspection-copyfield-quickfix` | <kbd>Alt-Enter</kbd> on the dangling `manufacturer` copyField: the closest-spelled names (the IDE lists them alphabetically). Expect `*_t`, `category`, `description`, `legacy`, `name`, `notes`: the nearest six; five names tie at distance 11 and the alphabetical tiebreak (`SolrInspections.replacementFixes`) keeps `*_t` and `description`. Only `manufacturer` and `legacy` may be underlined; any other underline is a false positive. | The fix ranking or the message changes |
+| 05 | `completion-field-properties` | Caret after `stored="true"` on `category` and **before the `/`**, type a space: attribute completion without the attributes already present. A space after the `/` opens element completion instead. | The property vocabulary changes |
+| 06 | `completion-factory-attributes` | A space before the `/` on `EdgeNGramFilterFactory`: `luceneMatchVersion` and `preserveOriginal`, read from constructor bytecode. | The popup renders different catalog columns |
+| 07 | `find-usages-field-type` | <kbd>⌥F7</kbd> on the `text_general` declaration: `name`, `description`, `text` and `*_t`. | The demo's fields or the usage grouping change |
+| 08 | `nav-solrconfig-field-reference` | In `solrconfig.xml`, Cmd-hover `name` in the `qf` parameter: it resolves to the schema field. | The demo's handler parameters or boost handling change |
+| 09 | `nav-resource-file` | Quick Definition on `words="stopwords.txt"`. Not Cmd-hover, whose tooltip is an absolute path. | Resource attribute coverage changes |
+| 10 | `completion-solrconfig-structure` | `<` on a blank line inside `<config>`: Solr's top-level elements, and not `cache`, `featureVectorCache` or `HashDocSet`. If those appear, the sandbox predates the catalog. | The element vocabulary or the demo's top-level children change |
+| 11 | `dimmed-restated-default` | The field block untouched: `indexed="true"`/`stored="true"` dimmed, `stored="false"` at full strength. | The demo's attributes or the dimmed set change |
+| 12 | `intention-companion-fields` | <kbd>Alt-Enter</kbd> on `description`: the exact-match and prefix companion intentions, optionally with the preview pane (<kbd>⌃J</kbd>). Dismiss with Escape. | Intention wording changes, or `description` stops being tokenised |
+| 13 | `completion-parameter-fields` | After `category` in the `qf` value, type a space, then <kbd>Ctrl-Space</kbd>: schema fields with their types, `*_t` included. | The demo's fields change |
+| 14 | `rename-cross-file-before` / `-after` | <kbd>Shift-F6</kbd> on `category` to `product_category`, applied directly: the `qf` line in `solrconfig.xml` before and after. One <kbd>Cmd-Z</kbd> undoes both files. | The demo's `qf` or `category` changes |
+| 15 | `completion-parameter-names` | A new `<str name="` in the `/select` defaults, type `sort`: Solr's parameter names with their declaring class. A parameter the list already sets is withheld. | The parameter catalog changes |
+| 16 | `hover-schema-version` | Quick Documentation on `version` in `<schema version="1.6">`: what the attribute decides, then what `1.6` decides. On the legacy *Mac OS X* keymap F1 opens Help; use ⌃J. | The demo's version or the version-dependent properties change |
+| 17 | `completion-query-nesting` | Type `<query></query>` inside `<config>`, `<` between the tags: what Solr reads there, without `dataDir`. Revert the file. | The element vocabulary changes |
+| 18 | `completion-indexconfig-nesting` | As 17 with `<indexConfig>`: only `deletionPolicy`; discontinued `nrtMode` and `unlockOnStartup` are never offered. | Entry 17 is redone |
+| 19 | `drift-three-states` | **Drift** tab, **Compare**: *Not deployed*, *Only on server* and *Differs* rows with the summary above. Select a *Differs* row and narrow the State, Kind and Name columns so both definition cells read. The demo's own configset cannot be deployed. | State labels, columns or the summary change |
+| 20 | `drift-refused-payload` | A *Differs* row selected: the refusal reason above the `replace-field` request, and **Apply Additive Changes** disabled in the toolbar. | The refusal wording or the payload pane changes |
+| 21 | `drift-apply-before` / `-after` | A *Not deployed* row with its `add-field` payload and Apply enabled; then, after confirming, the re-read comparison without it. | The summary wording or the apply flow changes |
+| 22 | `connections-settings` | Settings → Tools → Solr Connections, editing a connection with a saved password: the empty field and the text saying a password is stored. | The field layout or stored-password wording changes |
+| 23 | `collections-topology` | The **Solr** tool window on SolrCloud: a collection to its shards and replicas, leader marked, health dots, the connection selector. | Row detail, the toolbar, health colours or the icon change |
+| 24 | `luke-fields` | A collection's **Fields** expanded after indexing an undeclared `author_s` and a `price_f`: the `← *_s` marker, and no document count on the point field. | The detail format or the pattern marker changes |
+| 25 | `query-and-results` | An `.http` Solr request run from *Explain why documents scored*: the summary line (matches vs returned), the table, the start of the explanation. Use a query matching more than it returns. | The summary, table columns or explanation rendering change |
+| 26 | `code-field-warning` | `findBooks`, no interaction: `categry` and `price` highlighted up to the colon and no further, `id` and `name` left alone. Crop tight enough to see where each highlight ends. | The severity, the demo's fields, `ProductSearch.java` or the warning style changes |
+| 27 | `code-query-colour` | `setQuery("category:books AND name:solr")`: fields and `AND` coloured apart from the string. Keep the caret out of frame. | The query scan, its operators, or the default palette changes |
+| 28 | `code-navigate-to-schema` | <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`, then split right: Java left, the schema's `<field>` right, both tab rows in frame. | The demo's field block, layout or the reference changes |
+| 29 | `code-run-from-gutter` | The gutter icon beside `setQuery` and the collection chooser it opens — at the editor's top-right, so frame both corners. | The popup's anchor or title, or the icon's call, changes |
+| 30 | `completion-live-schema` | <kbd>Ctrl-Space</kbd> (not a letter) in an `.http` body's `"fields": [""]`: the collection's fields, each labelled with the collection and connection, such as `books · local`. Typing opens a configset-backed popup instead. | The source label or renderer changes |
+| 31 | `index-test-document` | **Index a Test Document** on a collection: the dialog as it opens, every field filled from the schema except Solr's own fields, copy-field destinations and fields that keep nothing. Press **Cancel**. | The validation wording, commit-mode chooser or starting document changes |
+| 32 | `code-completion-popup` | Type `de` after `AND ` in `findSolrBooks`: the popup opens by itself offering `description`, no dynamic patterns. Undo the typing. | The popup's contents or positions change |
+
+**Known stale:** `23-collections-topology-light.png` shows the drift view rather than the collections
+tree. The unsuffixed `23-collections-topology.png` still shows the shard's hash range, which has since
+moved to the row's tooltip; slide 46 of the deck embeds it.
+
+**Across the board:** a change to `ProductSearch.java` invalidates 26–29, since each is a crop of
+it; a change to `supportedSolrLines` invalidates 02 and 03, whose Reference Guide link names the
+version; an IntelliJ platform update that restyles popups, completion or inlays invalidates all of
+them, with no plugin change at all.
 
 ## Not yet capturable
 
-These have no gesture that does anything yet, or shipped but has not been captured. An entry moves up
-into the catalog when its feature ships **and** someone shoots it, mirroring the manual test suite's
-own "Not yet in the suite" list:
+Images worth having that the catalog does not hold yet:
 
-- *Mark Directory as Solr Configset Root* and the Solr Configsets settings page — shipped, never
-  captured (see [ACT-3 to ACT-5](manual-test-suite.md#1-activation-act)). The frame worth having is
-  the page with one *marked* and one *detected* row side by side
-- Hover documentation on a factory attribute — owner, value type, default or required marker
-  (see [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc))
-- A factory's complete effective configuration, unwritten attributes shown at their defaults
-  (see [the quick-documentation check on a factory's complete configuration](manual-test-suite.md#5-quick-documentation-doc))
-- An attribute's own name answering on hover — `name`, `type`, `source`, `dest`
-  (see [the quick-documentation check on an attribute's own name](manual-test-suite.md#5-quick-documentation-doc))
-- `solrconfig.xml` attribute completion inside a cache tag such as `<filterCache>`
-  (see [the check that a cache tag's attribute completion offers Solr's cache attributes](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str))
-- The analyzer-chain ordering inspection, the discontinued-element and misspelled-parameter
-  inspections, and the field-operation split — all covered by
-  [the inspections and quick-fixes checks](manual-test-suite.md#6-inspections-and-quick-fixes-insp)
-- Class navigation landing in a resolvable class
-  (see [the checks on navigating to a class outside the project](manual-test-suite.md#4-navigation-and-find-usages-nav))
-  — needs `solr-core` added to the demo's dependencies first, a fixture change out of scope for a
-  screenshot pass
-- **The server track's remaining gestures.** Entries 19 to 25, 30 and 31 cover the drift view's
-  three states, a refused and an applied change, the connections page, the tree, the index's own
-  fields, a query and its answer, live completion and a refused document. What none shows is the
-  inline failure banner when a server is down (`SRV-5`) and Upload and Reload's confirmation
-  (`SRV-22`) — the second cannot be shot against the demo configset at all, whose planted defects stop
-  a core starting
-- **The tool window's right-click queries** — *Query* and *Explain Scoring* on a collection, *Find
-  Documents with* and *Count Values of* on a field (`SRV-10a` in
-  [the connections and tool window checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)).
-  The frame worth having is the menu open on a field of the demo's `products` collection, with the
-  scratch file it opens beside it
-- **The code track's remaining gestures.** Entries 26 to 29 above cover the check, the colour, the
-  navigation and the gutter run; what none of them shows is the spelling quick-fix, field completion
-  inside a query string, the *no connection* message, the same file written in Kotlin, and the
+- *Mark Directory as Solr Configset Root*, and the Solr Configsets settings page with one marked and
+  one detected row side by side ([ACT-3 to ACT-5](manual-test-suite.md#1-activation-act)).
+- Quick documentation on a factory attribute, on a factory's complete configuration, and on an
+  attribute's own name ([DOC-7, DOC-4b, DOC-8](manual-test-suite.md#5-quick-documentation-doc)).
+- Attribute completion inside a cache tag such as `<filterCache>`
+  ([STR-5](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str)).
+- The analyzer-chain ordering, discontinued-element and misspelled-parameter inspections
+  ([INSP-7, INSP-13, INSP-14](manual-test-suite.md#6-inspections-and-quick-fixes-insp)).
+- Class navigation landing in a resolvable class — needs `solr-core` in the demo's dependencies
+  ([NAV-9](manual-test-suite.md#4-navigation-and-find-usages-nav)).
+- The tool window's failure banner when a server is down; the right-click queries on a collection
+  or field; Upload and Reload's confirmation, which needs a deployable configset
+  ([SRV-5, SRV-10a, SRV-22](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)).
+- The spelling quick-fix in code, the *no connection* message, the Kotlin version of the demo, and
   silence in a module with no Solr client
-  (`CODE-2`, `CODE-6`, `CODE-11`, `CODE-12`, `CODE-13` in
-  [the code-track checks](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code)).
-  The last of those is the awkward one to photograph, since it is an image of nothing happening
-
-
-## What invalidates images across the board
-
-Some triggers hit several at once. When one of these lands, re-shoot the images named:
-
-| Change | Re-shoot |
-|---|---|
-| Catalog gains or loses a column (defaults, required markers, new facts) | 3, 6 |
-| Supported Solr lines change | 2, 3 — the Reference Guide link names the version |
-| Field property vocabulary changes | 2, 5, 11 |
-| Demo configset's fields or types change | 1, 7, 8, 11, 12, 13, 14, 26, 28 |
-| Demo's `solrconfig.xml` handler parameters change | 8, 13, 14 |
-| Demo schema's declared `version` changes | 16 |
-| Generated `solrconfig.xml` element vocabulary changes | 10 |
-| Generated `solrconfig.xml` parameter catalog changes | 15 |
-| `demo/src/main/java/com/example/demo/ProductSearch.java` changes at all | 26, 27, 28, 29 — every one is a crop of it, addressed by line number |
-| The query scan changes which characters are fields or operators | 26, 27 — the check and the colour read the same scan, so they move together |
-| The drift view's states, columns or summary wording change | 19, 20, 21 |
-| The Solr tool window's row detail or toolbar changes | 23, 24 |
-| The query summary, table or explanation rendering changes | 25 |
-| The `.http` completion renderer or its source label changes | 30 |
-| Document validation wording or the index dialog's layout changes | 31 |
-| IntelliJ platform restyles popups, completion or inlays | all of them |
-
-The last row is the one that goes unnoticed. A platform version bump can restyle every popup in this
-catalog without a single line of plugin code changing, so a major IDE upgrade is a screenshot-review
-trigger in its own right.
+  ([CODE-2, CODE-11, CODE-12, CODE-13](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code)).

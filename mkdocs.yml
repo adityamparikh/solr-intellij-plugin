@@ -21,6 +21,8 @@ theme:
       scheme: slate
       toggle: { icon: material/brightness-4, name: Switch to system preference }
   features:
+    # Each top-level nav group is a header tab, so the sidebar lists one group's pages, not all of them.
+    - navigation.tabs
     - navigation.sections
     - navigation.top
     - navigation.footer
@@ -62,9 +64,12 @@ markdown_extensions:
 # Contributor pages link to specs and source outside docs/; the hook fixes the common cases and the
 # rest are reported rather than failing the build.
 validation:
+  nav: { omitted_files: warn, not_found: warn }
   links: { not_found: info, unrecognized_links: info }
   anchors: info
 
+# Grouped by who is reading, then by what they are doing (Diátaxis). A plugin user's Next link
+# never lands in contributor material, and the QA pages come last.
 nav:
   - Home: index.md
   - Using the plugin:
@@ -72,24 +77,28 @@ nav:
       - Installing: installing.md
       - User guide: user-guide.md
       - Inspection catalog: inspection-catalog.md
-      - Compatibility: compatibility.md
-      - FAQ: faq.md
-      - Release notes: changelog.md
-  - Reference:
       - Solr configuration files: solr-configuration-files.md
-      - Glossary: glossary.md
-      - Platform mechanisms: platform-mechanisms.md
-      - API reference: api-reference.md
-      - Extension points: extension-points.md
-  - Contributing:
-      - Contributing: contributing.md
-      - Project orientation: project-orientation.md
-      - Code organization: code-organization.md
-      - Adding an editor feature: how-to/add-an-editor-feature.md
-      - Extending the field model: how-to/extend-the-field-model.md
-      - Testing and the build gates: how-to/testing-and-the-build-gates.md
-      - Releasing: how-to/releasing.md
+      - Compatibility: compatibility.md
+      - How quick documentation works: faq.md
+      - Release notes: changelog.md
+  - Working on the plugin:
+      - Tutorial:
+          - Your first IntelliJ plugin: modern-intellij-plugin-development.md
+      - How-to guides:
+          - Contributing: contributing.md
+          - Adding an editor feature: how-to/add-an-editor-feature.md
+          - Extending the field model: how-to/extend-the-field-model.md
+          - Testing and the build gates: how-to/testing-and-the-build-gates.md
+          - Releasing: how-to/releasing.md
+      - Reference:
+          - Glossary: glossary.md
+          - Extension points: extension-points.md
+          - API reference: api-reference.md
+      - Explanation:
+          - Project orientation: project-orientation.md
+          - Platform mechanisms: platform-mechanisms.md
+          - Code organization: code-organization.md
+  - Maintainers:
       - Manual test suite: manual-test-suite.md
       - Manual test checklist: manual-test-checklist.md
       - Screenshot catalog: screenshots.md
-      - Modern plugin development: modern-intellij-plugin-development.md
