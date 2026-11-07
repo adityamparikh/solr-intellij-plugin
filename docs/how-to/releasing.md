@@ -50,9 +50,18 @@ for every version after that.
 
 - **A JetBrains account that owns the plugin ID** (`<id>` in `plugin.xml`). The first upload claims
   it, and it cannot change afterwards without publishing a different plugin.
+- **Settle the plugin ID and the icon.** `<id>` is `org.apache.solr.ide`, a reversed domain this
+  project does not own, and the plugin icon is the sunburst from Apache Solr's logo. Both are the
+  same trademark question the name and vendor were changed for; the first upload is the last moment
+  the ID can change.
 
-Without these, publishing the draft still produces a real, installable GitHub release, and
-`release.yml` fails at the Marketplace step.
+Without these, publishing the draft creates the tag and the release page, but `release.yml` stops at
+`publishPlugin`, before the step that uploads the ZIP. The draft carries no assets, so the release
+has nothing to install until you attach the ZIP by hand:
+
+```bash
+./gradlew buildPlugin && gh release upload <tag> build/distributions/*
+```
 
 ## Cutting a GitHub-only release
 
@@ -64,8 +73,10 @@ Without these, publishing the draft still produces a real, installable GitHub re
 4. **Check the draft** on the releases page: the right version, and notes that read as release
    notes rather than as commit subjects.
 5. **Publish it.** The tag is created at that moment.
-6. If the Marketplace prerequisites are not in place, `release.yml` fails; say so in the release
-   notes so readers know the plugin did not reach the Marketplace.
+6. If the Marketplace prerequisites are not in place, `release.yml` fails at `publishPlugin` and
+   uploads no ZIP. Build and attach it by hand, from the tagged commit, with
+   `./gradlew buildPlugin && gh release upload <tag> build/distributions/*`, and say in the release
+   notes that the plugin did not reach the Marketplace.
 
 ## Cutting a Marketplace release
 

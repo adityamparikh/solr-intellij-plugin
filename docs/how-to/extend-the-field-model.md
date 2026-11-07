@@ -114,8 +114,7 @@ tests. [Testing and the build gates](testing-and-the-build-gates.md) has the con
 
 ## What does not go here
 
-- **Anything needing a `Project`, a `PsiFile`, or a `VirtualFile`.** That is `configset.reading`,
-  or the aspect's own `parsing` package.
+- **Anything needing a `Project`, a `PsiFile`, or a `VirtualFile`.** That is `configset.reading`.
 - **Anything reading a Solr server.** That is `server`, and it is unreachable from the editor path.
 - **Presentation.** How a fact is worded for a user belongs in the feature that shows it —
   `SolrFieldPresentation` and `SolrSchemaElements` are in `configset.schema.documentation` for that

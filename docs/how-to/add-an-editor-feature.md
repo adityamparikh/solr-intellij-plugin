@@ -17,13 +17,13 @@ We follow `SolrUnknownFieldTypeInspection`, which reports a `field` whose `type`
 [field type](../glossary.md#field-type) the [configset](../glossary.md#configset) does not declare.
 The Kotlin is short; what matters is the seven other places it reaches into.
 
-The round trip, shown with `SolrDanglingCopyFieldInspection` — the same spine, with a quick-fix:
+The round trip:
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant IDE as IntelliJ platform
-    participant Inspection as SolrDanglingCopyFieldInspection
+    participant Inspection as SolrUnknownFieldTypeInspection
     participant Model as SolrConfigsetReader
     participant Helpers as SolrInspections
     actor Reader
@@ -39,11 +39,10 @@ sequenceDiagram
         Model-->>Inspection: SolrFieldModel
         loop once per XML tag
             IDE->>Inspection: visitXmlTag(tag)
-            Inspection->>Helpers: isCheckableFieldName(name)
-            Note over Helpers: globs, function queries and transformers are not<br/>field names — an inspection must not fire on a correct file
-            Inspection->>Model: resolve(name)
-            Model-->>Inspection: null, so nothing declares it
-            Inspection->>Helpers: replacementFixes(name, candidates, family)
+            Note over Inspection: only a field or dynamicField with a non-empty type
+            Inspection->>Model: fieldTypes.containsKey(typeName)
+            Model-->>Inspection: false, so nothing declares it
+            Inspection->>Helpers: replacementFixes(typeName, fieldTypes.keys, family)
             Helpers-->>Inspection: a SolrReplaceNameQuickFix per near miss
             Inspection->>IDE: SolrInspections.reportOnValue(holder, value, message, fixes)
         end

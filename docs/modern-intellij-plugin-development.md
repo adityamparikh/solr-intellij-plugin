@@ -52,7 +52,7 @@ We'll ship three features:
 
 ## Prerequisites
 
-- IntelliJ IDEA 2025.3 or newer. Since 2025.3 there is a single unified distribution; the free tier is all you need.
+- IntelliJ IDEA 2026.1 or newer. Since 2025.3 there is a single unified distribution; the free tier is all you need.
 - **JDK 21.** A plugin runs inside the IDE process, on the JetBrains Runtime the IDE ships with — currently a JBR 21 build — so bytecode for a newer release won't load. The SDK documents the required Java version per platform version; check it when you bump your target. This is independent of the Java your *projects* use.
 - Familiarity with Gradle Kotlin DSL.
 
@@ -66,7 +66,7 @@ The Gradle plugin fetches the platform artifacts for you; there is no SDK to dow
 | IntelliJ Platform Gradle Plugin | 2.19.0 |
 | Kotlin | 2.4.21 |
 | JDK / bytecode target | 21 |
-| Minimum supported IDE (`sinceBuild`) | 253 (2025.3) |
+| Minimum supported IDE (`sinceBuild`) | 261 (2026.1) |
 
 When something below doesn't match what you see, the [SDK docs](https://plugins.jetbrains.com/docs/intellij/) are the source of truth.
 
@@ -119,7 +119,7 @@ intellijPlatform {
         id = "dev.example.solrconfig"
         name = "Solr Configset Support"
         ideaVersion {
-            sinceBuild = "253"
+            sinceBuild = "261"
             // untilBuild intentionally unset — forward compatible by default
         }
     }
@@ -409,9 +409,6 @@ dependency with its own descriptor:
 <depends optional="true" config-file="java-features.xml">com.intellij.modules.java</depends>
 ```
 
-The plugin in this repository takes the other route: it targets IntelliJ IDEA only, which bundles
-Java, so `com.intellij.modules.java` is a plain, hard `<depends>`.
-
 ### Extensionless files
 
 On a file literally named `managed-schema`, with no extension, the checkpoint below does nothing.
@@ -447,6 +444,7 @@ package dev.example.solrconfig.inspection
 import com.intellij.codeInspection.*
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlFile
@@ -470,11 +468,12 @@ class DanglingCopyFieldInspection : LocalInspectionTool() {
                     if (value.contains('*')) continue                  // dynamic field pattern
                     if (model.findField(file, value) != null) continue
 
-                    val target = tag.getAttribute(attrName)?.valueElement ?: tag
+                    val target = tag.getAttribute(attrName)?.valueElement ?: continue
                     holder.registerProblem(
                         target,
                         "Field '$value' is not defined in this schema",
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+                        ElementManipulators.getValueTextRange(target),   // inside the quotes
                         CreateFieldQuickFix(value),
                     )
                 }
@@ -652,10 +651,10 @@ class DanglingCopyFieldInspectionTest : BasePlatformTestCase() {
 
     fun testQuickFixCreatesTheField() {
         myFixture.enableInspections(DanglingCopyFieldInspection::class.java)
-        myFixture.configureByFile("dangling/managed-schema.xml")
+        myFixture.configureByFile("dangling-fix/managed-schema.xml")
         val fix = myFixture.getAllQuickFixes().first { it.text.startsWith("Create string field") }
         myFixture.launchAction(fix)
-        myFixture.checkResultByFile("dangling/managed-schema.after.xml")
+        myFixture.checkResultByFile("dangling-fix/managed-schema.after.xml")
     }
 
     fun testCompletionOffersFieldTypes() {
@@ -683,6 +682,12 @@ And completion tests mark the caret with `<caret>`:
 ```xml
 <field name="x" type="<caret>"/>
 ```
+
+The quick-fix test needs its own input. `configureByFile` strips caret and selection markers, not
+highlighting markup, so on `dangling/managed-schema.xml` the fix would run on XML with the `<warning>` markup still in it.
+Put a markup-free copy in `dangling-fix/managed-schema.xml` and the expected result, the same file
+with the new `<field>` added, in `dangling-fix/managed-schema.after.xml`. The input must still be
+named `managed-schema.xml`, or `SchemaDetector` rejects it and nothing is reported.
 
 `checkHighlighting()` fails if reported problems don't match the markup *exactly*, including
 problems you didn't mark — so a real-world sample of your format asserted to produce zero warnings
@@ -780,4 +785,6 @@ with a Marketplace token publishes each version.
 
 The plugin in this repository is built on the same patterns. [Code organization](code-organization.md)
 maps its packages and where a change goes, and [extension points](extension-points.md) lists every
-registration in its `plugin.xml`.
+registration in its `plugin.xml`. That plugin targets IntelliJ IDEA only, which bundles Java, so its
+`com.intellij.modules.java` dependency is a plain `<depends>` rather than the optional one Part 4
+shows.

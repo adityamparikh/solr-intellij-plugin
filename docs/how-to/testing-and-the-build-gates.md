@@ -1,8 +1,9 @@
 # Testing and the build gates
 
 Which test style a change needs, what `./gradlew build` checks before a PR is mergeable, and what
-to do when the build fails for reasons that are not your code. Every gate below is bound to
-`check`, so `./gradlew build` meets it locally before CI does.
+to do when the build fails for reasons that are not your code. Every gate below except
+`verifyPlugin` is bound to `check`, so `./gradlew build` meets it locally before CI does; run
+`./gradlew verifyPlugin` for that one.
 
 ## Writing tests
 
@@ -223,7 +224,7 @@ code:
 To tell which one it was, read what the freshly built test class references:
 
 ```bash
-javap -c -p build/classes/kotlin/test/<path>/YourTest.class | grep 'of\$default'
+javap -c -p build/classes/kotlin/test/<path>/YourTest.class | grep '\$default'
 ```
 
 ### Containers will not start
@@ -237,8 +238,8 @@ an empty body. The build pins `api.version` to 1.44 for the test JVM; override i
 DOCKER_API_VERSION=1.47 ./gradlew test --tests "*SolrServerContractTest*"
 ```
 
-To see Testcontainers' own diagnosis, run its detection outside Gradle; adding an SLF4J binding to
-the test classpath breaks unrelated fixture tests, because the platform ships its own.
+Do not add an SLF4J binding to the test classpath to see Testcontainers' logging: the platform
+ships its own, and a second one breaks unrelated fixture tests.
 
 `build.gradle.kts` excludes three of Testcontainers' transitive dependencies that the platform also
 ships in other versions: JNA, jackson-annotations, and slf4j-api. Leaving any of them in breaks
