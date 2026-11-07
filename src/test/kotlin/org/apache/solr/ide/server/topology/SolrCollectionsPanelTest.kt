@@ -1,10 +1,13 @@
 package org.apache.solr.ide.server.topology
 
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.ui.UIUtil
 import javax.swing.tree.DefaultMutableTreeNode
+import org.apache.solr.ide.SolrBundle
 import org.apache.solr.ide.configset.activation.SolrConfigsetTestCase
 import org.apache.solr.ide.server.connection.SolrConnection
 import org.apache.solr.ide.server.connection.SolrQueryDestination
+import org.apache.solr.ide.server.indexing.SolrCommitMode
 import org.apache.solr.ide.server.query.screen.SolrQueryScreenFile
 import org.apache.solr.ide.server.reading.SolrCollection
 import org.apache.solr.ide.server.reading.SolrCore
@@ -149,6 +152,39 @@ class SolrCollectionsPanelTest : SolrConfigsetTestCase() {
 
     assertEquals(listOf("Cores"), page.rootLabels)
     assertNull(page.bannerMessage)
+  }
+
+  /**
+   * A document that went in is not reported in the colour of a failure.
+   *
+   * The indexing success line shared the error banner's colour, so a document that was findable
+   * within a second read as one that had been refused.
+   */
+  fun testASuccessfulIndexingIsNotShownInTheErrorColour() {
+    val page = panel()
+
+    page.reportIndexing("products", SolrCommitMode.WITHIN, SolrResponse.Success(Unit))
+
+    assertEquals(
+      SolrBundle.message("indexing.indexed", "products", SolrCommitMode.WITHIN.label),
+      page.bannerMessage,
+    )
+    assertEquals(UIUtil.getLabelForeground(), page.bannerForeground)
+    assertTrue(page.bannerForeground != UIUtil.getErrorForeground())
+  }
+
+  /** A refused document is still reported in the error colour, in Solr's own words. */
+  fun testAFailedIndexingIsShownInTheErrorColour() {
+    val page = panel()
+
+    page.reportIndexing(
+      "products",
+      SolrCommitMode.WITHIN,
+      SolrResponse.SolrError(400, "undefined field categry"),
+    )
+
+    assertNotNull(page.bannerMessage)
+    assertEquals(UIUtil.getErrorForeground(), page.bannerForeground)
   }
 
   // --- when it asks a server --------------------------------------------------------------------

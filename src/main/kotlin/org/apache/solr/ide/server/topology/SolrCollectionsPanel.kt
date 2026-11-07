@@ -355,10 +355,20 @@ class SolrCollectionsPanel(private val project: Project) :
     warningFor(response)?.let { showBanner(it) }
   }
 
-  private fun showBanner(message: String) {
+  /**
+   * Shows [message] in the banner, in the error colour unless it says something went well.
+   *
+   * A success is shown in the ordinary label colour: the banner is the panel's one place for saying
+   * anything about what just happened, and drawing "Indexed into products" in the colour of a
+   * failure made a document that had gone in read as one that had not.
+   *
+   * @param message what to say
+   * @param failure whether [message] reports a problem, which is the default
+   */
+  private fun showBanner(message: String, failure: Boolean = true) {
     banner.text = message
     banner.isVisible = true
-    banner.foreground = UIUtil.getErrorForeground()
+    banner.foreground = if (failure) UIUtil.getErrorForeground() else UIUtil.getLabelForeground()
   }
 
   /**
@@ -478,13 +488,29 @@ class SolrCollectionsPanel(private val project: Project) :
     project.service<SolrCollectionsScope>().scope.launch {
       val result =
         SolrDocumentIndexer.getInstance(project).index(connection, collection, document, commit)
-      withContext(Dispatchers.EDT) {
-        showBanner(
-          failureMessageFor(result)
-            ?: SolrBundle.message("indexing.indexed", collection, commit.label)
-        )
-      }
+      withContext(Dispatchers.EDT) { reportIndexing(collection, commit, result) }
     }
+  }
+
+  /**
+   * Says how sending a document went: why it failed, or that it went in and when it becomes
+   * findable.
+   *
+   * Reachable rather than private so the colour of each outcome can be checked without a server.
+   *
+   * @param collection the collection the document was sent to
+   * @param commit when the document was asked to become findable
+   * @param result what Solr answered
+   */
+  internal fun reportIndexing(
+    collection: String,
+    commit: SolrCommitMode,
+    result: SolrResponse<Unit>,
+  ) {
+    val failure = failureMessageFor(result)
+    if (failure != null) showBanner(failure)
+    else
+      showBanner(SolrBundle.message("indexing.indexed", collection, commit.label), failure = false)
   }
 
   /**
@@ -544,6 +570,10 @@ class SolrCollectionsPanel(private val project: Project) :
   /** What the banner is saying, or null where it is hidden. */
   internal val bannerMessage: String?
     get() = banner.text.takeIf { banner.isVisible && it.isNotEmpty() }
+
+  /** The colour the banner's text is drawn in, which is how a success is told from a failure. */
+  internal val bannerForeground: java.awt.Color
+    get() = banner.foreground
 
   /** Selects [path], as clicking that row would. */
   internal fun selectPath(path: javax.swing.tree.TreePath) {
