@@ -1,4 +1,4 @@
-# How quick documentation gets its content
+# How quick documentation works
 
 Everything the quick documentation popup says about *Solr's own classes* is read mechanically from
 Solr's published artifacts at build time, for each supported Solr line, and shipped inside the
@@ -11,7 +11,8 @@ it, and text copied by hand always can.
 
 ## Where each line of the popup comes from
 
-**A `class` value.** <kbd>Ctrl-J</kbd> on `class="solr.StandardTokenizerFactory"` in a schema:
+**A `class` value.** Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a Mac) on
+`class="solr.StandardTokenizerFactory"` in a schema:
 
 ![Quick documentation on a class value, with five regions marked: the short name and kind, the
 fully-qualified class name, the one-sentence Javadoc summary, the accepted attributes, and the
@@ -30,7 +31,7 @@ Reference Guide link](images/03-quick-doc-class-annotated-dark.png#only-dark)
 
 Everything above the link is a lookup into a file generated when the plugin was built.
 
-**A field.** <kbd>Ctrl-J</kbd> on `name="category"` asks a different question, and gets a different
+**A field.** The same gesture on `name="category"` asks a different question, and gets a different
 mix:
 
 ![Quick documentation on a field, with four regions marked: the field and type header, the match
@@ -48,9 +49,9 @@ summary, the Value and From columns, and the Accepts and Meaning columns](images
 ## What is maintained by hand, and why
 
 Only ④: about twenty field properties. Analysis factories number well over a hundred and change
-between Solr versions, so they are generated. Field properties are few, have stayed stable across Solr majors,
-and cannot be generated anyway: Solr reads them out of an argument map, with defaults decided in
-branching code rather than in any structure a build could enumerate.
+between Solr versions, so they are generated. Field properties are few, have stayed stable across
+Solr majors, and cannot be generated anyway: Solr reads them out of an argument map, with defaults
+decided in branching code rather than in any structure a build could enumerate.
 
 A hand-maintained table may be incomplete; it may not be confidently wrong. Where Solr's default
 depends on the field type and the plugin cannot settle it — `default`, `omitTermFreqAndPositions`,
@@ -77,6 +78,18 @@ authors write to stand alone; the rest is written to be read in context, which a
 And because the summary is read from the sources jar Solr published for that exact release, it
 cannot drift from the class it describes.
 
+## Why per line, not per project
+
 The catalog is generated once per supported line, from the release pinned in the build, rather than
 resolved for each project: a configset names only a Lucene version, which identifies a Solr major line
-but not an exact release, and the editor never contacts a server or a repository.
+but not an exact release, and the editor never contacts a server or a repository. The project's own
+dependencies cannot settle it either:
+
+- **[SolrJ](glossary.md#solrj) is matched only to ask whether a client is present**, by artifact id,
+  never by version.
+- **SolrJ does not carry `solr-core` or the Lucene analysis modules**, where the classes a configset
+  names live.
+- **A client's version need not match the server** the configset is deployed to.
+- **A bare configset repository has no build file** to read a version from.
+- **A missing sources jar means no summary rather than a guess.** The class keeps everything read
+  from its bytecode.

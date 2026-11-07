@@ -32,9 +32,10 @@ pick the ZIP → restart when prompted.
 The plugin stays silent outside a Solr project, on purpose. Check, in order:
 
 **1. Does your project depend on a Solr client?** The plugin wakes up only in a project whose
-dependencies include `solr-solrj` or a library carrying it — Spring Data Solr, its Boot starter, or
-Camel's Solr component — matched by artifact id, never by version. **A repository of bare configsets
-with no build file never activates on its own**, and that is the most common reason for silence.
+dependencies include `solr-solrj` or a library carrying it, such as Spring Data Solr, its Boot
+starter, Camel's Solr component or a Quarkus Solr extension, matched by artifact id, never by
+version. **A repository of bare configsets with no build file never activates on its own**, and that
+is the most common reason for silence.
 
 **2. Is the file one the plugin recognises?** It works on a configset's own files —
 `managed-schema.xml`, `schema.xml`, `solrconfig.xml`, and the resource files an analyzer chain names.
@@ -53,9 +54,11 @@ Open a `managed-schema.xml` in a project that passes both gates. You should see:
 
 - **An inline hint beside each `<field>`** saying what that field can match — whole-value or
   tokenised, case-sensitive or not.
-- **<kbd>Ctrl-J</kbd> on a field name** showing its resolved properties and where each value came
-  from: the field, its type, or Solr's own default at your schema's declared version.
-- **<kbd>Ctrl</kbd>-click on a `type` attribute** landing on the `<fieldType>` that declares it.
+- **Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a Mac) on a field name** showing its resolved
+  properties and where each value came from: the field, its type, or Solr's own default at your
+  schema's declared version.
+- **<kbd>Ctrl-click</kbd> (⌘-click on a Mac) on a `type` attribute** landing on the `<fieldType>`
+  that declares it.
 
 If those three work, the rest of [the user guide](user-guide.md) is available too.
 

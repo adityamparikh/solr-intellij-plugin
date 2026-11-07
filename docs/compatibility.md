@@ -37,4 +37,5 @@ the configset alone.
 ### Changing any of this
 
 Each value is declared once in `build.gradle.kts`, and `SolrCompatibilityPageTest` fails the build
-until this page matches; see [contributing](contributing.md#things-that-will-bite-you).
+until this page matches; see [contributing](contributing.md#things-that-will-bite-you). Raising
+`targetIdeVersion` means adding that release to `verifiedIdeBuilds` in the same commit.

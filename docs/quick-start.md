@@ -29,9 +29,9 @@ chain.
 
 ## 3. Ask where a value came from
 
-Put the caret in `name="category"` and press <kbd>Ctrl-J</kbd> (Control on a Mac too). The popup
-lists every property with its value and a **From** column: set on this field, set by its type, or
-Solr's own default.
+Put the caret in `name="category"` and open Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a
+Mac). The popup lists every property with its value and a **From** column: set on this field, set by
+its type, or Solr's own default.
 
 ## 4. Get a typo caught
 
@@ -61,8 +61,8 @@ docker compose -f demo/compose.yaml up -d      # Solr at http://localhost:8983
 
 In the sandbox, open the **Solr** tool window, add a connection to `http://localhost:8983/solr`, and
 expand `products`. Open the **Drift** tab, choose the `solr` configset and the `products` collection,
-and press **Compare**. The server's configset differs from the project's on purpose, so you see one
-row of each kind.
+and press **Compare**. The server's configset differs from the project's on purpose, so you see at
+least one row of each kind.
 
 Press **Apply Additive Changes**. After you confirm, the plugin sends the one addition the comparison
 found, the *Not deployed* `sku` field, through the Schema API, then reads the collection back and

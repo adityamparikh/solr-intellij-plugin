@@ -24,7 +24,7 @@ before/after or annotated variant shares its entry's number.
 **Annotate only where prose explains the markers.** Bake numbered markers into the pixels and put
 every word of explanation in the Markdown beside the image, so a reshoot never invalidates the text.
 An annotated image is a second file (`<name>-annotated`), never a replacement;
-[how quick documentation gets its content](faq.md) is the worked example.
+[how quick documentation works](faq.md) is the worked example.
 
 **Every image carries alt text** that says what it shows, so a reader who cannot see it loses only
 the illustration.
@@ -47,9 +47,9 @@ Server entries need a running Solr (`docker compose -f demo/compose.yaml up -d`)
 | # | Image | Shows, and how to get it | Redo when |
 |---|---|---|---|
 | 01 | `hints-match-capability` | The inline match and storage hints on the `<field>` block, no interaction. Frame all nine fields: `notes` carries only storage phrases and `legacy` none, and `legacy`'s underline belongs in frame. | Hint wording, a recognised capability, or the demo's fields change |
-| 02 | `quick-doc-field` (+ `-annotated`) | <kbd>Ctrl-J</kbd> in `name="category"`: each property's **Value** and **From**. Drag the popup wider and taller until every row is one line and `uninvertible` shows; it remembers the size. | The field property vocabulary or **From** wording changes |
-| 03 | `quick-doc-class` (+ `-annotated`) | <kbd>Ctrl-J</kbd> on `solr.StandardTokenizerFactory`: kind, Lucene class, Javadoc summary, accepted attributes, Reference Guide link. The annotated file is framed wider for its margin markers. | The popup renders different catalog columns |
-| 04 | `inspection-copyfield-quickfix` | <kbd>Alt-Enter</kbd> on the dangling `manufacturer` copyField: the closest-spelled names (the IDE lists them alphabetically). Only `manufacturer` and `legacy` may be underlined; any other underline is a false positive. | The fix ranking or the message changes |
+| 02 | `quick-doc-field` (+ `-annotated`) | Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a Mac) in `name="category"`: each property's **Value** and **From**. Drag the popup wider and taller until every row is one line and `uninvertible` shows; it remembers the size. | The field property vocabulary or **From** wording changes |
+| 03 | `quick-doc-class` (+ `-annotated`) | Quick Documentation on `solr.StandardTokenizerFactory`: kind, Lucene class, Javadoc summary, accepted attributes, Reference Guide link. The annotated file is framed wider for its margin markers. | The popup renders different catalog columns |
+| 04 | `inspection-copyfield-quickfix` | <kbd>Alt-Enter</kbd> on the dangling `manufacturer` copyField: the closest-spelled names (the IDE lists them alphabetically). Expect `*_t`, `category`, `description`, `legacy`, `name`, `notes`: the nearest six; five names tie at distance 11 and the alphabetical tiebreak (`SolrInspections.replacementFixes`) keeps `*_t` and `description`. Only `manufacturer` and `legacy` may be underlined; any other underline is a false positive. | The fix ranking or the message changes |
 | 05 | `completion-field-properties` | Caret after `stored="true"` on `category` and **before the `/`**, type a space: attribute completion without the attributes already present. A space after the `/` opens element completion instead. | The property vocabulary changes |
 | 06 | `completion-factory-attributes` | A space before the `/` on `EdgeNGramFilterFactory`: `luceneMatchVersion` and `preserveOriginal`, read from constructor bytecode. | The popup renders different catalog columns |
 | 07 | `find-usages-field-type` | <kbd>⌥F7</kbd> on the `text_general` declaration: `name`, `description`, `text` and `*_t`. | The demo's fields or the usage grouping change |
@@ -61,7 +61,7 @@ Server entries need a running Solr (`docker compose -f demo/compose.yaml up -d`)
 | 13 | `completion-parameter-fields` | After `category` in the `qf` value, type a space, then <kbd>Ctrl-Space</kbd>: schema fields with their types, `*_t` included. | The demo's fields change |
 | 14 | `rename-cross-file-before` / `-after` | <kbd>Shift-F6</kbd> on `category` to `product_category`, applied directly: the `qf` line in `solrconfig.xml` before and after. One <kbd>Cmd-Z</kbd> undoes both files. | The demo's `qf` or `category` changes |
 | 15 | `completion-parameter-names` | A new `<str name="` in the `/select` defaults, type `sort`: Solr's parameter names with their declaring class. A parameter the list already sets is withheld. | The parameter catalog changes |
-| 16 | `hover-schema-version` | <kbd>Ctrl-J</kbd> on `version` in `<schema version="1.6">`: what the attribute decides, then what `1.6` decides. <kbd>F1</kbd> opens a browser on the default macOS keymap. | The demo's version or the version-dependent properties change |
+| 16 | `hover-schema-version` | Quick Documentation on `version` in `<schema version="1.6">`: what the attribute decides, then what `1.6` decides. On the legacy *Mac OS X* keymap F1 opens Help; use ⌃J. | The demo's version or the version-dependent properties change |
 | 17 | `completion-query-nesting` | Type `<query></query>` inside `<config>`, `<` between the tags: what Solr reads there, without `dataDir`. Revert the file. | The element vocabulary changes |
 | 18 | `completion-indexconfig-nesting` | As 17 with `<indexConfig>`: only `deletionPolicy`; discontinued `nrtMode` and `unlockOnStartup` are never offered. | Entry 17 is redone |
 | 19 | `drift-three-states` | **Drift** tab, **Compare**: *Not deployed*, *Only on server* and *Differs* rows with the summary above. Select a *Differs* row and narrow the State, Kind and Name columns so both definition cells read. The demo's own configset cannot be deployed. | State labels, columns or the summary change |
@@ -76,25 +76,35 @@ Server entries need a running Solr (`docker compose -f demo/compose.yaml up -d`)
 | 28 | `code-navigate-to-schema` | <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`, then split right: Java left, the schema's `<field>` right, both tab rows in frame. | The demo's field block, layout or the reference changes |
 | 29 | `code-run-from-gutter` | The gutter icon beside `setQuery` and the collection chooser it opens — at the editor's top-right, so frame both corners. | The popup's anchor or title, or the icon's call, changes |
 | 30 | `completion-live-schema` | <kbd>Ctrl-Space</kbd> (not a letter) in an `.http` body's `"fields": [""]`: the collection's fields, each labelled with the collection and connection, such as `books · local`. Typing opens a configset-backed popup instead. | The source label or renderer changes |
-| 31 | `index-test-document` | **Index a Test Document** on a collection: the dialog as it opens, every field filled from the schema. Press **Cancel**. | The validation wording, commit-mode chooser or starting document changes |
+| 31 | `index-test-document` | **Index a Test Document** on a collection: the dialog as it opens, every field filled from the schema except Solr's own fields, copy-field destinations and fields that keep nothing. Press **Cancel**. | The validation wording, commit-mode chooser or starting document changes |
 | 32 | `code-completion-popup` | Type `de` after `AND ` in `findSolrBooks`: the popup opens by itself offering `description`, no dynamic patterns. Undo the typing. | The popup's contents or positions change |
 
-**Across the board:** a change to `ProductSearch.java` invalidates 26–29, since each is a crop of it;
-an IntelliJ platform update that restyles popups, completion or inlays invalidates all of them, with
-no plugin change at all.
+**Known stale:** `23-collections-topology-light.png` shows the drift view rather than the collections
+tree. The unsuffixed `23-collections-topology.png` still shows the shard's hash range, which has since
+moved to the row's tooltip; slide 46 of the deck embeds it.
+
+**Across the board:** a change to `ProductSearch.java` invalidates 26–29, since each is a crop of
+it; a change to `supportedSolrLines` invalidates 02 and 03, whose Reference Guide link names the
+version; an IntelliJ platform update that restyles popups, completion or inlays invalidates all of
+them, with no plugin change at all.
 
 ## Not yet capturable
 
 Images worth having that the catalog does not hold yet:
 
 - *Mark Directory as Solr Configset Root*, and the Solr Configsets settings page with one marked and
-  one detected row side by side.
+  one detected row side by side ([ACT-3 to ACT-5](manual-test-suite.md#1-activation-act)).
 - Quick documentation on a factory attribute, on a factory's complete configuration, and on an
-  attribute's own name.
-- Attribute completion inside a cache tag such as `<filterCache>`.
-- The analyzer-chain ordering, discontinued-element and misspelled-parameter inspections.
-- Class navigation landing in a resolvable class — needs `solr-core` in the demo's dependencies.
+  attribute's own name ([DOC-7, DOC-4b, DOC-8](manual-test-suite.md#5-quick-documentation-doc)).
+- Attribute completion inside a cache tag such as `<filterCache>`
+  ([STR-5](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str)).
+- The analyzer-chain ordering, discontinued-element and misspelled-parameter inspections
+  ([INSP-7, INSP-13, INSP-14](manual-test-suite.md#6-inspections-and-quick-fixes-insp)).
+- Class navigation landing in a resolvable class — needs `solr-core` in the demo's dependencies
+  ([NAV-9](manual-test-suite.md#4-navigation-and-find-usages-nav)).
 - The tool window's failure banner when a server is down; the right-click queries on a collection
-  or field; Upload and Reload's confirmation, which needs a deployable configset.
+  or field; Upload and Reload's confirmation, which needs a deployable configset
+  ([SRV-5, SRV-10a, SRV-22](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)).
 - The spelling quick-fix in code, the *no connection* message, the Kotlin version of the demo, and
-  silence in a module with no Solr client.
+  silence in a module with no Solr client
+  ([CODE-2, CODE-11, CODE-12, CODE-13](manual-test-suite.md#14-field-names-and-queries-in-java-and-kotlin-code)).
