@@ -387,7 +387,7 @@ reads *Only on server* — the comparison is right, but not the one you meant. A
 class — is not a difference; and the summary names the Solr line the comparison resolved against and
 where that came from. On a *Differs* row whose two columns look identical, widen them — the
 difference is in the truncated part. The demo's `compose.yaml` sets up one row of each kind; see
-[the quick start](quick-start.md#7-talk-to-a-server-optional).
+[the quick start](quick-start.md#7-compare-against-a-server-optional).
 
 ![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields only on the server, category not deployed, and description differing, selected, with the reason the plugin will not send its replace-field request shown above the request](images/19-drift-three-states-light.png#only-light)
 ![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields only on the server, category not deployed, and description differing, selected, with the reason the plugin will not send its replace-field request shown above the request](images/19-drift-three-states-dark.png#only-dark)
