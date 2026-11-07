@@ -41,8 +41,15 @@ indexing — but if it does not declare itself, it does nothing at all while a p
 nothing logged. That is absence during the exact window when someone opening a Solr project for the
 first time is most likely to be opening configset files.
 
-The one exception is class navigation: resolving the class a `class` attribute names goes through
-`JavaPsiFacade`, which reads the stub index.
+The exceptions are few, and each handles indexing on purpose:
+
+| What reads an index | Which one | While the IDE indexes |
+|---|---|---|
+| Class navigation from a `class` attribute (`SolrClassReferenceContributor`) | the stub index, through `JavaPsiFacade` | declines dumb-awareness *and* guards `resolve` with `DumbService`: no target, no exception |
+| Finding the project's configsets (`SolrProjectConfigsets`) | the filename index | guards with `DumbService` and answers an empty list rather than a partial one |
+| The unknown-field check on Java and Kotlin (`SolrUnknownCodeFieldInspection`) | the filename index, through `SolrProjectConfigsets` | `isDumbAware()` returns `false`, so it waits: an empty configset list would report every field name |
+| Field completion in Java and Kotlin, and its auto-popup (`SolrCodeFieldCompletionContributor`, `SolrCodeFieldCompletionConfidence`, `SolrCodeFieldTypedHandler`) | the filename index for configsets; resolving a call to decide it is SolrJ's | the contributor does not declare dumb-awareness; the auto-popup guards with `DumbService` and stays shut |
+| Field completion in the query console (`SolrQueryScreenFieldCompletion`) | the filename index, through the project's configsets | guards with `DumbService` and offers only the syntax entries beside the fields, such as `score` and `*` |
 
 ### The rules
 
@@ -222,7 +229,9 @@ Two mechanisms carry every server call, and both keep a promise the editor surfa
 blocking send in `runInterruptible` rather than plain `withContext(Dispatchers.IO)`. Coroutine
 cancellation is cooperative, so a `withContext` block sitting inside a blocking JDK call does not
 stop when its job is cancelled; `runInterruptible` interrupts the thread, and the JDK call throws.
-The test that pins this asserts elapsed time, not just that the job reported itself cancelled.
+`SolrHttpTransportTest`'s *cancelling the caller cancels the request* pins this by asserting elapsed
+time — under 5,000 ms against a server that sleeps — not just that the job reported itself
+cancelled.
 
 ### Every read is on request, and every write re-reads
 

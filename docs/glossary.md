@@ -521,7 +521,8 @@ comments here read as short design notes.
 
 The Kotlin code-coverage plugin (`kotlinx.kover`), and one of the build's three gates.
 
-> **In Java terms.** Kotlin's JaCoCo — it uses JaCoCo's engine under the hood.
+> **In Java terms.** Kotlin's JaCoCo. It measures with IntelliJ's own coverage agent, not JaCoCo's,
+> and writes its XML report in JaCoCo's format, which is what SonarCloud reads.
 
 Enforces an **80% line floor** via `koverVerify`, bound to `check`. The floor sits below actual
 coverage on purpose: a backstop against a sharp drop, while SonarCloud's new-code gate catches

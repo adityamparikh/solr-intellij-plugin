@@ -3,7 +3,7 @@
 IDE tooling for Apache Solr development on the IntelliJ Platform: three surfaces over one field
 model. The **configset editor** is static analysis of configset files (`managed-schema.xml` /
 `schema.xml`, `solrconfig.xml`) — completion, cross-file references, rename, inspections and
-match-capability hints, all working offline. The **server** surface connects to a running Solr: it
+match-capability hints, all working offline, with no Solr connection. The **server** surface connects to a running Solr: it
 browses collections, runs queries, compares a configset with what is deployed, and indexes test
 documents. The **code** surface reads the project's own Java and Kotlin for the fields it asks Solr
 for.
@@ -111,8 +111,8 @@ configset as a whole rather than to either aspect.
 `SolrSchemaPsi` is here for the same reason: it answers *where was this declared*, which is the
 target end of every reference, including the ones a `solrconfig.xml` parameter makes. The model can
 say a field type exists but not where it was written. `SolrClassReferenceContributor` is here because
-a `class` attribute is written in both files; it is the one contribution that reads an index, so it
-both declines dumb-awareness and guards with `DumbService`.
+a `class` attribute is written in both files; it is the one reference contribution that reads an
+index, so it both declines dumb-awareness and guards with `DumbService`.
 
 # Package org.apache.solr.ide.configset.schema
 
@@ -284,8 +284,8 @@ in a project with no configset to check against.
 # Package org.apache.solr.ide.code.completion
 
 Offering field names where Java or Kotlin code is naming one, and opening the popup by itself as one
-is typed. `SolrCodeFieldAutoPopup` asks the same position question the contributor does, so the
-popup never opens where completion then declines.
+is typed. `SolrCodeFieldCompletionConfidence` and `SolrCodeFieldTypedHandler` ask the same position
+question the contributor does, so the popup never opens where completion then declines.
 
 # Package org.apache.solr.ide.code.navigation
 
@@ -384,7 +384,8 @@ configset, reloading the collection, and the additive Schema API changes the plu
 `SolrDrift` compares two halves passed separately, never a model, and resolves factory spellings
 before comparing. `SolrSchemaApi` maps each difference onto the Schema API request it would need,
 and says which ones the plugin will send. `SolrConfigsetWriter` never reports a write from its own
-answer; the view re-reads.
+answer; the view re-reads. Upload is SolrCloud-only, and the writer checks the mode before asking;
+the Schema API changes work against a standalone server too.
 
 # Package org.apache.solr.ide.server.indexing
 

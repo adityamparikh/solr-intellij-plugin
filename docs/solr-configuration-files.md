@@ -317,7 +317,8 @@ a write.
 |---|---|
 | `managed-schema.xml` / `managed-schema` / `schema.xml` | Element, attribute and value completion; references, Find Usages and rename across `field type=` and `copyField`; navigation from a filter's resource attribute to its `.txt` file; inspections; match-capability hints; companion-field intentions; quick documentation |
 | `solrconfig.xml` | Element and attribute completion from Solr's own vocabulary; parameter-name, `defType` and field-name completion; handler parameters resolve to schema fields; `class` attributes navigate; inspections for unknown, unsearchable and unservable fields, retired elements and misspelled parameters; quick documentation |
-| `elevate.xml`, `currency.xml`, `enumsConfig.xml`, `params.json` | Recognised as configset files, which activates the plugin for the directory; not otherwise modelled |
+| `elevate.xml`, `enumsConfig.xml` | Recognised on their own: either name is enough to make its directory a configset, in a project that passes the activation gate. Not otherwise modelled |
+| `currency.xml`, `params.json` | Recognised only inside a directory another file has already proven a configset; on their own they prove nothing, since the names are too common. Not otherwise modelled |
 | `.txt` resources | Navigable from the schema; recognised inside a known configset; never activate anything. A missing file is not reported |
 | A collection on a running server | Compared against the configset, which closes the file-versus-ZooKeeper gap of §1 — see the [user guide](user-guide.md) |
 | `solr.xml`, `log4j2.xml`, Jetty files, `core.properties`, other JSON | Not read. `solr.xml` is node-level, not a configset; the rest are not Solr-specific or are API-owned |

@@ -185,7 +185,7 @@ names.
 `group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field`,
 `uniqueKey`, `terms.fl` and `mlt.fl`. Solr has hundreds, and guessing which hold field names from
 their values would produce false references — worse than missing ones, because a false reference
-becomes a false "no such field" warning on a parameter that was never a field name at all.
+becomes a false "no such field" error on a parameter that was never a field name at all.
 
 **Each is split the way Solr splits it, which is not one rule.** `fl` and its kin accept commas or any
 whitespace; `mlt.fl` accepts a comma or a single space; and `terms.fl` is not split at all — Solr reads

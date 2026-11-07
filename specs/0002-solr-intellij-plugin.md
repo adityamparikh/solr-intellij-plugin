@@ -861,6 +861,10 @@ The plugin is ready to publish when:
 - **Which platform framework-configuration APIs are available to plugins, and in which
   IDE editions.** Determines how much of the framework-configuration recognizer the
   plugin implements itself. Verify before committing to specifics.
+- **`solr.xml`.** Node configuration, hand-edited XML with no API to write it and no
+  tooling anywhere, which puts it in the plugin's sweet spot. It is out of scope only
+  because the boundary is drawn at the configset, a scoping decision rather than a
+  judgement of its merit; that it is small and rarely edited argues the other way.
 
 ## References
 

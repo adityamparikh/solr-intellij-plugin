@@ -258,7 +258,7 @@ are collapsed through `PathMacroManager` on write (`$PROJECT_DIR$/core/conf`) an
 Treat `state.manualConfigsetRoots` as storage-form only; read `manualRoots` for usable absolute
 paths. The user reaches it through *Mark Directory as Solr Configset Root* and
 **Settings → Languages & Frameworks → Solr Configsets**; see
-[when nothing activates](contributing.md#when-nothing-activates).
+[why nothing is happening](installing.md#why-nothing-is-happening).
 
 ## From files to the model
 
@@ -337,8 +337,9 @@ sequenceDiagram
    *without a language*, so every file the IDE inspects reaches `checkFile`. Turning away a file no
    JVM language reads is the first line, because everything after it costs something.
 2. **The module gate runs before any reading.** A module without SolrJ is never read at all, and the
-   gate reads library names from the project model, never the index, so it is safe on every file
-   the user opens, including while the IDE is indexing.
+   gate reads library names from the project model, never the index, so it is cheap enough for every
+   file the user opens. Indexing is a different matter: this inspection is not dumb-aware and waits
+   for indexing to finish, because finding the configsets in step 4 needs the filename index.
 3. **The recognizer is the only thing that knows SolrJ.** It returns plain facts — a name, the
    element it sits in, and the range of the name inside that element — and the inspection never
    looks at a `UCallExpression` itself. That is what lets navigation, completion and colour read the

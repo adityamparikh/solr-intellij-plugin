@@ -2,10 +2,10 @@
 
 How to get the plugin building, find work worth doing, and get a change merged. For where code goes
 once you are writing it, see [code organization](code-organization.md); for the step-by-step of
-adding a feature, see the [how-to guides](how-to/). The build commands and the three build gates —
-formatting, documentation and coverage — are listed once, in
-[`CLAUDE.md`](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/CLAUDE.md#commands);
-[testing and the build gates](how-to/testing-and-the-build-gates.md) covers clearing them.
+adding a feature, see [adding an editor feature](how-to/add-an-editor-feature.md). The build
+commands are under [Setup](#setup). Of the three gates `check` runs,
+[testing and the build gates](how-to/testing-and-the-build-gates.md) covers clearing documentation
+and coverage; formatting is under [things that will bite you](#things-that-will-bite-you).
 
 ## Setup
 
@@ -20,6 +20,21 @@ Nothing else needs installing. Gradle resolves the IntelliJ Platform itself.
 git clone https://github.com/adityamparikh/solr-intellij-plugin.git
 cd solr-intellij-plugin
 ./gradlew build
+```
+
+The commands you will use from then on:
+
+```bash
+./gradlew build            # compile, test, and run every gate
+./gradlew check            # tests + coverage floor + documentation gate + formatting
+./gradlew spotlessApply    # Google-style formatting for every Kotlin, Gradle and demo Java file
+./gradlew test --tests "*.SolrConfigsetDetectorTest"   # one test class
+./gradlew test --tests "*.SolrConfigsetDetectorTest.testManagedSchemaWithSiblingSolrConfigIsRecognized"  # one test
+./gradlew runIde           # sandbox IDE with the plugin installed, opening demo/
+./gradlew buildPlugin      # distributable ZIP in build/distributions/
+./gradlew verifyPlugin     # IntelliJ Plugin Verifier + plugin structure checks
+./gradlew dokkaGenerate    # render API docs to build/dokka/html
+./gradlew koverXmlReport   # coverage report at build/reports/kover/report.xml
 ```
 
 IDE run configurations live in `.run/`: **Run Plugin**, **Run Tests**, **Run Verifications**. They
@@ -57,7 +72,7 @@ Open `demo/solr/conf/managed-schema.xml` and you should see inline hints beside 
 stored. Two fields are quiet on purpose: `notes` carries only the storage half, because its analyser
 names a [factory](glossary.md#factory) the plugin does not recognise, and `legacy` carries no hint at
 all, because its type is undeclared. If you see nothing anywhere, the plugin has not activated; see
-[when nothing activates](#when-nothing-activates).
+[why nothing is happening](installing.md#why-nothing-is-happening).
 
 To point the sandbox somewhere else:
 
@@ -68,28 +83,9 @@ To point the sandbox somewhere else:
 
 ### When nothing activates
 
-The plugin is gated twice, and silence is the designed behaviour outside a Solr project. In order:
-
-1. **Does the project depend on a Solr client?** `SolrProjectDetector` matches `solr-solrj` or a
-   wrapper carrying it, by artifact id, never version. A repository of bare configsets with no build
-   file fails this gate.
-2. **Is the file's name one the plugin recognises?** See
-   [the activation decision](code-organization.md#the-activation-decision).
-
-> **In Java terms.** The first gate is why nothing happens in a bare configset repository: the
-> plugin only wakes up in a project whose dependencies include a Solr client, the same way a Spring
-> auto-configuration only activates when a matching class is on the classpath.
-
-**The escape hatch is a manual configset root**, which is the only way a repository with no build
-file activates. Two places reach it:
-
-- *Mark Directory as Solr Configset Root* in the Project view's context menu
-  (`SolrMarkConfigsetRootAction`).
-- **Settings → Languages & Frameworks → Solr Configsets** (`SolrConfigsetsConfigurable`), which lists
-  what detection found beside what was marked, and holds the switch that turns recognition off. That
-  switch is the whole plugin's kill switch, marked roots included, and its label says so.
-
-Marked roots persist to the project's shared `solr.xml`, so a fixture project can commit one.
+What a user sees and does when the plugin stays silent — the two gates, and marking a configset root
+by hand — is in [installing](installing.md#why-nothing-is-happening). How the decision is made, and
+the classes that make it, is [the activation decision](code-organization.md#the-activation-decision).
 
 ## Where work comes from
 
