@@ -1,27 +1,11 @@
 # Demo runbook and acceptance harness
 
-A complete runbook for a 45-minute talk on the plugin — what to build beforehand, what to
-say, what to click, and what to do when it breaks. Working title: *"Your search index has
-no compiler."*
+A runbook for a 45-minute talk on the plugin — what to build beforehand, what to say, what to
+click, and what to do when it breaks. Working title: *"Your search index has no compiler."*
 
-**It has a second use, and probably the more valuable one.** The demo steps are
-acceptance criteria written in the user's terms. *"Ctrl-click `name` inside the `qf` line
-and land in the schema"* is a sharper definition of done than *"request-handler
-parameters resolve to schema fields"*, because it can only pass when the whole path works
-— detection, model, reference resolution, and the platform registration that unit tests
-routinely miss.
-
-Three consequences worth knowing before you read further:
-
-- **The fixtures in Step 2 are also the test fixtures.** The demo project doubles as the
-  inspection fixtures and the code fixtures for the SolrJ recogniser. It is not quite all
-  of them — the golden-file gate runs against the two configsets Solr ships, which come
-  from the distribution rather than from here. Build once; demo the thing CI checks.
-- **A green test suite is not this.** A reference contributor can pass its unit tests and
-  still never fire in the editor. The demo step catches that.
-
-Steps are numbered straight through. Nothing here refers to anything you have to look up
-somewhere else.
+Its steps double as acceptance criteria in the user's terms. *"Ctrl-click `name` inside the `qf`
+line and land in the schema"* can only pass when the whole path works — detection, model, reference
+resolution, and the platform registration that unit tests miss.
 
 ---
 
@@ -29,15 +13,10 @@ somewhere else.
 
 ## Step 1. Decide which demos you can actually give
 
-Most of the demos below now run on shipped code; this runbook was written before any of
-it existed, and a few steps still need code that does not. **Step 35's opening gesture is
-the one to watch**: it has a URL "already offered, and nobody typed it", which is framework
-configuration discovery — unbuilt. Type the connection instead and say so. The
-implementation plan is the authority on what is built and in what order — check its step
-status before you promise anyone a date.
+[The implementation plan](../../specs/plans/0002-solr-intellij-plugin-plan.md) is the authority on
+what is built; check it before you promise a demo.
 
-What this section decides is different: given what happens to be ready, which demos add up
-to a talk. Cut from the bottom.
+Given what is ready, this decides which demos add up to a talk. Cut from the bottom.
 
 **Essential — the talk does not exist without this.** Navigation between configuration
 files, inspections, and the match-capability hints. Runs entirely offline, so nothing on
@@ -59,172 +38,16 @@ ending matters more than the spectacle.
 
 ## Step 2. Build the demo project
 
-**This now exists and is committed at [`demo/`](../../demo/).** `./gradlew runIde` opens it by
-default, so there is nothing to type — skip to step 3 unless you want to know what is in it or you
-are rebuilding it from scratch. Committing it is what lets you recover from a demo gone wrong with
-`git checkout .` in about two seconds.
-
-Two things differ from the listings below, which are excerpts rather than literal file contents:
-the Java sources live in a `com.example.demo` package with their imports, and they are a standalone
-Gradle build (`demo/build.gradle.kts`) so that Spring and SolrJ resolve. To open something other
-than the demo, pass `-PrunIdeProject=/path/to/project`, or `-PrunIdeProject=` to open nothing.
-
-`demo/solr/conf/managed-schema.xml`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<schema name="products" version="1.6">
-
-  <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true"/>
-
-  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100">
-    <analyzer type="index">
-      <tokenizer class="solr.StandardTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-    </analyzer>
-    <analyzer type="query">
-      <tokenizer class="solr.StandardTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-    </analyzer>
-  </fieldType>
-
-  <fieldType name="text_prefix" class="solr.TextField" positionIncrementGap="100">
-    <analyzer type="index">
-      <tokenizer class="solr.StandardTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="15"/>
-    </analyzer>
-    <analyzer type="query">
-      <tokenizer class="solr.StandardTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-    </analyzer>
-  </fieldType>
-
-  <field name="id"          type="string"       indexed="true"  stored="true" required="true"/>
-  <field name="sku"         type="string"       indexed="true"  stored="true"/>
-  <field name="name"        type="text_general" indexed="true"  stored="true"/>
-  <field name="name_prefix" type="text_prefix"  indexed="true"  stored="false"/>
-  <field name="category"    type="string"       indexed="true"  stored="true"/>
-  <field name="description" type="text_general" indexed="true"  stored="true"/>
-  <field name="text"        type="text_general" indexed="true"  stored="false" multiValued="true"/>
-
-  <uniqueKey>id</uniqueKey>
-
-  <copyField source="name"         dest="text"/>
-  <copyField source="description"  dest="text"/>
-  <copyField source="name"         dest="name_prefix"/>
-  <copyField source="manufacturer" dest="text"/>
-</schema>
-```
-
-The last line is deliberate. There is no `manufacturer` field, and that dangling
-reference is your inspection demo. Leave it in the committed version.
-
-Create `demo/solr/conf/solrconfig.xml` with at least this:
-
-```xml
-<requestHandler name="/select" class="solr.SearchHandler">
-  <lst name="defaults">
-    <str name="defType">edismax</str>
-    <str name="df">text</str>
-    <str name="qf">name^3 description category</str>
-    <str name="rows">10</str>
-  </lst>
-</requestHandler>
-```
-
-The `qf` line is what proves cross-file navigation: those three names live in a different
-file from the schema that defines them, and nothing in either file connects them.
-
-Create `demo/src/main/java/SolrConfig.java`. This is the Spring half, and it matters:
-plain SolrJ, wired by Spring, **not** Spring Data Solr — which is unmaintained upstream
-and out of scope.
-
-```java
-@Configuration
-public class SolrConfig {
-
-    @Bean
-    SolrClient solrClient(@Value("${app.solr.url}") String url) {
-        return new Http2SolrClient.Builder(url).build();
-    }
-}
-```
-
-This is the shape almost every Spring Boot service using Solr actually has, and it is
-what makes connection discovery a real feature rather than a parlour trick: the URL is
-not a literal in the builder, it is a property reference resolved against whichever
-profile is active. Finding it means following `${app.solr.url}` back into the profile
-that supplies it.
-
-Create `demo/src/main/java/ProductSearch.java`:
-
-```java
-@Service
-public class ProductSearch {
-
-    private final SolrClient solr;
-
-    ProductSearch(SolrClient solr) { this.solr = solr; }
-
-    public QueryResponse findBooks() throws Exception {
-        SolrQuery q = new SolrQuery("*:*");
-        q.addFilterQuery("categry:books");
-        q.setFields("id,name,price");
-        return solr.query("products", q);
-    }
-}
-```
-
-Two deliberate bugs. `categry` is a typo for `category`. `price` is a field that has
-never existed in this schema. Both compile. Note the client arrives by injection, so
-nothing in this file names a server — which is the normal case, and the reason endpoint
-discovery cannot just scan for URL literals.
-
-Create `demo/src/main/java/Product.java`:
-
-```java
-public class Product {
-    @Field("id")   private String id;
-    @Field("name") private String name;
-    @Field("prce") private Double price;
-}
-```
-
-A third deliberate typo, in an annotation rather than a string.
-
-Create `demo/src/main/resources/application.yml`:
-
-```yaml
-spring:
-  profiles:
-    active: dev
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-app:
-  solr:
-    url: http://localhost:8983/solr
-```
+It is committed at [`demo/`](../../demo/), and `./gradlew runIde` opens it by default.
+[Its README](../../demo/README.md) has the layout and the planted defects, which are deliberate —
+leave them in. Committing it is what lets you undo a demo gone wrong by discarding the working-tree
+changes under `demo/`.
 
 ## Step 3. Stand up a local Solr, if you are doing the server demos
 
-```bash
-docker compose -f demo/compose.yaml up -d      # SolrCloud 10 on :8983, collection `products`
-docker compose -f demo/compose.yaml down -v    # afterwards, including the data volume
-```
-
-On first start, compose creates `products` from `demo-server/products`, a configset standing
-for what the server runs. `demo/solr/conf` cannot be deployed, because its planted defects stop
-a core starting, so the server's has them repaired and differs in a few more places. The
-drift demo is set up by construction: `sku` is in the repository and not on the server,
-`legacy` and `custom_text` are defined differently on each side, and `manufacturer` exists
-only on the server. Nothing has to be edited on stage to show it.
-
-Then index the sample products so queries return something: open `demo/queries.http`, pick
-the **local** environment, and run *Index the sample products*.
+Start Solr and index the sample products as [the demo README](../../demo/README.md#running-it)
+describes. The server runs a configset that differs from `demo/solr/conf` by construction, so the
+drift demo needs no edits on stage.
 
 ## Step 4. Record a backup
 
