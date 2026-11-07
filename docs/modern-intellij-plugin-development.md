@@ -2,19 +2,11 @@
 
 ### A hands-on introduction for Java and Kotlin engineers
 
-> **Who this is for.** A Java or Kotlin engineer new to the IntelliJ Platform who wants to build a
-> small working plugin end to end — completion, an inspection with a quick-fix, and references —
-> before touching this repository's own code.
-> **Read first:** [Glossary](glossary.md) if a term below is unfamiliar · nothing else; this is the
-> starting point for the platform itself.
-
-> **Status: draft.** Code samples are verified by inspection against IntelliJ Community source, not by build. This is a standalone teaching artifact — it uses `dev.example.solrconfig` package names and does *not* describe this repository's implementation in `src/`. [Part 11](#part-11--this-repo-as-the-worked-example), added after the tutorial itself, bridges the two: it maps every concept above onto this repository's real code, with the two decisions this repo made that the toy tutorial above did not need to — why parsing here does not lean on [PSI](glossary.md#psi) the way Part 3 describes, and how [dumb mode](glossary.md#dumb-mode) is actually enforced.
-
-You already know how to make a JVM project do something useful. This tutorial is about making your *IDE* do something useful — and it turns out the distance between those two skills is much shorter than most engineers assume.
-
-By the end you'll have built a working plugin that adds code completion, a custom [inspection](glossary.md#inspection) with a [quick-fix](glossary.md#quick-fix), and Ctrl-click navigation with [rename refactoring](glossary.md#rename-refactoring) to a file format the IDE has never heard of. Roughly 200 lines of Kotlin. No prior platform knowledge required.
-
-The reason to do this now rather than three years ago: the tooling finally got good. The IntelliJ Platform Gradle Plugin 2.x replaced a decade of accumulated Groovy-era configuration with a clean, explicit Kotlin DSL. Project scaffolding is a form you fill in rather than a repo you clone and gut. The APIs you'll touch below have been stable for years, and the test framework runs a real headless IDE in a few seconds. Plugin development stopped being folklore.
+This tutorial builds a small standalone plugin, in a `dev.example.solrconfig` package, that adds
+code completion, an [inspection](glossary.md#inspection) with a [quick-fix](glossary.md#quick-fix),
+and Ctrl-click navigation with [rename refactoring](glossary.md#rename-refactoring) to a file format
+the IDE has never heard of. It assumes no platform knowledge. It does not describe this repository's
+own code; [the last section](#this-repository-as-the-worked-example) points there.
 
 ---
 
@@ -22,11 +14,7 @@ The reason to do this now rather than three years ago: the tooling finally got g
 
 Our subject is an Apache Solr **[configset](glossary.md#configset)** — specifically
 [`managed-schema`](glossary.md#managed-schema), an XML file that defines the fields of a search
-index. You need no Solr knowledge whatsoever. Here's the entire format we care about:
-
-> **In Java terms.** A configset is the schema plus the configuration of a search index — roughly a
-> Hibernate mapping file plus `persistence.xml`, but checked into a repository as plain XML rather
-> than read only by a running database. `managed-schema` below is the mapping half.
+index. You need no Solr knowledge. Here's the entire format we care about:
 
 ```xml
 <schema name="example" version="1.6">
@@ -46,83 +34,72 @@ index. You need no Solr knowledge whatsoever. Here's the entire format we care a
 </schema>
 ```
 
-The `title` / `title_exact` pair is worth a word, since it recurs throughout the tutorial. It's the standard way to make one piece of content matchable two ways: `title` is tokenized, so a search for one word hits it; `title_exact` is an untokenized `string`, so it supports exact whole-value matching, sorting, and faceting. [`copyField`](glossary.md#copyfield) duplicates the value into the second field at index time, so the application only ever sends `title`.
+`title` is tokenized, so a search for one word hits it; `title_exact` is an untokenized `string`,
+for exact matching, sorting and faceting. [`copyField`](glossary.md#copyfield) duplicates the value
+into the second field at index time.
 
-Three element types, and one relationship worth noticing: `<field type="...">` points at a `<fieldType name="...">`, and `<copyField source/dest>` points at `<field name="...">`. Those cross-references are strings. The IDE treats them as ordinary text, which means a typo produces no error anywhere — the file opens fine, and the failure surfaces much later at runtime. That's the exact shape of problem IDE tooling exists to kill, and it's why this makes a good tutorial subject: it's a real bug class, not a toy.
+`<field type="...">` points at a `<fieldType name="...">`, and `<copyField source/dest>` points at a
+`<field name="...">`. Those cross-references are strings, so a typo produces no error anywhere — the
+file opens fine and the failure surfaces at runtime. That's the bug class IDE tooling exists to kill.
 
 We'll ship three features:
 
 1. **Completion** — typing inside `type="…"` suggests the [field types](glossary.md#field-type) defined in the file.
 2. **An inspection with a quick-fix** — `copyField` pointing at a nonexistent field gets a warning, and Alt+Enter offers to create it.
-3. **[References](glossary.md#reference)** — Ctrl-click on `dest="title_exact"` jumps to the field, [Find Usages](glossary.md#find-usages) works, and rename refactoring updates every reference. All from one small class.
-
-Substitute your own domain and the same three patterns cover an enormous range of useful plugins.
+3. **[References](glossary.md#reference)** — Ctrl-click on `dest="title_exact"` jumps to the field, and [Find Usages](glossary.md#find-usages) and rename work from there.
 
 ---
 
 ## Prerequisites
 
-- IntelliJ IDEA 2025.3 or newer. Since 2025.3 there is a single unified distribution — the old Community/Ultimate split is gone, and the free tier is all you need for this tutorial.
-- **JDK 21** — see the note below
-- Familiarity with Gradle Kotlin DSL
+- IntelliJ IDEA 2026.1 or newer. Since 2025.3 there is a single unified distribution; the free tier is all you need.
+- **JDK 21.** A plugin runs inside the IDE process, on the JetBrains Runtime the IDE ships with — currently a JBR 21 build — so bytecode for a newer release won't load. The SDK documents the required Java version per platform version; check it when you bump your target. This is independent of the Java your *projects* use.
+- Familiarity with Gradle Kotlin DSL.
 
-> **Why 21 and not the latest LTS?**
-> A plugin runs *inside* the IDE process, on the JetBrains Runtime the IDE ships with — currently a JBR 21 build. Bytecode compiled for a newer release simply won't load there, so your target is dictated by the platform, not by what's newest.
->
-> This is easy to confuse with a different fact: recent IntelliJ releases support developing against much newer Java versions. That's the Java your *projects* use. The two are independent — you can write Java 27 code in the IDE all day while the IDE itself runs on 21.
->
-> Don't memorize the number. The SDK documents a required Java version per platform version, and it moves every few releases; check that table when you bump your target. You can also develop on a newer JDK and just pin the bytecode target — the Gradle toolchain handles it, and recent versions of the IntelliJ Platform Gradle Plugin default the toolchain to whatever your target platform requires, so you may not need to set it at all.
-
-That's it. No SDK download, no special IDE edition. The Gradle plugin fetches the platform artifacts for you.
+The Gradle plugin fetches the platform artifacts for you; there is no SDK to download.
 
 **Versions this tutorial targets**
 
 | Component | Version |
 |---|---|
 | IntelliJ Platform (compile/test target) | 2026.2 |
-| IntelliJ Platform Gradle Plugin | 2.16.0 |
-| Kotlin | 2.1.0 |
+| IntelliJ Platform Gradle Plugin | 2.19.0 |
+| Kotlin | 2.4.21 |
 | JDK / bytecode target | 21 |
-| Minimum supported IDE (`sinceBuild`) | 253 (2025.3) |
+| Minimum supported IDE (`sinceBuild`) | 261 (2026.1) |
 
-Plugin development moves; when something below doesn't match what you see, the [SDK docs](https://plugins.jetbrains.com/docs/intellij/) are the source of truth.
+When something below doesn't match what you see, the [SDK docs](https://plugins.jetbrains.com/docs/intellij/) are the source of truth.
 
 ---
 
-## Part 1 — Scaffold and run (ten minutes)
+## Part 1 — Scaffold and run
 
-Start from the **IntelliJ Platform Plugin Generator**: <https://plugins.jetbrains.com/generator>
+Start from the **IntelliJ Platform Plugin Generator**: <https://plugins.jetbrains.com/generator>.
+As of IntelliJ IDEA 2026.1 it replaces both the old in-IDE wizard and the
+`intellij-platform-plugin-template` repository, so older instructions to clone that template are
+out of date. It works like [start.spring.io](https://start.spring.io/):
 
-If that name is new to you, that's because it is. Until recently there were *two* ways to start a plugin — a wizard inside the IDE, and a GitHub template repo — and they had annoyingly different feature sets. As of IntelliJ IDEA 2026.1 they've been merged into one web-API-backed generator, the same model Spring Initializr uses. JetBrains explained the reasoning in [IDE Plugin Generator – The New Beginning](https://blog.jetbrains.com/platform/2026/07/ide-plugin-generator-the-new-beginning/) (July 2026).
+- **In the browser** — choose *Plugin* (not *Theme*), tick the features you want, and **Download**. The *Preview* pane shows what each feature adds.
+- **In the IDE** — *File | New | Project…*, then **IDE Plugin** under *Generators*. Requires IntelliJ IDEA 2026.1+ with the [Plugin DevKit](https://plugins.jetbrains.com/plugin/22851-plugin-devkit) plugin.
 
-If you've used [start.spring.io](https://start.spring.io/), you already know how this works. Two ways in:
+The defaults are fine for this tutorial. Tick **GitHub** (under *Version Control*) if you plan to
+publish: it adds CI workflows, issue templates and Dependabot config.
 
-**In the browser** — open <https://plugins.jetbrains.com/generator>, choose *Plugin* (not *Theme*) at the top, tick the features you want, and hit **Download**. There's a *Preview* pane that lets you browse the generated files before committing, which is worth a minute of clicking just to see what each feature actually adds.
-
-**In the IDE** — *File | New | Project…*, then **IDE Plugin** under *Generators*. Requires IntelliJ IDEA 2026.1+ with the [Plugin DevKit](https://plugins.jetbrains.com/plugin/22851-plugin-devkit) plugin installed. The first page now has a *Server URL* field — that's the generator API it's calling, the same one behind the web UI. Page two is the feature list.
-
-Either client gives you the same project. For this tutorial you don't need to tick anything special; the defaults are fine. Two features are worth knowing about for later:
-
-- **GitHub** (under *Version Control*) — CI workflows, issue templates, and Dependabot config. Tick this if you plan to publish; it's what the old template repo gave you.
-- **Split Mode (Remote Dev)** (under *Architecture*) — scaffolding for remote development scenarios. Leave it off for now.
-
-> **A note if you're following an older tutorial:** you'll see references to cloning `intellij-platform-plugin-template` from GitHub. That template and the old in-IDE wizard have both been folded into this generator. Templates now live in one place and are served fresh from the API, so you get current defaults without updating a plugin — but it does mean older instructions are describing something that no longer exists.
-
-Either way you end up with a normal Gradle project whose build file looks roughly like this:
+You end up with a Gradle project whose build file looks roughly like this:
 
 ```kotlin
 // build.gradle.kts
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
-    kotlin("jvm") version "2.1.0"
-    id("org.jetbrains.intellij.platform") version "2.16.0"
+    kotlin("jvm") version "2.4.21"
+    id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
 group = "dev.example"
 version = "0.1.0"
 
-kotlin { jvmToolchain(21) }   // optional on recent plugin versions — see the note above
+kotlin { jvmToolchain(21) }
 
 repositories {
     mavenCentral()
@@ -134,7 +111,7 @@ dependencies {
         intellijIdea("2026.2")   // the IDE you compile and test against
         testFramework(TestFrameworkType.Platform)
     }
-    testImplementation("junit:junit:4.13.2")   // yes, JUnit 4 — see the note below
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -142,7 +119,7 @@ intellijPlatform {
         id = "dev.example.solrconfig"
         name = "Solr Configset Support"
         ideaVersion {
-            sinceBuild = "253"
+            sinceBuild = "261"
             // untilBuild intentionally unset — forward compatible by default
         }
     }
@@ -150,75 +127,41 @@ intellijPlatform {
 }
 ```
 
-Three lines deserve a second look:
+- `intellijIdea("2026.2")` is a *compile and test* target, not a minimum; `sinceBuild` governs who can install. Older tutorials use `intellijIdeaCommunity(...)`, which predates the unified distribution.
+- `testFramework(TestFrameworkType.Platform)` is easy to forget and produces baffling test-compilation errors when missing. It also needs the `import` at the top.
+- `id` is permanent. Once published, changing it means publishing a different plugin.
+- **JUnit 4** is what the platform's test framework pairs with `TestFrameworkType.Platform`: [`BasePlatformTestCase`](glossary.md#baseplatformtestcase), used in Part 7, descends from JUnit 3's `TestCase`.
 
-- `intellijIdea("2026.2")` is a *compile and test* target, not a minimum — users on older builds are governed by `sinceBuild`. If you find older tutorials using `intellijIdeaCommunity(...)`, that predates the unified distribution.
-- `testFramework(TestFrameworkType.Platform)` is easy to forget and produces baffling test-compilation errors when missing. It also needs that `import` at the top of the file — another easy miss.
-- `id` is permanent. Once published, changing it means publishing a different plugin. Choose deliberately.
-
-> **In Java terms.** The plugin `id` is like a Maven `groupId:artifactId` once it's on Central:
-> nothing stops you from publishing a new one, but every existing install, every Marketplace link,
-> and every dependency somebody declared on you points at the old string forever. Renaming is really
-> retiring one artifact and launching another.
-
-> **Why JUnit 4 in 2026?**
-> Not an oversight — it's what the platform's test framework requires. [`BasePlatformTestCase`](glossary.md#baseplatformtestcase), which you'll use in Part 7, descends from JUnit 3's `TestCase`, and the SDK's dependency documentation pairs `TestFrameworkType.Platform` with exactly this artifact.
->
-> There is a `TestFrameworkType.JUnit5`, and it's the right choice for UI integration tests written against the Starter framework. But for the light PSI-level tests in this tutorial it currently carries two documented defects — a missing `opentest4j` dependency and JUnit 4 classes still referenced at runtime — so you'd add JUnit 4 back as a workaround anyway. Start on the supported path; revisit when those are closed.
-
-Now the moment that makes it real:
+Now run it:
 
 ```bash
 ./gradlew runIde
 ```
 
-A second IntelliJ launches, with its own settings directory, your plugin installed. This is your dev loop for everything that follows. It's a JVM process like any other — `./gradlew runIde --debug-jvm` and attach a remote debugger if you like breakpoints, which you will.
+A second IntelliJ launches with its own settings directory and your plugin installed. This is your
+dev loop. Use `./gradlew runIde --debug-jvm` and attach a remote debugger for breakpoints.
 
-> **Checkpoint.** Open *Settings → Plugins → Installed* in the [sandbox](glossary.md#sandbox) and find your plugin by name. If it's there, your build is correct and everything after this is just writing code.
+> **Checkpoint.** Open *Settings → Plugins → Installed* in the [sandbox](glossary.md#sandbox) and find your plugin by name.
 
 ---
 
 ## Part 2 — The mental model
 
-Before we write a single feature, I want to answer one question: **how does the IDE even know to call your code?**
+### The IDE calls you
 
-Because you're about to write a class that does something useful, and nothing in that class will ever call itself. Something has to reach in and invoke it. Let's figure out what.
+In a Spring controller you write one method and the framework calls it when a request arrives.
+Plugin development is the same deal, with the IDE in Tomcat's role: it owns the loop — keystrokes,
+file analysis, Ctrl+Space — and calls the small pieces of behavior you register.
 
-### You've already done this a hundred times
+An **[extension point](glossary.md#extension-point) is an interface plus a list of everybody who
+implemented it.** `CompletionContributor` is an interface; when the user hits Ctrl+Space, the
+platform walks every registered implementation and asks each one for suggestions. Each feature is
+two steps: implement the right interface, and get on the right list.
 
-Here's a Spring controller:
+### There is no component scanning
 
-```java
-@RestController
-class GreetingController {
-    @GetMapping("/hello")
-    String hello() { return "hi"; }
-}
-```
-
-Think about what you *didn't* write there. No socket. No accept loop. No HTTP parsing. No thread pool. You wrote one method, told the framework where it belongs, and the framework calls it when a request shows up.
-
-Plugin development is exactly that deal, with the IDE playing the role Tomcat plays. The IDE owns the loop — it knows when the user typed a character, when a file needs analyzing, when someone hit Ctrl+Space. You write small pieces of behavior and tell the platform where they belong. It calls you.
-
-That's the whole model. If you're comfortable writing a controller without thinking about sockets, you're already comfortable with plugin development.
-
-### So what's an extension point, really?
-
-You'll see the term everywhere, and it sounds heavier than it is.
-
-An **[extension point](glossary.md#extension-point) is an interface plus a list of everybody who implemented it.**
-
-That's genuinely it. `CompletionContributor` is an interface. The platform keeps a list of every class in every installed plugin that implements it. When the user hits Ctrl+Space, the platform walks that list and calls each one, asking "got anything for this position?"
-
-Your job for each feature is two steps: implement the right interface, get on the right list.
-
-Step one is ordinary Kotlin. Step two is where it gets unfamiliar.
-
-### There is no component scanning. None.
-
-In Spring, `@Component` is enough. The framework scans your classpath, finds the annotation, wires it up.
-
-The IntelliJ Platform does not do this. There is no annotation that registers an extension. Your class gets on the list because you wrote it into an XML file:
+There is no annotation that registers an extension. Your class gets on the list because you wrote
+it into [`src/main/resources/META-INF/plugin.xml`](glossary.md#pluginxml):
 
 ```xml
 <extensions defaultExtensionNs="com.intellij">
@@ -228,61 +171,31 @@ The IntelliJ Platform does not do this. There is no annotation that registers an
 </extensions>
 ```
 
-That file is [`src/main/resources/META-INF/plugin.xml`](glossary.md#pluginxml), and it's the only wiring mechanism there is.
+The IDE reads each plugin's descriptor at startup and instantiates a class only when it is first
+needed, which keeps startup fast with dozens of plugins installed. The consequence: **if your class
+isn't in `plugin.xml`, it does not exist**, and nothing tells you. When a feature doesn't fire,
+check `plugin.xml` first.
 
-Now, why would they do it this way? Because a user might have sixty plugins installed, and the IDE has to start fast. Scanning sixty JARs for annotations at every startup would be brutal. Instead, each plugin ships a tiny XML file listing what it offers, the platform reads those in milliseconds, and it doesn't actually load or instantiate your class until the first time someone needs it. Lazy, cheap, predictable.
+### The vocabulary
 
-Good reason. But it means you need to internalize this:
+Most extensions fire on their own while the user works. **Actions** are different: they do nothing
+until the user triggers them.
 
-**If your class isn't in `plugin.xml`, it does not exist.**
-
-And here's the part that stings — nothing tells you. No warning at build time, no error at runtime, no log line. You write a beautiful [completion contributor](glossary.md#completion-contributor), hit Ctrl+Space in the sandbox, and get nothing. Not a stack trace. Just silence.
-
-So when a feature doesn't fire, check `plugin.xml` before you check anything else. Every single one of us has lost an hour to this, exactly once, and then never again.
-
-### So which lists are there?
-
-Fair question, and I've been throwing words like *completion* and *inspection* around without saying what they are. Let's fix that, because these five terms cover almost everything you'll ever build.
-
-They split into two groups, and the difference is simply **who pulls the trigger**.
-
-**Group one: the platform calls you.** These fire on their own while the user works — nobody clicks anything. This is where most plugins live, and it's what people mean by *contributions*.
-
-- **Completion** — the popup you get from Ctrl+Space. The platform notices the user wants suggestions at some position and asks everyone on the list, "got anything for here?"
-- **Inspection** — the squiggly underline. The platform walks files looking for problems; you're the one who decides what counts as a problem. Attach a **quick-fix** and the user gets an Alt+Enter option to repair it.
-- **Reference** — the thing that makes a string clickable. You answer "what does this text point at?" and the platform hands you Ctrl+click navigation, Find Usages, and rename refactoring off that one answer.
-- **Line marker** — the little icon in the gutter beside a line, usually clickable to jump somewhere related.
-- **Documentation** — the popup on Ctrl+Q, where you supply the text for your own concepts.
-
-**Group two: the user calls you.** These are **actions** — a menu item, a toolbar button, a keyboard shortcut. Nothing happens until somebody explicitly triggers it. `Run Configuration`, `Reformat Code`, and everything in the Tools menu are actions. You'll write these when you need "do this thing now," like uploading a config or reloading a server.
-
-Here's the whole vocabulary in one place:
-
-| Term | What the user actually sees | Built in |
+| Term | What the user sees | Built in |
 |---|---|---|
 | Completion | Suggestion popup on Ctrl+Space | Part 4 |
 | Inspection | Squiggly underline + warning | Part 5 |
 | Quick-fix | The Alt+Enter repair offer | Part 5 |
 | Reference | Ctrl+click, Find Usages, rename | Part 6 |
-| Action | Menu item, button, shortcut | mentioned in Part 10 |
+| Documentation | The Ctrl+Q popup | not covered here |
 | Line marker | Gutter icon | not covered here |
+| Action | Menu item, button, shortcut | not covered here |
 
-We're building the first four. If a term shows up in a diagram before you've built it, this table is the place to look back to.
+### Where the logic goes
 
-
-### Where does the actual logic go?
-
-One more thing and then we build something.
-
-When you register a completion contributor, the platform hands you a position in a file and asks what belongs there. It'd be tempting to do all your work right there in that class.
-
-Don't. You already know why, because you know what a fat controller feels like six months later.
-
-Same rule applies. Your contributor is a controller: unwrap the input, ask a service, wrap the result. That's what the diagram below means by a **thin adapter** — a class whose whole job is translating between the platform's world and yours. The service is where the thinking happens — parsing the schema, understanding field types, whatever your domain actually is.
-
-The payoff is identical to Spring, too. When you later add an inspection that needs the same knowledge, it calls the same service. When you write tests, you test the service directly without booting anything. And when someone asks for a tool window showing the same data, it's already there.
-
-Here's everything we just discussed in one picture:
+Treat each contribution as a controller: unwrap the input, ask a service, wrap the result. The
+service holds the domain logic — parsing the schema, understanding field types — so an inspection
+that needs the same knowledge calls the same service, and tests can exercise it directly.
 
 ```mermaid
 flowchart TD
@@ -293,49 +206,29 @@ flowchart TD
     S -->|"read / write"| PSI["<b>PSI</b><br/>the parsed model of every file"]
 ```
 
-Contributions thin, services fat. That's the one structural decision that determines whether your plugin is still pleasant to work on at ten features.
-
 ---
 
 ## Part 3 — PSI, the thing everything stands on
 
-Alright. Our first feature needs to answer a simple question: *what field types are defined in this schema file?*
-
-Let's think about how you'd normally do that.
-
-You'd read the file. Parse the XML — pick your favorite library. Walk the tree, collect the `<fieldType>` elements, return the names. Twenty lines, tops. You've done this a hundred times.
-
-Now let's talk about why that's wrong here. Not "suboptimal." Wrong.
-
-**Problem one: the file on disk is stale.** The user is *typing*. The fieldType they added four seconds ago exists only in the editor buffer. Read from disk and you'll confidently return yesterday's answer.
-
-**Problem two: you'd be re-parsing constantly.** Completion fires on keystrokes. Inspections run as the user types. Parse the whole file every time and you've built a space heater.
-
-**Problem three: everyone else would be doing it too.** Every plugin, parsing the same file, over and over, each keeping its own copy.
-
-So the platform solves this once, for everybody. And that solution is PSI.
+The first feature needs to answer: *what field types are defined in this schema file?* Reading the
+file from disk and parsing it yourself is wrong here, for three reasons: the file on disk is stale
+while the user is typing; completion and inspections fire on keystrokes, so you'd re-parse
+constantly; and every plugin would be doing the same.
 
 ### PSI is the parse tree the IDE already has
 
-The IDE parsed that file the moment it opened. It re-parses incrementally as the user types — not the whole file, just what changed. It keeps that structure in memory, up to date, and shares it with every plugin.
-
-**PSI (Program Structure Interface) is that structure.** You don't build it, you don't refresh it, you don't cache it. You ask for it and it's already correct.
-
-There are three layers, and it's worth knowing which is which, because you'll see all three names:
+The IDE parses a file when it opens and re-parses incrementally as the user types, keeping the
+result in memory and sharing it with every plugin. **PSI (Program Structure Interface) is that
+structure.** You don't build it or refresh it; you ask for it and it's current.
 
 | Layer | What it is | Java analogy |
 |---|---|---|
 | `VirtualFile` | The file itself — path, name, existence | `File` |
 | `Document` | The text *right now*, including unsaved edits | `String` |
-| `PsiFile` | The parsed structure of that text | the object graph after Jackson is done |
+| `PsiFile` | The parsed structure of that text | the object graph after Jackson is done, but kept live |
 
-The difference from the analogy: your object graph goes stale the instant the JSON changes. PSI doesn't. It's maintained live, which is the entire point.
-
-You'll work at the PSI layer almost exclusively.
-
-### What our file looks like as PSI
-
-Here's the schema from earlier, as the tree the platform hands you:
+You'll work at the PSI layer almost exclusively. Here's the schema as the tree the platform hands
+you:
 
 ```mermaid
 flowchart TD
@@ -352,9 +245,7 @@ flowchart TD
     CF -.->|"Part 6: reference resolves here"| NV
 ```
 
-Solid arrows are the tree. The dotted arrows are the interesting part — those are the cross-references we talked about at the start, the ones that are just strings today. Making them real is what Parts 4 and 6 are about.
-
-Navigating this is less API than you'd expect:
+Solid arrows are the tree; dotted arrows are the string cross-references Parts 4 and 6 make real.
 
 ```kotlin
 val schema: XmlTag? = xmlFile.rootTag                    // <schema>
@@ -362,27 +253,18 @@ val types: Array<XmlTag> = schema.findSubTags("fieldType")
 val name: String? = types.first().getAttributeValue("name")
 ```
 
-`rootTag`, `findSubTags`, `getAttributeValue`. That's most of what this tutorial uses. It's a tree, and you walk it.
+`rootTag`, `findSubTags`, `getAttributeValue` — that's most of what this tutorial uses.
 
-### The reframe that makes the rest of this easy
-
-Here's what I wish someone had told me on day one.
-
-Every feature you're about to build is a **question about this tree**:
+Every feature below is a **question about this tree**:
 
 - **Completion** — *given the node at the caret, what could go here?*
 - **Inspection** — *walk the tree; which nodes are wrong?*
 - **Reference** — *this string; which node does it point at?*
 
-Three questions, one tree. The APIs in Parts 4, 5, and 6 look different on the surface, but underneath you're doing the same thing every time: get a node, look around, answer a question.
-
-That's why plugin development stops feeling large once you start. You're not learning a framework. You're learning where to plug in — and then it's tree traversal and your own domain knowledge, which you already have.
-
 ### One guard before we start
 
-Last thing. When you register a contributor for XML, you get called for **every XML file the user opens**. Their `pom.xml`. Some Spring config. A file you've never heard of.
-
-So every feature starts by confirming we're actually looking at a schema:
+A contributor registered for XML is called for **every XML file the user opens** — their `pom.xml`,
+a Spring config. So every feature starts by confirming it is looking at a schema:
 
 ```kotlin
 package dev.example.solrconfig
@@ -398,11 +280,7 @@ object SchemaDetector {
 }
 ```
 
-Filename check first, structure check second — this runs on every keystroke, so the cheap test goes first and short-circuits.
-
-Skip this guard and you'll ship a plugin that suggests Solr field types inside somebody's `pom.xml`. Users notice.
-
-Now let's build something.
+The filename check is cheap, so it goes first and short-circuits.
 
 ---
 
@@ -410,7 +288,8 @@ Now let's build something.
 
 ### The service
 
-Domain logic goes in a service — a lazily instantiated singleton scoped to a project. `@Service` needs no manifest entry.
+Domain logic goes in a service — a lazily instantiated singleton scoped to a project. A light
+service annotated with `@Service` needs no `plugin.xml` entry.
 
 ```kotlin
 package dev.example.solrconfig
@@ -441,8 +320,6 @@ class SchemaModelService {
         fields(file).firstOrNull { it.name == name }
 }
 ```
-
-Plain Kotlin over an XML tree. Nothing platform-specific except the types.
 
 ### The contributor
 
@@ -494,13 +371,15 @@ class FieldTypeCompletionContributor : CompletionContributor() {
 }
 ```
 
-The interesting part is the middle argument. `XmlPatterns` is a declarative matcher DSL: instead of `if (element.parent is XmlAttribute && ...)`, you describe the *shape* of the location, and the platform decides whether you're relevant. Every position-sensitive extension point uses this DSL, so learning it once pays off repeatedly.
+`XmlPatterns` is a declarative matcher DSL: you describe the *shape* of the location, and the
+platform decides whether you're relevant. Every position-sensitive extension point uses it.
 
-The outer `PlatformPatterns.psiElement()` is not decoration, and getting it wrong is a silent failure. `extend()` matches your pattern against `parameters.position` — the **leaf** element at the caret. Inside `type="<caret>"` that leaf is an `XmlToken`, *not* the `XmlAttributeValue` containing it. Write `XmlPatterns.xmlAttributeValue()` as the outermost pattern and it simply never matches: no completion, no error, nothing in the log.
-
-So the shape to internalize for completion is **describe the leaf, then walk up**: `psiElement().withParent(...)` — or `.inside(...)` when you don't care how many levels up the interesting node sits.
-
-Worth flagging now because Part 6 looks almost identical but isn't: reference contributors match against the *host* element, so there `XmlPatterns.xmlAttributeValue()` on the outside is correct. Same DSL, different subject. Copying one shape into the other is a very easy afternoon to lose.
+**Describe the leaf, then walk up.** `extend()` matches against `parameters.position`, the **leaf**
+element at the caret. Inside `type="<caret>"` that leaf is an `XmlToken`, not the
+`XmlAttributeValue` containing it, so an outermost `XmlPatterns.xmlAttributeValue()` never matches —
+silently. Use `psiElement().withParent(...)`, or `.inside(...)` when you don't care how many levels
+up the interesting node sits. Reference contributors (Part 6) match the *host* element instead, so
+there `xmlAttributeValue()` on the outside is correct.
 
 ### Register it
 
@@ -522,15 +401,20 @@ Worth flagging now because Part 6 looks almost identical but isn't: reference co
 </idea-plugin>
 ```
 
-### The step that will bite you: extensionless files
+Declaring only `modules.platform` and `modules.xml` lets this plugin install in any JetBrains IDE.
+A plugin that also wants Java-specific features in IDEs that have them can declare an optional
+dependency with its own descriptor:
 
-Try that checkpoint on a file literally named `managed-schema`, with no extension, and nothing happens. No completion, no error, no clue.
+```xml
+<depends optional="true" config-file="java-features.xml">com.intellij.modules.java</depends>
+```
 
-Here's why. We registered our contributor for `language="XML"`, so the platform only offers us files it has *parsed as XML*. File type detection is driven mainly by extension, and `managed-schema` doesn't have one — so as far as the IDE is concerned it's a plain text file. There's no XML PSI, so there's nothing for us to be asked about.
+### Extensionless files
 
-This isn't a Solr quirk. Any format with extensionless or unusual filenames hits it: `Dockerfile`, `.gitconfig`, `Jenkinsfile`.
-
-The fix is to associate the filename with the existing XML file type:
+On a file literally named `managed-schema`, with no extension, the checkpoint below does nothing.
+We registered for `language="XML"`, so the platform only asks us about files it has parsed as XML,
+and file type detection is driven mainly by extension. Associate the filename with the existing XML
+file type:
 
 ```xml
 <extensions defaultExtensionNs="com.intellij">
@@ -538,29 +422,21 @@ The fix is to associate the filename with the existing XML file type:
 </extensions>
 ```
 
-Note what this is *not* doing: no `implementationClass`, no new language. Naming an existing file type and supplying extra matchers just adds those matchers to it. The bundled Maven plugin does exactly this to make `.pom` files XML:
+Naming an existing file type adds matchers to it; there is no `implementationClass` and no new
+language. The bundled Maven plugin does the same for `.pom` files
+(`<fileType name="XML" extensions="pom"/>`). Matchers are `extensions`, `fileNames` (exact names)
+and `patterns` (wildcards).
 
-```xml
-<fileType name="XML" extensions="pom"/>
-```
+**Before asking why a contributor isn't firing, confirm the IDE thinks the file is the language you
+registered for.** It's the second-most-common cause after a missing `plugin.xml` entry.
 
-Available matchers are `extensions`, `fileNames` (exact names), and `patterns` (wildcards). Now the file parses as XML, our contributor gets called, and the checkpoint works.
-
-Worth internalizing as a general rule: **before asking why your contributor isn't firing, confirm the IDE thinks the file is the language you registered for.** It's the second-most-common cause after a missing `plugin.xml` entry.
-
-> **Checkpoint.** `./gradlew runIde`, open a `managed-schema`, type `<field name="x" type="` and hit Ctrl+Space. Your field types appear, with their class names alongside. That's a real IDE feature, in about forty lines.
-
-Note also what declaring only `modules.platform` and `modules.xml` buys you: this plugin installs in PyCharm, WebStorm, and every other JetBrains IDE. Java-specific features go behind an optional dependency so they load only where Java support exists:
-
-```xml
-<depends optional="true" config-file="java-features.xml">com.intellij.modules.java</depends>
-```
+> **Checkpoint.** `./gradlew runIde`, open a `managed-schema`, type `<field name="x" type="` and hit Ctrl+Space. Your field types appear, with their class names alongside.
 
 ---
 
 ## Part 5 — Feature 2: An inspection with a quick-fix
 
-Inspections are how you turn domain knowledge into warnings. The contract is small: return a visitor, register problems on elements.
+The contract is small: return a visitor, register problems on elements.
 
 ```kotlin
 package dev.example.solrconfig.inspection
@@ -568,6 +444,7 @@ package dev.example.solrconfig.inspection
 import com.intellij.codeInspection.*
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.XmlElementVisitor
 import com.intellij.psi.xml.XmlFile
@@ -591,11 +468,12 @@ class DanglingCopyFieldInspection : LocalInspectionTool() {
                     if (value.contains('*')) continue                  // dynamic field pattern
                     if (model.findField(file, value) != null) continue
 
-                    val target = tag.getAttribute(attrName)?.valueElement ?: tag
+                    val target = tag.getAttribute(attrName)?.valueElement ?: continue
                     holder.registerProblem(
                         target,
                         "Field '$value' is not defined in this schema",
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+                        ElementManipulators.getValueTextRange(target),   // inside the quotes
                         CreateFieldQuickFix(value),
                     )
                 }
@@ -649,17 +527,21 @@ or silently copy nothing.
 </body></html>
 ```
 
-The filename must match `shortName`. That's how the platform finds the docs shown in *Settings → Editor → Inspections* — and it's a quietly excellent convention, because it makes "every inspection is documented" a build-time fact rather than a code-review aspiration.
+The filename must match `shortName`; that's how the platform finds the description shown in
+*Settings → Editor → Inspections*.
 
-Notice what you didn't write: no file watcher, no incremental re-analysis, no caching, no debounce. You wrote a visitor. The platform runs it as the user types, keeps results fresh, reports them in the gutter and the scrollbar, batches them under *Analyze → Inspect Code*, and lets users suppress or reconfigure severity. That asymmetry between what you write and what users get is the whole reason plugin development is worth learning.
+You wrote a visitor. The platform runs it as the user types, keeps results fresh, shows them in the
+gutter and scrollbar, batches them under *Analyze → Inspect Code*, and lets users suppress them or
+change their severity.
 
-> **Checkpoint.** In the sandbox, add `<copyField source="title" dest="nope"/>`. Yellow squiggle. Alt+Enter → *Create string field 'nope'*. The field appears in the schema.
+> **Checkpoint.** In the sandbox, add `<copyField source="title" dest="nope"/>`. A warning appears. Alt+Enter → *Create string field 'nope'*. The field appears in the schema.
 
 ---
 
-## Part 6 — Feature 3: References (three features for the price of one)
+## Part 6 — Feature 3: References
 
-Now the payoff. Implement one interface — "what does this string point to?" — and the platform derives navigation, Find Usages, *and* rename refactoring from it.
+Implement one interface — "what does this string point to?" — and the platform derives navigation,
+Find Usages and rename from it.
 
 ```kotlin
 package dev.example.solrconfig.reference
@@ -720,17 +602,7 @@ class SchemaReferenceContributor : PsiReferenceContributor() {
 }
 ```
 
-`withLocalName` takes varargs, which is why one pattern covers both `source` and `dest`.
-
-### Resolve to the name, not to the tag
-
-Those two lines at the end of `resolve()` are the difference between rename working and rename corrupting the file, so they're worth dwelling on.
-
-The obvious thing is to resolve to the `<field>` tag — it's the declaration, after all. Ctrl-click would even work. But `XmlTag` implements `PsiNamedElement`, and for a tag, "name" means the **tag name**: `field`. So Shift+F6 on that target offers to rename `<field>` itself, and accepting turns `<field name="title_exact"/>` into `<whatever name="title_exact"/>`. Find Usages has the same problem — it searches for the tag's name, not `title_exact`.
-
-Resolving to the `name` attribute's *value element* fixes both, because for an `XmlAttributeValue` the name genuinely is the string the user cares about. This is what the PSI diagram back in Part 3 meant by *"reference targets live here."*
-
-General rule, and it outlives this example: **resolve to the element whose `getName()` returns the identifier you want renamed.** When rename misbehaves, that question is almost always the answer.
+`withLocalName` takes varargs, so one pattern covers both `source` and `dest`.
 
 ```xml
 <psi.referenceContributor
@@ -738,15 +610,28 @@ General rule, and it outlives this example: **resolve to the element whose `getN
     implementation="dev.example.solrconfig.reference.SchemaReferenceContributor"/>
 ```
 
-> **Checkpoint.** Ctrl-click `dest="title_exact"` → jumps to that field's definition. Alt+F7 on a field name → Find Usages lists the copyField. Shift+F6 on a field → rename updates every reference. And `getVariants()` gave you completion inside those attributes for free.
+### Resolve to the name, not to the tag
 
-Roughly thirty lines, four user-visible features. This is the moment most people stop thinking of plugin development as expensive.
+The last two lines of `resolve()` are the difference between rename working and rename corrupting
+the file. `XmlTag` implements `PsiNamedElement`, and for a tag, "name" means the **tag name**:
+`field`. Resolve to the `<field>` tag and Shift+F6 offers to rename `<field>` itself, turning
+`<field name="title_exact"/>` into `<whatever name="title_exact"/>`; Find Usages searches for the
+tag's name. Resolving to the `name` attribute's *value element* fixes both.
+
+**Resolve to the element whose `getName()` returns the identifier you want renamed.** When rename
+misbehaves, that is almost always the answer.
+
+> **Checkpoint.** Ctrl-click `dest="title_exact"` → jumps to that field's definition. With the caret on `title_exact` inside the `copyField`, Alt+F7 lists its usages and Shift+F6 renames the field and every reference. `getVariants()` also gave you completion inside those attributes.
+
+These gestures start from a reference. Starting Find Usages or rename from the declaration itself —
+the caret on `<field name="title_exact">` — needs a `pom.declarationSearcher` extension that turns
+that position into a search target, which this tutorial doesn't build.
 
 ---
 
 ## Part 7 — Testing
 
-Plugin tests run a real headless platform, so you assert against genuine PSI rather than mocks — and they start in seconds.
+Plugin tests run a real headless platform, so you assert against genuine PSI rather than mocks.
 
 ```kotlin
 package dev.example.solrconfig
@@ -758,21 +643,21 @@ class DanglingCopyFieldInspectionTest : BasePlatformTestCase() {
 
     override fun getTestDataPath() = "src/test/testData"
 
-    fun `test dangling dest is reported`() {
+    fun testDanglingDestIsReported() {
         myFixture.enableInspections(DanglingCopyFieldInspection::class.java)
         myFixture.configureByFile("dangling/managed-schema.xml")
         myFixture.checkHighlighting()
     }
 
-    fun `test quick fix creates the field`() {
+    fun testQuickFixCreatesTheField() {
         myFixture.enableInspections(DanglingCopyFieldInspection::class.java)
-        myFixture.configureByFile("dangling/managed-schema.xml")
+        myFixture.configureByFile("dangling-fix/managed-schema.xml")
         val fix = myFixture.getAllQuickFixes().first { it.text.startsWith("Create string field") }
         myFixture.launchAction(fix)
-        myFixture.checkResultByFile("dangling/managed-schema.after.xml")
+        myFixture.checkResultByFile("dangling-fix/managed-schema.after.xml")
     }
 
-    fun `test completion offers field types`() {
+    fun testCompletionOffersFieldTypes() {
         myFixture.configureByFile("completion/managed-schema.xml")
         myFixture.completeBasic()
         assertContainsElements(myFixture.lookupElementStrings!!, "string", "text_general")
@@ -780,9 +665,12 @@ class DanglingCopyFieldInspectionTest : BasePlatformTestCase() {
 }
 ```
 
-Note the `.xml` extensions on the test data files. The fixture picks a language by extension just like the editor does, so an extensionless `managed-schema` in test data would be parsed as plain text and every assertion would fail confusingly. Same trap as the previous section, different place.
+`BasePlatformTestCase` is JUnit 3-style: methods are discovered by the `test` prefix, not by `@Test`.
 
-Expected warnings are expressed inline in the test data itself, which keeps assertions readable:
+Give test data files a `.xml` extension. The fixture picks a language by extension just like the
+editor, so an extensionless `managed-schema` would be parsed as plain text.
+
+Expected warnings go inline in the test data:
 
 ```xml
 <copyField source="title"
@@ -795,36 +683,30 @@ And completion tests mark the caret with `<caret>`:
 <field name="x" type="<caret>"/>
 ```
 
-`checkHighlighting()` fails if reported problems don't match the markup *exactly* — including problems you didn't expect, which makes false positives impossible to ignore. A useful habit: keep a real-world sample of your format in test data and assert it produces zero warnings. That single test catches most over-eager inspections before users do.
+The quick-fix test needs its own input. `configureByFile` strips caret and selection markers, not
+highlighting markup, so on `dangling/managed-schema.xml` the fix would run on XML with the `<warning>` markup still in it.
+Put a markup-free copy in `dangling-fix/managed-schema.xml` and the expected result, the same file
+with the new `<field>` added, in `dangling-fix/managed-schema.after.xml`. The input must still be
+named `managed-schema.xml`, or `SchemaDetector` rejects it and nothing is reported.
+
+`checkHighlighting()` fails if reported problems don't match the markup *exactly*, including
+problems you didn't mark — so a real-world sample of your format asserted to produce zero warnings
+catches most over-eager inspections before users do.
 
 ---
 
-## Part 8 — When you leave static analysis: threading
+## Part 8 — Threading
 
-Everything so far ran inside machinery the platform had already set up for you. The moment you make a network call or write from an action, three rules start to matter — and this is the one area with no Spring analog, so it's worth reading before you need it.
+Everything so far ran inside a context the platform set up. Once you make a network call or write
+from an action, three rules matter:
 
-```mermaid
-flowchart TB
-    subgraph EDT["EDT — single UI thread"]
-        E1["All Swing updates happen here"]
-        E2["Block it and the entire IDE freezes"]
-    end
-    subgraph BG["Background threads"]
-        B1["Network, long computation"]
-        B2["PSI access must be wrapped<br/>in a read action"]
-    end
-    subgraph WA["Write actions"]
-        W1["EDT only · exclusive · undoable"]
-    end
-    B2 -.->|"ReadAction.compute { }"| PSI[("PSI")]
-    W1 -.->|"WriteCommandAction { }"| PSI
-```
-
-In practice:
+- The **EDT** is the single UI thread. Block it and the whole IDE freezes.
+- **Background threads** do network calls and long computation, and must wrap PSI access in a read action.
+- **Write actions** run on the EDT, exclusively, and land in undo history.
 
 ```kotlin
 // Reading PSI off the EDT
-val fields = ReadAction.compute<List<SchemaField>, Throwable> {
+val fields = ReadAction.computeBlocking<List<SchemaField>, Throwable> {
     project.service<SchemaModelService>().fields(file)
 }
 
@@ -841,273 +723,68 @@ ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Contact
 })
 ```
 
-Modern platform code increasingly uses coroutines (services can expose a scope; `Dispatchers.EDT` exists), but the underlying read/write discipline is unchanged. Inspections, completion contributors, and reference providers already run inside a read action — you inherit correct behavior for free, which is why Parts 4–6 never mentioned threading.
+Modern platform code increasingly uses coroutines — services can be given a scope, and
+`readAction { }` and `Dispatchers.EDT` exist — but the read/write discipline is unchanged.
+Inspections, completion contributors and reference providers already run inside a read action,
+which is why Parts 4–6 never mentioned threading.
 
 ---
 
 ## Part 9 — Shipping
-
-Two commands separate a working sandbox plugin from a published one.
 
 ```bash
 ./gradlew verifyPlugin   # binary compatibility across IDE versions
 ./gradlew buildPlugin    # → build/distributions/your-plugin-0.1.0.zip
 ```
 
-`verifyPlugin` deserves a moment of respect. It checks your compiled bytecode against the IDEs you list under `pluginVerification { ides { ... } }` and fails on APIs that don't exist there. Because plugins are distributed as bytecode into IDEs you never tested against, this is the difference between "works on my machine" and "works for the person on last year's release." Put it in CI on day one; it costs nothing and prevents your most embarrassing bug reports.
+`verifyPlugin` checks your compiled bytecode against the IDEs under
+`pluginVerification { ides { ... } }` and fails on APIs that don't exist there. Run it in CI.
+`recommended()` resolves to a curated set of builds, not every build from `sinceBuild` onward; if you
+claim a long range, widen the list deliberately.
 
-One precision worth having, though: `recommended()` resolves to a curated set of builds, not to every build from `sinceBuild` onward. That's a strong sample, not proof of range-wide compatibility. If you claim a long tail, widen the list deliberately.
-
-Beyond that: install the ZIP locally via *Settings → Plugins → ⚙ → Install Plugin from Disk* to sanity-check it, then `publishPlugin` with a Marketplace token when you're ready. First-time submissions go through a review; subsequent updates publish immediately.
+Install the ZIP locally via *Settings → Plugins → ⚙ → Install Plugin from Disk* to sanity-check it.
+JetBrains Marketplace requires the plugin to be
+[signed](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html), the first upload to be
+made by hand, and a `pluginIcon.svg` and `<description>` for review; after that, `publishPlugin`
+with a Marketplace token publishes each version.
 
 ---
 
-## Part 10 — The eight things that will trip you up
+## Part 10 — Things that will trip you up
 
-1. **Nothing is auto-registered.** No `plugin.xml` entry, no feature, no warning. Check the manifest first, always.
-2. **The IDE has to agree about the file's language.** If it isn't parsed as what you registered for, you're never called. Extensionless filenames are the usual culprit.
-3. **Your code sees every file of that language.** Guard on identity or you'll pollute completion in unrelated files.
-4. **PSI elements are invalidated by edits.** Don't cache them across operations; use `SmartPsiElementPointer` if you must hold one.
-5. **Your feature is switched off while the project indexes** — and nothing tells you. IntelliJ skips any contribution that hasn't declared itself *dumb-aware*, on the assumption it reads an index. If yours doesn't read one, say so: `LocalInspectionTool` and `CompletionContributor` let you override `isDumbAware()`, while `DocumentationProvider` and inlay providers take the `DumbAware` marker interface. Get this wrong and your plugin does nothing for the first minutes after project open, silently, which users read as "broken" rather than "waiting". Watch the marker-interface cases in particular: applying `DumbAware` to a class the platform doesn't check compiles cleanly and changes nothing.
-
-   > **In Java terms.** Dumb mode is what an index looks like mid-import: it's still being built, so
-   > queries against it are refused until it's ready, rather than answered with a partial or stale
-   > result. Declaring a class dumb-aware is a promise that it never queries that index at all —
-   > which is only safe to declare when it's actually true.
+1. **Nothing is auto-registered.** No `plugin.xml` entry, no feature, no warning.
+2. **The IDE has to agree about the file's language.** Extensionless filenames are the usual culprit.
+3. **Your code sees every file of that language.** Guard on identity, or you'll pollute completion in unrelated files.
+4. **PSI elements are invalidated by edits.** Don't hold them across operations; use `SmartPsiElementPointer` if you must.
+5. **Your feature is switched off while the project indexes, silently**, unless it declares itself dumb-aware. `LocalInspectionTool` and `CompletionContributor` override `isDumbAware()`; documentation and inlay providers implement the `DumbAware` marker interface. Declare it only when the feature reads no index. [Platform mechanisms](platform-mechanisms.md#dumb-mode-and-dumbaware) covers what dumb mode is.
 6. **The EDT is sacred.** Any I/O goes on a background task with a progress indicator.
-7. **`@ApiStatus.Internal` and `@Experimental` will break.** They're not covered by compatibility promises. `verifyPlugin` tells you before users do.
+7. **`@ApiStatus.Internal` and `@Experimental` APIs break between releases.** `verifyPlugin` tells you before users do.
 8. **The plugin ID is permanent.** Decide before your first publish.
-
-And one bonus, because it wastes an afternoon the first time: **the sandbox has its own configuration.** Settings you change there don't affect your real IDE — occasionally confusing when a feature "only works on my machine."
+9. **The sandbox has its own configuration.** Settings you change there don't affect your real IDE.
 
 ---
-
-## Part 11 — This repo as the worked example
-
-Everything above is a standalone toy over `dev.example.solrconfig`. This repository — the one this
-file lives in — is a real plugin built on exactly the four patterns Parts 4 through 6 taught, plus a
-handful of extension points the toy never needed. This part maps one onto the other, and states the
-two decisions the real repo made that the toy tutorial didn't have to.
-
-### The extension points this plugin actually registers
-
-Every one of these lines lives in `src/main/resources/META-INF/plugin.xml`. The vocabulary column is
-the same five-plus-actions list from [Part 2](#so-which-lists-are-there), so if a row's *Kind* is new
-to you, that's the signal to read the platform SDK page for it before touching the package.
-
-| `plugin.xml` element | Kind | What it's for here | Implementation |
-|---|---|---|---|
-| `fileType` | file-type association | Makes the extensionless `managed-schema` parse as XML — [the exact trap Part 4 warns about](#the-step-that-will-bite-you-extensionless-files) | `plugin.xml:33` |
-| `codeInsight.declarativeInlayProvider` | inlay hint | The match-capability hint beside every field | `SolrMatchInlayHintsProvider`, `plugin.xml:38-45` |
-| `annotator` | [annotator](glossary.md#annotator) (new — not in Parts 4-6) | Dims an attribute that only restates its default; an `Annotator` runs like an inspection but at information severity with no Problems-view entry | `SolrRestatedDefaultAnnotator`, `plugin.xml:51-53` |
-| `xml.elementDescriptorProvider` | descriptor (new) | Teaches the platform's own XML support this file's element vocabulary, replacing its schema-less sibling-echo guess. Two registrations, one per file, because a single provider serving both would make one file the owner of the other's positions | `SolrSchemaElementDescriptorProvider` / `SolrConfigElementDescriptorProvider`, `plugin.xml:58-67` |
-| `lang.documentationProvider` | documentation | F1 / hover, exactly [Part 2's table](#so-which-lists-are-there) | Two registrations, schema and `solrconfig.xml`, `plugin.xml:74-84` |
-| `psi.referenceContributor` | reference | Same interface [Part 6](#part-6--feature-3-references-three-features-for-the-price-of-one) builds, three registrations: schema, `solrconfig.xml`, and a third for the one reference kind that resolves into Java PSI (a `class=` value) | `plugin.xml:89-103` |
-| `pom.declarationSearcher` | declaration target (new) | The half [Part 6](#resolve-to-the-name-not-to-the-tag) doesn't cover: turning a *declaration* — the caret sitting on a `<field name="…">`, not a reference to it — into something Find Usages will accept as a search target. The toy tutorial's Find Usages only ever worked from a reference, because nothing made the declaration itself searchable | `SolrDeclarationSearcher`, `plugin.xml:110-111` |
-| `referencesSearch` | search executor (new) | A dynamic field's pattern supplies names it never spells literally (`*_t` supplying `body_t`); the platform's word-index search can't find those on its own, so this extension answers the search directly through the model | `SolrDynamicFieldSearcher`, `plugin.xml:117-118` |
-| `elementDescriptionProvider` / `usageTypeProvider` | presentation (new) | What the Find Usages header and the rename dialog say about a target and a result — *Field type* / *Field declaring this type*, not the platform's fallback class name. Found by using the feature, not by reading a spec: without these, both read `Solr Declaration Target`, which is this plugin's own internal class name leaking onto the screen | `plugin.xml:125-128` |
-| `completion.contributor` | completion | Same interface as [Part 4](#part-4--feature-1-completion), two registrations | `plugin.xml:135-143` |
-| `localInspection` | inspection | Same shape as [Part 5](#part-5--feature-2-an-inspection-with-a-quick-fix), eleven registrations | `plugin.xml:148-283` |
-| `intentionAction` | [intention](glossary.md#intention) (new) | An Alt+Enter menu item on code that has nothing wrong with it — no underline, never in the Problems view. The distinguishing question, stated in this repo's own [code organization guide](code-organization.md#the-organising-principle): if your change would underline something, it's an inspection; if it wouldn't, it's an intention | Three registrations, `plugin.xml:288-305` |
-
-Two things worth noticing about the list as a whole. First, inspections default to
-`level="WARNING"` — the comment beside the block in `plugin.xml` explains why: this plugin's model of
-a half-typed file, mid-edit, isn't authoritative enough to claim a hard error. The four that report
-a name resolving to nothing are the exception, at `ERROR`, because the light colour schemes draw a
-warning without any underline and an unresolved name is conventionally an error. Second, nothing here is
-an *action* — no menu item, no toolbar button, no `AnAction`. Every capability described so far
-is something the platform calls on its own, group one from [Part 2](#so-which-lists-are-there). The
-Server track did bring group two — upload, reload, apply, index a test document — but as toolbar
-buttons created inside its tool window's panels rather than as `<action>` registrations, so none of
-them can be reached from Find Action or bound to a key. That is a choice worth revisiting, and a
-good example of the difference Part 2 draws: an action registered in `plugin.xml` belongs to the IDE;
-one built inside a component belongs only to that component.
-
-### Why parsing here does not lean on PSI the way Part 3 says
-
-[Part 3](#part-3--psi-the-thing-everything-stands-on) tells you to always read a file through PSI, and
-that's the right default — it's live, shared, and never stale mid-edit. This repo follows it for
-everything that answers a question *at a caret*: completion, inspections, references, and the
-descriptors above all walk `XmlTag` / `XmlAttributeValue`, exactly as Parts 4 through 6 do.
-
-But underneath all of that sits a second, deliberately separate parse: `SolrSchemaParser` and
-`SolrConfigParser` turn a configset's text into a plain data model — field names, types, analyzer
-chains — using `org.w3c.dom.Element`, the JDK's own DOM, not PSI at all
-(`src/main/kotlin/org/apache/solr/ide/configset/schema/parsing/SolrSchemaParser.kt:17`). The class
-comment says why directly: *"A pure function from text to data, with no IntelliJ types in its
-signature, so that the component the rest of the plugin depends on for correctness can be tested as a
-plain unit test."* (same file, lines 19–30) That buys something PSI-based parsing structurally can't:
-a test that runs in milliseconds with no headless IDE to boot, which matters because this is the one
-component in the plugin that has to be exhaustively correct — every inspection, every hint, every
-piece of documentation ultimately reads its answer. Roughly a third of this plugin's test suite is
-plain JUnit for exactly this reason, and `SolrSchemaParserTest`
-(`src/test/kotlin/org/apache/solr/ide/configset/schema/parsing/SolrSchemaParserTest.kt`) is what that
-looks like: `import org.junit.Test`, no `BasePlatformTestCase`, and it runs against a Kotlin string,
-not a fixture file.
-
-So there are two parses of the same text living side by side, and each answers a different question.
-PSI answers "what's under this caret right now" — every position-based feature needs exactly that,
-and it's the question Parts 4 through 6 above spend their whole time answering. The DOM-based parser
-answers a different question, "what does this configset mean," and that question has to stay
-answerable as a pure function of the text, because nothing about the editor is allowed to make it
-expensive or flaky to test.
-
-`SolrConfigsetReader` is the seam between the two, and it does three things in order. First, it reads
-the *current* PSI text rather than what's on disk, so an edit still sitting in the editor buffer —
-not yet saved — is already visible to the model. Second, it hands that string to the DOM parser,
-exactly as `SolrSchemaParserTest` does when it hands the parser a Kotlin string directly. Third, it
-caches the result through the platform's `CachedValuesManager`, keyed so that a change to the schema
-or `solrconfig.xml` invalidates it and a change to anything else in the project does not; without that
-cache, every inspection and every hint would reparse the whole configset from scratch on every
-keystroke. One more consequence of treating the text this way, worth knowing because it's easy to
-get wrong by hand: the DOM parser is configured to refuse doctypes and external entities before it
-ever touches the string, because a configset is read from a project that may have just been cloned,
-and leaving entity resolution on would let a crafted file reach the local filesystem or the network
-during what the user experiences as simply opening a file in the editor
-(`src/main/kotlin/org/apache/solr/ide/configset/reading/SolrXmlDocuments.kt:40-47`).
-
-If you're building a plugin whose correctness matters as much as this one's — anything with a "must
-never produce a false positive" requirement — this split is worth copying; if your format is smaller
-or the stakes are lower, reading straight off PSI everywhere, the way Part 3 teaches, is simpler and
-completely fine.
-
-### Dumb mode: the thing Part 10 mentions and this repo enforces everywhere
-
-[Part 10, point 5](#part-10--the-eight-things-that-will-trip-you-up) flags dumb mode as a trap and
-moves on. This repo treats it as a standing rule with two different mechanisms, because the platform
-itself exposes two:
-
-- `LocalInspectionTool` and `CompletionContributor` — override `isDumbAware(): Boolean = true`. See
-  `SolrDanglingCopyFieldInspection.kt:30` or `SolrSchemaCompletionContributor.kt:59` for the shape.
-- `DocumentationProvider`, inlay providers, `Annotator` and `IntentionAction` — implement the
-  `DumbAware` marker interface instead. See `SolrMatchInlayHintsProvider.kt:40`,
-  `SolrSchemaDocumentationProvider.kt:49`, or `SolrRestatedDefaultAnnotator.kt:43`.
-
-Every extension in this plugin declares itself dumb-aware, and it's a defensible promise rather than a
-box ticked without thinking, because nothing on the editor path reads a project index — the whole
-model is parsed straight from a configset's own text, per the section above. The one place this repo
-touches an index at all is class navigation through `JavaPsiFacade` (the `class=` reference in the
-table above), and this project's own [CLAUDE.md](../CLAUDE.md) records a real defect from getting this
-half-right instead of fully right: an earlier revision only *declined the dumb-aware declaration*
-there, which keeps that one feature out of paths that check the flag but does nothing about a caller
-that reaches `resolve()` directly during indexing — which throws, and took the whole quick-documentation
-popup down with it, including everything else on the same popup that needed no index at all. The fix
-was both: decline the declaration **and** guard the resolve call with `DumbService`. If you add a
-feature to *any* plugin that reads an index, that's the shape to copy — declining a declaration is not
-a substitute for guarding the code path, it only controls who's allowed to call it through the
-declared route.
-
-### The three test tiers, and which one a change gets
-
-[Part 7](#part-7--testing) shows one test style — `BasePlatformTestCase`, which is what you reach for
-whenever a test needs PSI. This repo has that tier and one more, split by exactly the same PSI/DOM
-line drawn two sections up:
-
-1. **Plain JUnit 4** over `org.apache.solr.ide.model` and the `*.parsing` packages — `@Test`-annotated,
-   conventional method names, and no superclass at all. Runs in milliseconds; no IDE boots.
-   `SolrSchemaParserTest` is the example above.
-2. **`BasePlatformTestCase` fixture tests** for anything that touches PSI — completion, inspections,
-   references, documentation. JUnit 3-style despite the JUnit 4 dependency Part 1 explains: methods
-   are named `testSomething()` and discovered by that prefix, not by an annotation. This is where
-   `checkHighlighting()` from Part 7 does its real work, and this repo leans on one property of it
-   hard: it fails on highlights the fixture *didn't* mark as well as ones it did, which is what makes
-   "zero false positives on a correct file" enforceable per test rather than only hoped for in review.
-   Most tests in this tier extend `SolrConfigsetTestCase`, a project subclass of
-   `BasePlatformTestCase` that puts a Solr client on the fixture's classpath and resets the
-   plugin's own persistent settings between tests — see
-   [`SolrConfigsetTestCase` in the how-to guide](how-to/add-an-editor-feature.md) for why either
-   matters. **The tier a test belongs to is decided by the class it extends, not by what it
-   imports**, and this repo caught two of its own contributors misreading it the other way: a test
-   extending `SolrConfigsetTestCase` needs no `com.intellij` import of its own to boot a full
-   headless IDE, because everything platform-shaped is already inherited through the base class.
-   Grepping a file's imports to guess its tier will misclassify every one of them as tier 1.
-3. **No fourth tier.** This repo's plan states it as a deliberate absence: no `intellij-ide-starter`,
-   no Remote Robot, nothing drives a running IDE from a test. Every claim the plugin makes — a
-   highlight, a resolve target, a completion list, a model value — is assertable headlessly through
-   tiers 1 and 2, so a test that drives a real IDE window would be paying for coverage the other two
-   tiers already give for free. What tier 2 *can't* see — whether a hint actually renders somewhere a
-   presenter can point at, whether a popup is readable at real size — is what
-   [this repo's manual test suite](manual-test-suite.md) exists for: a checklist pressed by hand
-   against `./gradlew runIde`, with a pass log recording what was actually pressed and when, kept
-   deliberately separate from what's merely been written down as a plausible-looking gesture.
-
-### Running this plugin's own sandbox
-
-`./gradlew runIde` here does everything Part 1's checkpoint describes, plus one thing worth knowing in
-advance: it opens `demo/` — a real Solr application with a real configset — automatically, rather than
-whatever the sandbox had open last, specifically so a first-time reader sees the plugin doing something
-without building a fixture first. And the **first** build (or any build after `./gradlew clean`) is
-slow for a reason that has nothing to do with the IDE: a Gradle task resolves `solr-core` for every
-Solr line this plugin supports and reads the class files inside, because a configset names Solr
-classes as bare strings (`class="solr.StrField"`) and the plugin can't complete or explain one without
-first knowing what exists. [Contributing → "Your first build is slow"](contributing.md#your-first-build-is-slow-and-that-is-expected)
-has the full account; it is the one surprise in this repo's build that Part 1 gives you no reason to
-expect.
 
 ## Where to go next
 
-You've now used the four patterns that most plugins are made of — services, position-based contributions, tree visitors, and references. The natural next steps, in rough order of effort:
-
 - **Actions** (`AnAction`) for user-triggered commands, with menu placement and shortcuts.
-- **Tool windows** (`ToolWindowFactory`) for dockable panels. UI is Swing with JetBrains' components, and the Kotlin UI DSL makes forms tolerable.
-- **Settings** (`Configurable` + `PersistentStateComponent`), with secrets in `PasswordSafe` rather than your own state.
+- **Tool windows** (`ToolWindowFactory`) for dockable panels, built with Swing and the Kotlin UI DSL.
+- **Settings** (`Configurable` + `PersistentStateComponent`), with secrets in `PasswordSafe`.
 - **Line markers and inlay hints** for gutter icons and inline annotations.
-- **A custom language** if your format isn't XML/JSON — a bigger commitment: lexer, parser, PSI element hierarchy.
-- **MCP tools**, if you want AI agents to reach your plugin's knowledge. IntelliJ IDEs have shipped a built-in MCP server since 2025.2, and plugins can contribute tools to it — a genuinely new frontier, and a small adapter over services you've already written.
-
-### What this tutorial deliberately doesn't cover
-
-Worth being explicit, so you know when to stop reading me and go elsewhere.
-
-We layered intelligence onto a format the IDE *already parses* — XML. If your format is genuinely new, you need a lexer, a parser, and your own PSI element hierarchy, and none of that is here. The official [Custom Language Support Tutorial](https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html) covers that path end to end, with a complete working sample. It's excellent and considerably more thorough than this on that specific subject.
-
-Also absent: tool windows and Swing UI, settings and persistence, run configurations, indexing and stubs, localization, and the paid-plugin/licensing story. Each has SDK documentation.
-
-The gap this tutorial fills is narrower than "learn plugin development": it's the on-ramp for someone who wants to add intelligence to a format that already has a parser, and who thinks in Spring idioms. If that's not you, the official docs are the better starting point.
+- **A custom language** if your format isn't XML or JSON: a lexer, a parser and your own PSI hierarchy. The official [Custom Language Support Tutorial](https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html) covers it end to end.
+- **MCP tools**, if you want AI agents to reach your plugin's knowledge. IntelliJ IDEs have shipped a built-in MCP server since 2025.2, and plugins can contribute tools to it.
 
 ### Further reading
 
-- [IntelliJ Platform SDK](https://plugins.jetbrains.com/docs/intellij/) — canonical reference; the [Quick Start Guide](https://plugins.jetbrains.com/docs/intellij/plugins-quick-start.html) is the entry point
-- [Custom Language Support Tutorial](https://plugins.jetbrains.com/docs/intellij/custom-language-support-tutorial.html) — the full lexer-and-parser path
-- [intellij-sdk-code-samples](https://github.com/JetBrains/intellij-sdk-code-samples) — runnable examples, CI-tested; the highest-value companion to any tutorial
-- [IntelliJ Community source](https://github.com/JetBrains/intellij-community) — every bundled feature is a working example. Searching for an extension point name surfaces a dozen real implementations, which beats documentation for learning idiom
-- [IntelliJ Platform Explorer](https://plugins.jetbrains.com/intellij-platform-explorer) — indexes extension points across open-source plugins; the fastest way to answer "is there a hook for this, and who else uses it?"
+- [IntelliJ Platform SDK](https://plugins.jetbrains.com/docs/intellij/) — the canonical reference; the [Quick Start Guide](https://plugins.jetbrains.com/docs/intellij/plugins-quick-start.html) is the entry point
+- [intellij-sdk-code-samples](https://github.com/JetBrains/intellij-sdk-code-samples) — runnable, CI-tested examples
+- [IntelliJ Community source](https://github.com/JetBrains/intellij-community) — every bundled feature is a working example; search for an extension point name to find real implementations
+- [IntelliJ Platform Explorer](https://plugins.jetbrains.com/intellij-platform-explorer) — indexes extension points across open-source plugins
 - [plugin-dev.com](https://www.plugin-dev.com/intellij/) — independent articles on topics the official docs skim
 
-### A note on verification
+### This repository as the worked example
 
-The APIs used here were checked against IntelliJ Community source rather than assumed — in particular `XmlNamedElementPattern.withLocalName(String...)`, the `com.intellij.fileType` pattern of extending an existing file type by name (which the bundled Maven plugin uses for `.pom`), that `CompletionContributor.extend` matches against the leaf `parameters.position`, and that `XmlTag.getName()` returns the tag name rather than a `name` attribute.
-
-The code has **not** been compiled end to end as a single project. Treat the samples as correct-by-inspection, not verified-by-build, and open an issue if something doesn't compile against your platform version.
-
-Known gaps, stated plainly rather than left for you to discover: Part 9 does not cover plugin signing, which JetBrains Marketplace requires before `publishPlugin` will accept an upload, nor the `pluginIcon.svg` and `<description>` that Marketplace review expects. The samples also hardcode English strings where the platform convention is a message bundle, and the inspection re-walks the schema for each `copyField` where a production plugin would cache derived data via `CachedValuesManager`. Each of those is a deliberate simplification for a first plugin; none of them is advice.
-
-The through-line worth taking away: **the platform APIs are small and repetitive; your domain knowledge is the actual work.** You spent this tutorial learning maybe six types. Everything else was ordinary Kotlin over a tree. Whatever format, framework, or tool your team knows deeply, the gap between that knowledge and an IDE feature that encodes it is smaller than you thought this morning.
-
----
-
-## Appendix — Screenshot shot list
-
-Screenshots to capture before publishing. Each entry gives the exact state to set up, what to frame, and draft alt text. Numbering matches the order they appear.
-
-**Capture settings for consistency:** light theme (renders better on most blogs), default font size at 100% zoom, editor width around 900px, window scaled so text is legible at 800px wide. Redact any real project paths in the title bar. Retina/2x capture, then downscale — text stays crisp.
-
-| # | Where | What to capture | Draft alt text |
-|---|---|---|---|
-| 1 | Part 1, after the generator links | The web generator at `plugins.jetbrains.com/generator` with *Plugin* selected and the Preview pane open on a generated file | "The IntelliJ Platform Plugin Generator web UI, with the file preview pane open" |
-| 2 | Part 1, after the IDE-client paragraph | *File \| New \| Project…* → **IDE Plugin** under Generators, first page, Server URL field visible | "The New Project dialog with the IDE Plugin generator selected" |
-| 3 | Part 1, same place | Generator page two — the Features list, with the GitHub and Split Mode groups visible | "Feature selection in the IDE Plugin wizard" |
-| 4 | Part 1, after `./gradlew runIde` | The sandbox IDE, *Settings → Plugins → Installed*, your plugin highlighted in the list | "The plugin appearing in the sandbox IDE's installed plugins list" |
-| 5 | Part 4 checkpoint | Completion popup open inside `type="` showing `string` and `text_general`, with class names in grey on the right | "Code completion suggesting Solr field types, with class names shown as type text" |
-| 6 | Part 5 checkpoint | The warning squiggle under `dest="nope"` with the tooltip visible | "An inspection warning on a copyField pointing at an undefined field" |
-| 7 | Part 5 checkpoint | Alt+Enter menu open, *Create string field 'nope'* highlighted | "The quick-fix menu offering to create the missing field" |
-| 8 | Part 5, after the fix | Side-by-side or before/after of the schema with the new `<field>` element added | "The schema after the quick-fix has created the missing field" |
-| 9 | Part 6 checkpoint | Ctrl/Cmd hover on `dest="title_exact"` showing the underline and target tooltip | "Ctrl+click navigation from a copyField reference to its field definition" |
-| 10 | Part 6 checkpoint | Find Usages results panel listing the copyField occurrence | "Find Usages listing references to a schema field" |
-| 11 | Part 6 checkpoint | The Rename dialog (Shift+F6) on a field name | "Rename refactoring on a schema field, working through the reference we implemented" |
-| 12 | Part 7 | Test run panel with the three tests green | "The plugin's tests passing in the headless platform harness" |
-| 13 | Part 9 | Plugin Verifier output in the Gradle console, or its HTML report | "Plugin Verifier reporting compatibility across IDE versions" |
-
-Optional but high-impact: a short GIF for #5–#7 (type, get completion, trigger the inspection, apply the fix). That sequence is the article's payoff and it moves.
-
-**On reusing JetBrains' images:** the generator blog post contains three official screenshots of the exact dialogs in #1–#3. They're JetBrains' copyrighted images — link to the post rather than re-hosting them, and capture your own for anything you publish.
+The plugin in this repository is built on the same patterns. [Code organization](code-organization.md)
+maps its packages and where a change goes, and [extension points](extension-points.md) lists every
+registration in its `plugin.xml`. That plugin targets IntelliJ IDEA only, which bundles Java, so its
+`com.intellij.modules.java` dependency is a plain `<depends>` rather than the optional one Part 4
+shows.
