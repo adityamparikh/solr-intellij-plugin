@@ -1,32 +1,26 @@
 # User guide
 
-> **Who this is for.** A Solr developer using this plugin day to day, looking up what a specific
-> gesture (hover, completion, Alt-Enter) does and what it should show. Solr schema vocabulary is
-> linked to the glossary throughout; IntelliJ Platform vocabulary is assumed only where a Java
-> engineer would already recognise the UI gesture (hover, Alt-Enter) rather than its internal name.
-> **Read first:** [Glossary](glossary.md) if Solr terms are new · [Project orientation](project-orientation.md)
+Every capability the plugin has, organised by what you are trying to do: the gesture that reaches
+it, and what you get. It is grouped by the three places you work —
+[in configuration files](#in-configuration-files) you edit,
+[against a server](#against-a-server) you talk to, and [in Java and Kotlin](#in-java-and-kotlin)
+code that names fields through SolrJ. Solr terms are linked to the [glossary](glossary.md).
 
-Everything the plugin does today, organised by what you are trying to do rather than by which
-IntelliJ [extension point](glossary.md#extension-point) implements it. All three of the
-specification's surfaces are now here in some form: the **configuration files** you edit, the
-**server** you talk to, and the **code** that names fields — though the last is the youngest, and
-what it covers is SolrJ rather than every way a JVM application reaches Solr. See
-[the project orientation](project-orientation.md) for how the three fit together, and
-[the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) for what "done" means for
-each capability below.
+To press each gesture against a real project, start with the [quick start](quick-start.md), which
+uses the committed demo. If nothing happens at all, see
+[why nothing is happening](installing.md#why-nothing-is-happening). Short clips of most capabilities
+are on [the home page](index.md#see-it-in-action).
 
 ## What the plugin can do
 
-Each row is a capability, the gesture that reaches it, and the section of
-[the manual test suite](manual-test-suite.md) that verifies it by hand. **The plan, not this table,
-owns what is built** — a row here means the guide documents the capability, and the suite is where
-its checks live.
+Each row is a capability, the gesture that reaches it, and the checks in
+[the manual test suite](manual-test-suite.md) that verify it by hand.
 
 | Capability | Gesture | Verified by |
 |---|---|---|
-| [Activation](#following-along) | Open a configset file | `ACT`, `BASE` |
-| [Which configsets are recognised](#when-a-configset-does-not-light-up) | Settings → Languages & Frameworks → Solr Configsets; *Mark Directory as Solr Configset Root* | `ACT-3`–`ACT-5` |
-| [What a field can match](#what-can-this-field-actually-match) | Inlay hint on a field type | `HINT` |
+| [Activation](installing.md#why-nothing-is-happening) | Open a configset file | `ACT`, `BASE` |
+| [Which configsets are recognised](installing.md#why-nothing-is-happening) | Settings → Languages & Frameworks → Solr Configsets; *Mark Directory as Solr Configset Root* | `ACT-3`–`ACT-5` |
+| [What a field can match](#what-can-this-field-actually-match) | Inlay hint beside a field | `HINT` |
 | [Quick documentation](#getting-documentation-without-leaving-the-file) | Hover, or <kbd>Ctrl-Q</kbd> | `DOC` |
 | [Completion: schema vocabulary](#the-schemas-own-vocabulary) | <kbd>Ctrl-Space</kbd> in `managed-schema.xml` | `COMP` |
 | [Completion: catalog-backed classes](#catalog-backed-classes-and-factory-attributes) | <kbd>Ctrl-Space</kbd> in a `class` attribute | `CAT` |
@@ -40,1019 +34,454 @@ its checks live.
 | [Connections](#pointing-the-plugin-at-a-solr-server) | Settings → Tools → Solr Connections | `SRV-1`–`SRV-3` |
 | [Browsing a server](#browsing-what-a-server-holds) | The **Solr** tool window | `SRV-4`–`SRV-10` |
 | [Running a query](#running-a-query) | An `.http` file, *Add Request* → Solr; or right-click a row in the **Solr** tool window | `SRV-10a`, `SRV-11`–`SRV-18` |
+| [Query console](#the-query-console) | Right-click a row in the **Solr** tool window, with the console chosen | `SRV-32`–`SRV-40` |
 | [Drift, upload and reload](#closing-a-difference-between-the-repository-and-a-server) | The **Drift** tab | `SRV-19`–`SRV-27` |
 | [Indexing a test document](#indexing-a-test-document) | *Index a Test Document* | `SRV-28`–`SRV-31` |
-| [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | — |
-| [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | Typing a field name in a Solr call | — |
-| [Navigating from code to the schema](#from-a-field-name-in-code-to-its-declaration) | <kbd>Ctrl-click</kbd> a field name in code | — |
-| [Query structure in code](#seeing-the-shape-of-a-query-written-in-code) | Editing a Solr query in a string | — |
-| [Running a query from code](#running-a-query-without-leaving-the-file) | The gutter icon beside a query | — |
+| [Field names checked in code](#catching-a-field-name-typo-in-java-or-kotlin) | Editing Java or Kotlin | `CODE-1`–`CODE-4`, `CODE-12`, `CODE-13` |
+| [Field names completed in code](#completing-a-field-name-in-java-or-kotlin) | Typing a field name in a Solr call | `CODE-6` |
+| [Navigating from code to the schema](#from-a-field-name-in-code-to-its-declaration) | <kbd>Ctrl-click</kbd> a field name in code | `CODE-7`, `CODE-8` |
+| [Query structure in code](#seeing-the-shape-of-a-query-written-in-code) | Editing a Solr query in a string | `CODE-5` |
+| [Running a query from code](#running-a-query-without-leaving-the-file) | The gutter icon beside a query | `CODE-9`–`CODE-11` |
 
-Every capability above works on a configset the plugin can see, and nothing on the editing path
-contacts a server. The server rows are the exception by definition, and they move data only when
-asked — on a refresh, or on a connection change.
+Nothing on the editing path contacts a server; the server capabilities move data only when you ask.
 
 ### Function keys on a Mac
 
-**macOS sends brightness and media controls from the top row unless you hold fn** — or turn on
-*Use F1, F2, etc. keys as standard function keys* in System Settings → Keyboard. So Find Usages is
-fn-⌥F7 and Rename is fn-⇧F6. Quick documentation is F1 or ⌃J on the *macOS* keymap, but only ⌃J on
-the legacy *Mac OS X* keymap, where F1 opens the IDE's Help instead; hovering works on either. Any of
-these is also reachable by name through Find Action (⇧⌘A): *Quick Documentation*, *Find Usages*,
-*Rename*. The plugin binds no keys of its own, so none of this is the plugin's to change.
-
-## Following along
-
-Every gesture here is reproducible against the committed demo project, which is also what the
-[manual test suite](manual-test-suite.md) presses and what the [screenshots](screenshots.md) are
-captured from:
-
-```bash
-./gradlew runIde
-```
-
-The [sandbox](glossary.md#sandbox) opens `demo/` and activates the plugin immediately — it declares
-`org.apache.solr:solr-solrj`, which passes the outer activation gate, and carries a real
-[configset](glossary.md#configset) under `demo/solr/conf/`. Open
-`demo/solr/conf/managed-schema.xml` first; most of what follows lives there, and
-`demo/solr/conf/solrconfig.xml` is the other file this guide reaches into — see the glossary for
-[managed-schema](glossary.md#managed-schema) and [solrconfig.xml](glossary.md#solrconfigxml) if
-either is unfamiliar. If nothing below happens when you try it, see
-[when nothing activates](contributing.md#when-nothing-activates) in the contributing guide before
-assuming a feature is broken.
-
-### When a configset does not light up
-
-**Settings → Languages & Frameworks → Solr Configsets** lists every configset the plugin recognises,
-each reading *detected* — found by the rules — or *marked* — pointed at by hand. Seeing the list is the
-quickest way to tell a detection miss from a project the plugin was never going to wake in.
-
-A configset detection misses — typically a bare configset repository with no Solr client in its build,
-or schema files outside a `conf/` directory — can be marked: right-click the directory in the Project
-view and choose *Mark Directory as Solr Configset Root*, or use `+` on the settings page. The same menu
-entry reads *Unmark* on a marked root. Marked roots are stored in `.idea/solr.xml` with
-project-relative paths, so they travel with the project, and a teammate who receives one can remove it
-on that page. **The checkbox at the top is the plugin's off switch for the project**, and it silences
-marked roots too — its label says so. (Verified by
-[ACT-3 to ACT-5](manual-test-suite.md#1-activation-act).)
-
-**Line numbers below name the demo [fixture](glossary.md#fixture) as committed and will drift as the
-demo changes.** Where a
-gesture edits the file, it says so, and every edit here is meant to be undone afterwards — the demo is
-a committed fixture, not a scratchpad. `git status --short demo/` should read empty when you are done.
-
-**Links in parentheses** point at the specific checks in the
-[manual test suite](manual-test-suite.md), which owns the exact wording of each gesture and its
-expected outcome, plus whether it has actually been pressed against a running sandbox and when. This
-guide explains *why* a capability exists and roughly what you will see; the manual suite is the
-authority on the precise result.
+macOS sends media keys from the top row unless you hold fn (or turn on *Use F1, F2, etc. keys as
+standard function keys*), so Find Usages is fn-⌥F7 and Rename fn-⇧F6. On the default *macOS* keymap
+F1 is Quick Documentation; on *IntelliJ IDEA Classic* (the old *Mac OS X* keymap) F1 opens Help, so
+use ⌃J or hover. Find Action (⇧⌘A) reaches any of them by name.
 
 ---
 
-## What can this field actually match?
+## In configuration files
 
-**What it does.** Beside every [field](glossary.md#field) declaration, an inline hint states what a
-search against that field can actually do — whole-value or tokenised, case-sensitive or not,
-prefix-capable or not — and, beside it, the storage shape that decides whether a matched document can
-be returned at all: [indexed](glossary.md#indexed), [stored](glossary.md#stored), doc-valued, single-
-or [multi-valued](glossary.md#multivalued). This is read from the field's own
-[analyzer chain](glossary.md#analyzer-chain) — the [tokenizer](glossary.md#tokenizer) and
-[filters](glossary.md#filter) Solr would run at index time — rather than asserted from the type's
-class name.
-A `TextField` using `KeywordTokenizerFactory` reads as **whole-value** despite the class name, because
-that tokenizer emits the entire input as one term, so the field matches exactly as a `StrField` does.
+Everything in this group works on the configset's files alone; none of it needs a server.
 
-**Order decides it, not just which [factories](glossary.md#factory) are present.** A
-`WordDelimiterFilterFactory` placed
-*after* that keyword tokenizer splits the single term again, and the field reads as tokenised despite
-its tokenizer — with the hint's evidence naming the filter that made it true rather than the tokenizer
-it overrode.
+### What can this field actually match?
 
-Two silences matter as much as the hints themselves. A field whose analyzer chain names a factory the
-plugin does not recognise still shows its storage shape, with no match claim — a wrong hint is worse
-than none. A field whose `type` names nothing the schema declares gets no hint at all, because nothing
-here is knowable.
+**Gesture:** none — open a schema; the hints render beside every [field](glossary.md#field).
 
-**Try it.** Open `managed-schema.xml` and look at the field block starting around line 66 — no
-gesture needed, the hints render themselves. `id`, `sku` and `category` read whole-value and
-case-sensitive; `description` and `text` (type `text_general`) read tokenised and case-insensitive;
-`name_prefix` additionally reads prefix-capable. `notes` (type `custom_text`, whose analyzer names an
-unrecognised factory) keeps only the storage-shape phrases; `legacy` (type `discontinued`, undeclared
-in the schema) shows nothing at all. (Verified by
-[the match-capability hint checks](manual-test-suite.md#3-match-capability-inlay-hints-hint).)
+**You get:** what a search against the field can do — whole-value or tokenised, case-sensitive or
+not, prefix-capable or not — and its storage shape: [indexed](glossary.md#indexed),
+[stored](glossary.md#stored), doc-valued, single- or [multi-valued](glossary.md#multivalued). It is
+read from the field's own [analyzer chain](glossary.md#analyzer-chain), in order, not from the type's
+class name: a `TextField` with `KeywordTokenizerFactory` reads whole-value, and a
+`WordDelimiterFilterFactory` after that tokenizer makes it tokenised again, with the hint naming the
+filter responsible.
 
-![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
-matches and how it is stored](images/01-hints-match-capability-light.png#only-light)
-![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it
-matches and how it is stored](images/01-hints-match-capability-dark.png#only-dark)
+**Silent when:** the chain names a factory the plugin does not recognise (storage shape only, no match
+claim), or the field's `type` names nothing the schema declares (no hint at all).
 
----
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it matches and how it is stored](images/01-hints-match-capability-light.png#only-light)
+![Nine field declarations in managed-schema.xml, each followed by an inline hint naming what it matches and how it is stored](images/01-hints-match-capability-dark.png#only-dark)
 
-## Getting documentation without leaving the file
+### Getting documentation without leaving the file
 
-Quick documentation (**F1**, or hover) answers a different question depending on exactly where the
-caret sits, and every one of those positions now answers something — a gap the plugin closed later
-than the rest, because the obvious first version only explained a *value* under the caret.
+**Gesture:** hover, or Quick Documentation (<kbd>Ctrl-Q</kbd>; ⌃J on a Mac). What it answers depends
+on where the caret sits:
 
-### On a field
+| Caret on | You get |
+|---|---|
+| A field's `name` | Every resolved property, its value, **where it came from** — the field, its [field type](glossary.md#field-type), or Solr's default at the schema's version — and a **Meaning** column stating the consequence |
+| A `class="solr.…"` value | Short name and kind, fully-qualified name, a one-sentence summary from Solr's Javadoc, accepted attributes, and a Reference Guide link at the configset's version — read at build time, never fetched ([why link, not copy](faq.md)) |
+| A schema element's tag (`<field>`, [`<copyField>`](glossary.md#copyfield), [`<uniqueKey>`](glossary.md#uniquekey)…) | What the element is, plus a configset-specific sentence where one is knowable: which fields a `<copyField>` joins, which field is the unique key, how many fields use a type |
+| An attribute's name (`type`, `source`, `dest`…) | What that attribute means in general, as distinct from what this configset did with its value |
+| An attribute on a `<filter>`, `<tokenizer>` or `<charFilter>` | The owning class, the value type, whether it is required, and a **Does** row for commonly hovered attributes |
+| A factory's tag (the word `filter`, not its `class`) | Every attribute the class accepts: written ones bold, unwritten ones with Solr's recorded default, and an em dash where none is recorded ([`luceneMatchVersion`](glossary.md#lucenematchversion)) |
+| `version` on `<schema>` | What the [schema version](glossary.md#schema-version) decides, then what this configset's value decides — at `1.6`, [`docValues`](glossary.md#docvalues) off and [`uninvertible`](glossary.md#uninvertible) on, both of which flip at 1.7 |
+| A `solrconfig.xml` [request parameter](glossary.md#request-parameter) name, or a `defType` value | What the parameter is for and the Java constant that declares it; for `defType`, the query parser it selects |
 
-**What it does.** Hovering (or F1 inside) a field's `name` shows every one of its resolved
-properties, **and where each came from** — the field itself, its [field type](glossary.md#field-type),
-or Solr's own default at
-the schema's declared version. That third column is what no external reference can supply, because it
-is about *this* schema. A **Meaning** column states the consequence of the resolved value in plain
-terms — *"Whether the original value can be returned in results"* beside `stored` — rather than only
-restating the property name.
+An attribute, class or parameter the generated catalog does not know — your own plugin's — answers
+with nothing rather than a guess.
 
-**Try it.** Caret inside `name="category"` at `managed-schema.xml:70`, press F1. (Verified by
-[the quick-documentation checks on a field](manual-test-suite.md#5-quick-documentation-doc).)
+![Quick documentation for the field category: a properties table giving each property's value, where that value came from, what it accepts, and what it means](images/02-quick-doc-field-light.png#only-light)
+![Quick documentation for the field category: a properties table giving each property's value, where that value came from, what it accepts, and what it means](images/02-quick-doc-field-dark.png#only-dark)
 
-![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](images/02-quick-doc-field-light.png#only-light)
-![Quick documentation for the field category: a properties table giving each property's value, where
-that value came from, what it accepts, and what it means](images/02-quick-doc-field-dark.png#only-dark)
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-light.png#only-light)
+![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-dark.png#only-dark)
 
-### On a class value
+![Quick documentation on the schema's version attribute: the general rule, then what this configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries off](images/16-hover-schema-version-light.png#only-light)
+![Quick documentation on the schema's version attribute: the general rule, then what this configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries off](images/16-hover-schema-version-dark.png#only-dark)
 
-**What it does.** Hovering any `class="solr.…"` value — a field type, a tokenizer, a filter, a
-[char filter](glossary.md#char-filter), or a `solrconfig.xml` plugin class — answers what the class
-is: short name and kind, the
-fully-qualified name, a one-sentence summary read from Solr's own Javadoc at build time, the
-attributes it accepts, and a Reference Guide link at the version this configset declares. None of it
-is fetched at edit time or copied out of the guide it links to — see [the FAQ](faq.md) for why.
+### Discovering what you're allowed to write
 
-**Try it.** Caret inside `class="solr.StandardTokenizerFactory"` at `managed-schema.xml:33`, F1.
-(Verified by [the quick-documentation check on a class value](manual-test-suite.md#5-quick-documentation-doc).)
+#### The schema's own vocabulary
 
-![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-light.png#only-light)
-![Quick documentation for solr.StandardTokenizerFactory: short name and kind, fully-qualified class
-name, one-sentence summary, accepted attributes, and a Reference Guide link](images/03-quick-doc-class-dark.png#only-dark)
+**Gesture:** type `<` inside a schema element, or a space inside an opening tag, then
+<kbd>Ctrl-Space</kbd>.
 
-### On the schema's own elements
+**You get:** only the elements legal at that position; the attributes the element accepts, each with
+a one-line summary and its values, **omitting** any the tag already carries. A boolean's default is
+marked where it is knowable, and left unmarked where it depends on the field's type.
 
-**What it does.** Hovering the *tag* itself — `<schema>`, `<field>`, `<fieldType>`,
-[`<dynamicField>`](glossary.md#dynamic-field), [`<copyField>`](glossary.md#copyfield),
-[`<uniqueKey>`](glossary.md#uniquekey) — explains what the element is in Solr's terms, plus a
-configset-specific sentence where one is knowable: which two fields a `<copyField>` joins, which
-field is the unique key and of what type, how many fields use a given type.
+![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large, multiValued, omitNorms and more, each with a one-line summary and the values it accepts](images/05-completion-field-properties-light.png#only-light)
+![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large, multiValued, omitNorms and more, each with a one-line summary and the values it accepts](images/05-completion-field-properties-dark.png#only-dark)
 
-**Try it.** Hover `<copyField>` or `<uniqueKey>` anywhere in `managed-schema.xml`. (Verified by
-[the quick-documentation check on the schema's own elements](manual-test-suite.md#5-quick-documentation-doc).)
+#### Catalog-backed classes and factory attributes
 
-### On an attribute's own name
+**Gesture:** <kbd>Ctrl-Space</kbd> in a `class=` value, or a space inside a factory tag.
 
-**What it does.** Hovering the attribute *name* — `name` or `type` on a `<field>`; `name` or `class`
-on a `<fieldType>`; `source` or `dest` on a `<copyField>` — explains that attribute in general terms.
-This is distinct from hovering the *value*, which resolves what this configset actually did with it;
-the two `copyField` ends read differently from each other, since `source` and `dest` mean different
-things.
+**You get:** `solr.*` field type classes on a `<fieldType>`, analysis factories on a `<tokenizer>` or
+`<filter>`, each set following the Solr line the configset declares. Inside a factory tag, that
+factory's own attributes, read from its constructor bytecode when the plugin was built, each labelled
+with the factory it belongs to.
 
-**Try it.** Hover the word `source` or `dest` inside any `<copyField>` tag. (Verified by
-[the quick-documentation check on an attribute's own name](manual-test-suite.md#5-quick-documentation-doc).)
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering luceneMatchVersion and preserveOriginal, each labelled with the factory it comes from](images/06-completion-factory-attributes-light.png#only-light)
+![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering luceneMatchVersion and preserveOriginal, each labelled with the factory it comes from](images/06-completion-factory-attributes-dark.png#only-dark)
 
-### On a factory's individual attribute
+#### `solrconfig.xml`'s own structure
 
-**What it does.** Hovering an attribute written on a `<filter>`, `<tokenizer>` or `<charFilter>` — for
-example `minGramSize` on an `EdgeNGramFilterFactory` — names the owning class, the value type, and
-whether it is required; a hand-written **Does** row states what the attribute is for, for the couple
-of dozen attributes a reader is likely to hover. An attribute the catalog does not carry, or a class
-the catalog does not know, answers with nothing rather than a guess.
+**Gesture:** type `<` or a space inside `solrconfig.xml`, then <kbd>Ctrl-Space</kbd>.
 
-**Try it.** Hover `minGramSize` on the `EdgeNGramFilterFactory` filter at `managed-schema.xml:48`.
-(Verified by [the quick-documentation check on a factory's attribute](manual-test-suite.md#5-quick-documentation-doc).)
-*No image yet — see [the screenshot catalog](screenshots.md#not-yet-capturable).*
+**You get:** elements and attributes from the same generated vocabulary the documentation and
+[inspections](glossary.md#inspection) read, respecting nesting — what completes inside `<query>` is
+not what completes inside `<config>`. An element Solr no longer accepts (`nrtMode`, `mainIndex` and
+others) is never offered.
 
-### On a factory's complete configuration
+![Element completion inside the config element in solrconfig.xml offering Solr's own top-level vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling tags](images/10-completion-solrconfig-structure-light.png#only-light)
+![Element completion inside the config element in solrconfig.xml offering Solr's own top-level vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling tags](images/10-completion-solrconfig-structure-dark.png#only-dark)
 
-**What it does.** Hovering the *tag* of a factory (the word `filter`, not its `class` value) shows
-every attribute that class accepts, not only the ones written: written attributes are bold and
-labelled *on this filter*; unwritten ones show the catalog's recorded literal default, labelled *Solr
-default*; an attribute the catalog cannot supply a default for —
-[`luceneMatchVersion`](glossary.md#lucenematchversion) is the recurring example — shows an em dash
-labelled *no default recorded*, which is the feature rather than
-a gap. A custom `class` the catalog does not know offers nothing on the tag at all.
+#### Field names inside `solrconfig.xml` parameters
 
-**Try it.** Hover the word `filter` (not the `class=` value) on the `EdgeNGramFilterFactory` filter at
-`managed-schema.xml:48`. (Verified by
-[the quick-documentation check on a factory's complete configuration](manual-test-suite.md#5-quick-documentation-doc).)
-*No image yet.*
+**Gesture:** <kbd>Ctrl-Space</kbd> inside a [request-handler](glossary.md#request-handler) parameter
+that holds field names — `qf`, `pf`, `fl`, `sort` among them — after a space if the caret is against
+existing text. Or inside the `name` of a `<str>` in `<lst name="defaults">`.
 
-### On the schema's own [version](glossary.md#schema-version)
+**You get:** inside a value, the schema's fields, with a dynamic pattern such as `*_t` in italics.
+Nothing is offered in a parameter that holds no field names (`rows`, `defType`), right after a boost
+(`name^`), or at a `sort` clause's direction. Inside a `name`, Solr's own parameter names, each
+labelled with its declaring class; one already set in the same list is withheld.
 
-**What it does.** Hovering `version` on the `<schema>` root explains what the attribute decides in
-general, then what *this configset's* declared value decides here — the demo's `version="1.6"` puts
-[`docValues`](glossary.md#docvalues) off and [`uninvertible`](glossary.md#uninvertible) on by
-default, both of which flip at 1.7. The `uninvertible` default is the one worth pausing on: with it
-true, sorting or faceting on a field that has no doc values still *works*, but only because Solr
-builds an in-memory field cache by un-inverting the index at query time — correct, silent, and
-expensive on a large index, rather than the explicit failure the same query would get once
-`uninvertible` defaults to false at 1.7. Solr changed several field defaults at that boundary without
-breaking already-deployed schemas, and this is the popup that makes the boundary visible rather than
-silent.
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-light.png#only-light)
+![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-dark.png#only-dark)
 
-**Try it.** Hover `version` on `<schema version="1.6" …>` at `managed-schema.xml:27`. **On a Mac, F1
-may not raise Quick Documentation** — without fn it is a media key, and on the legacy *Mac OS X*
-keymap it opens the platform's own Help page ([function keys on a Mac](#function-keys-on-a-mac));
-hover or ⌃J is the reliable gesture. (Verified by
-[the quick-documentation check on the schema's version attribute](manual-test-suite.md#5-quick-documentation-doc).)
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-light.png#only-light)
+![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-dark.png#only-dark)
 
-![Quick documentation on the schema's version attribute: the general rule, then what this
-configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
-off](images/16-hover-schema-version-light.png#only-light)
-![Quick documentation on the schema's version attribute: the general rule, then what this
-configset's declared 1.6 decides — docValues off, uninvertible on, autoGeneratePhraseQueries
-off](images/16-hover-schema-version-dark.png#only-dark)
+### Navigating and finding usages
 
-### On a `solrconfig.xml` parameter or parser name
+**Gesture:** <kbd>Ctrl-click</kbd> (⌘-click) to jump to a declaration; [Find Usages](glossary.md#find-usages)
+(<kbd>Alt-F7</kbd>) on a declaration.
 
-**What it does.** `solrconfig.xml` gets its own two documentation positions the schema provider
-declines. Hovering a [request parameter's](glossary.md#request-parameter) name — `qf`, `mm`, `defType`
-and 337 more — explains what
-that parameter is for and names the Java constant that declares it, read from Solr's own Javadoc.
-Hovering a `defType` value such as `edismax` names the query parser it selects. A parameter or name
-Solr itself does not declare — your own custom component's — answers with nothing, which is the
-honest response: a generator built from Solr's own source can never see a plugin outside it.
+**You get:** a real [reference](glossary.md#reference) from four kinds of string — a field's `type`, a
+`copyField`'s `source` and `dest`, a `solrconfig.xml` handler parameter naming a field, and a filter's
+resource attribute (`words=`, `synonyms=`, `protected=`, a char filter's `mapping=`), which opens the
+file. Find Usages crosses from the schema into `solrconfig.xml`, labels results in Solr's vocabulary
+(*Field type*, *Field declaring this type*), and on a `<dynamicField>` reports the names its pattern
+supplies — `body_t` for `*_t` — not only literal spellings of the pattern.
 
-**Try it.** F1 on `qf` inside `solrconfig.xml`'s `<str name="qf">` (line 28), or on `class=` inside a
-`<requestHandler>` such as the `/select` handler at line 24. (Verified by
-[the documentation check on a request parameter's name](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm)
-and [the documentation check on a catalog-backed class](manual-test-suite.md#8-completion--catalog-backed-cat).)
+**Silent when:** a `class` names something outside the project's classpath — `solr.SearchHandler`
+lives in `solr-core` — which is ordinary and draws no warning; documentation still answers from the
+catalog.
 
----
-
-## Discovering what you're allowed to write
-
-Completion answers two different questions, and the plugin only answers the second one as of a
-relatively late step: *what value goes here* has always worked to some degree, but *what may I write
-at all* — the vocabulary itself — matters more to a reader who has not yet learned it.
-
-### The schema's own vocabulary
-
-**What it does.** Typing `<` inside `<schema>` (or any schema element) offers the elements legal
-there and nothing else. Typing a space inside an opening tag offers the attributes that element
-accepts, each with a one-line summary and the values it takes — and **omits** whatever the tag
-already carries, since an attribute cannot legally appear twice. Where a boolean's default is
-knowable, the default value is marked; where it depends on the field's type, neither is marked, rather
-than asserting one.
-
-**Try it.** Caret after `stored="true"` on `managed-schema.xml:70`, **before the closing `/`**, type a
-space. `indexed` and `stored` are absent from the popup because line 70 already declares them.
-Undo the space afterwards. (Verified by
-[the completion checks over the schema's own vocabulary](manual-test-suite.md#7-completion--the-schemas-own-vocabulary-comp).)
-
-![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
-multiValued, omitNorms and more, each with a one-line summary and the values it
-accepts](images/05-completion-field-properties-light.png#only-light)
-![Attribute completion inside a field tag, listing docValues, sortMissingLast, default, large,
-multiValued, omitNorms and more, each with a one-line summary and the values it
-accepts](images/05-completion-field-properties-dark.png#only-dark)
-
-### Catalog-backed classes and factory attributes
-
-**What it does.** `class=` on a `<fieldType>` offers `solr.*` field type classes; on a `<tokenizer>`
-or `<filter>`, the analysis factories — each set following the Solr line this configset declares.
-Once a factory class is written, attribute completion inside that tag offers *that factory's own*
-attributes, read from its constructor bytecode when the plugin itself was built rather than hand
-maintained.
-
-**Try it.** Caret before the closing `/` on the `EdgeNGramFilterFactory` filter at
-`managed-schema.xml:48`, type a space: `luceneMatchVersion` and `preserveOriginal` appear, each
-labelled with the factory they belong to (`minGramSize` and `maxGramSize` are absent because the tag
-already declares them). Undo the space afterwards. (Verified by
-[the catalog-backed completion checks](manual-test-suite.md#8-completion--catalog-backed-cat).)
-
-![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
-luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](images/06-completion-factory-attributes-light.png#only-light)
-![Attribute completion inside a filter tag declaring solr.EdgeNGramFilterFactory, offering
-luceneMatchVersion and preserveOriginal, each labelled with the factory it comes
-from](images/06-completion-factory-attributes-dark.png#only-dark)
-
-### `solrconfig.xml`'s own structure
-
-**What it does.** Before this shipped, `solrconfig.xml` ran through the platform's schema-less XML
-mode, which guesses completion from whatever same-named sibling tag happens to be nearby — a bad
-guess in a file made almost entirely of same-named tags. Element and attribute completion here now
-come from the same generated vocabulary the documentation and [inspections](glossary.md#inspection)
-read, and nesting is
-respected: what completes inside `<query>` is not what completes inside `<config>`, and an element
-Solr no longer accepts (`nrtMode`, `mainIndex`, and three more) is never offered, anywhere.
-
-**Try it.** Put the caret on a blank line directly inside `<config>` and type `<`: the offer is Solr's
-own top-level vocabulary, not a copy of the handful of tags already written above the caret. Undo the
-typed character afterwards. (Verified by
-[the checks on solrconfig.xml's own structure completion](manual-test-suite.md#10-completion--solrconfigxmls-own-structure-str).)
-
-![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
-vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
-tags](images/10-completion-solrconfig-structure-light.png#only-light)
-![Element completion inside the config element in solrconfig.xml offering Solr's own top-level
-vocabulary — query, requestHandler, directoryFactory, luceneMatchVersion — not an echo of sibling
-tags](images/10-completion-solrconfig-structure-dark.png#only-dark)
-
-### Field names inside `solrconfig.xml` parameters
-
-**What it does.** Sixteen [request-handler](glossary.md#request-handler) parameters are known to hold
-field names — `qf`, `pf`,
-`fl`, `sort` among them — and completion inside one of them offers the schema's own fields, with a
-dynamic pattern such as `*_t` shown italicised to mark it as a pattern rather than a literal field.
-Scoped narrowly on purpose: `rows` and `defType` hold no field names, a caret immediately after a
-boost (`name^`) offers nothing, because completing there would produce `name^name`, and the second
-token of a `sort` clause is a direction rather than a field. The `name` attribute of a `<str>` inside
-`<lst name="defaults">` offers Solr's own parameter names instead — the position the vocabulary is
-learnable from in the first place, since offering fields inside `qf` presumes the reader already knew
-to write `qf`.
-
-**Try it.** Caret inside `<str name="qf">` after the existing text (`solrconfig.xml:28`), **type a
-space**, then invoke completion: the schema's fields are offered, `*_t` italicised. The space matters —
-completion did not fire with the caret directly against existing text and no trailing whitespace, the
-same rule the schema-vocabulary completion above documents. (Verified by
-[the checks on field-name completion inside solrconfig.xml parameters](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
-
-![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
-their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-light.png#only-light)
-![Field-name completion inside a solrconfig.xml qf parameter, offering the schema's fields with
-their types, including the *_t dynamic pattern](images/13-completion-parameter-fields-dark.png#only-dark)
-
-**Try the parameter-name half too** — add a new `<str name="` line inside `<lst name="defaults">`
-and invoke completion there instead of inside a value: Solr's own parameter names are offered, each
-labelled with the class that declares it and, for a family of related names, a short description
-telling them apart. A parameter already set earlier in the same list is withheld — typing `qf` here
-when line 28 already declares one offers only `mlt.qf` and `hl.queryFieldPattern`, not plain `qf`,
-which is this behaving correctly rather than a sparse or broken popup. (Verified by
-[the checks on parameter-name completion](manual-test-suite.md#9-completion--field-names-inside-solrconfigxml-parameters-prm).)
-
-![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
-terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-light.png#only-light)
-![solrconfig.xml parameter-name completion offering sort, expand.sort, facet.sort, group.sort and
-terms.sort, each labelled with its declaring Params class](images/15-completion-parameter-names-dark.png#only-dark)
-
----
-
-## Navigating and finding usages
-
-**What it does.** Every string that names something elsewhere in the configset is a real
-[reference](glossary.md#reference): Ctrl/Cmd-click (or Cmd-hover for the tooltip) jumps to the
-declaration, [Find Usages](glossary.md#find-usages) (⌥F7) lists every
-place a declaration is used — including across the file boundary, schema to `solrconfig.xml` — and
-the result list is labelled in Solr's own vocabulary (*Field type*, *Field declaring this type*), not
-the platform's generic fallback. Four reference kinds resolve: a field's `type`, a `copyField`'s
-`source` and `dest`, a `solrconfig.xml` handler parameter naming a field, and a filter's resource
-attribute (`words=`, `synonyms=`, `protected=`, a char filter's `mapping=`) opening the file it names.
-A dynamic field such as `<dynamicField name="*_t">` reports every name its pattern actually supplies —
-`body_t` in a `solrconfig.xml` parameter, for instance — not only literal spellings of the pattern
-itself, which the platform's own word index cannot find on its own.
-
-**Try it.**
-
-- Cmd-click a field's `type="text_general"` at `managed-schema.xml:68` to jump to the
-  `<fieldType name="text_general">` declaration. (Verified by
-  [the check that a field's type navigates to its declaration](manual-test-suite.md#4-navigation-and-find-usages-nav).)
-- Find Usages (⌥F7) invoked from the `<fieldType name="text_general">` declaration itself
-  (`managed-schema.xml:31`) lists four usages — `name`, `description`, `text`, and the `*_t` dynamic
-  field. (Verified by
-  [the Find Usages checks on a field type, including how the results are labelled](manual-test-suite.md#4-navigation-and-find-usages-nav).)
-- Cmd-hover `name` inside `solrconfig.xml:28`'s `<str name="qf">name^3 description category</str>`
-  raises a navigation tooltip landing in the schema — each name in the string navigates on its own.
-  (Verified by
-  [the check that a solrconfig.xml parameter navigates into the schema](manual-test-suite.md#4-navigation-and-find-usages-nav).)
-- Find Usages on `<dynamicField name="*_t">` (`managed-schema.xml:84`) reports the `pf` parameter
-  naming `body_t` in `solrconfig.xml`, highlighted at `body_t` alone. (Verified by
-  [the check that Find Usages on a dynamic field reaches a name its pattern only supplies](manual-test-suite.md#4-navigation-and-find-usages-nav).)
-- Cmd-click `words="stopwords.txt"` at `managed-schema.xml:34` opens the resource file, including
-  through `lang/`. (Verified by
-  [the check that a filter's resource path navigates to the file](manual-test-suite.md#4-navigation-and-find-usages-nav).)
-
-![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
-declaring this type'](images/07-find-usages-field-type-light.png#only-light)
-![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field
-declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field declaring this type'](images/07-find-usages-field-type-light.png#only-light)
+![Find Usages on the text_general fieldType declaration, showing four fields grouped under 'Field declaring this type'](images/07-find-usages-field-type-dark.png#only-dark)
 
 ![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-light.png#only-light)
 ![Navigation tooltip from a solrconfig.xml qf parameter into the schema field it names](images/08-nav-solrconfig-field-reference-dark.png#only-dark)
 
-**What does not navigate, and why that is correct.** `class="solr.SearchHandler"` in the demo's
-`/select` handler resolves nowhere, and draws no warning for failing to — the demo depends only on
-`solr-solrj`, and the class lives in `solr-core`, which is not on its classpath. A configset naming a
-class outside the current project is ordinary, not wrong; documentation still answers from the
-generated catalog regardless, because that needs no class on the classpath at all. (Verified by
-[the checks on navigating to a class outside the project](manual-test-suite.md#4-navigation-and-find-usages-nav).)
+### Renaming safely across a configset
+
+**Gesture:** <kbd>Shift-F6</kbd> on a field, dynamic field or field type declaration.
+
+**You get:** a [rename](glossary.md#rename-refactoring) everywhere a reference resolves to it,
+including `solrconfig.xml`, through the same references Find Usages reads, in a dialog labelled in
+Solr's terms. One undo reverts every file.
+
+**Deliberately partial:** renaming a dynamic field's pattern updates literal spellings of the pattern
+but not names it only supplies (`body_t` for `*_t`), since rewriting those would put a glob where a
+field name belongs; the unknown-field inspection then flags each orphaned name.
+
+![The qf parameter in solrconfig.xml immediately after renaming category to product_category from the schema declaration — updated with no separate edit](images/14-rename-cross-file-after-light.png#only-light)
+![The qf parameter in solrconfig.xml immediately after renaming category to product_category from the schema declaration — updated with no separate edit](images/14-rename-cross-file-after-dark.png#only-dark)
+
+### Catching mistakes before Solr does
+
+**Gesture:** none — edit the file; <kbd>Alt-Enter</kbd> on a finding for its quick-fix.
+
+**You get:** twelve inspections — eleven on configset files, one on Java and Kotlin — for the ways a
+configset fails silently: at [core](glossary.md#core) reload, at query time, or never. Four, for a
+name that resolves to nothing, are errors drawn as a red wave in every scheme: a dangling
+`copyField`, an unknown field type, an unknown attribute, and a handler parameter naming an
+undeclared field. The rest are warnings, which some colour schemes draw as a tinted background with
+no line. [The inspection catalog](inspection-catalog.md) owns what each one reports, its severity,
+and what it stays silent about.
+
+| Group | Catches |
+|---|---|
+| [Schema](inspection-catalog.md#schema-checks) | A `copyField` naming an undeclared field (Alt-Enter offers the closest declared names); a field naming an undeclared type; a type nothing uses; an [analyzer chain](inspection-catalog.md#analyzer-chain-ordered-so-a-component-cannot-work--solranalyzerchainorder) ordered so a filter can do nothing |
+| [`solrconfig.xml`](inspection-catalog.md#solrconfigxml-checks) | A handler parameter naming an undeclared field, or one that cannot serve it (`qf` on a non-indexed field, `facet.field` or `sort` with neither `indexed` nor `docValues`); an element Solr no longer accepts; a parameter name that is almost one Solr reads |
+| [Catalog-backed attributes](inspection-catalog.md#catalog-backed-attribute-checks) | An unknown attribute, or a value of the wrong kind (`indexed="yes"`, `minGramSize="2.5"`) |
+| [Code](inspection-catalog.md#code-checks) | A field name in Java or Kotlin no configset declares — see [below](#catching-a-field-name-typo-in-java-or-kotlin) |
+
+An unused field type is drawn dimmed, with no quick-fix, because it is
+[an observation rather than a defect](inspection-catalog.md#the-one-finding-that-is-not-a-defect).
+Run over the `_default` and `sample_techproducts_configs` configsets Solr ships, on Solr 9 and 10,
+the inspections report nothing but that observation, which rightly finds the language and spatial
+types Solr ships for fields not yet written.
+
+![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu open above it offering to change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix-light.png#only-light)
+![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu open above it offering to change the name to *_t, category, description, legacy, name or notes](images/04-inspection-copyfield-quickfix-dark.png#only-dark)
+
+### Seeing what's already redundant
+
+**Gesture:** none; <kbd>Alt-Enter</kbd> on a dimmed attribute to remove it.
+
+**You get:** an attribute whose value equals what Solr would supply anyway rendered dimmed, at
+information severity, never in the Problems view. The [intention](glossary.md#intention) removes it,
+leaving identical resolved properties. It covers field properties, resolved through field, field
+type and Solr's default, and factory attributes, against the default read from the factory's
+bytecode. Where the default cannot be known with confidence — a custom field type class — nothing
+dims.
+
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-light.png#only-light)
+![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-dark.png#only-dark)
+
+### Fixing a missing capability automatically
+
+**Gesture:** <kbd>Alt-Enter</kbd> on a field.
+
+**You get:** **Add exact-match companion field** (a `StrField`-backed `_exact` field, for sorting and
+faceting a tokenised field's content) and **Add prefix-capable companion field** (an EdgeNGram-backed
+`_prefix` field). Each writes the `<field>`, its `<fieldType>` if missing, and the `<copyField>`
+joining them, directly with no confirmation. Neither is offered once the companion exists, and
+`_exact` is not offered on a field that is already whole-value.
+
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add prefix-capable companion field' intentions, with the exact-match explanation shown alongside](images/12-intention-companion-fields-light.png#only-light)
+![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add prefix-capable companion field' intentions, with the exact-match explanation shown alongside](images/12-intention-companion-fields-dark.png#only-dark)
 
 ---
 
-## Renaming safely across a configset
-
-**What it does.** Shift+F6 on a field, dynamic field or field type declaration
-[renames](glossary.md#rename-refactoring) it everywhere a reference resolves to it — including across
-the file boundary into `solrconfig.xml` — through the
-same reference graph Find Usages reads. The rename dialog itself is labelled correctly (*Rename field
-'category' and its usages to:*, not the platform's fallback class name), which matters because a
-correct rename under a wrong-looking dialog reads as broken to everyone but its author.
-
-**What stays deliberately partial.** Renaming a dynamic field's pattern (`<dynamicField
-name="*_t">` to `*_txt`) updates the declaration and any reference that spells the pattern literally,
-but leaves alone a reference the pattern only *supplies* — `body_t` in a `solrconfig.xml` parameter —
-because rewriting it to `*_txt` would put a glob where a field name belongs. The unknown-field
-inspection then underlines that now-orphaned name immediately, which is what makes the partial rename
-defensible rather than silently wrong.
-
-**Try it.** Caret on `category` in `<field name="category">` at `managed-schema.xml:70`, press
-Shift+F6, apply directly (no Preview step needed) to rename to `product_category`: the declaration
-updates and so does the `qf` line in `solrconfig.xml:28`, with no separate action. A single Cmd+Z
-undoes both files as one refactoring — confirm with `git status --short demo/` afterwards. (Verified by
-[the rename checks that the dialog is labelled correctly and the cross-file update follows](manual-test-suite.md#4a-rename-ren).)
-
-![solrconfig.xml's qf parameter before a rename, reading name^3 description
-category](images/14-rename-cross-file-before-light.png#only-light)
-![solrconfig.xml's qf parameter before a rename, reading name^3 description
-category](images/14-rename-cross-file-before-dark.png#only-dark)
-
-![The same qf parameter immediately after renaming category to product_category from the schema
-declaration — updated with no separate edit](images/14-rename-cross-file-after-light.png#only-light)
-![The same qf parameter immediately after renaming category to product_category from the schema
-declaration — updated with no separate edit](images/14-rename-cross-file-after-dark.png#only-dark)
-
----
-
-## Catching mistakes before Solr does
-
-**What it does.** Eleven inspections watch for the ways a configset fails silently — at
-[core](glossary.md#core) reload, at query time, or not at all until a reader notices a query "just
-doesn't work." Ten of the eleven are
-held to a zero-false-positive bar: the shipped `_default` and `sample_techproducts_configs` configsets
-Solr itself ships produce no findings from them, on either supported line, and a custom plugin class
-with its own parameters produces none either. **The eleventh, the unused-field-type check, is held out
-of that gate by name** — Solr's own shipped configsets declare dozens of language and spatial field
-types for fields nobody has written yet, and the check correctly reports every one of them as unused.
-That is a true fact about the file rather than a defect in it, which is why it is the one rule a
-*zero findings* gate cannot hold, and why it is drawn dimmed rather than underlined below.
-
-**A name that resolves to nothing is an error; everything else is a warning.** The four checks for a
-dangling copyField, an undeclared field type, an unknown attribute and an undeclared field in a
-handler parameter draw a red wavy underline in every colour scheme. The rest are warnings, and how a
-warning looks is the scheme's choice: *Dark* and *Islands Dark* draw a yellow wave, while *Default*,
-*Darcula* and the *Light* scheme behind the *Islands Light* theme draw a tinted background with no
-line. [The inspection catalog](inspection-catalog.md) lists each check's severity.
-
-What they catch, briefly:
-
-- **A `copyField` naming a field nothing declares** — flagged, with Alt-Enter offering the declared
-  fields closest in spelling, dynamic patterns included as candidates.
-- **A field naming an undeclared field type**, and the reverse — **a declared field type nothing
-  uses** — the one finding here that is not a defect, so it is drawn dimmed rather than underlined,
-  with no [quick fix](glossary.md#quick-fix): whether it is dead weight or provision for a field not
-  yet written is a judgement the editor cannot make.
-- **A `solrconfig.xml` handler parameter naming a field the schema does not declare.**
-- **A relevance or faceting parameter naming a field that cannot serve it** — `qf` on a non-indexed
-  field, `facet.field` or `sort` on a field with neither `indexed` nor `docValues`. The same field can
-  be searchable and unfacetable at once, and the two checks disagree about it on purpose.
-- **An analyzer chain ordering that silently defeats itself.** Every class named is legal, every
-  attribute is legal, and Solr starts without complaint — this is the one finding in this list a
-  reader cannot see by looking at the file alone, because the problem is not any single tag but how
-  two tags relate to each other. A case-folding filter placed after a filter that already flattened
-  case away runs on input with nothing left to fold, so it does nothing. A filter such as
-  `SynonymGraphFilterFactory` can emit more than one token at the same position — `laptop` and
-  `notebook` occupying one slot rather than a flat sequence, what Lucene calls a *token graph* — and
-  `FlattenGraphFilterFactory` exists to collapse that graph back into a flat sequence for whatever
-  runs after it; placed *before* the filter that produces the graph instead of after it, it flattens
-  nothing, and the graph reaches a downstream filter that cannot represent alternatives at all.
-- **A configuration element Solr no longer accepts** — reported in Solr's own retirement sentence,
-  naming its replacement where Solr names one.
-- **A parameter name that is almost one Solr reads** — an edit-distance check that knows the
-  difference between a typo and a genuinely different but similar parameter (`pf2` beside `pf3`),
-  because it checks knownness before distance.
-- **An unknown attribute, or a value outside a closed set** — `indexed="yes"` instead of `"true"`.
-
-**Try it.** `managed-schema.xml`, untouched, shows exactly two errors — a planted dangling
-`manufacturer` copyField and a planted undeclared field type — and nothing else; `solrconfig.xml`
-shows none. Both are deliberate fixtures and should never be "fixed." (Verified by
-[the zero-false-positive baseline checks](manual-test-suite.md#2-zero-false-positive-baseline-base).)
-
-![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
-open above it offering to change the name to *_t, category, description, legacy, name or
-notes](images/04-inspection-copyfield-quickfix-light.png#only-light)
-![A copyField whose source names manufacturer, highlighted in the editor, with the Alt-Enter menu
-open above it offering to change the name to *_t, category, description, legacy, name or
-notes](images/04-inspection-copyfield-quickfix-dark.png#only-dark)
-
----
-
-## Seeing what's already redundant
-
-**What it does.** An attribute whose written value equals what Solr would have supplied anyway
-renders dimmed — grey text and no underline, the same idiom an IDE uses for any other redundant
-code, at information severity, never reaching the Problems view, because a restated default is
-correct rather than wrong. An
-Alt-Enter [intention](glossary.md#intention) on a dimmed attribute removes it, leaving a schema whose
-resolved properties are
-identical. The comparison covers both field properties (`indexed`, `stored`, and the rest, resolved
-through three tiers — field, field type, Solr's own default) and analysis-factory attributes, judged
-against the literal default the catalog read out of that factory's own bytecode. Wherever the default
-cannot be determined with confidence, nothing dims — a custom field type class the catalog does not
-know, for instance.
-
-**Try it.** Open `managed-schema.xml` untouched — no edit needed. `indexed="true"` and
-`stored="true"` render dimmed across the field block; `stored="false"` on `name_prefix` renders at
-full strength. (Verified by
-[the restated-default dimming checks](manual-test-suite.md#11-an-attribute-that-restates-its-default-dim).)
-
-![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
-defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-light.png#only-light)
-![managed-schema.xml field block with indexed=true and stored=true rendered dimmed as restated
-defaults, while stored=false on name_prefix stays normal](images/11-dimmed-restated-default-dark.png#only-dark)
-
----
-
-## Fixing a missing capability automatically
-
-**What it does.** Two Alt-Enter intentions write a new field into the schema, generated from a field
-that lacks a capability it might want: a `_exact` companion (a `StrField`-backed whole-value field,
-useful for sorting and faceting a tokenised field's content) and a `_prefix` companion (an
-EdgeNGram-backed field supporting efficient prefix queries). Both generate the companion `<field>`,
-its `<fieldType>` where one does not already exist, and the `<copyField>` rule joining the two — and
-both stop offering themselves once the companion exists, or if the field is already whole-value and
-so never needed the `_exact` half. This is the plugin's first capability that edits a configset rather
-than only explaining or flagging one, and it edits directly with no confirmation dialog, the same
-policy [every write in this plugin follows](code-organization.md#rules-that-hold-across-every-package).
-
-**Try it.** Caret inside `description` (`managed-schema.xml:71`, a `text_general` field), press
-Alt-Enter: **Add exact-match companion field (string)** and **Add prefix-capable companion field
-(text_prefix)** appear above the platform's own generic items. Applying either produces a schema that
-still parses. (Verified by
-[the companion-field intention checks](manual-test-suite.md#12-intentions--companion-fields-int).)
-
-![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
-prefix-capable companion field' intentions, with the exact-match explanation shown
-alongside](images/12-intention-companion-fields-light.png#only-light)
-![Alt-Enter menu on a tokenized text field offering 'Add exact-match companion field' and 'Add
-prefix-capable companion field' intentions, with the exact-match explanation shown
-alongside](images/12-intention-companion-fields-dark.png#only-dark)
-
----
-
-## Pointing the plugin at a Solr server
-
-*Everything below needs a connection. Nothing above it does — configset editing works with no server
-configured at all, and never waits on one.*
-
-**Settings → Tools → Solr Connections**, or the `+` in the Solr tool window. A connection is a name,
-a URL and optionally a username; the password goes to the IDE's password safe and never to a project
-file, so a workspace that leaks is an inventory of hostnames rather than of credentials.
-
-![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
-the text under it saying a password is stored](images/22-connections-settings-light.png#only-light)
-![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and
-the text under it saying a password is stored](images/22-connections-settings-dark.png#only-dark)
-
-Two things worth knowing before you wonder whether something is broken:
-
-- **The password field opens empty even when a password is stored**, and says so underneath. Leaving
-  it blank keeps what is stored. Pre-filling it would put your credential into a live dialog for as
-  long as it stays open, which is one more place than it needs to be.
-- **The URL only has to be an `http` or `https` address of some host.** No `/solr` suffix is
-  required, because a reverse proxy or a servlet context path can put Solr anywhere and rejecting
-  those would be the plugin having an opinion about your deployment.
-
-## Browsing what a server holds
-
-The **Solr** tool window, docked right, on the **Collections** tab. It shows collections, shards and
-replicas for a SolrCloud server, or cores for a standalone one.
-
-![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
-health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
-icon on the stripe](images/23-collections-topology-light.png#only-light)
-![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green
-health dot, and the shard's replica marked as leader, with the connection selector above and the Solr
-icon on the stripe](images/23-collections-topology-dark.png#only-dark)
-
-**A collection's and a shard's health is the coloured dot before its name**: green, yellow, orange
-or red, as SolrCloud reports it. Hover the row for the word itself — `Health: GREEN` — so the colour
-is never the only way to read it. A health word the plugin does not recognise, from a newer Solr, is
-written out beside the name instead of being given a colour it may not deserve. Standalone cores
-have no health to report, and carry no dot.
-
-**Which vocabulary you see comes from the mode the server reports**, never from a guess. That matters
-because a standalone Solr answers every `/admin/collections` request with HTTP 400 — a plugin that
-assumed the cloud vocabulary would report a hard failure against a server that is working perfectly.
-
-Every collection and core carries a **Fields** row, and it starts empty. Expanding it asks the
-server; nothing else does. That is deliberate — reading an index costs one request per collection, so
-a server holding thirty of them would turn opening this window into thirty requests.
-
-**What that row shows is not the schema.** It is what the index actually holds, which includes every
-field a dynamic pattern created at index time:
-
-![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked
-as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-light.png#only-light)
-![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked
-as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-dark.png#only-dark)
-
-`author_s` appears in no configset anywhere — the configset declares `*_s`, and the index holds what
-matched it. `price_f` shows no document count because Solr reports none for a point field, having no
-inverted index to count from; that is not the same as holding nothing.
-
-**Nothing refreshes on a timer.** Server data moves when you ask — Refresh, or changing the selected
-connection — and at no other time.
-
-## Running a query
-
-There are two places to query from, and you choose which the Solr tool window opens.
-
-- **The HTTP Client**, the default. Solr queries are HTTP requests, and the IDE already ships a tool
-  for authoring and running those from files in a repository; this plugin adds Solr's knowledge to it.
-  This is where a query is *kept*: an `.http` file is an ordinary project file you can commit.
-- **The query console**: Solr Admin's query form, in an editor tab. This is where a query is
-  *worked on*: every parameter has its own input, so a value holding `&`, `+`, `#` or `%` needs no
-  escaping. See [The query console](#the-query-console) below.
-
-**Choose under Settings → Tools → Solr Connections → *Open queries from the Solr tool window in*.**
-The choice is yours alone — it is stored with your connections, not in the shared project files.
-
-In any `.http` file, **Add Request** offers a **Solr** group — query a collection, query with a field
-list and sort, explain why documents scored, read the schema, list what the index holds, and a POST
-using Solr's JSON Request API.
-
-**Or right-click a row in the Solr tool window.** A collection or core offers *Query* and *Explain
-Scoring*. A field offers *Find Documents with* it and, where it can be counted, *Count Values of* it;
-a tokenized text field offers only the first, because counting it would count its words. Choosing one
-opens the request in a new scratch `.http` file, addressed to the selected connection's server, and
-runs nothing: press the HTTP Client's run button, and the response gets the same summary as any other
-query here. A scratch file is never committed, so it names the server outright. It never holds a
-password: a connection that signs in gets a comment naming the header to add.
-
-With the query console chosen, the same items open the collection's console tab instead, with the
-form filled in to ask the same thing.
-
-**Every template addresses `{{solrUrl}}` rather than a host**, which is the whole reason saved
-queries live in `.http` files. Define the variables in `http-client.env.json` beside the requests and
-the file works for everyone who clones the repository; a committed file naming `localhost:8983` works
-only for whoever wrote it.
-
-Run one and the response gains a readable summary above its raw JSON:
-
-![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
-a table of three TV shows, the parsed query, and the start of each document's scoring
-explanation](images/25-query-and-results-light.png#only-light)
-![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3,
-a table of three TV shows, the parsed query, and the start of each document's scoring
-explanation](images/25-query-and-results-dark.png#only-dark)
-
-**Matches and returned rows are stated separately** because they routinely differ — conflating them
-is how someone concludes their query found three documents when it found nine thousand and showed
-three. With `debugQuery=true` the scoring explanation appears below, with Solr's own indentation
-intact: the nesting is the information, and flattening it would leave a list of numbers with nothing
-saying which produced which.
-
-Inside a JSON request body, **field names complete** in `fields`, `sort` and a facet's `field`, from
-**the collection the request is about to query**. The collection is read off the request line —
-`…/books/query` names `books` — and the server is the connection selected in the **Solr** tool window.
-Each entry reads `books · local`, so it is always clear which server answered.
-
-![Completion inside a JSON request body's fields array, offering the books collection's fields each
-labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-light.png#only-light)
-![Completion inside a JSON request body's fields array, offering the books collection's fields each
-labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-dark.png#only-dark)
-
-**Only <kbd>Ctrl-Space</kbd> contacts the server.** The first time you ask, the plugin reads that
-collection's schema once and remembers it; every popup after that, including the ones that open while
-you type, answers from what it remembered. A popup that opens by itself never sends a request.
-Refreshing the tool window, or editing a connection, forgets what was read.
-
-Where the collection cannot be known, the project's configsets answer instead, each entry naming the
-configset it came from:
-
-- **No connection is configured**, or the server cannot be read — the reason is shown at the foot of
-  the popup.
-- **The request line writes the collection as a variable** (`{{collection}}`, as the shipped
-  templates do) and your environment files give it different values in different environments. The
-  HTTP Client does not tell plugins which environment its toolbar has selected, so the plugin uses the
-  value only when every environment agrees on it, rather than guess.
-
-### The query console
-
-**Right-click a collection or field in the Solr tool window, with the query console chosen.** A tab
-named `Query: <collection>` opens with Solr Admin's query form: the request handler, `q`, `q.op`,
-`fq` (one per line), `sort`, `start`, `rows`, `fl`, `df`, paramsets, `wt` and `indent`; `debugQuery`;
-a parser choice that shows dismax's parameters for dismax and edismax, and edismax's own for edismax;
-and raw parameters, one `name=value` per line. There is one tab per connection and collection —
-right-clicking again focuses it, filled in for what you chose.
-
-**Execute (<kbd>Ctrl+Enter</kbd>, <kbd>⌘Enter</kbd> on a Mac) runs it**, and the answer appears
-below the form: the request as a GET URL, the same summary table the HTTP Client shows, and under
-**Response** the answer exactly as Solr sent it — JSON, XML, CSV, or the error page behind a 404.
-Nothing runs until you press it, and a second Execute cancels one still running.
-
-**What is left at its default is not sent.** `defType` and `q.op` start at *(handler default)*, so the
-handler's own `solrconfig.xml` defaults apply until you choose otherwise; a hidden parameter is never
-sent, however it was filled in. The request handler must be a path such as `/select` or `/query`:
-the old `qt=dismax` form is refused rather than silently run as `/select`.
-
-**`fl`, `sort`, `df`, `qf`, `pf`, `pf2` and `pf3` complete field names** from the tab's collection,
-on the same terms as an `.http` file: only <kbd>Ctrl-Space</kbd> reads the server.
-
-**Open as .http** — on the toolbar, or by clicking the request line — writes the query into a scratch
-`.http` file with `{{solrUrl}}` and `{{collection}}` rather than a host, and never a password. Move
-that file into the project and it is a saved query like any other.
-
-## Indexing a test document
-
-*Select a collection in the **Solr** tool window and press **Index a Test Document**. Any row under a
-collection will do — a shard, a replica, a field — since they all belong to one collection.*
-
-The plugin reads that collection's schema and writes you a starting document from it: the unique key
-first, then the required fields, then every other field the schema declares, each with a placeholder
-value of the right JSON shape — a string for text, a number for the numeric types, `true` for a
-boolean, an ISO-8601 instant for a date, and a one-element array for a multi-valued field. Delete
-what you do not need, fill in the rest, choose when it should become findable, and send. It opens
-with no problems reported, so OK works as it stands.
-
-Some declared fields are left out, because a value supplied for them is not what you meant: Solr's
-own fields (`_version_`, `_root_`, `_nest_path_`, `_text_`, anything starting and ending with `_`),
-copy-field destinations, which Solr fills from their sources, and fields that are neither indexed,
-stored nor docValues, which keep nothing they are given. Dynamic patterns such as `*_s` are not
-fields, so none is invented for them — completion offers them instead.
-
-**Field names complete as you type them**, from that collection's schema — not from the project's
-configsets, because the document is going to one named collection and a field it cannot accept is a
-field it would silently gain. Dynamic patterns are offered too, in italics: `*_s` is the only clue
-the schema gives that a name like `author_s` is legal at all.
-
-**Two mistakes are caught before the document is sent, because Solr will not catch them.** Both were
-run against Solr 10.0.0 on a collection created without a configset, which is what `_default` gives
-you:
-
-- **A field the schema cannot place.** Solr answers `status: 0` and *adds the field to the deployed
-  schema* — one typo produced a field, a `_str` companion and a copy-field directive between them,
-  all three of which then show up in the drift view as declarations only the server has.
-- **A document with no unique key.** Solr answers `status: 0` and indexes it under a generated
-  identifier, giving you a document that cannot be found again by any id you know.
-
-![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
-declares with a sample value of each field's type, and saying the document matches the collection's
-schema](images/31-index-test-document-light.png#only-light)
-![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection
-declares with a sample value of each field's type, and saying the document matches the collection's
-schema](images/31-index-test-document-dark.png#only-dark)
-
-A field a dynamic pattern matches — `author_s` against `*_s` — is fine and is not flagged. Supplying
-one of Solr's own fields like `_version_` warns without blocking, because it is legal and almost
-never meant.
-
-**When it becomes findable is chosen, not assumed.** The default is `commitWithin`, which makes the
-document findable shortly without forcing a commit the whole server pays for — and it is shown in the
-dialog rather than buried, because an uncommitted document that "isn't findable yet" is
-indistinguishable from a failed index to someone who was not told which to expect. Immediate is one
-click away when you want it.
-
-## Closing a difference between the repository and a server
-
-*Needs a connection and a collection. The **Solr** tool window's **Drift** tab compares a configset
-on disk against a collection on the selected server, and shows what the two do not agree about.*
-
-Three kinds of difference, and the plugin treats them very differently:
+## Against a server
+
+Everything in this group needs a connection, and moves data only when you ask.
+
+### Pointing the plugin at a Solr server
+
+**Gesture:** Settings → Tools → Solr Connections, or `+` in the **Solr** tool window.
+
+**You get:** a connection of name, URL and optional username. The password goes to the IDE's password
+safe, never a project file; the field opens empty even when one is stored, says so underneath, and
+blank keeps it. The URL need only be an `http` or `https` address — no `/solr` suffix is required.
+
+![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and the text under it saying a password is stored](images/22-connections-settings-light.png#only-light)
+![Settings, Tools, Solr Connections, with a connection open for editing: its password field empty and the text under it saying a password is stored](images/22-connections-settings-dark.png#only-dark)
+
+### Browsing what a server holds
+
+**Gesture:** the **Solr** tool window, **Collections** tab.
+
+**You get:** collections, shards and replicas for SolrCloud, or cores for standalone — chosen from the
+mode the server reports, never guessed. A collection's or shard's health is a coloured dot, with the
+word on hover; an unrecognised health word is written out instead. Standalone cores have no health
+to report, and carry no dot. Each collection or core has a **Fields** row that asks the server only
+when expanded, and shows what the index holds — including fields a dynamic pattern created, such as
+`author_s` from `*_s` — rather than the schema. A point field shows no document count because Solr
+reports none for it. Nothing refreshes on a timer: **Refresh**, or changing the selected connection,
+is what re-reads the server.
+
+![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green health dot, and the shard's replica marked as leader, with the connection selector above and the Solr icon on the stripe](images/23-collections-topology-light.png#only-light)
+![The Solr tool window on a SolrCloud server: the shows collection and its shard, each with a green health dot, and the shard's replica marked as leader, with the connection selector above and the Solr icon on the stripe](images/23-collections-topology-dark.png#only-dark)
+
+![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-light.png#only-light)
+![A collection's Fields row expanded: 7 fields, 2 from dynamic patterns, 4 documents; author_s marked as coming from *_s, and price_f from *_f with no document count](images/24-luke-fields-dark.png#only-dark)
+
+### Running a query
+
+**Gesture:** in any `.http` file, **Add Request** → **Solr**; or right-click a row in the **Solr**
+tool window. Choose where the tool window opens queries under Settings → Tools → Solr Connections →
+*Open queries from the Solr tool window in* — the HTTP Client (the default) or
+[the query console](#the-query-console). The choice is stored with your connections, not the project.
+
+**You get:**
+
+- **Templates** in the HTTP Client: query a collection, query with a field list and sort, explain
+  scoring, read the schema, list what the index holds, and a POST using Solr's JSON Request API. Each
+  addresses `{{solrUrl}}`, so a committed `.http` file works for anyone with an
+  `http-client.env.json`.
+- **From the tool window:** *Query* and *Explain Scoring* on a collection or core; *Find Documents
+  with* and, where countable, *Count Values of* on a field (a tokenized text field gets only the
+  first). The request opens in a scratch `.http` file and runs nothing until you press run; it never
+  holds a password, only a comment naming the header to add.
+- **A summary above the raw JSON**: matches and returned rows stated separately, and with
+  `debugQuery=true` the scoring explanation with Solr's indentation intact.
+- **Field-name completion in a JSON body** (`fields`, `sort`, a facet's `field`) from the collection
+  on the request line, on the connection selected in the tool window, each entry labelled
+  `books · local`. Only <kbd>Ctrl-Space</kbd> reads the server, once per collection until a refresh
+  or a connection edit. Where the collection cannot be known — no connection, an unreadable server,
+  or a `{{collection}}` variable whose environments disagree — the project's configsets answer, and
+  the popup says why.
+
+![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3, a table of three TV shows, the parsed query, and the start of each document's scoring explanation](images/25-query-and-results-light.png#only-light)
+![An explain request run through the local environment: 8 documents matched in 39 ms, showing 1 to 3, a table of three TV shows, the parsed query, and the start of each document's scoring explanation](images/25-query-and-results-dark.png#only-dark)
+
+![Completion inside a JSON request body's fields array, offering the books collection's fields each labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-light.png#only-light)
+![Completion inside a JSON request body's fields array, offering the books collection's fields each labelled books · local, with the dynamic patterns in italics](images/30-completion-live-schema-dark.png#only-dark)
+
+#### The query console
+
+**Gesture:** right-click a collection or field in the **Solr** tool window, with the query console
+chosen; <kbd>Ctrl+Enter</kbd> (<kbd>⌘Enter</kbd>) to Execute.
+
+**You get:** a `Query: <collection>` tab, one per connection and collection — right-clicking again
+focuses it, filled in for what you chose — holding Solr Admin's query
+form — handler, `q`, `q.op`, `fq` (one per line), `sort`, `start`, `rows`, `fl`, `df`, paramsets,
+`wt`, `indent`, `debugQuery`, dismax and edismax parameters for those parsers, and raw `name=value`
+lines — so no value needs escaping. Execute shows the request as a GET URL, the same summary as the
+HTTP Client, and the **Response** exactly as Solr sent it; a second Execute cancels one running. A
+parameter left at its default or hidden is not sent, and the handler must be a path (`qt=dismax` is
+refused). `fl`, `sort`, `df`, `qf`, `pf`, `pf2` and `pf3` complete field names on the same terms as an
+`.http` file. **Open as .http** — on the toolbar, or by clicking the request line — writes the query
+to a scratch file with `{{solrUrl}}` and `{{collection}}`, never a password.
+
+### Indexing a test document
+
+**Gesture:** select a collection, or any row under one, in the **Solr** tool window and press **Index
+a Test Document**.
+
+**You get:** a starting document written from the collection's schema — unique key, required fields,
+then every other declared field — with a placeholder of the right JSON shape for each, which sends as
+it stands. Left out: Solr's own fields (`_version_`, anything starting and ending with `_`),
+copy-field destinations, and fields neither indexed, stored nor docValues. Field names complete from
+that collection's schema, dynamic patterns in italics.
+
+**Caught before sending**, because Solr accepts both with `status: 0`: a field the schema cannot place
+(Solr may add it to the deployed schema) and a missing unique key (Solr generates one). A name a
+dynamic pattern matches is fine; one of Solr's own fields warns without blocking. **When it becomes
+findable** is chosen in the dialog — `commitWithin` by default, immediate one click away.
+
+![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection declares with a sample value of each field's type, and saying the document matches the collection's schema](images/31-index-test-document-light.png#only-light)
+![The Index a test document dialog for shows on solr-mcp-demo, opening on every field the collection declares with a sample value of each field's type, and saying the document matches the collection's schema](images/31-index-test-document-dark.png#only-dark)
+
+### Closing a difference between the repository and a server
+
+**Gesture:** the **Solr** tool window's **Drift** tab: choose a configset and a collection, press
+**Compare**; select a row; **Apply Additive Changes**, or **Upload and Reload**.
+
+**You get:** what the two disagree about, in three kinds:
 
 | The row says | It means | Offered? |
 |---|---|---|
 | **Not deployed** | The configset declares it; the server does not have it | **Yes** — an addition |
 | **Only on server** | Added through the Schema API and never committed | No |
-| **Differs** | Both have it, defined differently | **No, deliberately** |
+| **Differs** | Both have it, defined differently | **Not by Apply, deliberately** |
 
-![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
-only on the server, category not deployed, and description differing, selected, with the reason the
-plugin will not send its replace-field request shown above the request](images/19-drift-three-states-light.png#only-light)
-![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields
-only on the server, category not deployed, and description differing, selected, with the reason the
-plugin will not send its replace-field request shown above the request](images/19-drift-three-states-dark.png#only-dark)
+Selecting any row shows the exact Schema API request that would close it; for the two Apply does not
+send, under the reason why. **Apply Additive Changes** never sends a changed field, because Solr
+accepts a type change and reports success while indexed documents keep their old encoding: against
+Solr 10.0.0, any query naming the changed field in `fl` failed with HTTP 500 until a reindex
+([the server specification](../specs/0002-solr-server-integration.md) records why). After sending, it
+re-reads the collection's schema and compares again, rather than trusting the `2xx`.
 
-**The collection chooser lists what the selected server holds**, read when you open it, and says
-which configset each collection was built from. Compare a configset against a collection built
-from something else and nearly every row reads *Only on server* — the comparison is right, but it
-is not the one you meant, and the chooser is where that shows before you press anything. A name
-the list does not show, such as an alias, can still be typed.
+**Upload and Reload** instead zips the whole configset, uploads it to the server under the
+configset's own name — its directory's, or the parent's when that directory is `conf` — overwriting
+any configset of that name there, reloads the collection, then compares again. It deploys every
+difference, *Differs* rows included, so a changed field type carries the same reindex risk. The
+collection picks the upload up only if it was built from a configset of that name. It is refused
+against a standalone Solr. Both buttons confirm first, naming the collection and server.
 
-If the two definition columns look identical on a *Differs* row, widen them: at the default column
-widths both truncate to the same `type=… indexed=true stor…`, and the difference is in the part cut
-off.
+Also: the collection chooser lists what the server holds and the configset each was built from (an
+alias can be typed). Compare against a collection built from another configset and nearly every row
+reads *Only on server* — the comparison is right, but not the one you meant. A factory's spelling — `lowercase`, `solr.LowerCaseFilterFactory`, its Lucene
+class — is not a difference; and the summary names the Solr line the comparison resolved against and
+where that came from. On a *Differs* row whose two columns look identical, widen them — the
+difference is in the truncated part. The demo's `compose.yaml` sets up one row of each kind; see
+[the quick start](quick-start.md#7-talk-to-a-server-optional).
 
-**Select any row to see the exact Schema API request that would close it.** For an addition, sending
-it is the next button along. For the other two the request is still shown, under the reason it is not
-offered — because "why can this not be applied" deserves a better answer than a greyed-out button,
-and because reading what a tool would do before deciding is the point.
+![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields only on the server, category not deployed, and description differing, selected, with the reason the plugin will not send its replace-field request shown above the request](images/19-drift-three-states-light.png#only-light)
+![The drift view comparing the solr configset with the shows collection on SolrCloud 9.10: fields only on the server, category not deployed, and description differing, selected, with the reason the plugin will not send its replace-field request shown above the request](images/19-drift-three-states-dark.png#only-dark)
 
-![A Differs row selected, the pane below it saying This plugin will not send this request, then the
-reason, then the replace-field request](images/20-drift-refused-payload-light.png#only-light)
-![A Differs row selected, the pane below it saying This plugin will not send this request, then the
-reason, then the replace-field request](images/20-drift-refused-payload-dark.png#only-dark)
+![The drift view before applying: one Not deployed row for subtitle, its add-field request in the pane below](images/21-drift-apply-before-light.png#only-light)
+![The drift view before applying: one Not deployed row for subtitle, its add-field request in the pane below](images/21-drift-apply-before-dark.png#only-dark)
 
-**Why a changed field is never applied for you.** Solr accepts a `replace-field` that changes a
-field's type, and reports success. Every document already indexed keeps the encoding it was written
-with. Against Solr 10.0.0, changing a `string` field holding `"abc"` to `pint` gave
-
-- a query for a value that *is* there matching nothing,
-- a query for the old text answering `400 Invalid Number`, and
-- **any** query merely naming the field in `fl` failing with `HTTP 500` — for every document,
-  including ones that never had it.
-
-Nothing in Solr's answer to the write hints at any of that. Only a reindex makes the schema true
-again, which this plugin cannot do and will not pretend to. You are left able to run the request
-yourself, against a collection you are prepared to reindex — that is your call, not the plugin's to
-prevent.
-
-**Spelling does not count as a difference.** A single analyzer factory is nameable three ways —
-`lowercase`, `solr.LowerCaseFilterFactory`, and its fully qualified Lucene class — and Solr's own
-configsets and a server reading them back do not always choose the same one, or even the same case.
-The comparison resolves all of them to the factory they mean before comparing, so a difference shown
-here is a difference in what the two sources *say*, not in how they spell it.
-
-**The summary names the Solr the collection runs.** A field type that exists on one line and not
-the other is a difference the versions explain, so the comparison says which line it resolved
-against and whether that came from the server, the configset, or a default.
-
-**Applying re-reads rather than assuming.** After the request is sent, the collection's schema is
-read back and compared again, and what you see is the result of that read. A `2xx` proves Solr
-accepted the request, not that the server now agrees — the two really do come apart, which is why
-this is worth saying twice.
-
-![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
-pane below](images/21-drift-apply-before-light.png#only-light)
-![The drift view before applying: one Not deployed row for subtitle, its add-field request in the
-pane below](images/21-drift-apply-before-dark.png#only-dark)
-
-![The same comparison after applying: no rows, and the summary saying books and books agree across 22
-declarations](images/21-drift-apply-after-light.png#only-light)
-![The same comparison after applying: no rows, and the summary saying books and books agree across 22
-declarations](images/21-drift-apply-after-dark.png#only-dark)
-
-**Try it.** You need a configset in the project *and* a collection on the server that was created
-from it. Add a field to that configset's schema, open **Drift**, choose the configset, choose the
-collection, press **Compare**: the new field reads *Not deployed*. Select it to see its `add-field`
-payload, then press **Apply Additive Changes**. (Verified by
-[the drift and apply checks](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv).)
-
-**The demo project is set up for this.** `docker compose -f demo/compose.yaml up -d` creates a
-`products` collection from `demo-server/products`, a configset standing for what the server runs.
-The demo's own `solr` configset cannot be deployed, because the defects planted in it for the editor
-checks stop a Solr core from starting, so the server's has them repaired and differs in a few more
-places. Comparing the two
-shows one row of each kind: `sku` is *Not deployed*, `legacy` and `custom_text` *Differ*, and
-`manufacturer` is *Only on server*, along with `_version_` and its type, which SolrCloud requires.
-Apply sends `sku` alone.
+![The same comparison after applying: no rows, and the summary saying books and books agree across 22 declarations](images/21-drift-apply-after-light.png#only-light)
+![The same comparison after applying: no rows, and the summary saying books and books agree across 22 declarations](images/21-drift-apply-after-dark.png#only-dark)
 
 ---
 
-## Catching a field name typo in Java or Kotlin
+## In Java and Kotlin
 
-A Solr field name written in code is a string. `q.addFilterQuery("categry:books")` compiles, deploys,
-and returns nothing — Solr answers a query against a field that does not exist with zero results
-rather than an error, so the typo arrives as an empty page in production.
+Everything in this group needs a module with a Solr client on its classpath. Only
+[running a query from the gutter](#running-a-query-without-leaving-the-file) contacts a server.
 
-![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
-each marked, while id and name in the same string are left alone](images/26-code-field-warning-light.png#only-light)
-![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are
-each marked, while id and name in the same string are left alone](images/26-code-field-warning-dark.png#only-dark)
+### Catching a field name typo in Java or Kotlin
 
-The mark covers the name and stops at the colon — not the string, not the line. `categry` is a typo
-for a field that exists; `price` is spelled correctly and has never existed. Both compile.
+**Gesture:** none — edit Java or Kotlin that calls [SolrJ](glossary.md#solrj).
 
-The plugin reads four places a name is written and checks each against the configsets in your
-project:
+**You get:** a field name no configset in the project declares is marked — the name only, up to the
+colon. Solr answers a query on a missing field with zero results rather than an error, so this is
+otherwise found in production. Java and Kotlin behave identically. Four places are read:
 
 | Written as | Example |
 |---|---|
 | A query-builder call | `q.addFilterQuery("category:books")` |
 | A field list in a raw parameter string | `q.setFields("id,name,score")` |
 | A document being built | `doc.addField("price", 9.99)` |
-| A bean binding | `@Field("price") BigDecimal price;` |
+| A bean binding | `@Field("price") BigDecimal price;` (a bare `@Field` names its property) |
 
-Java and Kotlin are read by one implementation, so both behave identically. A bare `@Field` names the
-property it sits on, which is what [SolrJ](glossary.md#solrj) does with it.
-
-**It stays quiet in three situations, deliberately.** In a module with no Solr client on its
-classpath, so a repository where one module talks to Solr does not have the others warned. On names
-the source does not spell out — held in a variable, or built by interpolation — because following
-values through a program is best-effort and this prefers silence. And **in a project with no
-configset at all**, because a service talking to a Solr whose schema lives in another repository is
-an ordinary deployment, and a check that cannot see must not accuse.
-
+**Silent when:** the module has no Solr client on its classpath; the name is not spelled out in the
+source (a variable, interpolation); or the project has no configset at all.
 [The catalog entry](inspection-catalog.md#code-names-a-field-no-configset-declares--solrunknowncodefield)
 has the full rules.
 
-## Completing a field name in Java or Kotlin
+![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are each marked, while id and name in the same string are left alone](images/26-code-field-warning-light.png#only-light)
+![Two Java lines in ProductSearch.java: categry inside addFilterQuery and price inside setFields are each marked, while id and name in the same string are left alone](images/26-code-field-warning-dark.png#only-dark)
 
-The same positions offer the project's field names as you type them. **The list opens by itself**
-once you type a letter where a field name goes — `addFilterQuery("c` — and after a comma in a field
-list, where the next name starts; <kbd>Ctrl-Space</kbd> still works anywhere it would. Every other
-string in your code keeps the IDE's usual rule of not opening a popup while you write prose.
+### Completing a field name in Java or Kotlin
 
-![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
-on its own, offering description from the solr configset with its type,
-text_general](images/32-code-completion-popup-light.png#only-light)
-![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened
-on its own, offering description from the solr configset with its type,
-text_general](images/32-code-completion-popup-dark.png#only-dark)
+**Gesture:** type a letter where a field name goes — `addFilterQuery("c` — or after a comma in a
+field list; the list opens by itself. <kbd>Ctrl-Space</kbd> works too.
 
-**Only where a field name goes, not everywhere in the string.** In a query that is before the colon
-of each clause: `setQuery("category:books AND n` offers fields, `setQuery("category:b` does not,
-because the caret is in the value. Inside a phrase, a range or a local-parameter block nothing is
-offered, and in `setSort("price", …)` only the first argument is a field.
+**You get:** declared fields only, each with its type and configset, and only at a field-name
+position: before each clause's colon in a query, not in a value, phrase, range or local-parameter
+block; only the first argument of `setSort`. Only fields that can do what the call asks — searchable
+for a query, facetable for a facet, single-valued and sortable for a sort — by the same rules as the
+`solrconfig.xml` inspections; a field of a type the plugin cannot classify is offered. No dynamic
+patterns, because `*_s` inserted into a query is a wildcard field Solr rejects, and no word or path
+suggestions. It needs SolrJ's own method, in a module with a Solr client; another library's `@Field`
+offers nothing.
 
-**Only names that call can use.** Each entry shows its type and which configset declared it, and the
-list holds declared fields and nothing else:
+![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened on its own, offering description from the solr configset with its type, text_general](images/32-code-completion-popup-light.png#only-light)
+![A setQuery string with the caret after AND and the letters de typed: the completion popup has opened on its own, offering description from the solr configset with its type, text_general](images/32-code-completion-popup-dark.png#only-dark)
 
-- **No [dynamic field](glossary.md#dynamic-field) patterns.** `*_s` is a rule for names rather than
-  a name; inserted into a query it is a wildcard field Solr rejects. The field you mean to create
-  is yours to type, and the check accepts it once typed.
-- **Only fields that can do what the call asks.** A query or filter query is offered fields Solr
-  can search — indexed, or with doc values. A facet is offered fields it can facet. A sort is
-  offered single-valued fields it can sort. A field list, a highlight field or a `@Field` binding
-  asks nothing a schema can refuse, and is offered every declared field. These are the same rules
-  the `solrconfig.xml` inspections apply, so the list never offers what a check would underline.
-  A field of a custom type the plugin cannot classify is offered rather than hidden.
-- **No word or file-path suggestions** the IDE offers inside other strings.
+### From a field name in code to its declaration
 
-Offered in fewer places than the check reports: the same two conditions — a method that names fields,
-on SolrJ's own class — plus the module gate. Somebody else's `@Field` annotation, of which the JVM
-has several, offers nothing.
+**Gesture:** <kbd>Ctrl-click</kbd> a Solr field name in Java or Kotlin.
 
-## From a field name in code to its declaration
+**You get:** the `<field>` that declares it, from any of the four places a name is written. With
+several configsets, the first that declares the name. Silent wherever the check is silent.
 
-<kbd>Ctrl-click</kbd> a Solr field name in Java or Kotlin and you land on the `<field>` that declares
-it — from a `.java` file that belongs to no configset, across a boundary nothing else in the IDE
-connects. A field name in code and its declaration in XML are related by convention and by nothing
-the tooling can see.
+![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element declaring category](images/28-code-navigate-to-schema-light.png#only-light)
+![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element declaring category](images/28-code-navigate-to-schema-dark.png#only-dark)
 
-![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
-declaring category](images/28-code-navigate-to-schema-light.png#only-light)
-![ProductSearch.java and managed-schema.xml open side by side, the caret landed on the field element
-declaring category](images/28-code-navigate-to-schema-dark.png#only-dark)
+### Seeing the shape of a query written in code
 
-It works from all four places a name is written: a query-builder call, a field list, a document being
-built, and a `@Field` binding. Where the project holds several configsets it resolves against the
-first that declares the name — two collections declaring `id` is ordinary, and either declaration is
-the one you wanted to read.
+**Gesture:** none — write a Solr query in a string.
 
-**It is silent wherever the check is silent**, and for the same reasons, read from the same place: no
-Solr client on the module, a name the source does not spell out, or no configset to resolve against.
+**You get:** field names and boolean operators coloured apart from the string — colour, not a parser,
+from the same scan the check uses. Operators only in the spellings Solr treats as operators (a
+lowercase `and` is a term); nothing inside a phrase or a local-parameter block. Colours follow your
+scheme's instance-field and keyword colours; change them under *Settings → Editor → Color Scheme →
+Solr Query*.
 
-## Seeing the shape of a query written in code
+![A setQuery call in which category and name are in the field colour and AND in the operator colour, picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-light.png#only-light)
+![A setQuery call in which category and name are in the field colour and AND in the operator colour, picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-dark.png#only-dark)
 
-A query in a string is one colour end to end, so you do the parsing. The field names and the boolean
-operators are now told apart:
+### Running a query without leaving the file
 
-![A setQuery call in which category and name are in the field colour and AND in the operator colour,
-picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-light.png#only-light)
-![A setQuery call in which category and name are in the field colour and AND in the operator colour,
-picked out from books and solr, which keep the ordinary string colour](images/27-code-query-colour-dark.png#only-dark)
+**Gesture:** click the gutter icon beside a call that sets the main query `q`, such as `setQuery`,
+then choose a collection.
 
-**This is colour, not a parser.** There is no grammar, no injected language and no folding — the same
-scan that reads field names for the check decides what to colour, so a name the check reports is a
-name you can see. Operators are recognized only in the spellings Solr reads as operators: a lowercase
-`and` is a term, and colouring it would tell you the query combines two clauses when it searches for
-three.
+**You get:** the query run against the selected connection, answered in place with the same summary as
+the HTTP Client and [the query console](#the-query-console). The collection list is what the server
+holds; an unreachable or refusing server says so rather than listing nothing. Filter queries carry no
+icon, and only `q` is sent — no rows, field list or sort your code did not ask for.
 
-Nothing inside a phrase is coloured, because a phrase is a value in its entirety; nor is anything in
-a local-parameter block, whose names are parameters rather than fields.
+![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run against and listing products](images/29-code-run-from-gutter-light.png#only-light)
+![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run against and listing products](images/29-code-run-from-gutter-dark.png#only-dark)
 
-**The colours follow your theme, and you can change them.** A field takes your scheme's instance-field
-colour and an operator its keyword colour, both chosen because every bundled scheme sets them to
-something other than a string's colour — the query is drawn over a string, and a colour the string
-shares is a colour nobody sees. To choose your own, open *Settings → Editor → Color Scheme → Solr
-Query*, which previews both against a string.
+---
 
-## Running a query without leaving the file
-
-A gutter icon sits beside a query. Click it and the query runs against the connection you have
-selected, and the answer appears where you are reading — the same summary the HTTP Client and the
-[query console](#the-query-console) show above a response.
-
-![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
-against and listing products](images/29-code-run-from-gutter-light.png#only-light)
-![The run icon in the gutter beside a setQuery line, with a popup asking which collection to run
-against and listing products](images/29-code-run-from-gutter-dark.png#only-dark)
-
-**A query in code names no collection**, so you are asked which one, from the list the server
-actually holds. `setQuery("category:books")` says what to match and nothing about where; the
-collection is chosen when the client is built, often in another file. A server that cannot be
-reached, or that refuses the request, says so in the popup — it is never reported as a server with
-no collections.
-
-**Only the main query carries the icon**, not the filter queries beside it. Running an `fq` alone
-answers a different question from the one your code asks — a filter narrows a result set and scores
-nothing, so its matches are not what the program would see.
-
-Only the `q` is sent: no rows, no field list, no sort. Every parameter added would be one your code
-did not ask for, and the answer would be about a query you never wrote.
-
-## What is not here yet
-
-**A query is coloured, not parsed.** There is no structure to fold, no error for a malformed query,
-and nothing that understands a range or a function query as anything but text.
-
-**Only SolrJ is recognized.** Spring Data, Camel and framework configuration each name Solr in their
-own way, and none of them is read yet.
-
-[The specification](../specs/0002-solr-intellij-plugin.md) describes the intent for both;
-[the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md) is the only place that
-says what is actually built, today, and it is worth reading directly rather than trusting a summary —
-including this one.
+What is built, and what is next, is owned by
+[the implementation plan](../specs/plans/0002-solr-intellij-plugin-plan.md).
