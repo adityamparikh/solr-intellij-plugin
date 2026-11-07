@@ -1,21 +1,13 @@
 # Inspection catalog
 
-> **Who this is for.** Anyone deciding whether to trust, keep or disable one of these checks — a Solr
-> developer meeting a warning for the first time, or a reviewer asking what the plugin claims before
-> installing it. It is a reference: every registered inspection, once, with what it will and will not
-> say.
-> **Read first:** [Glossary](glossary.md) if Solr terms are new ·
-> [User guide](user-guide.md) for the same checks in the order you meet them
-
 The plugin registers **twelve** inspections. All of them appear in the IDE under
 **Settings → Editor → Inspections → Solr**, and each has a description page there — the same text
-this document is assembled from.
+this page is drawn from.
 
 **The description files are the canonical wording.** `src/main/resources/inspectionDescriptions/`
-holds one HTML page per inspection, the IDE shows it, and the Marketplace listing publishes it. What
-follows is derived from those pages and from the registrations in `plugin.xml`; sentences are
-shortened for a reader going through all twelve at once, and nothing here claims more than the page
-it came from. Where a page and the code disagree, this document says so rather than choosing.
+holds one HTML page per inspection; the IDE shows it and the Marketplace listing publishes it.
+Severities are as registered in `plugin.xml`. This page owns what each check reports, at what
+severity, and what it stays silent about.
 
 ## How to read an entry
 
@@ -33,8 +25,9 @@ it came from. Where a page and the code disagree, this document says so rather t
   is a red wavy underline in every bundled scheme; a warning is not always underlined.** *Default*,
   *Darcula* and the *Light* scheme behind the *Islands Light* theme draw a warning as a tinted
   background with no line at all; only *Dark* and *Islands Dark* draw a yellow wave. That is why the
-  unresolved-name checks are errors: a sandbox pass on *Islands Light* read them as unflagged when
-  they were warnings. The unused field type is registered at `WARNING` and still
+  unresolved-name checks are errors: as warnings they would go unmarked in the light schemes, and
+  `SolrFindingPresentationTest` asserts the errors draw a line in every bundled scheme. The unused
+  field type is registered at `WARNING` and still
   renders greyed rather than underlined, because its highlight type decides the drawing.
 - **Silent on** — what the rule deliberately declines to report. This is the part the IDE's own
   description page buries in prose and no settings screen shows at all, and it is where most of the
@@ -58,16 +51,11 @@ it came from. Where a page and the code disagree, this document says so rather t
 | Attribute value of the wrong kind | `SolrInvalidAttributeValue` | either, where the kind is known | Defect |
 | Code names a field no configset declares | `SolrUnknownCodeField` | Java and Kotlin | Defect |
 
-The last of those is the only one that fires outside a Solr file at all, and it gets a group of its
-own below for the same reason: what it reads is application source, and what it checks against is
-every configset in the project rather than the one file it sits in.
-
-The groups below follow the same split
-[code organization](code-organization.md) uses — which file the caret is in when the check fires —
-with one honest exception. The two attribute checks live in the schema aspect's package and read the
-generated class catalog rather than the schema, and neither gates on the file's kind: what decides
-whether they speak is whether the catalog can prove the element's vocabulary closed. They get their
-own group for that reason.
+The groups below follow the split [code organization](code-organization.md) uses — which file the
+caret is in when the check fires — with one exception: the two attribute checks live in the schema
+aspect's package but read the generated class catalog and fire in either file wherever the catalog
+proves an element's vocabulary closed, so they get their own group. The code check is the only one
+that fires outside a Solr file, and checks against every configset in the project.
 
 ---
 
@@ -197,7 +185,7 @@ names.
 `group.sort`, `df`, `fl`, `facet.field`, `facet.pivot`, `group.field`, `hl.fl`, `stats.field`,
 `uniqueKey`, `terms.fl` and `mlt.fl`. Solr has hundreds, and guessing which hold field names from
 their values would produce false references — worse than missing ones, because a false reference
-becomes a false "no such field" warning on a parameter that was never a field name at all.
+becomes a false "no such field" error on a parameter that was never a field name at all.
 
 **Each is split the way Solr splits it, which is not one rule.** `fl` and its kin accept commas or any
 whitespace; `mlt.fl` accepts a comma or a single space; and `terms.fl` is not split at all — Solr reads
@@ -257,9 +245,8 @@ be unfacetable, and the same field may deserve a warning in a `facet.field` and 
 `group.field` for sorting.
 
 **Two different warnings**, because the requirements differ: faceting names doc values or an
-un-invertible index; sorting names those *and* a single value per document. One shared sentence told
-a reader that faceting needs a single value, which it does not — multiValued fields are exactly what
-one facets on.
+un-invertible index; sorting names those *and* a single value per document. Faceting does not need a
+single value — multiValued fields are exactly what one facets on.
 
 **Silent on** an undeclared field, which is
 [the unknown-reference rule's](#handler-parameter-names-an-undeclared-field--solrunknownfieldreference)
@@ -363,55 +350,6 @@ Booleans are matched ignoring case, so `indexed="TRUE"` is a field that works an
 
 ---
 
-## The one finding that is not a defect
-
-`SolrUnusedFieldType` is the odd one out, and the difference is worth stating plainly: **a field type
-nothing uses is dead weight, not a mistake.** Solr loads such a schema without a murmur, and Solr's
-own `_default` configset ships a deliberate palette of language and spatial types for fields the
-copier has not written yet. Every one of them is correctly reported as unused, and every report is
-true.
-
-So its presentation differs from the other ten. The declaration is **greyed out rather than
-underlined** — the platform's own vocabulary for a declaration nothing reads — and no quick-fix is
-offered. It is enabled by default all the same: the grey-out costs a reader nothing, and dead
-configuration is how a schema becomes unreadable.
-
-**Its presentation is a recorded open question, not a settled decision and not something being
-changed.** The complaint against it is volume: on the configsets Apache Solr itself ships it produces
-dozens of Problems-view entries about files that are entirely correct, which is why it is the one
-rule the plugin's zero-false-positive gate holds out by name — with a separate test asserting it does
-still fire, so silencing it is not a way to pass. Lowering the severity to `INFORMATION` was measured
-and does not work: the platform drops `INFORMATION` inspections from the daemon and the grey-out goes
-with them. The shape that would answer it is an annotator, the same mechanism
-[the restated-default dim](user-guide.md) already uses.
-[The plan](../specs/plans/0002-solr-intellij-plugin-plan.md) records this beside that feature.
-Recorded, not decided.
-
----
-
-## How this document is kept true
-
-Every count above was checked against the repository rather than counted by eye:
-
-- **Twelve inspections.** `<localInspection>` registrations in `plugin.xml`, and twelve files in
-  `src/main/resources/inspectionDescriptions/`, whose names match the registered short names exactly
-  — a correspondence `SolrPluginDescriptorTest` also asserts, since a description file the IDE cannot
-  find is a blank page in Settings.
-- **Every severity.** Four `level="ERROR"` and eight `level="WARNING"` attributes, read from the
-  registrations rather than inferred from the classes. That the four errors draw an underline in
-  every bundled scheme is asserted by `SolrFindingPresentationTest`, against the schemes' own
-  attributes.
-- **Group sizes.** Six inspection classes under `configset.schema.inspection` and five under
-  `configset.solrconfig.inspection` — the two attribute checks in this document's third group sit in
-  the first of those packages.
-- **Five discontinued elements**, identical on both supported Solr lines, counted from the generated
-  element catalogs.
-- **The parameter lists.** Sixteen parameters read for field names; of those, four ask for searching,
-  two for faceting and three for sorting. Counted from the tables in the `solrconfig.xml` parser,
-  which is the single place they are declared.
-
----
-
 ## Code checks
 
 ### Code names a field no configset declares — `SolrUnknownCodeField`
@@ -445,3 +383,24 @@ findable — the inspection waits rather than reading "none found" as "none decl
 underline every field name in the codebase at once.
 
 **Quick-fix:** the declared fields closest in spelling.
+
+---
+
+## The one finding that is not a defect
+
+`SolrUnusedFieldType` is the odd one out, and the difference is worth stating plainly: **a field type
+nothing uses is dead weight, not a mistake.** Solr loads such a schema without a murmur, and Solr's
+own `_default` configset ships a deliberate palette of language and spatial types for fields the
+copier has not written yet. Every one of them is correctly reported as unused, and every report is
+true.
+
+So its presentation differs from the other eleven. The declaration is **greyed out rather than
+underlined** — the platform's own vocabulary for a declaration nothing reads — and no quick-fix is
+offered. It is enabled by default all the same: the grey-out costs a reader nothing, and dead
+configuration is how a schema becomes unreadable.
+
+**Its presentation is an open question.** On the configsets Apache Solr itself ships it produces
+dozens of Problems-view entries about correct files, so the zero-false-positive gate holds it out by
+name, with a separate test asserting it still fires. `INFORMATION` severity would drop the grey-out
+with it; an annotator, like [the restated-default dim](user-guide.md), is the shape that would answer
+it. [The plan](../specs/plans/0002-solr-intellij-plugin-plan.md) records it.

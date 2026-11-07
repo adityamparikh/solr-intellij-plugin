@@ -1,20 +1,9 @@
 # Solr Configuration Files, and What This Plugin Covers
 
-> **Who this is for.** A Java engineer with no Solr background who needs to know which files exist,
-> which are hand-edited versus API-written, and which of them this plugin actually covers.
-> **Read first:** [Glossary](glossary.md) for Solr vocabulary · [Module.md](Module.md) for what the
-> plugin is
-
-This document maps the configuration surface of an Apache Solr deployment: which
-files exist, what goes in each, whether they are hand-edited or written by an
-API, and — in the final section — which of them this plugin targets and which it
-deliberately leaves alone.
-
-It exists because the plugin's value proposition depends on an empirical claim:
-that a meaningful amount of Solr configuration is still authored as XML by hand.
-That claim deserves to be laid out file by file rather than asserted. The
-[specification](../specs/0002-solr-intellij-plugin.md) argues the case; this
-document is the evidence behind it.
+The configuration surface of an Apache Solr deployment: which files exist, what goes in each, and
+whether they are hand-edited or written by an API. The
+[specification](../specs/0002-solr-intellij-plugin.md) argues why that matters for an IDE plugin;
+the [last section](#what-the-plugin-reads) says which files this plugin reads.
 
 **A note on versions.** Solr's configuration surface has moved over the years —
 files have been renamed, components removed, and features relocated into
@@ -50,13 +39,6 @@ taking effect" questions.
 The tier that matters for this plugin is the third. A **configset** is a
 directory of files — [`solrconfig.xml`](glossary.md#solrconfigxml), a schema, and their supporting
 resources — that defines how one collection indexes and queries documents.
-
-> **In Java terms.** A configset is roughly a Hibernate mapping plus `persistence.xml`: one part
-> declares the shape of your data (the schema — fields and their types), the other configures the
-> engine that reads and writes it (`solrconfig.xml` — caching, commit behavior, the endpoints
-> exposed). Both are hand-edited files that live in your repository, not generated at build time —
-> which is why an editor that understands them, the way an IDE understands a JPA mapping file, is
-> worth building.
 
 In SolrCloud the authoritative copy of a configset lives in ZooKeeper, not on
 disk. The directory in your project is a *source* copy that gets uploaded, by
@@ -126,13 +108,6 @@ exact matching, case-insensitive matching, prefix matching, or phrase queries is
 an *emergent property* of a chain of a dozen filter classes — and getting it
 wrong produces no error, just queries that quietly do not match.
 
-> **In Java terms.** An analyzer chain is a `Function<String, List<String>>` pipeline applied to a
-> field's text at index time (and, separately, at query time): a char filter transforms the raw
-> string, a tokenizer splits it into tokens, and each filter in turn maps or drops tokens — the same
-> shape as `Stream.map`/`filter` composed in sequence. The limit of the analogy is where it stops
-> being obviously wrong: a misordered or mismatched chain doesn't throw, it just silently changes
-> what a query can match, which is why there is "the least feedback" of anything in this file.
-
 **On the filename.** The classic file is `schema.xml`. The managed file was
 historically extensionless ([`managed-schema`](glossary.md#managed-schema)) and current Solr versions use
 `managed-schema.xml` — the name is set by `managedSchemaResourceName` and is a
@@ -150,8 +125,7 @@ unless a plugin explicitly registers the filename.
 | `enumsConfig.xml` | Ordered enumerations for `EnumFieldType` (e.g. severity levels that must sort non-alphabetically) | The field type's `enumsConfig` + `enumName` |
 
 All three are hand-edited, all three are small, and all three are referenced *by
-name* from another configset file — which makes them a natural target for
-reference resolution even though they are not the headline files.
+name* from another configset file.
 
 ### 2.4 Non-XML files in the same directory
 
@@ -171,8 +145,7 @@ XML around them.
 
 The `.txt` resources deserve attention: an analyzer chain names them as string
 attributes, and a filter pointing at a missing `synonyms.txt` fails at core
-load. That is exactly the dangling-reference class of error the plugin already
-targets between XML files.
+load.
 
 ### 2.5 Legacy and removed
 
@@ -190,8 +163,10 @@ or support them.
 | `python`, `ruby`, `php` and XLSX response writers | Removed in Solr 10 |
 | `BlobHandler` and the `.system` collection | Removed in Solr 10 in favor of the FileStore API |
 
-Recognizing these and explaining what replaced them is a legitimate tooling
-opportunity, and one the current specification does not claim.
+The retired `solrconfig.xml` elements are a different list — `indexDefaults`,
+`mainIndex`, `jmx`, `nrtMode`, `unlockOnStartup` — and Solr refuses most of them
+at core load; the [inspection catalog](inspection-catalog.md#element-solr-no-longer-accepts--solrdiscontinuedelement)
+covers them.
 
 ---
 
@@ -330,137 +305,23 @@ in every deployment.
 
 ---
 
-## 5. What this plugin covers
+## What the plugin reads
 
-Mapped to the requirements in the
-[specification](../specs/0002-solr-intellij-plugin.md). Phase 1 is pure static
-analysis — no Solr connection, no network.
+Scope is the [specification's](../specs/0002-solr-intellij-plugin.md) to set and status is the
+[plan's](../specs/plans/0002-solr-intellij-plugin-plan.md); this is the shape, per file. The editor
+features never contact a server, so they behave the same in SolrCloud and user-managed mode, and for
+every schema configuration in §4 — the plugin edits the file in front of the user and never refuses
+a write.
 
-### 5.1 Scope, per file
-
-**What is built and in what order is the
-[plan's](../specs/plans/0002-solr-intellij-plugin-plan.md) to say, and this table
-does not repeat it.** Scope does not change from step to step and position does,
-so a copy of the status here would be wrong within a release while the shape
-below stays correct.
-
-| File | Scope |
+| File | What the plugin does with it |
 |---|---|
-| `managed-schema.xml` / `managed-schema` / `schema.xml` | **Full.** Completion for field types, [factory](glossary.md#factory) classes and their valid attributes; structural validation; navigation and Find Usages across `copyField` and `field type=`; rename refactoring; inspections for dangling references and unused field types; match-capability hints and quick-fixes derived from analyzer chains; Ctrl-Q documentation on factories and attributes |
-| `solrconfig.xml` | **The parameters that name schema fields, in both directions.** Handler parameters (`qf`, `df`, `fl`, `sort`, facet, highlight and grouping fields) resolve to schema fields and offer them in completion; hovering one shows the field it names. Inspections flag a parameter naming a field the schema does not declare, a query field that cannot be searched, and a facet or sort naming a field that cannot serve it. **The plugin classes and the request parameters are modelled too**: a `class` attribute completes, explains itself and navigates to the class, and a parameter name inside `defaults`, `appends` or `invariants` completes and explains itself. The file's own *elements and attributes* are not yet modelled |
-
-The asymmetry is deliberate. In `solrconfig.xml` the plugin targets the
-*cross-file boundary* — the string parameters that name schema fields — because
-that boundary is where silent failures cluster. **Both directions of that boundary
-are now covered**: the same list that lets an inspection say `descriptoin` is not a
-field is the list that offers `description` before it is mistyped, and a field's
-capabilities decide both what a parameter may name and what completion offers there.
-
-Full language support for the *structure* of `solrconfig.xml` — its elements and their
-attributes — remains a later concern. Navigation from a `class` attribute is no longer
-part of that remainder; it ships. What the file's legal elements are is settled for the
-plugin elements: Solr declares 23 of them in `SolrConfig.plugins`, and the generator
-already reads that list for the class catalog. What is not yet built is the completion
-that would offer them, and `<config>`, `luceneMatchVersion` and `dataDir` are in no
-generated source at all.
-
-**Phase 1 is deployment-mode agnostic.** Configset files are identical in
-SolrCloud and user-managed mode, and Phase 1 never contacts a server, so the
-distinction does not arise. The only mode-flavored content inside a configset is
-`<updateLog>` (required for SolrCloud), the `/replication` handler
-(leader-follower replication, user-managed only), and the `<solrcloud>` section
-of `solr.xml` — none of which changes how completion, references, rename or
-inspections behave. Scoping Phase 1 to one mode would cost users and save no
-implementation work.
-
-### 5.2 Behavior against a managed schema — the file is edited, always
-
-**The plugin does not classify schema files, and no write is ever refused.** A
-rename, a quick-fix and an intention all edit the file in front of the user,
-whether the schema is classic, pinned, or opens with Solr's *do not edit it by
-hand* banner.
-
-An earlier version of this document described the opposite: a classification
-read out of `<schemaFactory>`, cached, with five fallback cases, and write
-gating built on top of it that answered a managed schema by putting a `curl`
-command carrying a placeholder URL on the clipboard instead of applying the
-edit. That existed because the plugin was offline, and a fake URL was the only
-alternative it could offer. It is deleted. The question it answered — *am I
-allowed to write here* — is not one worth asking.
-
-**Reading was never affected either way.** Completion, navigation, Find Usages,
-inspections, match-capability hints and documentation behave identically for
-every schema. The file is still what sits in ZooKeeper, still what appears in
-the pull request, and still what someone opens when a query returns nothing.
-
-**What replaces the gate is disagreement, shown rather than prevented — and only
-the deletion is Phase 1.** Files are edited directly now; Phase 1 never contacts a
-server, so it neither compares against one nor applies anything to it. The
-comparison this argument leans on arrives with the connected surfaces in §5.3,
-where Phase 4 closes the file-versus-ZooKeeper gap. Drift between Git and
-ZooKeeper was the actual risk the gating was reaching for — but refusing writes in
-the meantime would not have prevented that drift, only hidden the edit that caused it.
-
-The [specification](../specs/0002-solr-intellij-plugin.md) argues this out under
-"What this replaces".
-
-**The stance stops at the Schema API.** It does not extend to `solrconfig.xml`
-and the Config API. The Config API's coverage is partial, and what it does cover
-it writes to `configoverlay.json` rather than to the XML — moving configuration
-out of the file you read and into a JSON overlay beside it. That is a trade-off,
-not a clear improvement, so `solrconfig.xml` and every supporting configset file
-in §2.3 remain hand-edited by design.
-
-### 5.3 Later phases — scoped, not committed
-
-| Capability | Phase |
-|---|---|
-| Live connections, query console, schema-aware document editing and indexing | 2 |
-| Field-name validation inside [SolrJ](glossary.md#solrj) query strings in Java/Kotlin | 3 |
-| Collection explorer, configset upload to ZooKeeper, deployed-vs-repo config diff, classification of schema edits as safe-live / requires-reload / requires-reindex, analysis-chain debugger | 4 |
-
-Deployment mode starts to matter from Phase 2 and matters most in Phase 4.
-Connections are cheap to support both ways — SolrJ abstracts the client — so
-Phase 2 covers both. Phase 4 operations do not abstract: "upload configset to
-ZooKeeper and reload the collection" is inherently SolrCloud, while the
-user-managed equivalent is a file copy plus a CoreAdmin `RELOAD`, with deployed
-config read back through the `/admin/file` handler rather than from ZooKeeper.
-Phase 4 should therefore be **SolrCloud-first**, with user-managed support
-treated as a follow-on rather than implied parity.
-
-Phase 4 is where the file-versus-ZooKeeper gap from §1 gets closed properly: the
-deployed-vs-repo diff is what tells you whether an API write has drifted from
-the configset in your project.
-
-### 5.4 Not covered
-
-| File | Why not |
-|---|---|
-| `solr.xml` | Node-level, not a configset. Hand-edited XML with no tooling — a real gap, but outside the configset scope Phase 1 draws. See §6 |
-| `log4j2.xml`, `jetty*.xml`, `web.xml` | Not Solr-specific schemas; standard tooling and XSD-based validation already apply |
-| `configoverlay.json`, `params.json`, `security.json` | JSON, API-owned. Reading them to explain config drift is a plausible Phase 4 feature, not a Phase 1 one |
-| `core.properties`, `solrcore.properties` | Properties files with minimal structure |
-| `data-config.xml` (DIH), Velocity templates, XSLT | Removed from modern Solr |
-| Bulk and production ingestion pipelines | Explicit non-goal — Phase 2 indexing is scoped to development workflows |
-
----
-
-## 6. Open scope questions
-
-Two gaps this survey surfaces that the specification does not currently answer.
-
-**`solr.xml`.** It is hand-edited XML, it has no API, and it has no tooling
-anywhere — squarely in the plugin's stated sweet spot. It is excluded only
-because Phase 1 draws its boundary at "configset," which is a scoping decision
-rather than a value judgment. It is also small and infrequently edited, which
-argues the other way.
-
-**Resource file references.** Analyzer chains name `.txt` resources as string
-attributes (`synonyms="synonyms.txt"`), and a filter pointing at a missing file
-fails at core load. That is the same dangling-reference class of error the
-handler-parameter inspections already target between XML files, and the same
-reference infrastructure would resolve it. The three supporting XML files in
-§2.3 are referenced the same way. Neither is in scope today.
+| `managed-schema.xml` / `managed-schema` / `schema.xml` | Element, attribute and value completion; references, Find Usages and rename across `field type=` and `copyField`; navigation from a filter's resource attribute to its `.txt` file; inspections; match-capability hints; companion-field intentions; quick documentation |
+| `solrconfig.xml` | Element and attribute completion from Solr's own vocabulary; parameter-name, `defType` and field-name completion; handler parameters resolve to schema fields; `class` attributes navigate; inspections for unknown, unsearchable and unservable fields, retired elements and misspelled parameters; quick documentation |
+| `elevate.xml`, `enumsConfig.xml` | Recognised on their own: either name is enough to make its directory a configset, in a project that passes the activation gate. Not otherwise modelled |
+| `currency.xml`, `params.json` | Recognised only inside a directory another file has already proven a configset; on their own they prove nothing, since the names are too common. Not otherwise modelled |
+| `.txt` resources | Navigable from the schema; recognised inside a known configset; never activate anything. A missing file is not reported |
+| A collection on a running server | Compared against the configset, which closes the file-versus-ZooKeeper gap of §1 — see the [user guide](user-guide.md) |
+| `solr.xml`, `log4j2.xml`, Jetty files, `core.properties`, other JSON | Not read. `solr.xml` is node-level, not a configset; the rest are not Solr-specific or are API-owned |
 
 ---
 

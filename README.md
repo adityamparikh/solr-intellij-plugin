@@ -228,14 +228,15 @@ because a matrix promising something the build does not is worse than no matrix.
 Requires **JDK 21 or later** (Solr 10 requires Java 21, which sets the toolchain floor).
 
 ```bash
-./gradlew build       # compile, test, coverage floor, and documentation gate
+./gradlew build       # compile, test, and the three gates
 ./gradlew runIde      # launch a sandbox IDE with the plugin installed
 ./gradlew buildPlugin # produce the distributable ZIP in build/distributions/
 ```
 
-The build enforces two gates as part of `check`: an 80% line-coverage floor
-([Kover](docs/glossary.md#kover)) and a documentation gate that fails on any undocumented public
-declaration ([Dokka](docs/glossary.md#dokka)). Both are described in [CLAUDE.md](CLAUDE.md).
+The build enforces three gates as part of `check`: an 80% line-coverage floor
+([Kover](docs/glossary.md#kover)), a documentation gate that fails on any undocumented public
+declaration ([Dokka](docs/glossary.md#dokka)), and Google-style formatting (Spotless). All three are
+described in [CLAUDE.md](CLAUDE.md).
 
 > **In Java terms.** Kover is this project's JaCoCo — a Kotlin-native line-coverage tool wired into
 > the same `check` task JaCoCo usually occupies. Dokka is its Javadoc: it renders KDoc into API docs,
