@@ -1,1701 +1,609 @@
 # Manual test suite
 
-> **Who this is for.** Someone sitting in front of a running sandbox IDE, mid-gesture, checking
-> whether a shipped feature behaves the way it claims to — not a newcomer reading ahead of the
-> code, and not a substitute for what the automated suite's fixtures already prove.
-> **Read first:** [Glossary](glossary.md) if Solr or IntelliJ Platform terms are new ·
-> [the plan](../specs/plans/0002-solr-intellij-plugin-plan.md), which owns what is actually built
+A repeatable verification pass over the [sandbox](glossary.md#sandbox) IDE, run against the demo
+project. This page owns every check: its **ID**, the **gesture**, the **expected outcome**, and one line
+of why it is pressed by hand. [The plan](../specs/plans/0002-solr-intellij-plugin-plan.md) owns what is
+built; a feature's checks join here when its code has shipped and there is something to press.
 
-A repeatable verification pass over the [sandbox](glossary.md#sandbox) IDE, run against the demo project. This
-document owns three things: the **gesture** to make, the **expected outcome**, and the
-**record of the last pass**. It deliberately does not own what is built —
-[the plan](../specs/plans/0002-solr-intellij-plugin-plan.md) does, and a feature's checks
-join this suite only when its code has shipped and there is something to press.
+**[The checklist](manual-test-checklist.md) is this page with one line per check**, for a pass in one
+sitting. Change a check here and its line there. Its
+[Before you start](manual-test-checklist.md#before-you-start) is the setup for both: launching the
+sandbox, licensing it, function keys on a Mac, starting a Solr, and closing rather than killing the
+sandbox.
 
-**For a pass in one sitting, [the checklist](manual-test-checklist.md) is this page with one line
-per check**, linked back here for the detail. Change a check here and its line there.
+**Why manual.** Most claims below are also asserted headlessly, but a light
+[fixture](glossary.md#fixture) cannot see whether a hint renders, a popup reads, a message is true of
+what it reports, or features survive real indexing. Retire a check once automation covers its risk.
 
-**Licence the sandbox before the first pass, or section 14 is untestable and does not say so.**
-The sandbox keeps its own `config/` and inherits no licence from your everyday IDE. Unlicensed,
-IntelliJ IDEA Ultimate disables `com.intellij.modules.ultimate` at every start — it rewrites
-`.intellijPlatform/sandbox/<project>/<IDE>/config/disabled_plugins.txt` each time, so deleting that
-file does not stick. **The HTTP Client's editor half survives this and its execution does not**:
-requests insert, gutter icons appear, syntax highlights, and pressing Run does nothing at all, with
-no error, no dialog and nothing in `idea.log`. Every check from `SRV-11` to `SRV-18` then fails in a
-way that looks like this plugin. Register once through Help → Register in the sandbox, or copy
-`idea.key` from your IDE's config directory into the sandbox's; either survives a relaunch.
+## How to run a pass
 
-**Never `kill` the sandbox — close it.** A hard kill during startup makes IntelliJ suspect a plugin
-crashed and disable it, and it is what writes the `disabled_plugins.txt` above. It also loses
-workspace state that has not been flushed, including the HTTP Client's selected environment, which
-silently turns `SRV-12` into a wall of unresolved variables.
+1. `./gradlew runIde` — the sandbox opens `demo/`. Open
+   [`solr/conf/managed-schema.xml`](glossary.md#managed-schema).
+2. Uncheck every box from the previous pass. A pass is all-or-nothing; history lives in the
+   [pass log](#pass-log), not in the boxes.
+3. Work top to bottom. The baseline comes first because every later "break it" check ends by
+   restoring it.
+4. After each check that edits the demo, `git status demo/` should be clean. Trust that over the undo
+   count, and restore with `git checkout -- demo/` when they disagree.
+5. Record the pass in the [pass log](#pass-log), with the commit you ran it at.
 
-**How to run a pass**
+**Screenshots (📸) are checkboxes too.** Each sits beside the check whose gesture produces it, names the
+file to save in `docs/images/`, and links to [the screenshot catalog](screenshots.md) for the framing.
+One taken during a pass is evidence the check passed. Hand over plain captures only; the `-annotated`
+pairs are made from them afterwards.
 
-1. `./gradlew runIde` — the sandbox opens `demo/`. Open [`solr/conf/managed-schema.xml`](glossary.md#managed-schema).
-2. Uncheck every box from the previous pass (a pass is all-or-nothing; history lives in
-   the [pass log](#pass-log), not in the boxes).
-3. Work top to bottom. The order matters: the baseline pass comes first because
-   every later "break it" check ends by restoring that baseline.
-4. Record the pass in the log with the commit you ran it at.
-
-**On a Mac, hold fn for every F-key below** (⌥F7, ⇧F6, F1), or macOS sends a media key and nothing
-happens. The sandbox has been found on the legacy *Mac OS X* keymap, where F1 opens Help rather than
-Quick Documentation — use ⌃J or hover there. A dead F-key is a keyboard setting, not a failed check;
-[the user guide](user-guide.md#function-keys-on-a-mac) has the detail.
-
-> **In Java terms.** `./gradlew runIde` does not run tests — it launches a second, disposable
-> IntelliJ instance with the plugin installed, closer to starting your Spring Boot app on a
-> scratch profile to click through by hand than to running its test suite. Nothing typed there
-> touches your everyday IDE or its indexes, which is the whole reason this document calls it a
-> sandbox.
-
-**The 📸 items are screenshots, and they are checkboxes like everything else.** Each one sits
-beside the check whose gesture produces it, names the file to save and where, and links to
-[the screenshot catalog](screenshots.md) for the framing and the reason. A screenshot taken during
-a pass is evidence the check passed; one taken outside a pass is a picture of an unverified claim.
-Every image the catalog lists now exists. The editor-track eighteen were captured outside a pass at
-`26284b7`; the four code-track images at `fbd2968`, against a real Solr on `localhost:8985`; and the
-server-track seven plus entries 30 and 31 on 2026-09-26, during the partial pass logged below, against
-a throwaway SolrCloud 10.0.0 container. **An earlier revision of this paragraph said all of them
-existed when the server-track seven did not** — the catalog marked them *Not captured* the whole
-time, and the sentence was written without reading it. Each entry says what its file must show, so a
-pass that disagrees with one of them is re-shooting it, not adding it.
-
-**Save every image to `docs/images/`, named exactly as the check reads.** The README and the FAQ
-already reference those paths, so a correctly named file lands in the prose with no further edit.
-Hand over the plain captures only; the `-annotated` pairs are produced from them afterwards.
-
-If every feature is dead at once, suspect the sandbox, not the plugin: delete
-`.intellijPlatform/sandbox/<project>/<IDE>/system-test` and relaunch — the full signature
-is in [the testing guide](how-to/testing-and-the-build-gates.md).
-
-**Why these checks are manual at all.** Almost every claim below is also asserted
-headlessly (each section names its automated coverage). The manual pass exists for what
-a light [fixture](glossary.md#fixture) cannot see: whether the hint actually renders where a presenter can point
-at it, whether the popup is readable, whether features stay alive during real indexing.
-A check whose rendering risk disappears — because automation grows to cover it — should
-be retired from here, not accumulated.
-
-> **In Java terms.** A green `./gradlew test` run proves the fixtures it built are correct, not
-> that a feature works when someone actually presses it. This suite's own [pass log](#pass-log)
-> records two defects no automated assertion caught: a warning template that agreed with itself
-> in every fixture while naming the wrong requirement in practice (2026-08-10), and an inspection
-> confirmed green by tests that shared its own wrong assumption about where Solr reads a config
-> element (2026-08-16). Both were visible only to someone reading the rendered message in a real
-> editor.
+If every feature is dead at once, suspect the sandbox: delete `.intellijPlatform/sandbox/<project>/<IDE>/system-test`
+and relaunch — [the testing guide](how-to/testing-and-the-build-gates.md) has the signature.
 
 ---
 
 ## 1. Activation (ACT)
 
-*Automated: `SolrProjectDetectorTest`, `SolrConfigsetDetectorTest`,
-`SolrConfigsetLocatorTest`. Manual adds: real project open, real indexing.*
-
-- [ ] **ACT-1** — Opening `demo/` activates the plugin: `managed-schema.xml` shows inlay
-      hints. The demo project passes the outer gate through its Solr client dependency.
-- [ ] **ACT-2** — Features are alive **while the IDE is still indexing** (open the file
-      immediately after launch, before the progress bar finishes). Everything is
-      [dumb-aware](glossary.md#dumb-mode) by design; a feature that waits for indexing is a
-      regression.
-- [ ] **ACT-3** — **Settings → Languages & Frameworks → Solr Configsets** lists the demo's `solr`
-      configset reading *detected*. Nothing is marked, so the remove button is disabled on it — a
-      detected configset is found by rule and has nothing to remove.
-- [ ] **ACT-4** — Create a directory holding a lone `schema.xml` outside any `conf/`, right-click it
-      in the Project view and choose *Mark Directory as Solr Configset Root*. The file lights up
-      without a restart, and the settings page now lists it reading *marked*. Right-click again: the
-      entry reads *Unmark Solr Configset Root*, and choosing it puts the file back to plain XML.
-- [ ] **ACT-5** — Untick *Recognise Solr configsets in this project* and apply. **Every** Solr
-      feature goes quiet, including in the directory marked in ACT-4 — the switch is the plugin's
-      kill switch and says "marked roots included" for that reason. Tick it again before continuing.
+- [ ] **ACT-1** — Open `demo/`. `managed-schema.xml` shows inlay hints. *The demo passes the outer gate
+      through its Solr client dependency.*
+- [ ] **ACT-2** — Open the file immediately after launch, before indexing finishes. Hints and hovers
+      already work. *Everything is [dumb-aware](glossary.md#dumb-mode); a feature that waits for
+      indexing is a regression.*
+- [ ] **ACT-3** — Settings → Languages & Frameworks → **Solr Configsets** lists `solr  detected
+      solr/conf`, with the remove button disabled on it. *A detected configset is found by rule and has
+      nothing to remove.*
+- [ ] **ACT-4** — Create a directory holding a lone `schema.xml` outside any `conf/`, right-click it and
+      choose *Mark Directory as Solr Configset Root*. The file lights up — warnings, dimming and hints
+      together — without a restart, and the settings page lists it as *marked*. Right-click again:
+      *Unmark Solr Configset Root* returns it to plain XML, hints included.
+- [ ] **ACT-5** — Untick *Recognise Solr configsets in this project* and apply. **Every** Solr feature
+      goes quiet, including in the ACT-4 directory. Tick it again. *The switch is the plugin's kill
+      switch, marked roots included.*
 
 ## 2. Zero-false-positive baseline (BASE)
 
-*Automated: every inspection's clean fixture; `DemoConfigsetTest`. Manual adds: the real
-analysis pass over the real demo files, all inspections at once.*
+**Count the rows that begin `Solr:` in the Problems tool window, not the underlines.** The demo's
+British-English comments trip the platform's American-English locale inspection four times and
+`configsets` trips its spellchecker once, so the schema shows seven problems of which two are this
+plugin's.
 
-- [ ] **BASE-1** — `managed-schema.xml`, untouched, shows **exactly two** errors, each a red
-      wavy underline: the planted dangling `manufacturer` copyField near the bottom, and the
-      planted undeclared `type="discontinued"` on the `legacy` field. Both are there to
-      demonstrate an inspection, and neither may be fixed. Nothing else in the file is underlined
-      by this plugin; the greyed attributes are [restated defaults](#11-an-attribute-that-restates-its-default-dim).
-- [ ] **BASE-2** — `solrconfig.xml`, untouched, shows **zero**.
+- [ ] **BASE-1** — `managed-schema.xml`, untouched: **exactly two** errors, each a red wave — the planted
+      dangling `manufacturer` copyField near the bottom, and the planted undeclared
+      `type="discontinued"` on `legacy`. Neither may be fixed. The greyed attributes are
+      [restated defaults](#11-an-attribute-that-restates-its-default-dim), not findings.
+- [ ] **BASE-2** — `solrconfig.xml`, untouched: **zero**.
 
-**Count the rows that begin `Solr:`, and read the count in the Problems tool window rather
-than off the underlines.** The demo's own comments are written in British English, which
-trips IntelliJ's American-English locale inspection four times, and `configsets` trips its
-spellchecker once. Five underlines in a clean file, none of them this plugin's, is the
-shape of a false positive without being one — the tool window separates them by inspection
-and settles it in a glance.
-
-This is the suite's most important check, and the count is the whole of it: two reports,
-on the two defects the fixture plants deliberately, and no more. Solr configuration is full
-of syntax that resembles a field name (`fl` holds `score`, `*`, `max(price,0)`); a third
-underline is a false positive, and a false positive on a correct file is a bug, never noise.
-`DemoConfigsetTest` pins the same claim headlessly — that exactly one reference in the
-committed demo configset is dangling and exactly one field names an undeclared type, and
-which ones they are.
+*The suite's most important check.* Solr configuration is full of syntax that resembles a field name
+(`fl` holds `score`, `*`, `max(price,0)`); a third report is a false positive, and a false positive on a
+correct file is a bug.
 
 ## 3. Match-capability [inlay hints](glossary.md#inlay-hint) (HINT)
 
-*Automated: `SolrMatchInlayHintsProviderTest`, `SolrMatchAnalysisTest`. Manual adds:
-placement and readability of the rendered hint.*
-
-- [ ] **HINT-1** — `string` fields (`id`, `sku`, `category`) read as whole-value,
-      case-sensitive, and carry `indexed, stored, doc values, single-valued`. The demo
-      schema's `string` fieldType declares `docValues="true"` itself, so these three read
-      `doc values` even though the schema version alone would default it off.
-- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read as tokenised,
-      case-insensitive, with no efficient prefix support, and both carry `indexed` and
-      `no doc values`. `description` alone also carries `stored, single-valued`; `text`
-      alone carries `not stored, multi-valued`.
-- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads as prefix-capable and carries
-      `indexed, not stored, no doc values, single-valued`.
-- [ ] **HINT-4** — Hints sit inline beside the declaration (no hover needed), readable
-      at presentation font size.
+- [ ] **HINT-1** — `string` fields (`id`, `sku`, `category`) read whole-value, case-sensitive, and
+      `indexed, stored, doc values, single-valued`. *The demo's `string` type declares
+      `docValues="true"` itself, though schema version 1.6 alone would default it off.*
+- [ ] **HINT-2** — `text_general` fields (`description`, `text`) read tokenised, case-insensitive, no
+      efficient prefix support, `indexed` and `no doc values`; `description` adds `stored,
+      single-valued`, `text` adds `not stored, multi-valued`.
+- [ ] **HINT-3** — `name_prefix` (type `text_prefix`) reads prefix-capable and `indexed, not stored, no
+      doc values, single-valued`.
+- [ ] **HINT-4** — Hints sit inline beside the declaration with no hover, readable at presentation font
+      size.
 - [ ] **HINT-5** — `notes` (type `custom_text`, whose analyzer names the unrecognised
-      `com.example.MyTokenizerFactory`) shows the storage-shape phrases and no match claim:
-      `indexed, stored, no doc values, single-valued`. `legacy` (type `discontinued`, which
-      the schema does not declare) shows no hint at all.
-- [ ] 📸 **Capture `docs/images/01-hints-match-capability.png`** — the field block at lines
-      66-77, all nine fields in one frame, no interaction.
+      `com.example.MyTokenizerFactory`) shows `indexed, stored, no doc values, single-valued` and no
+      match claim. `legacy` (undeclared type `discontinued`) shows no hint at all.
+- [ ] 📸 **`docs/images/01-hints-match-capability.png`** — the field block at lines 66–77, all nine
+      fields, no interaction.
       [Catalog entry 1](screenshots.md#the-catalog).
 
 ## 4. Navigation and [Find Usages](glossary.md#find-usages) (NAV)
 
-*Automated: `SolrFieldTypeReferenceTest`, `SolrCopyFieldReferenceTest`,
-`SolrConfigFieldReferenceTest`, `SolrResourceFileReferenceTest`. Manual adds: the click
-gesture, caret placement, the Find Usages tool window.*
-
-- [ ] **NAV-1** — Cmd+Click a field's `type="text_general"` jumps to the
+- [ ] **NAV-1** — Cmd+Click a field's `type="text_general"`: lands on
+      `<fieldType name="text_general">`.
+- [ ] **NAV-2** — Cmd+Click a `<copyField>`'s `source` and `dest`: each lands on its field.
+- [ ] **NAV-3** — Find Usages (⌥F7) on a field's `type="text_general"`, and again on the
+      `<fieldType name="text_general">` declaration: both list the same four — `name`, `description`,
+      `text` and the `*_t` dynamic field. *The declaration is where a reader reaches for the gesture.*
+- [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter (`qf`, `df`, a
+      `facet.field` item): lands on the schema declaration, and each name in `name^3 description`
+      navigates on its own. Find Usages from the parameter, from a `copyField` end, and from
+      `<field name="description">` all list the parameter.
+- [ ] **NAV-5** — Cmd+Click `words="stopwords.txt"` on a filter: opens the file. *The demo declares no
+      `synonyms=`, `protected=`, `<charFilter>` `mapping=` or `lang/` path; fixtures cover those, and
+      each entry of a comma-separated list navigating on its own.*
+- [ ] **NAV-6** — Find Usages on `<dynamicField name="*_t">`: reports the `pf` naming `body_t` in
+      `solrconfig.xml`, highlighted at `body_t` alone. *A name the pattern supplies and never spells,
+      which IntelliJ's default word-index search can never find.*
+- [ ] **NAV-7** — Read the labels in NAV-3's and NAV-6's windows. The headers read **Field type** over
+      `text_general` and **Dynamic field** over `*_t`; the groups read **Field declaring this type** and
+      **Handler parameter in solrconfig.xml**. Never *Solr Declaration Target* (the platform
+      de-camel-casing an internal class name) or *Unclassified*. *A correct answer under a wrong label
+      reads as broken.*
+- [ ] **NAV-8** — Find Usages on `stopwords.txt` itself, from the Project view or the path: both
+      `solr.StopFilterFactory` occurrences group under **Analyzer component reading this file**, not
+      *Unclassified*.
+- [ ] **NAV-9** — Cmd+Click the `/select` handler's `class="solr.SearchHandler"`: it resolves nowhere
+      and **draws no warning**. *The demo carries `solr-solrj` only, and `SearchHandler` lives in
+      `solr-core`; a configset naming a class the project lacks is ordinary. Add `solr-core` to the
+      demo to press the landing half, where the `solr.` shorthand must resolve.*
+- [ ] **NAV-10** — Quick documentation on that same value **while the project is still indexing**
+      (right after opening, or after *File → Invalidate Caches → Just Restart*): it answers from the
+      catalog. *This gesture's failure once took the whole popup down, including what needed no
+      index.*
+- [ ] 📸 **`docs/images/07-find-usages-field-type.png`** — NAV-3's window, invoked from the
       `<fieldType name="text_general">` declaration.
-- [ ] **NAV-2** — Cmd+Click a `<copyField>` `source` and `dest` jumps to each field's
-      declaration.
-- [ ] **NAV-3** — Find Usages (⌥F7) on a field's `type="text_general"` lists every field
-      declared with that type, and the search invoked on the
-      `<fieldType name="text_general">` **declaration** returns the same set. Both
-      directions, because the declaration is where a reader reaches for the gesture and it
-      refused until declarations became targets.
-- [ ] **NAV-4** — In `solrconfig.xml`, Cmd+Click a field name inside a handler parameter
-      (`qf`, `df`, a `facet.field` array item) lands on the schema declaration; each name
-      in `name^3 description` navigates on its own, and Find Usages lists the parameter
-      among its usages — invoked from the parameter, from a `copyField` end, and from the
-      `<field name="description">` declaration alike.
-- [ ] **NAV-6** — Find Usages on `<dynamicField name="*_t">` in the schema reports the
-      `pf` parameter naming `body_t` in `solrconfig.xml` — a name the pattern supplies and
-      never spells. IntelliJ's default Find Usages narrows candidates through a **word index**
-      first — a build-time index of every literal word in the project — and only then asks each
-      candidate whether it truly refers to what is being searched for; `body_t` shares no word
-      with `*_t`, so the default search never offers it as a candidate to ask in the first place.
-      This is exactly the case a word index cannot reach: a usage that resolves to the
-      declaration without ever spelling it. The result is highlighted at `body_t` itself, not
-      across the whole parameter value.
-- [ ] **NAV-7** — **How the results are labelled**, which is the half no fixture can see.
-      In [the Find Usages check on a field type](#4-navigation-and-find-usages-nav)'s window the
-      header reads **Field type** over `text_general`, and the results
-      group under **Field declaring this type** — not *Solr Declaration Target*. That is what
-      IntelliJ falls back to when nothing registers a description for a search target: it takes
-      the underlying Java class's own name — `SolrDeclarationTarget`, this plugin's internal
-      type — and de-camel-cases it into a phrase, which reads exactly like real information and
-      is a bug leaking through rather than one. And not *Unclassified* either, the platform's
-      default grouping label for a usage no registered classifier claims — the generic bucket
-      every search result falls into until something says what kind of usage it is. In
-      [the Find Usages check on a dynamic field](#4-navigation-and-find-usages-nav)'s, the
-      header reads **Dynamic field** and the group reads **Handler parameter in
-      solrconfig.xml**. A correct result list under either of those two wrong labels reads as
-      broken to everyone but its author, because nothing distinguishes a mislabelled correct
-      answer from a genuine defect.
-- [ ] **NAV-5** — Cmd+Click a resource path on a filter *or a char filter* —
-      `words="stopwords.txt"`, `synonyms=`, `protected=`, a `<charFilter>`'s `mapping=` —
-      opens the file, including through `lang/`; each entry in a comma-separated list
-      navigates on its own.
-- [ ] **NAV-8** — **How a resource file's usages are labelled**, which is
-      [the results-labelling question](#4-navigation-and-find-usages-nav) asked
-      of the fourth kind of reference. Find Usages on `stopwords.txt` itself — from the
-      Project view, or from the caret on the path — lists both
-      `<filter class="solr.StopFilterFactory">` occurrences under **Analyzer component
-      reading this file**, not *Unclassified*. This one shipped wrong: the classification
-      skipped file references on the assumption the platform grouped them, and nothing does.
-- [ ] 📸 **Capture `docs/images/07-find-usages-field-type.png`** at
-      [the Find Usages check on a field type](#4-navigation-and-find-usages-nav) — the Find Usages
-      tool window with its results, invoked from the `<fieldType name="text_general">`
-      declaration, which is the gesture the demo now performs.
       [Catalog entry 7](screenshots.md#the-catalog).
-- [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at
-      [the check that a solrconfig.xml parameter navigates into the schema](#4-navigation-and-find-usages-nav) —
-      Cmd+hover `name` in `solrconfig.xml:28`, framing the navigation tooltip.
+- [ ] 📸 **`docs/images/08-nav-solrconfig-field-reference.png`** — Cmd+hover `name` at
+      `solrconfig.xml:28`, framing the tooltip.
       [Catalog entry 8](screenshots.md#the-catalog).
-**The demo cannot exercise the landing half of this, and the reason is worth reading.** It depends on
-`solr-solrj` alone, while `solr.SearchHandler` is `org.apache.solr.handler.component.SearchHandler`
-in `solr-core` — not on the demo's classpath. Navigation needs the class *in the project*;
-documentation needs only the generated catalog, which the plugin build resolves separately and which
-does carry `SearchHandler`. So the two answers differ here on purpose.
-
-- [ ] **NAV-9** — Cmd+Click the `/select` handler's `class="solr.SearchHandler"`: it resolves
-      nowhere, and **draws no warning for failing to**. A configset naming a class this project does
-      not carry is ordinary, not wrong. To press the landing half, add `org.apache.solr:solr-core` to
-      the demo's dependencies first — then the same gesture opens the class, and **the `solr.` prefix
-      is the part that matters**, since it is Solr's shorthand rather than a package and a literal
-      resolution would find nothing.
-- [ ] **NAV-10** — Quick documentation on that same value **while the project is still indexing** —
-      start right after opening the sandbox, or *File → Invalidate Caches → Just Restart* first. It
-      answers from the catalog rather than dying, with no class on the classpath and no index ready.
-      This is the gesture whose collapse once took the whole popup down with it, including the parts
-      that needed no index at all.
-- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** at
-      [the check that a filter's resource path navigates to the file](#4-navigation-and-find-usages-nav) —
-      caret on `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
-      that navigation itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
-      tooltip is an absolute path through your home directory.
+- [ ] 📸 *Optional:* **`docs/images/09-nav-resource-file.png`** — caret on `words="stopwords.txt"` at
+      `managed-schema.xml:34`, then **Quick Definition**. Do not publish the hover: its tooltip is an
+      absolute path through your home directory.
       [Catalog entry 9](screenshots.md#the-catalog).
 
 ## 4a. [Rename](glossary.md#rename-refactoring) (REN)
 
-*Renaming is the reference graph read backwards and then written to. Every check here ends
-in an undo — these edit both files, and the demo has to come back clean for the sections
-below.*
+Every check here ends in an undo — renames edit both files.
 
-- [ ] **REN-1** — Caret on `category` in `<field name="category">` at
-      `managed-schema.xml:70`, press Shift+F6. **Read the dialog before typing:** it must
-      say *Rename **field** 'category'*, not *Rename Solr Declaration Target 'category'* —
-      the same description
-      [the check on how Find Usages results are labelled](#4-navigation-and-find-usages-nav)
-      checks, reached by a second refactoring.
-- [ ] **REN-2** — Complete that rename to `product_category`. The declaration updates, and
-      so does the `qf` line in `solrconfig.xml:28` — the cross-file half, and the one a
-      hand-edit misses. **Undo, and confirm both files are clean.**
-- [ ] **REN-3** — Rename `text_general` from its `<fieldType>` declaration at line 31: every
-      field's `type=` follows, including the `*_t` dynamic field's. **Undo.**
-- [ ] **REN-4** — **The one that is deliberately partial.** Rename `<dynamicField name="*_t">`
-      at line 84 to `*_txt`. The declaration updates and any reference *spelling* the pattern
-      updates with it — but the `pf` naming `body_t` in `solrconfig.xml` is left exactly as
-      written, because `body_t` is a name the pattern supplied and rewriting it to `*_txt`
-      would put a glob where a field name belongs.
-- [ ] **REN-5** — Still in [the deliberately-partial dynamic-field rename](#4a-rename-ren)'s
-      state, look at that `pf`: `body_t` is now underlined by the
-      unknown-field inspection, because nothing declares it any more. **That report is what
-      makes [that partial rename](#4a-rename-ren) defensible** — the configset is broken, and the
-      plugin says so, rather than leaving it silently wrong. **Undo it and confirm the underline
-      goes.**
+- [ ] **REN-1** — Shift+F6 on `category` in `<field name="category">` at `managed-schema.xml:70`. The
+      dialog says *Rename **field** 'category'*, not *Rename Solr Declaration Target*. *The same
+      description NAV-7 checks, reached by a second refactoring.*
+- [ ] **REN-2** — Complete the rename to `product_category`: the declaration and the `qf` at
+      `solrconfig.xml:28` both change. **Undo; both files are clean.** *The cross-file half is the one a
+      hand-edit misses.*
+- [ ] **REN-3** — Rename `text_general` from its declaration at line 31: every `type=` follows, the
+      `*_t` dynamic field's included. **Undo.**
+- [ ] **REN-4** — Rename `<dynamicField name="*_t">` at line 84 to `*_txt`. The declaration updates, but
+      the `pf` naming `body_t` is left exactly as written. *Rewriting `body_t` to `*_txt` would put a
+      glob where a field name belongs.*
+- [ ] **REN-5** — In REN-4's state, `body_t` in that `pf` is underlined as an unknown field. **Undo; the
+      underline goes.** *That report is what makes the partial rename defensible.*
 
 ## 5. [Quick documentation](glossary.md#documentation-provider) (DOC)
 
-*Automated: `SolrConfigsetDocumentationProviderTest`, `SolrFieldPresentationTest`,
-`SolrSchemaElementsTest`, `SolrSchemaVersionTest`, `SolrFieldPropertiesTest`,
-`SolrReferenceGuideTest`. Manual adds: popup rendering, link clickability.*
+Quick documentation is F1, ⌃J or hover.
 
-- [ ] **DOC-1** — F1 on a field's `type` value shows the type, its analyzer chain, and
-      what a field of it can match.
-- [ ] **DOC-2** — The popup carries a Reference Guide link naming the Solr version this
-      configset targets, and the link opens.
-- [ ] **DOC-3** — The element *tags* answer on hover — `<schema>`, `<field>`,
-      `<fieldType>`, `<dynamicField>`, `<copyField>`, `<uniqueKey>` — each with a
-      configset-specific sentence where one exists (which fields the copy rule joins,
-      which field is the unique key and of what type, how many fields use a type).
-- [ ] **DOC-4** — A `class=` value answers on hover — `solr.WordDelimiterGraphFilterFactory`
-      shows what kind of class it is, both spellings, the attributes it reads, how this
-      configset uses it, and a Reference Guide link — plus the one-sentence Javadoc summary
-      the catalog's documentation column carries, where the line's `-sources` artifacts
-      supplied one. `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer."
-- [ ] **DOC-4b** — Hover the *tag* of the demo's EdgeNGram filter (the word `filter`, not the
-      `class` value): the popup shows a **Configuration** table of every attribute the class
-      accepts. Written `minGramSize` / `maxGramSize` are bold and labelled *on this filter*;
-      unwritten `preserveOriginal` appears as **false** labelled *Solr default*. An attribute
-      the catalog records no literal default for — `luceneMatchVersion` — shows an em dash
-      labelled *no default recorded*: the dash is the feature, not a missing value. A custom
-      `class` the catalog does not know must offer nothing on the tag — not an empty table.
-- [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports
-      `uninvertible` as **true** and names its origin *Solr default at schema version 1.6*,
-      and `useDocValuesAsStored` likewise.
-- [ ] **DOC-6** — Change the root element to `version="1.7"`, re-open the same popup:
-      `uninvertible` now reports **false**, `useDocValuesAsStored` stays true, and both
-      origins name 1.7. **Undo, and confirm the values return.** One side alone proves
-      nothing — a table hard-coding `true` passes
-      [the check on schema version 1.6's property defaults](#5-quick-documentation-doc) —
-      so it is the flip that is the check.
-- [ ] **DOC-7** — Hover `minGramSize` on an `EdgeNGramFilterFactory` (or F1 with the caret
-      on the attribute name). The popup names the owning class, the value type (*a whole
-      number*), and the required marker, above them a **Does** row saying what the attribute
-      does — *the shortest gram to index* — which is written by hand for the two dozen
-      attributes a reader hovers rather than recovered from bytecode. Hover `preserveOriginal`
-      on the same filter: the popup shows the catalog default `false` instead of a required
-      marker. An attribute name the catalog does not list, or any attribute on a class the
-      catalog does not know, stays silent.
-- [ ] **DOC-8** — **The attribute's own name answers**, which is the caret position that used
-      to say nothing while the element above it and the value beside it both did. Hover each
-      of these attribute *names*: `name` and `type` on a `<field>`; `name` and `class` on the
-      `<fieldType>`; `source` and `dest` on a `<copyField>`. Each explains itself, and the
-      two `copyField` ends read differently from each other.
-- [ ] **DOC-9** — Hover `version` on the demo's `<schema>` root. Two paragraphs: what the
-      attribute decides anywhere, then **what `1.6` decides here** — `docValues` off,
-      `uninvertible` on. The second paragraph is computed from the file, so
-      [the version-flip check](#5-quick-documentation-doc)'s edit to
-      `1.7` should flip it; check that too while the file is already changed, and undo with
-      the rest.
-- [ ] **DOC-10** — **The absence, which is the one that can regress quietly.** Hover an
-      attribute the hand-written table does *not* describe — `maxShingleSize` on a
-      `solr.ShingleFilterFactory`, or any catalog-backed name outside the two dozen — and the
-      popup is **exactly what it was before the table existed**: owner, value type, default or
-      required marker, guide link, and **no Does row**. The table is silent by default
-      everywhere, and a popup appearing where none should is the failure this check is for.
-
-      **This check previously described the opposite of what ships.** It read that the prose
-      row had been drafted and withdrawn, on the argument that the popup already carries a
-      per-attribute guide link and prose would duplicate something always current.
-      That argument is recorded and still open in the design record, but it was never acted on:
-      the table shipped with the step and the *Does* row is on screen, which is what
-      [the check on a factory's attribute hover](#5-quick-documentation-doc) now
-      asks for. A verification check stating the opposite of the shipped behaviour is worse than
-      a missing one, because pressing it invites deleting a feature to make the document true.
-
-      *The other half of this check has no fixture.* A `copyField`'s `name` must never gain the
-      `<field>` description — but the committed demo declares no `<copyField name=…>`, so there
-      is nothing to hover, the same shape of gap
-      [the check on a filter's resource path](#4-navigation-and-find-usages-nav) records.
-      `SolrAttributeDocumentationTest`
-      covers it headlessly, along with the whole inventory of positions that answer; either the
-      demo grows one or this stays a note.
-
-- [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** at
-      [the quick-documentation check on a field](#5-quick-documentation-doc) — caret inside
-      `name="category"` at line 70, F1, cropped to the popup **including the
-      `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
-      the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
-      arrival if taken before that lands.
+- [ ] **DOC-1** — On a field's `type` value: the type, its analyzer chain, and what a field of it can
+      match.
+- [ ] **DOC-2** — The popup's Reference Guide link names the Solr version the configset targets, and
+      opens.
+- [ ] **DOC-3** — Hover the tags `<schema>`, `<field>`, `<fieldType>`, `<dynamicField>`, `<copyField>`,
+      `<uniqueKey>`: each answers, with a configset-specific sentence where one exists (which fields a
+      copy rule joins, which field is the unique key, how many fields use a type).
+- [ ] **DOC-4** — Hover `class="solr.WordDelimiterGraphFilterFactory"`: its kind, both spellings, the
+      attributes it reads, how this configset uses it, a guide link, and a one-line Javadoc summary —
+      `solr.StandardTokenizerFactory` reads "Factory for StandardTokenizer." *Its `Accepts` table shows
+      name and value type only; defaults live in DOC-4b and DOC-7.*
+- [ ] **DOC-4b** — Hover the EdgeNGram filter's *tag*: a **Configuration** table of every attribute the
+      class accepts. `minGramSize` / `maxGramSize` bold, *on this filter*; `preserveOriginal` **false**,
+      *Solr default*; `luceneMatchVersion` an em dash, *no default recorded*. A custom `class` the
+      catalog does not know offers nothing on the tag, not an empty table.
+- [ ] **DOC-5** — On the demo's `version="1.6"` schema, a field's property table reports `uninvertible`
+      **true**, origin *Solr default at schema version 1.6*, and `useDocValuesAsStored` likewise.
+- [ ] **DOC-6** — Change the root to `version="1.7"` and reopen: `uninvertible` reads **false**,
+      `useDocValuesAsStored` stays true, both origins name 1.7. **Undo.** *A table hard-coding `true`
+      passes DOC-5; only the flip proves the version is read. The demo stays at 1.6 so both sides stay
+      testable.*
+- [ ] **DOC-7** — Hover `minGramSize` on the `EdgeNGramFilterFactory`: owner class, *a whole number*, the
+      required marker, and a **Does** row — *the shortest gram to index*. `preserveOriginal` shows
+      default `false` instead of a required marker. An attribute the catalog does not list, or any on an
+      unknown class, stays silent.
+- [ ] **DOC-8** — Hover attribute *names*: `name` and `type` on a `<field>`, `name` and `class` on the
+      `<fieldType>`, `source` and `dest` on a `<copyField>`. Each explains itself; the two `copyField`
+      ends read differently.
+- [ ] **DOC-9** — Hover `version` on `<schema>`: what the attribute decides anywhere, then what `1.6`
+      decides here — `docValues` off, `uninvertible` on. The general sentence appears once. It flips
+      under DOC-6's edit; check it then.
+- [ ] **DOC-10** — Hover an attribute the hand-written table does not describe — `maxShingleSize` on a
+      `solr.ShingleFilterFactory`: owner, value type, default or required marker, guide link, and **no
+      Does row**. *The table is silent by default; a row where none belongs is the failure.* A
+      `copyField`'s `name` never gaining the `<field>` description has no demo fixture and is covered
+      headlessly.
+- [ ] 📸 **Re-capture `docs/images/02-quick-doc-field.png`** — caret in `name="category"` at line 70,
+      F1, cropped to the popup including the `uninvertible` row. Check the catalog entry first: it waits
+      on `omitNorms` and `docValues` resolving from the field type's class.
       [Catalog entry 2](screenshots.md#the-catalog).
-      [The quick-documentation check on a class value](#5-quick-documentation-doc)'s
-      `03-quick-doc-class.png` is current and needs nothing.
-
-**[The quick-documentation check on a class value](#5-quick-documentation-doc)'s `Accepts`
-table shows a name and a value type, and nothing more.** That is the
-class-*value* popup on purpose, and Javadoc is per class, so it has no honest per-argument
-prose to add beside a default either. Defaults and required markers live on the other two
-positions: on one attribute as
-[the check on a factory's attribute hover](#5-quick-documentation-doc), and on the whole tag
-as [the check on a factory's complete configuration](#5-quick-documentation-doc)'s
-complete-configuration table. A tester looking for `minGramSize` marked required on the
-class value wants one of those two, and is looking at the wrong element rather than at a
-broken feature.
-
-**[The check on schema version 1.6's property defaults and its version-flip
-counterpart](#5-quick-documentation-doc) are one check in two halves, and the pair is the
-point.** Solr's field
-defaults are not constants: `uninvertible` defaults true below schema version 1.7 and
-false from it, which is how Solr changed a default without breaking deployed schemas. A
-provider that ignores the version entirely still passes the 1.6 half, because 1.6 is where the
-demo sits — only the version-flip's result distinguishes reading the file from hard-coding its answer.
-`SolrFieldPropertiesTest` and `SolrBooleanPropertyCompletionTest` already assert both
-sides headlessly; what these two add is that the popup and the completion list render what
-resolution decided, which no fixture can see.
-
-The version-flip check edits the demo, so it belongs with the
-[inspection and quick-fix checks](#6-inspections-and-quick-fixes-insp) in ending on an undo.
-The demo stays at 1.6 permanently and says so in a comment — a *committed* bump to 1.7 would not
-break these checks so much as delete
-[the 1.6 property-defaults check](#5-quick-documentation-doc), leaving the suite testing one
-side of a boundary again.
 
 ## 6. [Inspections](glossary.md#inspection) and [quick-fixes](glossary.md#quick-fix) (INSP)
 
-*Automated: `SolrDanglingCopyFieldInspectionTest`, `SolrUnknownFieldTypeInspectionTest`,
-`SolrUnknownFieldReferenceInspectionTest`, `SolrUnknownAttributeInspectionTest`,
-`SolrInvalidAttributeValueInspectionTest`, `SolrAnalyzerChainOrderInspectionTest`,
-`SolrUnusedFieldTypeInspectionTest`, `SolrNonIndexedRelevanceFieldInspectionTest`,
-`SolrMisspelledParameterInspectionTest`, `SolrDiscontinuedElementInspectionTest`,
-`SolrReferenceQuickFixTest`, `SolrFindingPresentationTest`. Manual adds:
-live reaction to edits, fix application through the real Alt-Enter menu.*
+**"Underlined" depends on the scheme.** A name that resolves to nothing (INSP-1 to INSP-5) is an error,
+a red wave everywhere. Every other check here is a warning, which *Dark* and *Islands Dark* draw as a
+yellow wave and *Default*, *Darcula* and *Light* (behind *Islands Light*) draw as a tinted background.
+Read "underlined" in a warning check as *marked*, and confirm by hovering or in the Problems view.
 
-**What "underlined" looks like depends on the colour scheme, and on the check.** A name that resolves
-to nothing — INSP-1 to INSP-5 — is an error, a red wavy underline in every scheme. Every other check
-here is a warning, which *Dark* and *Islands Dark* draw as a yellow wave but *Default*, *Darcula* and
-the *Light* scheme behind *Islands Light* — the theme the sandbox runs on — draw as a tinted
-background with no line. Read "underlined" in a warning check as *marked*, and confirm it by
-hovering or in the Problems tool window.
+Every check ends with **undo until [the baseline](#2-zero-false-positive-baseline-base) is clean**.
 
-Every check here ends with **undo until
-[the baseline](#2-zero-false-positive-baseline-base) is clean again**.
-
-- [ ] **INSP-1** — Change a `<copyField>` dest to a name no field declares: a red wavy underline,
-      and Alt-Enter offers the declared fields, closest spelling first.
-- [ ] 📸 **Capture `docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted*
-      `manufacturer` rule at line 92 rather than the edit
-      [the dangling-copyField check](#6-inspections-and-quick-fixes-insp) makes, so the image
-      needs no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
-      every item in it rewrites the file.
+- [ ] **INSP-1** — Change a `<copyField>` `dest` to a name no field declares: a red wave, and Alt-Enter
+      offers the declared fields, closest spelling first.
+- [ ] 📸 **`docs/images/04-inspection-copyfield-quickfix.png`** — use the *planted* `manufacturer` rule at
+      line 92, so no undo is needed. Frame the underline and the open Alt-Enter menu, then Escape —
+      every item rewrites the file.
       [Catalog entry 4](screenshots.md#the-catalog).
-- [ ] **INSP-2** — Change a field's `type` to a bogus value: a red wavy underline, fix offers the
-      declared types; applying one produces a file that parses clean.
-- [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
-      without saving or reopening.
-- [ ] **INSP-4** — In `solrconfig.xml`, point a handler parameter (`qf` or `df`) at a
-      field the schema does not declare: flagged.
-- [ ] **INSP-5** — Add a made-up attribute to a `<field>` tag: the unknown-attribute
-      inspection fires, naming the element that cannot accept it.
+- [ ] **INSP-2** — Change a field's `type` to a bogus value: a red wave; the fix offers the declared
+      types, and applying one leaves a file that parses clean.
+- [ ] **INSP-3** — Delete the `name` field: its copy rule is flagged at once, without saving.
+- [ ] **INSP-4** — In `solrconfig.xml`, point `qf` or `df` at an undeclared field: flagged.
+- [ ] **INSP-5** — Add a made-up attribute to a `<field>`: flagged, naming the element that cannot
+      accept it.
 - [ ] **INSP-6** — Set `indexed="yes"`: the invalid-attribute-value inspection fires.
-- [ ] **INSP-7** — The ordering check, in three edits to `text_prefix`'s **index** analyzer
-      (lines 45–49), because a claim about order needs both sides:
-      1. Add `<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange="1"/>`
-         *below* the `LowerCaseFilterFactory`: the `1` is underlined, and the message names
-         the filter that already folded the case away.
-      2. Move that same filter *above* the `LowerCaseFilterFactory`: the warning clears.
-         Nothing was added or removed, so this is the half that proves the check is about
-         order rather than presence.
-      3. Add `<filter class="solr.FlattenGraphFilterFactory"/>` above the word-delimiter
-         filter: its `class` is underlined, naming the graph filter below it.
-- [ ] **INSP-8** — Change `name_prefix`'s `type` from `text_prefix` to `text_general`:
-      the `<fieldType name="text_prefix">` declaration nothing now names goes **dim**,
-      immediately and without saving. Dimmed, not underlined — this is the one finding in
-      the section that is dead configuration rather than a defect, and the presentation is
-      the claim being checked. The demo's other three types stay lit, so a rule that dims
-      every type would fail here rather than pass silently.
-- [ ] **INSP-10** — In `solrconfig.xml`, add `<str name="sort">text asc</str>` to the `/select`
-      handler's `defaults`. `text` is underlined: it is `multiValued`, so several values have no
-      defined order and Solr rejects a plain sort on it. **The message names what sorting needs
-      rather than asserting which part is missing** — this field is indexed and, at the demo's
-      `version="1.6"`, un-invertible, so a message blaming doc values would be false here.
-- [ ] **INSP-11** — In `solrconfig.xml`, add `<arr name="facet.field"><str>category</str></arr>` to
-      the `/select` handler's `defaults`. **Nothing fires**, and it keeps not firing when the schema
-      root is changed to `version="1.7"`. That second half is the correction a sandbox pass made to
-      this check: 1.7 is *also* the version at which `solr.StrField` gains doc values by default —
-      the catalog records it as `primitive,docValuesByDefault` — so flipping the version makes
-      `category` **more** facetable, not less. The version flip cannot demonstrate an unfacetable
-      field on a `string`, and a check that expected it to was testing the wrong lever.
-      To see the warning, declare the absence rather than defaulting it: add `docValues="false"` to
-      `category` in the schema. `category` in the `facet.field` is then underlined, and at 1.6 it is
-      not, because `uninvertible` defaults true below 1.7. Undo both edits.
-- [ ] **INSP-12** — With
-      [the unfacetable-field check](#6-inspections-and-quick-fixes-insp)'s `docValues="false"`
-      still on `category`, `<str name="qf">category</str>`
-      stays clean while the `facet.field` is underlined. **The same field, searchable and unfacetable at
-      once** — the check that the two inspections ask different questions rather than one question twice.
-      The completion side shows the same split with no edit at all:
-      [the sort-clause completion check](#9-completion--field-names-inside-solrconfigxml-parameters-prm)'s
-      `sort` list withholds `text` where the `qf` list offers it.
-- [ ] **INSP-13** — In `solrconfig.xml`, add `<indexConfig><nrtMode>true</nrtMode></indexConfig>`
-      inside `<config>`: the element name is underlined and the message is **Solr's own sentence**,
-      naming the config as discontinued. Add `<indexDefaults>` directly inside `<config>` instead —
-      that one really is top-level — and the message names `<indexConfig>` as the replacement.
-      **The wording is the feature** — a paraphrase would drop the only part saying what to do next.
-      Now move the same `<nrtMode>` inside a made-up `<acmeThing>` wrapper: the warning goes, because
-      a retirement belongs to a position rather than to a word. Undo.
-- [ ] **INSP-13b** — Move that same `<nrtMode>` up one level, directly inside `<config>`:
-      **the warning goes**, and it should. Solr reads this element as
-      `get(indexConfigPrefix).get("nrtMode")` and never looks for it at the root, so a `<nrtMode>`
-      under `<config>` is inert — Solr neither honours nor complains about it. This is the position
-      the rule used to fire on, and the check exists because the earlier wording of
-      [the discontinued-element check](#6-inspections-and-quick-fixes-insp) asked for
-      the underline *here* and was pressed green against it. See the pass-log note for
-      2026-08-16 and `SolrConfigElements.UNPLACED` for how the catalog came to believe it.
-- [ ] **INSP-14** — Inside the `/select` handler's `<lst name="defaults">`, rename `<str name="rows">`
-      to `<str name="rwos">`: underlined, and Alt-Enter offers `rows`. Then write `<str name="pf2">`
-      and `<str name="pf3">` side by side — **neither is flagged**, though they are one edit apart.
-      That pair is the whole reason the rule checks knownness before distance. Undo.
-- [ ] **INSP-15** — Change the `name` field's `indexed="true"` to `false` at `managed-schema.xml:68`, then look
-      at the `/select` handler's `qf` at `solrconfig.xml:28`. `name` is underlined — **`name` alone, not the
-      `^3` beside it and not the two field names after it** — reading *Solr: 'name' is not indexed and has no doc values, so 'qf'
-      cannot search or boost it*, and `solrconfig.xml` goes from
-      [the `solrconfig.xml` baseline check](#2-zero-false-positive-baseline-base)'s zero problems to
-      exactly one.
-      The finding is invisible in Solr: the core starts, the query runs, and the field simply never
-      matches. **One of two such checks rather than the only one** —
-      [the analyzer-chain ordering check](#6-inspections-and-quick-fixes-insp)'s finding is the
-      other, and a chain whose filter never runs is just as silent. Undo.
-
-      *What lets this fire is a catalog row rather than the edit.* Searchable is `indexed` **or**
-      `docValues`, and the rule reports nothing unless it can say `docValues` is definitely true or
-      definitely false — an *undetermined* `docValues` leaves it with no answer and this check with
-      nothing to see. `docValues` is undetermined whenever the field type's class carries no entry in
-      the generated catalog's **traits column**, the per-class list (`primitive`, `sortableText`,
-      `docValuesByDefault`, and so on) the build records for every field-type class it recognises and
-      uses to work out what a property defaults to. `name` is `text_general`, whose class is
-      `solr.TextField` — a class the catalog *does* know, and knows to carry none of those traits, so
-      its traits column is **empty** rather than missing. Empty is not the same claim as missing:
-      missing means the catalog never heard of the class and the rule must stay silent; empty means
-      the catalog looked and found nothing, which lets `docValues` resolve to a definite false at the
-      demo's `version="1.6"`. **That distinction is the whole reason this check can fire at all** — had
-      `text_general` named a class the catalog does not carry, `docValues` would stay undetermined,
-      the same edit would underline nothing, and the check would read as correct forever without ever
-      having proved anything.
-- [ ] **INSP-9** — Undo everything, including
-      [the version-flip check](#5-quick-documentation-doc)'s version edit: both files return to
-      [their baseline](#2-zero-false-positive-baseline-base) counts — **two** warnings in
-      `managed-schema.xml`, zero in
-      `solrconfig.xml`. Not zero and zero; the planted `manufacturer` copyField and the
-      planted `legacy` field's undeclared type are part of the baseline and stay underlined.
-      None of [the analyzer-chain ordering check](#6-inspections-and-quick-fixes-insp)'s three
-      edits survives into the baseline: the demo's own chains are
-      correctly ordered. No dimmed type is part of the baseline: every type the demo
-      declares has a field behind it.
+- [ ] **INSP-7** — Three edits to `text_prefix`'s **index** analyzer (lines 45–49):
+      1. Add `<filter class="solr.WordDelimiterGraphFilterFactory" splitOnCaseChange="1"/>` *below*
+         `LowerCaseFilterFactory`: the `1` is marked, naming the filter that already folded case away.
+      2. Move it *above* `LowerCaseFilterFactory`: the warning clears. *Nothing added or removed — this
+         proves the check is about order.*
+      3. Add `<filter class="solr.FlattenGraphFilterFactory"/>` above the word-delimiter filter: its
+         `class` is marked, naming the graph filter below it.
+- [ ] **INSP-8** — Change `name_prefix`'s `type` to `text_general`: `<fieldType name="text_prefix">` goes
+      **dim**, at once, not underlined; the other three types stay lit. *Dead configuration, not a
+      defect, and the presentation is the claim.*
+- [ ] **INSP-10** — In `solrconfig.xml`, add `<str name="sort">text asc</str>` to `/select`'s `defaults`:
+      `text` is marked, and the message names what sorting needs rather than blaming doc values. *`text`
+      is `multiValued`; at 1.6 it is un-invertible, so a doc-values message would be false.*
+- [ ] **INSP-11** — Add `<arr name="facet.field"><str>category</str></arr>` to the same `defaults`:
+      nothing fires, at `version="1.6"` or `1.7`. Set `version="1.7"` and add `docValues="false"` to
+      `category`: the `facet.field` entry is marked; at 1.6 it is not, because `uninvertible` defaults
+      true below 1.7. Undo all three. *1.7 also gives `solr.StrField` doc values by default, so a
+      version flip alone cannot make a `string` unfacetable; only a declared absence can.*
+- [ ] **INSP-12** — In INSP-11's marked state, `<str name="qf">category</str>` stays clean while the
+      `facet.field` is marked. *One field, searchable and unfacetable: the two inspections ask different
+      questions.* Completion shows the same split — PRM-4's `sort` list withholds `text`.
+- [ ] **INSP-13** — In `solrconfig.xml`, add `<indexConfig><nrtMode>true</nrtMode></indexConfig>` inside
+      `<config>`: the element is marked with **Solr's own sentence** naming it discontinued. Add
+      `<indexDefaults>` directly inside `<config>` instead: the message names `<indexConfig>` as the
+      replacement, and the platform's own *XML tag has empty body* sits beside it. Move `<nrtMode>` into
+      a made-up `<acmeThing>`: the warning goes. Undo. *A retirement belongs to a position, and Solr's
+      wording is the only part that says what to do next.*
+- [ ] **INSP-13b** — Move `<nrtMode>` directly under `<config>`: **no** warning. *Solr reads it as
+      `get(indexConfigPrefix).get("nrtMode")` and never at the root, so it is inert there.*
+- [ ] **INSP-14** — In `/select`'s `<lst name="defaults">`, rename `<str name="rows">` to `rwos`: marked,
+      and Alt-Enter offers `rows`. Write `<str name="pf2">` and `<str name="pf3">` side by side: neither
+      is flagged. Undo. *That pair is why the rule checks knownness before distance.*
+- [ ] **INSP-15** — Change `name`'s `indexed="true"` to `false` at `managed-schema.xml:68`. In `/select`'s
+      `qf` at `solrconfig.xml:28`, `name` alone is marked — not `^3`, not the names after it — reading
+      *Solr: 'name' is not indexed and has no doc values, so 'qf' cannot search or boost it*, and
+      `solrconfig.xml` has exactly one problem. Undo. *Invisible in Solr: the field simply never
+      matches. It fires because the catalog knows `solr.TextField` carries no traits, so `docValues`
+      resolves to a definite false.*
+- [ ] **INSP-9** — Undo everything, DOC-6's version edit included: back to **two** errors in
+      `managed-schema.xml` and zero in `solrconfig.xml`. None of INSP-7's edits survives, and no type is
+      dimmed.
 
 ## 7. [Completion](glossary.md#completion-contributor) — the schema's own vocabulary (COMP)
 
-*Automated: `SolrSchemaVocabularyCompletionTest`, `SolrBooleanPropertyCompletionTest`,
-`SolrCopyFieldCompletionTest`, `SolrFieldTypeCompletionTest`, plus the pure-model
-`SolrFieldPropertiesTest` and `SolrAttributeVocabularyTest`. Manual adds: the popup as
-the user meets it — ordering, summaries, what the platform mixes in.*
-
-- [ ] **COMP-1** — Typing `<` inside `<schema>` offers the elements legal there and
-      nothing else.
-- [ ] **COMP-2** — Attribute completion inside `<field ` offers the property table with
-      each property's summary, and **omits** attributes already present on the tag.
-- [ ] **COMP-3** — `fieldType` general properties complete (`positionIncrementGap`,
-      `synonymQueryStyle`, `enableGraphQueries`…), documented like field properties.
-- [ ] **COMP-4** — The boolean value Solr would have used anyway is marked as the default,
-      whichever it is — `indexed` marks `true`, `multiValued` marks `false`; properties
-      whose default depends on the field type stay unmarked.
-- [ ] **COMP-5** — A field's `type=` offers the declared types; a `copyField`'s two ends
-      offer the declared fields; `<analyzer type=` offers `index`/`query`.
-- [ ] **COMP-6** — On the demo's 1.6 schema, `uninvertible=` marks **true** as the default.
-      Change the root element to `version="1.7"` and it marks **false** instead; undo. Same
-      claim as [the schema-version property-default checks](#5-quick-documentation-doc), in the
-      surface where a reader meets it first, and the same reason for testing both sides.
-- [ ] 📸 **Capture `docs/images/05-completion-field-properties.png`** — caret after
-      `stored="true"` on line 70 and before the `/`, type a space, frame the summaries and
-      the accepted values. Undo the space afterwards.
+- [ ] **COMP-1** — `<` inside `<schema>` offers the elements legal there and nothing else.
+- [ ] **COMP-2** — Attribute completion inside `<field ` offers the property table with each summary, and
+      omits attributes already on the tag.
+- [ ] **COMP-3** — `<fieldType>`'s general properties (`positionIncrementGap`, `synonymQueryStyle`,
+      `enableGraphQueries`…) complete, documented like field properties.
+- [ ] **COMP-4** — The boolean Solr would use anyway is marked as default — `indexed` marks `true`,
+      `multiValued` marks `false`; properties whose default depends on the field type stay unmarked.
+- [ ] **COMP-5** — A field's `type=` offers the declared types, each with what it matches (`custom_text`
+      falls back to its class); a `copyField`'s ends offer the declared fields; `<analyzer type=` offers
+      `index` and `query`.
+- [ ] **COMP-6** — At 1.6, `uninvertible=` marks **true** as default; at `version="1.7"` it marks
+      **false**. Undo. *DOC-5 and DOC-6's claim, where a reader meets it first.*
+- [ ] 📸 **`docs/images/05-completion-field-properties.png`** — caret after `stored="true"` on line 70,
+      before the `/`, type a space; frame the summaries and accepted values. Undo the space.
       [Catalog entry 5](screenshots.md#the-catalog).
 
 ## 8. Completion — catalog-backed (CAT)
 
-*Automated: `SolrClassCatalogTest`, `GenerateSolrCatalogTaskTest`,
-`SolrFieldPropertyDriftTest`. Manual adds: the end-to-end path from generated TSV to
-popup, against the demo configset's declared Solr line.*
-
-- [ ] **CAT-1** — `class=` on a `<fieldType>` offers `solr.*` field type classes; on a
-      `<tokenizer>` or `<filter>`, the factories — each set following the configset's
-      declared Solr line.
-- [ ] **CAT-2** — `<filter class="solr.WordDelimiterGraphFilterFactory" ` offers the
-      factory's own attributes — `generateWordParts`, `catenateAll`,
-      `splitOnCaseChange` among them. **This is the check that proves the constructor-bytecode
-      pass reached the editor** — the build-time step, in `buildSrc`, that reads each analysis
-      factory's compiled `.class` file with the ASM library and walks its constructor
-      instruction by instruction to recover the names of the arguments it reads. A factory
-      declares its own attributes only in that one constructor and nowhere else, which is why
-      reading it is enough: nobody hand-maintains this list, and CAT-2 is what confirms the list
-      the build extracted is the one the editor actually offers.
-- [ ] 📸 **Capture `docs/images/06-completion-factory-attributes.png`** — not from
-      [the constructor-bytecode attribute check](#8-completion--catalog-backed-cat),
-      which needs a class the demo does not declare. Use the `EdgeNGramFilterFactory`
-      filter at line 48, caret before the closing `/`, space, and frame
-      `luceneMatchVersion` and `preserveOriginal` — not `minGramSize` and `maxGramSize`,
-      which the filter already declares and completion therefore omits. Same bytecode
-      route, no fixture edit.
+- [ ] **CAT-1** — `class=` on a `<fieldType>` offers `solr.*` field type classes; on a `<tokenizer>` or
+      `<filter>`, factories — each following the configset's declared Solr line, and never mixed.
+- [ ] **CAT-2** — `<filter class="solr.WordDelimiterGraphFilterFactory" ` offers `generateWordParts`,
+      `catenateAll`, `splitOnCaseChange` among others. *Proves the build's constructor-bytecode pass —
+      the only place a factory declares its attributes — reached the editor.*
+- [ ] 📸 **`docs/images/06-completion-factory-attributes.png`** — the `EdgeNGramFilterFactory` at line
+      48, caret before the closing `/`, space; frame `luceneMatchVersion` and `preserveOriginal`, which
+      it does not already declare.
       [Catalog entry 6](screenshots.md#the-catalog).
-- [ ] **CAT-3** — `class=` on a `<requestHandler>` in `solrconfig.xml` offers
-      `solr.SearchHandler` and `solr.UpdateRequestHandler`, and **does not** offer
-      `solr.SchemaCodecFactory` or any field type. Repeat on the demo's
-      `<directoryFactory>` and `<codecFactory>`, which each offer their own handful.
-- [ ] **CAT-4** — F1 on `solr.SearchHandler` says *request handler* and offers a Reference
-      Guide link that lands on a page describing request handlers. **The link is the half
-      worth checking by hand**: nothing in the build establishes that a constructed URL
-      resolves, so a page the guide renames fails here and nowhere else.
-
-*Why [the request-handler class completion check and the class-value documentation
-check](#8-completion--catalog-backed-cat) are manual at all, given fixtures cover both.*
-The three surfaces they
-exercise — completion, documentation, navigation — were never written for `solrconfig.xml`;
-they were already general, and gained the whole file when the catalog learned Solr's plugin
-kinds. Nothing in that diff looks like a feature, which is exactly why a gesture belongs here.
-
----
+- [ ] **CAT-3** — `class=` on a `<requestHandler>` in `solrconfig.xml` offers `solr.SearchHandler` and
+      `solr.UpdateRequestHandler`, and no `solr.SchemaCodecFactory` or field type. `<directoryFactory>`
+      and `<codecFactory>` each offer their own handful.
+- [ ] **CAT-4** — F1 on `solr.SearchHandler` says *request handler*, and its Reference Guide link lands on
+      a page about request handlers. *Nothing in the build checks a constructed URL resolves.*
 
 ## 9. Completion — field names inside [`solrconfig.xml`](glossary.md#solrconfigxml) parameters (PRM)
 
-*Automated: `SolrParameterFieldCompletionTest`, `SolrConfigFieldReferenceTest`. Manual adds: the
-popup where a reader actually meets it, inside a string the platform has no vocabulary for.*
-
-This is the inverse of
-[the dangling-copyField check](#6-inspections-and-quick-fixes-insp)'s warning. The list that lets
-an inspection say `descriptoin` is not a
-field is the list that offers `description` first, and until it shipped the plugin only ever
-corrected.
-
-- [ ] **PRM-1** — In the `/select` handler, put the caret inside `<str name="qf">` after the
-      existing value and invoke completion. The schema's fields are offered, and `*_t` appears
-      italicised as a dynamic pattern rather than a field that exists.
-- [ ] **PRM-2** — Completion inside `<str name="rows">` offers no field names. `rows` holds a
-      number, and every parameter in the file looks alike — this is the check that the offer is
-      scoped to the parameters known to hold field names.
-- [ ] **PRM-3** — With the caret immediately after the `^` in `name^3`, completion offers no
-      field. A boost is not a field name, and completing there would produce `name^name`.
-- [ ] **PRM-10** — F1 at that same position — inside the `^3` — **does** answer: what the boost
-      scales, `name` and its searchability, and nothing in the Problems view. **PRM-3 and this are
-      one check in two halves**, and the pair is the point: completion's silence there is correct
-      and was mistaken for the position being settled, so documentation was never asked until
-      [Step 30](../specs/plans/0002-solr-intellij-plugin-plan.md#step-30-explaining-a-boost-done).
-      Two characters left, on `name` itself, PRM-5's popup must be unchanged.
-- [ ] **PRM-11** — F1 inside the `^2.5` of the `/select` handler's `bf` explains an *additive*
-      function-query boost and names **no** field, where the `qf` beside it names one. The same
-      `^n`, two different meanings — and `bf` is the parameter the relevance inspection deliberately
-      stays silent on, so this is also the check that explaining and reporting are separate
-      decisions.
-- [ ] **PRM-4** — In a `<str name="sort">`, completion offers fields at the start of a clause and
-      nothing after `text ` — the second token of a sort clause is a direction, not a field.
-- [ ] **PRM-6** — the `name` of a `<str>` inside a `<lst name="defaults">` offers Solr's request
-      parameters, each with what it is for beside it: `qf` reads *query and init param for query
-      fields*. **This is the position the vocabulary is learnable from** — field completion inside a
-      `qf` presumes the reader already knew to write `qf`.
-- [ ] **PRM-7** — a parameter already set on the same list is *not* offered again, and `defType` **is**
-      offered even though Solr declares it outside the package every other parameter comes from.
-- [ ] **PRM-8** — `<str name="defType">` offers `edismax`, `dismax`, `lucene`, `func` and no class
-      name; a `<queryParser class=…>` offers the classes and no registry key. **The two populations
-      describe the same plugins and must not cross**: a class name in a `defType` is a configset Solr
-      cannot load.
-- [ ] **PRM-9** — F1 on `qf` says what `qf` is and names `DisMaxParams`; F1 on `edismax` names
-      `ExtendedDismaxQParserPlugin`. F1 on a parameter Solr does not declare — `my.own.param` — shows
-      **nothing at all**, which is the contract rather than a gap: a custom component reads parameters
-      no generator will ever see.
-- [ ] **PRM-5** — F1 on a field name inside the `qf` shows *the field's* documentation — its type
-      and analyzer chain — not the `<str>` element's. **This works through reference resolution
-      rather than a documentation branch written for it**, so it is the gesture most likely to
-      disappear silently when either provider changes.
+- [ ] **PRM-1** — Caret inside `/select`'s `<str name="qf">` after the value, invoke completion: the
+      schema's fields with their types, and `*_t` italicised as a dynamic pattern.
+- [ ] **PRM-2** — Inside `<str name="rows">`: no field names. *Offers are scoped to parameters known to
+      hold field names.*
+- [ ] **PRM-3** — Immediately after the `^` in `name^3`: no field. *Completing would produce
+      `name^name`.*
+- [ ] **PRM-10** — F1 inside that `^3`: explains what the boost scales and `name`'s searchability, and
+      nothing reaches the Problems view. Two characters left, on `name`, PRM-5's popup is unchanged.
+      *PRM-3's silence is correct; documentation there still answers.*
+- [ ] **PRM-11** — F1 inside `bf`'s `^2.5`: an *additive* function-query boost, naming no field. *Same
+      `^n`, different meaning; `bf` is also where the relevance inspection deliberately stays silent.*
+- [ ] **PRM-4** — In `<str name="sort">`: fields at the start of a clause, not `text` (multi-valued, so
+      unsortable), and nothing after `text ` — the second token is a direction.
+- [ ] **PRM-6** — The `name` of a `<str>` inside `<lst name="defaults">` offers Solr's request
+      parameters, each described — `qf` reads *query and init param for query fields*. *Where the
+      vocabulary is learnable from.*
+- [ ] **PRM-7** — A parameter already set on the list is not offered again; `defType` **is** offered,
+      though Solr declares it outside the package the rest come from.
+- [ ] **PRM-8** — `<str name="defType">` offers `edismax`, `dismax`, `lucene`, `func` and no class name;
+      `<queryParser class=…>` offers classes and no registry key. *A class name in `defType` is a
+      configset Solr cannot load.*
+- [ ] **PRM-9** — F1 on `qf` names `DisMaxParams`; on `edismax`, `ExtendedDismaxQParserPlugin`; on
+      `my.own.param`, **nothing**. *Custom components read parameters no generator will see.*
+- [ ] **PRM-5** — F1 on a field name inside `qf` shows *the field's* documentation — type, analyzer
+      chain, property table — not the `<str>` element's. *It works through reference resolution, so it
+      is the gesture likeliest to vanish when either provider changes.*
 
 ## 10. Completion — `solrconfig.xml`'s own structure (STR)
 
-*Automated: `SolrConfigElementDescriptorTest`, `SolrConfigDescriptorContractTest`,
-`SolrElementCatalogTest`, `SolrConfigAttributeCompletionTest`. Manual adds: the platform's own
-sibling echo is what these replace, and only a real editor shows which one answered.*
+*Before the plugin owned these descriptors, the platform offered whatever a sibling tag was named — a
+guess that looks like knowledge in a file of same-named tags.*
 
-**What makes this section worth pressing is the failure it replaces.** Before the plugin owned these
-descriptors, the platform ran schema-less and offered whatever a sibling tag happened to be named —
-a guess that looks exactly like knowledge, in a file made almost entirely of same-named tags.
-
-- [ ] **STR-1** — Type `<` on a blank line directly inside `<config>`: the offer is Solr's
-      top-level vocabulary — `requestHandler`, `updateHandler`, `luceneMatchVersion`, `dataDir` —
-      and **not** a copy of whatever sibling tags already exist above the caret.
-- [ ] **STR-2** — Do the same inside `<query>`: `filterCache` and its siblings are offered, and
-      `dataDir` is **not**. Nesting is the point — what belongs under `<query>` is not what belongs
-      under `<config>`. **The demo declares no `<query>`**, so type one first; the catalog keys
-      `filterCache` to that parent and `dataDir` to the root, which is what the check reads.
-- [ ] **STR-3** — `nrtMode` is **not** offered anywhere, though the catalog carries it. An element
-      Solr rejects must never be completed;
-      [the discontinued-element inspection check](#6-inspections-and-quick-fixes-insp) is the same
-      fact from the other side, reporting one already written.
-- [ ] **STR-4** — Inside a made-up `<acmeThing>`, completion offers nothing rather than echoing its
-      siblings, and typing any element inside it draws no warning. **Silence and permissiveness
-      together** — the plugin has nothing to say about a custom component and must not pretend either
-      way.
-- [ ] **STR-5** — Inside a `<filterCache>` under `<query>`, invoke attribute completion: Solr's cache
-      attributes are offered — `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
-      `regenerator`, `size`. Add an attribute of your own invention and it is **not** underlined:
-      completion offers what a source describes, while judgement about an unknown attribute belongs
-      to the inspections and they decline it here.
-- [ ] **STR-6** — In a `<requestHandler>`, the same gesture offers **nothing**, and that is correct
-      rather than a gap. Attribute completion has exactly one source to draw from:
-      `EditableSolrConfigAttributes.json`, a resource shipped inside Solr's own jar that types the
-      handful of subtrees Solr's Config API can rewrite at runtime. That resource covers seven paths
-      — the four caches, `requestParsers`, and the two commit elements — and `<requestHandler>` is not
-      one of them, so completion there has nothing to read from. `name` and `class` are real,
-      required attributes on a `<requestHandler>`, but Solr does not declare them through that
-      resource either: they come from `SolrConfig.plugins`, the list in Solr's own source that
-      registers every pluggable element, where each entry carries `REQUIRE_NAME` and `REQUIRE_CLASS`
-      flags saying so. This build's generator already reads that same list — it is where
-      `<requestHandler>` itself, and the classes it may name, come from — but only for the plugin's
-      tag name and class root, not for those two requirement flags. **Silence here is the honest
-      answer**; an offer would mean the plugin had started guessing at attributes it has never
-      actually read. The day the generator also decodes those flags, this check inverts, and it
-      should be rewritten rather than deleted.
+- [ ] **STR-1** — `<` on a blank line directly inside `<config>`: Solr's top-level vocabulary —
+      `requestHandler`, `updateHandler`, `luceneMatchVersion`, `dataDir`, and many the demo never
+      writes — not a copy of the siblings above the caret.
+- [ ] **STR-2** — Type a `<query>` (the demo declares none) and `<` inside it: `filterCache` and its
+      siblings, and **not** `dataDir`. *What belongs under `<query>` is not what belongs under
+      `<config>`.*
+- [ ] **STR-3** — `nrtMode` is offered nowhere — not under `<config>`, and not under `<indexConfig>`,
+      which offers `deletionPolicy`. *An element Solr rejects is never completed; INSP-13 reports one
+      already written.*
+- [ ] **STR-4** — Inside a made-up `<acmeThing>`: nothing offered, and any element typed there draws no
+      warning. *The plugin has nothing to say about a custom component.*
+- [ ] **STR-5** — Attribute completion in a `<filterCache>` under `<query>`: `autowarmCount`, `class`,
+      `enabled`, `initialSize`, `maxRamMB`, `regenerator`, `size`. A made-up attribute is **not**
+      underlined.
+- [ ] **STR-6** — The same gesture in a `<requestHandler>` offers **nothing**, correctly. *Attribute
+      completion reads only `EditableSolrConfigAttributes.json`, which covers the four caches,
+      `requestParsers` and the two commit elements. When the generator decodes `SolrConfig.plugins`'
+      `REQUIRE_NAME`/`REQUIRE_CLASS`, this check inverts and should be rewritten.*
 
 ## 11. An attribute that restates its default (DIM)
 
-*Automated: `SolrRestatedDefaultAnnotatorTest`, `SolrRemoveRestatedAttributeIntentionTest`.
-Manual adds: dimming is a rendering claim, and only a real editor shows whether it reads as
-"redundant" rather than as "broken".*
+**The untouched demo is already full of restated defaults** — every field declares `indexed="true"`
+and most `stored="true"`, both Solr's defaults — so a dozen greyed attributes in BASE-1's clean schema
+is this feature working. None may ever reach the Problems view.
 
-**The one surface here that must never reach the Problems view.** A restated default is correct
-Solr; the file is right and merely says something twice.
-
-**The untouched demo is already full of restated defaults, so
-[the untouched-schema dim check](#11-an-attribute-that-restates-its-default-dim) needs no edit.**
-Every field
-declares `indexed="true"` and most declare `stored="true"`, and Solr defaults both to true — so the
-dim is part of the baseline rather than something a gesture produces. That is worth knowing before
-[the zero-false-positive baseline check on the schema](#2-zero-false-positive-baseline-base): a
-dozen greyed attributes in a clean schema is this feature working, not a defect.
-
-- [ ] **DIM-1** — Open `managed-schema.xml` untouched. The `indexed="true"` and `stored="true"` on
-      the field block render greyed, whole-attribute, **with no underline, wave or strikeout**, and
-      **nothing about them appears in the Problems view**. `stored="false"` on `name_prefix` and
-      `text` is **not** greyed. **Check it in High Contrast too**: that scheme draws the
-      platform's unused-code style with a grey wave, which is what the second sandbox pass met here,
-      and the dim now uses a key of its own that stays grey text only.
-- [ ] **DIM-2** — Alt-Enter on one of the greyed attributes offers to remove it, and removing leaves
-      a schema that still parses and a field whose documentation reports the same effective values as
-      before. Undo.
-- [ ] **DIM-3** — Change `name`'s `indexed="true"` to `indexed="false"`: the dim goes. The attribute
-      now decides something, and the difference between deciding and restating is the whole feature.
-      Undo.
-- [ ] **DIM-4** — Add `enableGraphQueries="true"` to a `<field>`: **not** dimmed, since Solr ignores
-      it there and calling it removable would be right for the wrong reason. Add the same attribute
-      to a `<fieldType>`: dimmed, because there it is legal and does default to true. Undo both.
-
-*The inherited-default half of DIM-4 has no fixture.* It wants a `<dynamicField>` repeating a value
-its `<fieldType>` declares, and the demo's `*_t` is `text_general`, which declares no `omitNorms`.
-`SolrRestatedDefaultAnnotatorTest` covers that path headlessly; either the demo grows a type that
-declares one, or this stays automated-only.
+- [ ] **DIM-1** — Untouched `managed-schema.xml`: `indexed="true"` and `stored="true"` render greyed,
+      whole-attribute, **with no underline, wave or strikeout**, and nothing in the Problems view.
+      `stored="false"` on `name_prefix` and `text` is not greyed. **Check High Contrast too** — the dim
+      has its own key there, grey text only.
+- [ ] **DIM-2** — Alt-Enter on a greyed attribute offers to remove it; afterwards the schema parses and
+      the field's documentation reports the same effective values. Undo.
+- [ ] **DIM-3** — Change `name`'s `indexed="true"` to `false`: the dim goes. Undo. *Deciding versus
+      restating is the whole feature.*
+- [ ] **DIM-4** — `enableGraphQueries="true"` on a `<field>`: not dimmed — Solr ignores it there. On a
+      `<fieldType>`: dimmed. Undo both. *The inherited-default half has no demo fixture and is covered
+      headlessly.*
 
 ## 12. [Intentions](glossary.md#intention) — companion fields (INT)
 
-*Automated: `SolrAddPrefixCompanionIntentionTest`, `SolrAddExactCompanionIntentionTest`.
-Manual adds: these are the only gestures that write a new declaration, so the result has to be read
-as a schema rather than as a diff.*
-
-- [ ] **INT-1** — Alt-Enter on a tokenised text field offers to add an exact-match companion; the
-      generated `<field>` and its `<fieldType>` land in the schema and the file still parses.
-- [ ] **INT-2** — The same field no longer offers the intention once its companion exists, and a
-      field that is already whole-value — a `string` — never offers it at all. **An intention that
-      keeps offering itself after it has been applied is the failure mode here**, since nothing
-      underlines to tell a reader the work is done.
+- [ ] **INT-1** — Alt-Enter on a tokenised text field offers an exact-match companion; the new `<field>`
+      and `<fieldType>` land in the schema and the file still parses.
+- [ ] **INT-2** — That field no longer offers it once the companion exists, and a `string` field never
+      does; the prefix companion withholds itself on `name`, which has `name_prefix`. Undo. *An
+      intention that keeps offering itself after it was applied is the failure here.*
 
 ## 13. Connections and the collections tool window (SRV)
 
-*Automated: `SolrConnectionsConfigurableTest`, `SolrConnectionDialogTest`, `SolrTopologyNodesTest`,
-`SolrCollectionsViewTest`, `SolrCollectionsPanelTest`. Manual adds: **that any of it appears at
-all**. The headless test environment registers no tool windows — not this plugin's, not any — so
-whether the registration takes effect is a question only a running IDE can answer. Everything below
-needs a Solr. `docker compose -f demo/compose.yaml up -d` starts the demo's: SolrCloud, with a
-`products` collection built from `demo-server/products`, which differs from `solr/conf` by one drift
-row of each kind, and a request in `queries.http` indexes ten sample products into it. Three checks want
-a different server: SRV-8 and SRV-9 read the `*_s` and `*_f` patterns Solr's `_default` configset
-declares, and SRV-23 needs a standalone Solr. `docker run -p 8983:8983 solr:10.0.0 solr-precreate
-books` gives both, with the demo's stopped first, since both use port 8983.*
+*Only a running IDE shows whether a tool window registers at all.* Every check needs a Solr:
+`docker compose -f demo/compose.yaml up -d` starts SolrCloud with a `products` collection that drifts
+from `solr/conf` by one row of each kind; *Index the sample products* in `queries.http` fills it.
+SRV-8, SRV-9 and SRV-23 need `docker run -p 8983:8983 solr:10.0.0 solr-precreate books` instead —
+`_default`'s `*_s` and `*_f` patterns, and a standalone server — with the demo's stopped.
 
-- [ ] **SRV-1** — Settings → Tools → **Solr Connections** exists, and `+` opens a form. Saving
+### Connections and the tool window
+
+- [ ] **SRV-1** — Settings → Tools → **Solr Connections** exists; `+` opens a form, and saving
       `http://localhost:8983/solr` adds a row showing that URL.
-- [ ] **SRV-2** — The form refuses to save a URL with no scheme, naming the field, and accepts one
-      with a path that is not `/solr`. **Accepting the second matters more than rejecting the
-      first**: Solr behind a reverse proxy is ordinary, and a form that demanded `/solr` would
-      reject working deployments.
-- [ ] **SRV-3** — Re-open a saved connection with a password stored: the password field is **empty**
-      and says a password is stored. Change only the display name and press OK. Re-open: the
-      password is still stored. **This is the regression the overload exists to prevent** — the
-      field being empty must not be read as "no password".
-- [ ] **SRV-4** — The **Solr** tool window opens on the right and lists what the server holds:
-      `Cores` → `books` for a standalone server, `Collections` → shards → replicas for a cloud one.
-      Its stripe button shows the plugin icon's sunburst in plain grey, in light and dark themes,
-      rather than the platform's generic placeholder. On a cloud server, `books` and `shard1` each
-      start with a **green dot and the word `GREEN` appears nowhere in the row**; hovering either
-      shows `Health: GREEN`.
-- [ ] **SRV-5** — Stop Solr and press Refresh. The failure appears **inline above the tree, once**,
-      and the tree empties. No popup, no dialog, and no stale topology left under the banner.
-- [ ] **SRV-6** — Start Solr again and press Refresh: the banner clears and the tree repopulates.
-      Then leave it alone for a few minutes and confirm **nothing refetches on its own** — server
-      data moves on request and on connection change, and on nothing else.
-- [ ] **SRV-7** — With two connections configured, switching the selector re-reads the other server
-      and the selection survives closing and reopening the project.
-- [ ] **SRV-8** — Index a document with an undeclared field that a dynamic pattern matches —
-      `curl 'http://localhost:8983/solr/books/update?commit=true' -H 'Content-Type: application/json'
-      -d '[{"id":"1","author_s":"Frank Herbert","price_f":9.99}]'`. Expand the collection's
-      **Fields** row: `author_s` appears, marked `← *_s`. **This is the check the whole view exists
-      for** — that field is in no configset and the schema view cannot show it.
-- [ ] **SRV-9** — In the same list, `price_f` shows its type and **no document count**, while
-      `author_s` shows one. A point field has no inverted index to count from, and "0 docs" there
-      would be false. `_root_` shows `(unstored field)` rather than decoded flags.
-- [ ] **SRV-10** — Collapsing and re-expanding a **Fields** row does not re-read the server; only
-      Refresh does. Watch Solr's request log to confirm rather than inferring it from the screen.
-- [ ] **SRV-10a** — Right-click `products`: the menu offers *Query products* and *Explain Scoring in
-      products*, and **right-clicking selects the row first**, so the menu is about the row under the
-      pointer. Choose *Query products*: a new scratch `solr-products.http` opens holding a `GET` to
-      the connection's server, and **nothing runs until you press the run button**, which then
-      shows the same summary as SRV-13. Expand **Fields** and right-click `category`: *Find
-      Documents with category* and *Count Values of category*. Right-click `description`: only
-      *Find Documents with description*, since counting a tokenized field would count its words.
-      A shard offers nothing. With a connection that names a user, the scratch file carries a
-      comment naming the `Authorization` header to add, and **no password**.
-- [ ] **SRV-11** — Open `queries.http`. Press **Add Request** (the `+` in the gutter, or
-      Alt-Insert): a **Solr** group offers five starting requests. Insert *Query a Solr collection*.
-      **The menu labels must read as labels** — a whole request body appearing where a label belongs
-      is what a swapped `TemplateDescriptor` argument looks like, and it compiles and ships perfectly.
-- [ ] **SRV-12** — `http-client.env.json` beside it defines **local** as `http://localhost:8983/solr`
-      and the `products` core `compose.yaml` creates; point it at your own server if you use one.
-      Pick **local** from the environment chooser and run the request. Results render in the HTTP
-      Client's own response viewer. **The point of the check is that the committed file names no
-      host** — the environment does, which is what lets a colleague clone the repository and use their
-      own server.
-- [ ] **SRV-13** — Run *Query a Solr collection* against a collection holding documents; on the
-      demo's `products`, run *Index the sample products* in `queries.http` first. Above the
-      raw JSON the response shows how many matched, how long it took, and a table of the returned
-      documents with columns lined up. `_version_` is **not** a column, and the line above the table
-      says which internal fields were left out.
-- [ ] **SRV-14** — Run *Explain why documents scored*. Under the table, each document's scoring
-      explanation appears with Solr's own indentation intact — the nesting is the information, so a
-      flattened list of numbers is a failure even though it contains the same figures.
-- [ ] **SRV-15** — In the same `.http` file add a request to something that is **not** Solr
-      (`GET https://api.github.com/repos/apache/solr` is enough) and run it. **Nothing this plugin
-      wrote may appear.** The presentation is called for every response the HTTP Client shows, so
-      printing over another service's output is the failure worth checking by hand.
-- [ ] **SRV-16** — In `queries.http`, insert *Query with a JSON body* and put the caret inside the
-      `"fields"` array. **With no connections configured at all**, completion offers the fields
-      declared in this project's configsets, each showing its type and which configset it came from.
-      Dynamic patterns like `*_i` appear in italics. Press it before SRV-1, or remove every
-      connection first: the selector falls back to the first connection whenever one exists, so "no
-      connection selected" is not a state a configured project can reach — an earlier revision of
-      this check asked for it anyway.
-- [ ] **SRV-16b** — Select a connection, make sure the `local` environment names a collection that
-      exists, and press <kbd>Ctrl-Space</kbd> in the same position. Completion now offers **that
-      collection's** fields, each reading `<collection> · <connection>`, and nothing a configset
-      declares that the collection lacks. Press it again: the list reappears at once, because the
-      schema was read once and remembered. Then add a second environment naming a *different*
-      collection — completion goes back to the configsets, since the plugin cannot know which
-      environment the toolbar has selected and will not guess.
-- [ ] **SRV-16c** — Close the popup, delete the field name and **type** one letter, so the popup
-      opens by itself. With a fresh connection (nothing read yet), it offers configset fields and
-      **sends nothing** — the server's log shows no `/schema` request. A keystroke must never open a
-      socket; only <kbd>Ctrl-Space</kbd> may.
-- [ ] **SRV-17** — The same completion works in `"sort"` and in a facet's `"field"`, and offers
-      **nothing** at `"limit"` or inside `"query"`. Query syntax is not handled yet, and offering
-      field names inside a phrase or a function call would be worse than offering none.
-- [ ] **SRV-18** — Open any other JSON file in the project — `package.json` will do — and invoke
-      completion inside a string. **No Solr field names may appear.** The contributor is registered
-      against JSON, so every JSON file in every project reaches it, and this is the failure worth
-      checking by hand.
+- [ ] **SRV-2** — The form refuses a URL with no scheme, naming the field, and accepts a path other than
+      `/solr`. *Solr behind a reverse proxy is ordinary.*
+- [ ] **SRV-3** — Reopen a connection with a stored password: the field is empty and says one is stored.
+      Change only the display name, OK, reopen: still stored. *An empty field must not read as "no
+      password".*
+- [ ] **SRV-4** — The **Solr** tool window opens on the right listing `Cores` → `books` (standalone) or
+      `Collections` → shards → replicas (cloud). Its stripe icon is the plugin's grey sunburst in light
+      and dark themes. On cloud, `books` and `shard1` start with a **green dot and no word `GREEN`**;
+      hovering shows `Health: GREEN`. A shard row shows no hash range; it is in the tooltip.
+- [ ] **SRV-5** — Stop Solr, Refresh: the failure appears **inline above the tree, once**, the tree
+      empties, and there is no popup or stale topology.
+- [ ] **SRV-6** — Start Solr, Refresh: the banner clears and the tree repopulates. Leave it a few minutes:
+      **nothing refetches on its own**.
+- [ ] **SRV-7** — With two connections, switching re-reads the other server, and the choice survives
+      reopening the project.
+- [ ] **SRV-8** — `curl 'http://localhost:8983/solr/books/update?commit=true' -H 'Content-Type:
+      application/json' -d '[{"id":"1","author_s":"Frank Herbert","price_f":9.99}]'`, then expand
+      **Fields**: `author_s` appears marked `← *_s`. *That field is in no configset; this is what the
+      view exists for.*
+- [ ] **SRV-9** — `price_f` shows its type and **no document count**; `author_s` shows one; `_root_`
+      shows `(unstored field)`. *A point field has no inverted index to count from.*
+- [ ] **SRV-10** — Collapsing and re-expanding **Fields** does not re-read the server; only Refresh does.
+      Confirm in Solr's request log.
+- [ ] **SRV-10a** — Right-click `products`: it is selected first, and the menu offers *Query products*
+      and *Explain Scoring in products*. *Query products* opens a scratch `solr-products.http` holding a
+      `GET`, and **nothing runs until you press run**, then SRV-13's summary. On **Fields**,
+      `category` offers *Find Documents with* and *Count Values of*; `description` only *Find
+      Documents with* (counting a tokenised field counts words). A shard offers nothing. A connection
+      with a user puts a comment naming the `Authorization` header in the file, and **no password**.
 
-**The query console.** Against the demo's `products`, with *Index the sample products* run. Every
-check from SRV-33 on starts with Settings → Tools → **Solr Connections** → *Open queries from the
-Solr tool window in* set to **Query console**, and SRV-40 ends by setting it back.
+### Queries in the HTTP Client
 
-- [ ] **SRV-32** — Settings → Tools → **Solr Connections**: below the list, *Open queries from the
-      Solr tool window in* reads **HTTP Client (a scratch .http file)** on a fresh sandbox. Right-click
-      `products` → *Query products*: a scratch `solr-products.http` opens, exactly as SRV-10a says.
-      **The default must change nothing.**
-- [ ] **SRV-33** — Choose **Query console** and press OK. Right-click `products` → *Query products*:
-      a tab **Query: products** opens with the Admin's form — `common`, `debugQuery`, `defType`,
-      *Raw Query Parameters* — `q` holding `*:*` and `rows` `10`, and **nothing has run**. Right-click
-      *Query products* again: the same tab comes forward, not a second one.
-- [ ] **SRV-34** — Press **Execute** (or <kbd>⌘Enter</kbd>): the request line shows
-      `…/products/select?q=*%3A*&rows=10&indent=true`, the **Results** tab the same summary and table
-      as SRV-13, and **Response** the JSON as sent. Click the request line: a scratch `.http` file
-      opens with `POST {{solrUrl}}/{{collection}}/select` and the form body, and no host. Run it
-      through the `local` environment: it matches the console's numbers.
-- [ ] **SRV-35** — Set `q` to `name:"usb & cable"`, or any value holding `&` and `+`, and execute:
-      Solr receives it whole — the summary is a real match count, not a 400 about a parameter named
-      `cable"`. **This is the reason the console exists.**
-- [ ] **SRV-36** — Choose `wt` **xml** and execute: no table, **Response** in front, holding XML
-      highlighted as XML. Set the handler to `/nosuch` and execute: *Solr answered 405* and the error
-      page under **Response** — 405 rather than 404 because the console sends a POST, which Jetty's
-      default servlet refuses for a path no handler serves. Set the handler to `dismax`: **nothing is sent**, and the status says
-      a handler is a path and names `handleSelect`.
-- [ ] **SRV-37** — `defType` starts at *(handler default)*. Choose **dismax**: `q.alt`, `qf` … `bf`
-      appear and `pf2` does not; choose **edismax**: `uf` … `lowercaseOperators` appear too. Type
-      `name^2` into `qf`, switch back to *(handler default)* and execute: the request line has no
-      `qf` and no `defType`.
-- [ ] **SRV-38** — In `fl`, type `na` and press <kbd>⌃Space</kbd>: the collection's fields, each
-      reading `products · local`, with `score`, `*` and `[docid]` beside them. Type a letter in `sort`
-      and let the popup open by itself: it offers fields **without a request reaching Solr** (watch
-      `docker compose -f demo/compose.yaml logs -f solr`).
-- [ ] **SRV-39** — Right-click `category` → *Find Documents with category*: the open tab's form now
-      holds `q` `category:*` and `fl` `id,category`. *Count Values of category*: `rows` `0` and the
-      three facet lines under *Raw Query Parameters*; execute, and **Response** holds
-      `facet_counts`.
-- [ ] **SRV-40** — With the tab open, remove the `local` connection in Settings: the tab closes. Add
-      it back, set *Open queries in* back to **HTTP Client**, and confirm SRV-32's scratch file again.
-- [ ] **SRV-19a** — Close the IDE with the **Drift** tab showing and reopen it: once indexing ends,
-      the configset chooser lists the project's configsets. Then copy a configset directory to a new
-      name and open the chooser — the copy is offered, and the configset already chosen is still
-      chosen. **This is the check the first server pass had no name for**: the list used to be read
-      once, while the IDE was still indexing, and stay empty until a restart. **Click the chooser
-      itself, with the mouse**: the list must open, and `idea.log` must gain no *Read access is
-      allowed from inside read-action only* from `SolrDriftPanel`. The fix for the stale list first
-      read the index inside that click, which throws in a running IDE and never in a test, so the
-      chooser silently refused to open.
-- [ ] **SRV-19b** — Open the **Collection** chooser in the **Drift** tab. It lists the selected
-      server's collections, each followed by *built from configset …* as the server reports it.
-      Type a name the list does not show and open the chooser again: the typed name survives. With
-      the connection pointed at a server that is down, opening the chooser lists nothing and raises
-      no error — Compare is what reports the failure.
-- [ ] **SRV-19** — In the **Drift** tab, choose a configset and a collection that exists, then
-      press Compare. A field present in the configset and not on the server reads *Not deployed*;
-      one added through the Schema API reads *Only on server*; one defined differently in each reads
-      *Differs* and **shows both definitions side by side**. A view that showed one side would hide
-      the disagreement in the place it exists to be shown. The demo's `solr` configset against its
-      `products` collection shows all three without editing either side: `sku` *Not deployed*,
-      `legacy` and `custom_text` *Differs*, and `manufacturer`, `_version_` and `plong` *Only on
-      server*.
-- [ ] **SRV-20** — Compare a configset against a collection created from it. The table is empty and
-      the line above it says the two agree **and how many declarations agreed**. That count is the
-      only thing distinguishing this from a comparison that never ran. **The configset has to be
-      deployable, and the demo's `solr/conf` is not**: its planted defects stop a core starting, so
-      no collection can be created from it. Use a copy with `custom_text`, `notes` and `legacy`
-      removed — `demo/README.md` says why.
-- [ ] **SRV-21** — Stop Solr and press Compare. The table stays empty and the failure is reported.
-      **No field may be listed as not deployed** — treating an unreachable server as an empty one
-      would report an entire schema as undeployed, in the view a user opens precisely when they are
-      unsure what is deployed.
-- [ ] **SRV-22** — With a drifted comparison on screen, press **Upload and Reload**. A confirmation
-      names the configset, the collection **and the server** before anything is written. Cancel:
-      nothing is uploaded. Confirm: the table is re-read and the difference clears. **Upload a
-      deployable configset**, as in SRV-20: uploading the demo's own `solr/conf` fails at the reload,
-      correctly, because a core cannot start on it — a real failure worth seeing once, but not this
-      check. Done against the demo's `products`, it leaves that collection on the broken configset;
-      `docker compose -f demo/compose.yaml down -v` and `up -d` rebuild it.
-- [ ] **SRV-23** — Point the connection at a **standalone** Solr and press Upload and Reload.
-      It refuses, saying the server is not running in SolrCloud mode, and **sends no upload** —
-      `/admin/configs` answers every action with HTTP 400 there, so trying anyway would report a
-      hard failure against a healthy server.
-- [ ] **SRV-24** — The one worth engineering a failure for. Edit the configset so Solr will accept
-      the upload but not apply it — delete the `_version_` field. Press Upload and Reload. **The
-      upload succeeds and the table must still show drift**, because the view reports what the
-      re-read found rather than what the write returned. A cleared table here is the defect this
-      whole path is built to prevent.
-- [ ] **SRV-25** — Produce a **Differs** row and select it. The pane below shows **the reason first**
-      and the `replace-field` request under it, and **Apply Additive Changes** is disabled. A reader
-      who meets the JSON before the warning may copy it, so the order is part of the check.
-- [ ] **SRV-26** — Produce a **Not deployed** row, select it to see its `add-field` payload, and
-      press **Apply Additive Changes**. Confirm names the count, the collection and the server. After
-      applying, the row is gone and the summary says the two agree **and how many declarations
-      agreed** — that count is what distinguishes a comparison that ran from one that did not. On the
-      demo's `products`, `sku` is already such a row. Applying it removes only that row: the
-      *Differs* and *Only on server* rows stay, because Apply never sends them. The summary goes from
-      *1 not deployed, 3 only on the server, 2 differing; 16 agree* to *0 not deployed, …; 17 agree*.
-- [ ] **SRV-27** — Make the only difference a **Differs** row. **Apply Additive Changes is disabled**
-      — a comparison with nothing additive in it offers no button at all, which is the honest reading
-      of "only additive changes get the second action".
-- [ ] **SRV-28** — Select a collection in the **Solr** window and press **Index a Test Document**.
-      The dialog names the collection **and the server** in its title, opens on a document carrying
-      the unique key first and then every other field the collection declares — numbers unquoted,
-      multi-valued fields as arrays — with no `_version_`, `_root_`, `_text_` or copy-field
-      destination among them, and reports no problems. **OK works without an edit.**
-- [ ] **SRV-29** — Change a field name to a typo. The dialog reports it and **OK is refused**. This
-      is the check worth engineering: pressing OK anyway against a `_default` collection would add
-      the field to the deployed schema, and Solr would report success.
-- [ ] **SRV-30** — Delete the `id` line. Refused again, for the other reason Solr answers `status: 0`
-      to. Restore it, add `"author_s": "x"` — accepted, because `*_s` matches. Add
-      `"_version_": 1` — a warning, and OK still works.
-- [ ] **SRV-31** — Index with the default commit setting, then immediately query the collection.
-      **The document is not there yet**, and that is correct — `commitWithin` is what the dialog
-      said. Wait a second, query again: it appears. Repeat with *findable immediately* and it is
+- [ ] **SRV-11** — In `queries.http`, **Add Request** (gutter `+` or Alt-Insert): a **Solr** group offers
+      five requests; insert *Query a Solr collection*. *The menu must show labels — a request body in
+      a label's place is a swapped `TemplateDescriptor` argument, which compiles fine.*
+- [ ] **SRV-12** — `http-client.env.json` defines **local** as `http://localhost:8983/solr` and the
+      `products` collection. Pick **local** and run: results in the HTTP Client's viewer. *The committed
+      file names no host, so a colleague can use their own server.*
+- [ ] **SRV-13** — Run *Query a Solr collection* on a collection with documents: above the raw JSON, the
+      match count, the time, and an aligned table. `_version_` is not a column, and the line above says
+      which internal fields were left out.
+- [ ] **SRV-14** — *Explain why documents scored*: each document's explanation keeps Solr's indentation.
+      *The nesting is the information.*
+- [ ] **SRV-15** — Run a request to something not Solr (`GET https://api.github.com/repos/apache/solr`):
+      **nothing from this plugin appears.**
+- [ ] **SRV-16** — **With no connections at all** (before SRV-1, or remove them), insert *Query with a
+      JSON body* and complete inside `"fields"`: the project's configset fields with type and configset;
+      `*_i`-style patterns in italics.
+- [ ] **SRV-16b** — Select a connection, with `local` naming an existing collection, and press
+      <kbd>Ctrl-Space</kbd> there: **that collection's** fields, each `<collection> · <connection>`, and
+      nothing it lacks. Again: the list returns at once (schema read once). Add a second environment
+      naming another collection: completion falls back to the configsets. *The plugin cannot know which
+      environment is selected and will not guess.*
+- [ ] **SRV-16c** — Delete the name and **type** one letter so the popup opens by itself. With a fresh
+      connection it offers configset fields and **sends nothing** — no `/schema` in the server's log.
+      *A keystroke never opens a socket; only <kbd>Ctrl-Space</kbd> may.*
+- [ ] **SRV-17** — The same completion works in `"sort"` and a facet's `"field"`, and offers nothing at
+      `"limit"` or inside `"query"`.
+- [ ] **SRV-18** — Complete inside a string in another JSON file (`package.json`): **no Solr field
+      names.** *The contributor is registered against all JSON.*
+
+### The query console
+
+Against the demo's `products`, with *Index the sample products* run. From SRV-33 on, Settings → Tools →
+**Solr Connections** → *Open queries from the Solr tool window in* is set to **Query console**; SRV-40
+sets it back. Confirm each Execute in Solr's request log; a green read off the screen alone has been
+wrong here.
+
+- [ ] **SRV-32** — On a fresh sandbox the setting reads **HTTP Client (a scratch .http file)**, and
+      *Query products* opens the scratch file as in SRV-10a. *The default must change nothing.*
+- [ ] **SRV-33** — Choose **Query console**, OK, *Query products*: a **Query: products** tab with the
+      Admin's form — `common`, `debugQuery`, `defType`, *Raw Query Parameters* — `q` `*:*`, `rows` `10`,
+      **nothing run**. Choosing it again brings the same tab forward.
+- [ ] **SRV-34** — **Execute** (<kbd>⌘Enter</kbd>): the request line shows
+      `…/products/select?q=*%3A*&rows=10&indent=true`, **Results** SRV-13's summary and table,
+      **Response** the JSON. Clicking the request line opens a scratch `.http` with
+      `POST {{solrUrl}}/{{collection}}/select`, the form body and no host; run through `local`, it gives
+      the same numbers.
+- [ ] **SRV-35** — Set `q` to `name:"usb & cable" +category:electronics` and execute: Solr receives it
+      whole — a real match count, not a 400. *This is why the console exists.*
+- [ ] **SRV-36** — `wt` **xml**: no table, **Response** in front with highlighted XML. Handler `/nosuch`:
+      *Solr answered 405* and the error page — 405 because Jetty refuses a POST to an unserved path.
+      Handler `dismax`: **nothing sent**, and the status names `handleSelect`.
+- [ ] **SRV-37** — `defType` starts at *(handler default)*. **dismax** shows `q.alt`, `qf` … `bf`, not
+      `pf2`; **edismax** adds `uf` … `lowercaseOperators`. Type `name^2` in `qf`, return to *(handler
+      default)*, execute: no `qf` and no `defType` on the request line. Solr's echoed params still list
+      `/select`'s own `defType` and `qf` defaults; that is the handler default, not a failure.
+- [ ] **SRV-38** — In `fl`, type `na` and <kbd>⌃Space</kbd>: the collection's fields as
+      `products · local`, plus `score`, `*`, `[docid]`. Type a letter in `sort` and let the popup open:
+      fields, **with no request reaching Solr** (`docker compose -f demo/compose.yaml logs -f solr`).
+- [ ] **SRV-39** — Right-click `category` → *Find Documents with category*: the open tab holds `q`
+      `category:*`, `fl` `id,category`. *Count Values of category*: `rows` `0` and three facet lines;
+      execute, and **Response** holds `facet_counts`; **Results** reads *… none returned*, never
+      *showing 1 to 0*.
+- [ ] **SRV-40** — Remove the `local` connection with the tab open: the tab closes. Add it back, set the
+      choice back to **HTTP Client**, and SRV-32's scratch file returns.
+
+### Drift, upload and apply
+
+Writing checks — SRV-22, 24 and 26 — go to a collection you can spare. **The demo's `solr/conf` cannot
+be deployed**: its planted defects stop a core starting. Where a check needs a deployable configset, use
+a copy with `custom_text`, `notes` and `legacy` removed; `demo/README.md` says why.
+
+- [ ] **SRV-19a** — Close the IDE with the **Drift** tab showing and reopen: once indexing ends, the
+      configset chooser lists the project's configsets. Copy a configset directory to a new name and open
+      the chooser: the copy is offered, and the current choice survives. **Click the chooser with the
+      mouse**: it opens, and `idea.log` gains no *Read access is allowed from inside read-action only*
+      from `SolrDriftPanel`. *It throws in a running IDE and never in a test.*
+- [ ] **SRV-19b** — Open the **Collection** chooser in the **Drift** tab: the server's collections, each
+      followed by *built from configset …* as the server reports it. A typed name the list lacks
+      survives reopening the chooser. With the server down, the chooser lists nothing and raises no
+      error — Compare reports the failure.
+- [ ] **SRV-19** — Choose a configset and an existing collection, Compare. A field only in the configset
+      reads *Not deployed*; one added through the Schema API, *Only on server*; one defined differently,
+      *Differs*, **with both definitions side by side**. The summary names the Solr line, e.g.
+      *Solr 10.0*. The demo's `solr` against `products` shows all three unedited: `sku` *Not deployed*;
+      `legacy` and `custom_text` *Differs*; `manufacturer`, `_version_` and `plong` *Only on server*.
+      Widen the two definition columns if a *Differs* row looks identical
+      ([known](user-guide.md#closing-a-difference-between-the-repository-and-a-server)).
+- [ ] **SRV-20** — Compare a deployable configset against a collection created from it: an empty table,
+      and the summary says they agree **and across how many declarations**. *The count is all that
+      distinguishes this from a comparison that never ran.*
+- [ ] **SRV-21** — Stop Solr, Compare: the table stays empty and the failure is reported. **No field may
+      read *Not deployed*.** *An unreachable server is not an empty one.*
+- [ ] **SRV-22** — With drift on screen, **Upload and Reload**: a confirmation names the configset, the
+      collection **and the server**. Cancel: nothing uploaded. Confirm (a deployable configset): the
+      table is re-read and the difference clears. Uploading the demo's own `solr/conf` fails at the
+      reload, correctly; `docker compose -f demo/compose.yaml down -v` and `up -d` rebuild `products`.
+- [ ] **SRV-23** — Against a **standalone** Solr, Upload and Reload refuses, saying the server is not in
+      SolrCloud mode, and **sends no upload**. *`/admin/configs` answers HTTP 400 there.*
+- [ ] **SRV-24** — Delete `_version_` from the configset, Upload and Reload: the upload succeeds and **the
+      table still shows drift**. *The view reports what the re-read found, not what the write returned.*
+- [ ] **SRV-25** — Select a **Differs** row: the pane shows **the reason first**, the `replace-field`
+      request under it, and **Apply Additive Changes** disabled. *A reader who meets the JSON first may
+      copy it.*
+- [ ] **SRV-26** — Select a **Not deployed** row (`sku` on `products`): its `add-field` payload shows.
+      **Apply Additive Changes**: the confirmation names the count, collection and server. Afterwards
+      only that row is gone — *1 not deployed, 3 only on the server, 2 differing; 16 agree* becomes
+      *0 not deployed, …; 17 agree*.
+- [ ] **SRV-27** — With only **Differs** rows, **Apply Additive Changes is disabled**.
+
+### Indexing a test document
+
+- [ ] **SRV-28** — Select a collection, **Index a Test Document**: the title names the collection **and
+      the server**; the document carries the unique key first, then every other declared field —
+      numbers unquoted, multi-valued fields as arrays — with no `_version_`, `_root_`, `_text_` or
+      copy-field destination, and no problems reported. **OK works without an edit.**
+- [ ] **SRV-29** — Misspell a field name: reported, and **OK is refused**. *Against `_default`, Solr would
+      add the field to the schema and report success.*
+- [ ] **SRV-30** — Delete the `id` line: refused. Restore it, add `"author_s": "x"`: accepted (`*_s`
+      matches). Add `"_version_": 1`: a warning, and OK still works.
+- [ ] **SRV-31** — Index with the default commit and query at once: **not there yet**, correctly —
+      `commitWithin`, as the dialog said. A second later it appears. With *findable immediately*, it is
       there at once.
 
 ## 14. Field names and queries in Java and Kotlin (CODE)
 
-*Automated: `SolrJRecognizerTest`, `SolrJBeanFieldTest`, `SolrJDocumentFieldTest`,
-`SolrJModuleGateTest`, `SolrUnknownCodeFieldInspectionTest`, `SolrCodeFieldCompletionTest`,
-`SolrCodeFieldAutoPopupTest`, `SolrQueryExpressionTokenTest`, `SolrCodeFieldReferenceTest`,
-`SolrRunQueryLineMarkerTest`, `SolrQueryRunnerTest`, `SolrQuerySpansTest`, `SolrQueryHighlightTest`,
-`SolrQueryColorSettingsPageTest`. Manual adds: **that any of it is visible**. A fixture can compare a
-colour against a scheme's string colour and can see a popup open, but a gutter icon, a colour and a
-popup on a real screen are things a headless test can only assert the existence of.*
+The subject is `demo/src/main/java/com/example/demo/ProductSearch.java`: one correct query and two
+planted defects. *A headless test can assert a gutter icon, a colour or a popup exists, not that it is
+visible.*
 
-*The subject is `demo/src/main/java/com/example/demo/ProductSearch.java`. It holds both a correct
-query and two planted defects, so every check below is one file.*
-
-- [ ] **CODE-1** — `findBooks` warns on `categry` in `addFilterQuery("categry:books")`, and
-      **underlines the name rather than the whole string**. The quotes and `books` are fine; showing
-      that is the difference between naming the mistake and pointing at the line.
-- [ ] 📸 **Capture `docs/images/26-code-field-warning.png`** — lines 43–47, holding both this check
-      and CODE-3 below, with `id` and `name` unmarked in the same literal; see
-      [entry 26](screenshots.md).
-- [ ] **CODE-2** — The same warning offers `category` as a fix, closest spelling first. Applying it
-      leaves the rest of the string untouched.
-- [ ] **CODE-3** — `price` in `setFields("id,name,price")` warns too. **This is the second defect and
-      a different one**: `categry` is a typo for a field that exists, `price` is a field that never
-      has.
-- [ ] **CODE-4** — In `findSolrBooks`, nothing warns. Every name there is declared, and a check that
-      cannot stay quiet on correct code is worse than no check.
-- [ ] **CODE-5** — In that same query, `category` and `name` are coloured as fields and `AND` as an
-      operator — **three colours in one string, none of them the string's own green and none the
-      plain-text grey**, in the default light theme and in the default dark one. Change `AND` to
-      lowercase `and`: **the colour goes**, because Solr reads it as a term rather than an operator.
-      Then open *Settings → Editor → Color Scheme → Solr Query*: the preview shows both colours
-      against a string, and changing either repaints the query in the editor.
-- [ ] 📸 **Capture `docs/images/27-code-query-colour.png`** — lines 37–39 with `AND` still
-      uppercase, default light theme, caret out of frame; see [entry 27](screenshots.md).
-- [ ] **CODE-6** — Put the caret inside `addFilterQuery("` and **type `c` without pressing
-      anything else**: the list opens by itself, holding the demo configset's fields that start
-      with `c`, each showing its type and configset. **No `*_t` or other dynamic pattern, and no
-      words or file names** — only fields a filter query can search. Type `ategory:` and then `b`:
-      **nothing opens**, because the caret is in the value. In `setFields("id,name,price")`, type a
-      comma after `id`: the list opens again, for the next name. Type a letter in an ordinary string
-      elsewhere in the file: nothing opens, as before.
-- [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`. It lands on
-      `<field name="category">` in `solr/conf/managed-schema.xml`. **This is the boundary nothing
-      else in the IDE crosses** — the Java file belongs to no configset.
-- [ ] 📸 **Capture `docs/images/28-code-navigate-to-schema.png`** — both files side by side, via
-      *Window → Editor Tabs → Split and Move Right*; see [entry 28](screenshots.md).
-- [ ] **CODE-8** — <kbd>Ctrl-click</kbd> `categry` in `findBooks`: nothing resolves. The check and
-      the navigation are two halves of one answer, and disagreeing here would be the plugin
-      contradicting itself.
-- [ ] **CODE-9** — A gutter icon sits beside the `setQuery` in `findSolrBooks`, and **beside nothing
-      else in the file** — not the `addFilterQuery`, not the `setFields`.
-- [ ] **CODE-10** — Click it with a connection selected. A list of that server's collections appears;
-      choosing one runs the query and shows the answer where you are reading. The rendering is the
-      same one the query console prints above a response. **The chooser opens at the editor's
-      top-right corner**, not beside the icon.
-- [ ] 📸 **Capture `docs/images/29-code-run-from-gutter.png`** — the chooser open, not the result,
-      framed to hold the gutter icon as well; see [entry 29](screenshots.md).
-- [ ] **CODE-11** — Click it with no connection configured: it says so, and sends nothing.
-- [ ] **CODE-12** — Open a Kotlin file using SolrJ. Everything above behaves identically — one
-      recognizer serves both languages, and a difference here is the thing UAST was chosen to
-      prevent.
-- [ ] **CODE-13** — Open any Java file in a module with no Solr client. **No colour, no icon, no
-      warning, no completion.** The registrations name no language, so every file in the IDE reaches
-      them; this is the check that they stay quiet in the projects that have never heard of Solr.
-
-## Not yet in the suite
-
-Checks join a section above when their feature ships; **which features those are is the
-[plan's](../specs/plans/0002-solr-intellij-plugin-plan.md) to say**, not this file's. The
-list below is what the suite does not yet cover, and says nothing about what is built —
-finding one of these gestures alive means the suite is behind, not that something is wrong:
-
-- The query console's history, and its facet, highlighting and spellcheck sections
-- Framework configuration, and any Solr client that is not SolrJ — Spring Data, Camel
-- `omitNorms` and `docValues` resolved from the field type's class. Both report *see the
-  guide* today, which is the honest answer while the catalog cannot say which traits a
-  type carries — [the check that a field's property table reports a version-derived
-  default](#5-quick-documentation-doc)'s version resolution settles a different pair of properties
-- A configuration element **removed between two supported Solr lines**, which is a different check
-  from [the discontinued-element check](#6-inspections-and-quick-fixes-insp) and has nothing to
-  press: the two lines differ by one element, `featureVectorCache`,
-  *added* in 10. Nothing was removed, so there is no gesture until a future line drops something
-- **Do not read INSP's length as an inspection count** — eleven inspection classes exist, and the
-  [INSP checks above](#6-inspections-and-quick-fixes-insp) are scenarios over them rather than one
-  apiece: [INSP-1 and INSP-3](#6-inspections-and-quick-fixes-insp) are both the
-  dangling-`copyField` inspection, once on a written edit and once on a live deletion;
-  [INSP-10 to INSP-12](#6-inspections-and-quick-fixes-insp) are the two `solrconfig.xml` field
-  checks, including one scenario whose whole point is
-  that the two disagree about the same field; and [INSP-9](#6-inspections-and-quick-fixes-insp)
-  restores the baseline rather than testing
-  anything. **Four of the eleven belong to plan steps other than the inspections one**, and their
-  checks sit here all the same: the two attribute checks at
-  [INSP-5 and INSP-6](#6-inspections-and-quick-fixes-insp), the misspelled
-  parameter at [INSP-14](#6-inspections-and-quick-fixes-insp), and the unsupported field operation at
-  [INSP-10 to INSP-12](#6-inspections-and-quick-fixes-insp). The seven the
-  inspections step plans have a gesture apiece at
-  [INSP-1 to INSP-4, INSP-7, INSP-8, INSP-13 and INSP-15](#6-inspections-and-quick-fixes-insp) —
-  all seven, since the last two of those were written. **A gesture is not a pass**; which
-  of them anyone has pressed is the [pass log](#pass-log)'s to say and no other line's
-
-### 2026-08-10 — the `solrconfig.xml` checks, and what pressing them settled
-
-Seven checks, all green, and two of them told me more than they were written to.
-
-- **PRM-1** — completion inside the `/select` handler's `qf` offers every declared field with its type
-  as tail text, and `*_t` appears as the dynamic pattern. Ten entries for nine fields and one pattern.
-- **PRM-2** — `<str name="rows">` reports **No suggestions**. Positive evidence rather than an absent
-  popup, which matters: an empty crop of the screen looks the same as a correct refusal.
-- **PRM-3** — a caret immediately after the `^` in `name^3` reports **No suggestions**. Completing
-  there would have produced `name^name`.
-- **PRM-4** — both halves. Fields are offered at the start of a `sort` clause, and **No suggestions**
-  inside the direction. **The offered list withheld `text`, which the `qf` list had included** — `text`
-  is `multiValued`, so it is searchable and unsortable, and completion said so without being asked to.
-  That is INSP-12's argument arriving from the completion side.
-- **PRM-5** — Quick Documentation on `description` inside the `qf` shows *the field's* popup: its type,
-  *Matches: tokenised, case-insensitive*, and the full property table. Reached through reference
-  resolution rather than a documentation branch written for it, and the **Meaning** column is populated
-  — the hand-written attribute meanings rendering where no fixture had shown them. `uninvertible`
-  reads *Solr default at schema version 1.6*, which is the version derivation doing its job in the
-  same table.
-- **INSP-10** — `<str name="sort">text asc</str>` underlines `text` with, verbatim: *Solr: 'sort' will
-  fail on 'text' — it needs doc values or an un-invertible index, and for sorting a single value per
-  document*. **This is the message that was reworded because the original was false for a multiValued
-  field**, and this is the field it was false about.
-- **INSP-11, clean half** — a `facet.field` on `category` fires nothing at the demo's `version="1.6"`,
-  because `uninvertible` defaults true below 1.7.
-
-**INSP-11's version flip was pressed on the second attempt, and it found that the check was wrong.**
-With the schema at `version="1.7"` and the `facet.field` in place, the file was **completely clean** —
-no warning at all. That is correct behaviour: 1.7 is *also* the version at which `solr.StrField` gains
-doc values by default, which the generated catalog records for it as `primitive,docValuesByDefault`,
-so flipping the version makes `category` **more** facetable rather than less. A version flip cannot
-demonstrate an unfacetable `string` field, and the check as written was testing the wrong lever. Both
-INSP-11 and INSP-12 are rewritten around a declared `docValues="false"`, which is an absence the schema
-states rather than one a default supplies.
-
-**INSP-12 was then pressed against the rewritten setup, and passes.** With `category` carrying
-`docValues="false"` and the schema at `version="1.7"`, exactly one warning appears in the file, on
-`category` inside the `facet.field`, reading *Solr: 'facet.field' will fail on 'category' — it needs doc
-values or an un-invertible index, and for sorting a single value per document*. The same `category` in
-the `qf` two lines above is unmarked. One field, searchable and unfacetable, and the two inspections
-disagreeing about it exactly as they should.
-
-**One wart, seen only by reading the rendered message — since fixed.** That warning mentioned *sorting*
-while reporting a *facet*. The text had been made cause-neutral on purpose, listing what the operation
-needs rather than asserting which part is missing, and the cost was a clause about single values in a
-faceting warning — a requirement faceting does not have, on the kind of field one usually facets. The
-two operations now carry separate messages, and a test asserts they name only their own requirements.
-
-**Why nothing caught it, which is the transferable part.** Every fixture interpolated the same template
-it verified, so the message agreed with itself for both operations everywhere it was asserted. A test can
-check that a warning *says what this code produces*; only a reader can check that it *says something
-true about the thing being reported*. That is the class of defect this suite exists for.
-
-**The mechanical lesson, which cost two attempts.** An edit written to disk is reverted by the IDE
-whenever it holds that file in an open editor — the first attempt read 1.6 back within milliseconds and
-looked like a failed write. Closing all tabs first makes disk edits stick, and the same write then
-persisted indefinitely. Also: **Go to File is ⇧⌘N in this keymap, not ⇧⌘O**; the wrong shortcut typed a
-file name into `solrconfig.xml` and left it malformed. The IDE's own empty-editor screen lists the
-correct shortcuts, which is the cheapest place to check.
-
-**On driving the sandbox at all.** Two hazards are worth writing down. The sandbox runs as a process
-named `java`, while a developer's own IDE is `idea` — sending keystrokes to the wrong one edits real
-files, and the window title (`solr-plugin-demo – …`) is what tells them apart. And typing XML through
-System Events fights auto-close: a partially typed element left the file malformed and produced two
-XML *errors* that could not be told apart from the plugin's warnings. Editing the file on disk and
-letting the IDE reload was reliable for `solrconfig.xml`; it is exactly what failed for the schema.
+- [ ] **CODE-1** — In `findBooks`, `categry` in `addFilterQuery("categry:books")` is marked, **the name
+      only**, not the whole string.
+- [ ] 📸 **`docs/images/26-code-field-warning.png`** — lines 43–47, holding CODE-1 and CODE-3 with `id` and
+      `name` unmarked; see [entry 26](screenshots.md).
+- [ ] **CODE-2** — The fix offers `category`, closest first, and leaves the rest of the string alone.
+      Undo.
+- [ ] **CODE-3** — `price` in `setFields("id,name,price")` is marked. *A field that never existed, where
+      `categry` is a typo.*
+- [ ] **CODE-4** — Nothing in `findSolrBooks` is marked. *A check that cannot stay quiet on correct code
+      is worse than none.*
+- [ ] **CODE-5** — In that query, `category` and `name` are coloured as fields and `AND` as an operator —
+      three colours, none the string's green nor plain grey — in the default light and dark themes.
+      Lowercase `and` loses its colour (Solr reads it as a term). *Settings → Editor → Color Scheme →
+      Solr Query* previews both, and changing either repaints the editor.
+- [ ] 📸 **`docs/images/27-code-query-colour.png`** — lines 37–39, `AND` uppercase, default light theme,
+      caret out of frame; see [entry 27](screenshots.md).
+- [ ] **CODE-6** — Caret inside `addFilterQuery("`, **type `c`**: the list opens by itself with the
+      configset's fields starting `c`, each with type and configset — no `*_t` or other dynamic
+      pattern, words or file names. After `category:`, typing `b` opens nothing (a value). In
+      `setFields("id,name,price")`, a comma after `id` opens it again. An ordinary string elsewhere
+      opens nothing.
+- [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`: lands on `<field name="category">`
+      in `solr/conf/managed-schema.xml`. *The Java file belongs to no configset.*
+- [ ] 📸 **`docs/images/28-code-navigate-to-schema.png`** — both files side by side via *Window → Editor
+      Tabs → Split and Move Right*; see [entry 28](screenshots.md).
+- [ ] **CODE-8** — <kbd>Ctrl-click</kbd> `categry` in `findBooks`: nothing resolves. *The check and the
+      navigation must agree.*
+- [ ] **CODE-9** — A gutter icon beside `setQuery` in `findSolrBooks`, and beside nothing else.
+- [ ] **CODE-10** — Click it with a connection selected: the chooser opens **at the editor's top-right
+      corner**, not beside the icon, listing the server's collections; choosing one runs the query and
+      renders the answer as the console does.
+- [ ] 📸 **`docs/images/29-code-run-from-gutter.png`** — the chooser open, framed to hold the gutter
+      icon; see [entry 29](screenshots.md).
+- [ ] **CODE-11** — Click it with no connection configured: it says so and sends nothing.
+- [ ] **CODE-12** — A Kotlin file using SolrJ behaves identically. *One UAST recognizer serves both.*
+- [ ] **CODE-13** — A Java file in a module with no Solr client: **no colour, icon, warning or
+      completion.** *The registrations name no language, so every file reaches them.*
 
 ## Pass log
 
-One row per pass, finished or not. Scope names what was skipped and why, if anything.
-
-**A pass is all-or-nothing, and so is its row.** A row left at *in progress* is not a
-partial result — it is a pass whose outcome nobody knows, which is the same evidence as no
-pass at all. The two below are recorded as unfinished rather than deleted, because knowing
-a pass was started and abandoned is worth more than a gap.
-
-**Of the sixteen checks added at `2d393fc`, five have been pressed** — INSP-13, STR-1, STR-3, STR-5
-and DIM-1, of which STR-5 failed and was rewritten. Sections 11 (DIM) and 12 (INT), STR-2 and STR-4,
-checks INSP-14 and INSP-15, and NAV-9 and NAV-10 were written from the shipped behaviour and its
-automated coverage, not from a sandbox. They are gestures with an expected
-outcome and no evidence — which is what every check here is until a pass row says otherwise, and
-the reason this list is worth as little as its last row.
-
-| Date | Commit | Ran by | Scope | Result | Notes |
-|---|---|---|---|---|---|
-| 2026-07-30 | e4a35ac | | full suite | **not completed** | first pass with this document; superseded before it closed |
-| 2026-08-01 | a2e0bc5 | | full suite | **not completed** | sandbox relaunched to verify the catalog completion, typed-attribute inspections and resource/handler navigation merged since the previous pass |
-| | 4b9cbf9 | | full suite | *pending* | the first pass that can close DOC-5 and COMP-6, and the one the outstanding screenshots come from |
-| 2026-08-03 | fab0922 | Claude | full suite as it stood at that commit | **passed** | superseded by the row below, which covers the same checks plus the two that shipped after it |
-| 2026-08-04 | c924f43 | Claude | full suite | **passed** | every check green, including DOC-7 and all three halves of the ordering INSP-7. Scope notes below |
-| 2026-08-10 | 029fb18 | Claude | PRM-1…5, INSP-10, INSP-11, INSP-12 | **not completed** | every `solrconfig.xml` check pressed and green — the nine added for the parameter work. INSP-11's version flip found the *check* wrong rather than the plugin, so it and INSP-12 were rewritten and then pressed against a declared `docValues="false"`. Driven through macOS accessibility scripting against the sandbox — see the notes below |
-| 2026-08-06 | 88a9679 | Claude | ACT-1, HINT-1…5, BASE-1, BASE-2, NAV-1, NAV-2, NAV-3, NAV-4, NAV-5, NAV-6, NAV-7, REN-1, REN-2, REN-4, REN-5, DOC-1, DOC-4, DOC-7, DOC-8, DOC-9, COMP-5, CAT-1, INSP-1 | **not completed** | twenty-seven checks pressed and green; the rest were not. Driven through macOS accessibility scripting rather than by hand — see below |
-| 2026-08-15 | c95df07 | Claude | BASE-2, INSP-13 | **superseded** | both halves of INSP-13 green, and BASE-2 observed either side of them. Two checks only — the rest of the sections added at `2d393fc` were not pressed. The method notes below matter more than the result: the first attempt at this pass typed into the wrong application. **INSP-13's green is no longer evidence**: it was measured against a position Solr does not read — see the 2026-08-16 note |
-| 2026-08-15 | c95df07 | Claude | STR-1, STR-3, STR-5 | **not completed** | STR-1 and STR-3 green. **STR-5 failed and the check was wrong, not the plugin** — rewritten, and split, as STR-5 and STR-6. See the notes below |
-| 2026-08-15 | 3c69baf | Claude | BASE-1, DIM-1 | **not completed** | both green, and BASE-1 exact: seven problems of which precisely two begin `Solr:`, the other five being the platform's spellchecker and locale inspection, as that section's note predicts. DIM-1 confirms the audit — the dim was already in the baseline and needed no edit |
-| 2026-09-26 | 96453c0 on f2bc630 | Claude | SRV-1, SRV-4, SRV-8, SRV-9, SRV-12, SRV-14, SRV-16b, SRV-19, SRV-20, SRV-26, SRV-28, SRV-29 green; SRV-3, SRV-13, SRV-25 in part | **not completed** | the first time the server track was pressed in a running IDE, and it holds up: every check pressed behaved as written. **Two defects found that no check names**, one of them user-visible — the drift view's configset list is read once and never again. Driven through macOS accessibility scripting, against a throwaway SolrCloud 10.0.0 container and a user's own Solr 9.10.1 for the read-only checks. Nine captures taken: entries 19 to 25, 30 and 31. See the notes below |
-| 2026-09-28 | main at 888e5f5 with #246 and #250 | owner, then Claude | the owner's full pass by the checklist; then Claude re-pressed each finding's fix: BASE-1, INSP-2, DIM-1, SRV-4, SRV-19, SRV-19b, SRV-22, SRV-28, CODE-5, CODE-6 | **not completed** | the first pass run by the owner. Nine findings, each fixed on its own branch and re-pressed on the combined build, and two more found while re-pressing. See the notes below |
-| 2026-09-28 | 53d5592, then this fix | Claude | ACT-3, ACT-4, ACT-5 | **not completed** | the configset settings page and the mark action, pressed for the first time. ACT-5 green at once; ACT-3 and ACT-4 failed first and are green on the fix. Also found the Spring Boot discovery broken in a real IDE, which took it out of 0.2.0. See the notes below |
-| 2026-10-20 | d8bdf94 (#266) | owner, then Claude | SRV-10a, SRV-32 to SRV-40 | **not completed** | the query console's first pass, against the demo's SolrCloud 10.0.0 `products`. Every check green. **SRV-36 was wrong about one status, not the plugin**: a form POST to `/nosuch` is answered 405 by Jetty, not 404 — rewritten. **Two defects found that no check names**: a shard row showed its hash range as a bare hex pair (#278), and a `rows=0` answer was summarised as "showing 1 to 0" (#279). SRV-35, 36, 37 and 39 were driven through the sandbox's own MCP server and confirmed in Solr's request log. Not completed because only these eleven checks were in scope. See the notes below |
-| 2026-08-16 | 9a47fc1 | Claude | STR-1, STR-2, STR-3 | **not completed** | pressed against the corrected element catalog, and the reason they were pressed is that a generator fix moved ten element names. All three green. STR-2 is the one worth having: eighteen elements offered inside `<query>` — `filterCache`, `cache`, `featureVectorCache`, `HashDocSet`, `listener`, `maxWarmingSearchers` and the rest — with `dataDir` absent, which is the *arrival* half nothing had ever observed. STR-3 green with a caveat below. Two captures taken: entries 17 and 18 |
-
-**The 2026-08-06 row is deliberately *not completed*, and the scope is the point.** Twenty-seven
-checks were pressed, all twenty-seven green:
-
-- **ACT-1 and HINT-1…5** — the plugin is alive on open and every hint renders inline. `string`
-  fields read *whole value, case-sensitive*; `text_general` ones *tokenised, case-insensitive*;
-  `name_prefix` adds *prefix-capable*. Both of HINT-5's silences are visible together: `notes`
-  keeps its storage-shape phrases and drops the match claim, while `legacy` — whose type nothing
-  declares — shows no hint at all.
-- **NAV-1, NAV-2, NAV-4, NAV-5** — Go to Declaration lands where it should from every reference
-  kind: a field's `type` reaches the `fieldType` at 31:20, a `copyField`'s two ends reach 68:16
-  and 72:16, a `qf` name in `solrconfig.xml` crosses the file boundary to 71:16, and a filter's
-  `words=` opens `stopwords.txt`.
-- **INSP-1** — the planted `manufacturer` copy rule offers exactly the six fixes catalog entry 4
-  predicts: `*_t`, `category`, `description`, `legacy`, `name`, `notes`. `sku`, `id`, `text` and
-  `name_prefix` are absent, which is the closest-spelling ranking doing the choosing rather than
-  the list being arbitrary — and `*_t` leading it is the alphabetical tiebreak the entry already
-  explains. Pressed on the planted rule, so no edit and no undo. Image 4 re-shot from it.
-- **COMP-5 and CAT-1** — completion carries what the catalog and the model know. A field's `type=`
-  offers the four declared types *with what each one matches attached* — and `custom_text`, whose
-  chain names an unrecognised factory, falls back to naming its class rather than claiming a match,
-  the same silence HINT-5 shows. On a `<fieldType>`, `class=` offers field type classes; on a
-  `<filter>`, factories — including the Japanese and Korean ones that only appear because
-  `solr-analysis-extras` is resolved. The two class kinds never mix.
-- **DOC-1** — the field popup carries what no external documentation can: *Matches: whole value,
-  case-sensitive*, and a property table whose **From** column separates *on this field*, *from the
-  field type* and *Solr default*.
-- **BASE-1 / BASE-2** — the schema reports exactly two findings and `solrconfig.xml` reports none,
-  which is the baseline every later check restores to.
-- **REN-4 / REN-5** — renaming `*_t` to `*_txt` left the `pf` naming `body_t` exactly as written,
-  and `solrconfig.xml` went from zero findings to one: the unknown-field inspection reporting the
-  name the rename orphaned. That pair is the decision made visible. Undone afterwards.
-- **DOC-4 / DOC-7 / DOC-8** — the class *value* answers with its Javadoc summary and *Used by 3
-  field types*; the `class` attribute *name* now answers for itself rather than deferring to its
-  element; and `minGramSize` shows owner, type and required marker with no prose row.
-
-- **NAV-3** — the `text_general` declaration returns four usages: `name`, `description`, `text`
-  and the `*_t` dynamic field. Four, not the three an older screenshot caption promised.
-- **NAV-6** — `<dynamicField name="*_t">` returns one usage, the `pf` at `solrconfig.xml:31`,
-  highlighted at `body_t` alone. That gesture returned an empty list before declarations became
-  targets.
-- **NAV-7** — the labels. The header reads **Field type** over `text_general` and **Dynamic
-  field** over `*_t`; the groups read **Field declaring this type** and **Handler parameter in
-  solrconfig.xml**. Neither *Solr Declaration Target* nor *Unclassified* appears anywhere.
-- **REN-1** — the rename dialog reads *Rename field 'category' and its usages to:*, which is the
-  same description NAV-7 checks, reached by a second refactoring.
-- **REN-2** — renaming to `product_category` updated `solrconfig.xml:28`'s `qf` across the file
-  boundary; undo restored both files, and the demo is clean on disk.
-- **DOC-9** — `version` answers with the general rule and then *At 1.6, `docValues` defaults
-  off; `uninvertible` defaults on; `autoGeneratePhraseQueries` defaults off.*
-
-**DOC-9 also found a defect, which is the argument for pressing things.** The popup rendered its
-opening sentence twice — the structural table's entry for `version` restated what the paragraph
-beneath it already said. Every headless assertion passed either way, because each checked for a
-substring rather than for the whole. Fixed in the same change that records this row.
-
-**A second finding, from DOC-7.** The factory attribute popup already carries a *per-attribute*
-Reference Guide link — `minGramSize` on solr.apache.org — alongside the per-class one. That was not
-known when the hand-written prose table was drafted, and it settles the question the withdrawal
-turned on: the prose would have duplicated a link that is already there, already per-attribute, and
-always current.
-
-**What was not pressed:** ACT-2, INSP-2…9, COMP-1, COMP-2, COMP-3, COMP-4, COMP-6, CAT-2, DOC-2, DOC-3, DOC-5, DOC-6,
-DOC-10, REN-3, and the screenshot items other than image 7. None of them is known to be broken; none was looked at. The
-boxes above stay unticked for that reason — a partial tick reads as a pass to everyone who did not
-run it.
-
-**About the two rows above this note.** The first covers the suite as it stood before
-`SolrAnalyzerChainOrderInspection` and the per-attribute hover landed; the second re-ran BASE
-against them and closed the checks they brought. Three things still qualify the second row.
-
-*NAV-5 was exercised on `words=` alone.* The demo declares no `synonyms=`, no `protected=`,
-no `<charFilter>` `mapping=` and no `lang/` path, so the rest of that check has no fixture to
-press. Either the demo grows one or the check should say what it can cover.
-
-*The ordering inspection has nothing to find in the committed demo, by construction.* Neither
-rule can match a chain that declares no graph filter and no case-splitting one, which is why
-BASE still counts two — INSP-7 plants what it needs and takes it away again, and that is the
-only reason the rule ever fires here.
-
-*Undo is the fragile step when a pass is scripted rather than typed.* Unwinding a long chain
-of synthetic keystrokes twice left the buffer mid-edit, once badly enough that the editor
-saved a broken line over a `git checkout`. Verify the fixture with `git diff` after every
-check rather than trusting the undo count, and reload from disk when the two disagree.
-
-**Two shipped features still have no checks here**, and this pass confirmed both alive: the
-exact-match and prefix-capable companion intentions offer themselves on Alt-Enter, and the
-prefix one correctly withholds itself on `name`, which already has `name_prefix` beside it.
-They remain in *Not yet in the suite* below, which is that list working as intended — the
-suite is behind the plan, not wrong.
-
-### 2026-08-15 — INSP-13, and what nearly went wrong before it
-
-Two checks pressed, both green, and the method is the part worth reading.
-
-- **INSP-13** — `<nrtMode>true</nrtMode>` typed directly inside `<config>` took `solrconfig.xml`
-  from zero problems to one, reading, verbatim: *Solr: The `<nrtMode>` config has been discontinued
-  and NRT mode is always used by Solr. This config will be removed in future versions.* Replacing it
-  with `<indexDefaults>` gave *Solr: `<indexDefaults>` and `<mainIndex>` configuration sections are
-  discontinued. Use `<indexConfig>` instead.* — the replacement named, which is the whole argument
-  for carrying Solr's sentence rather than a paraphrase of it.
-- **BASE-2** — observed either side: zero problems before the edit, and *No problems in
-  solrconfig.xml* again after the undo, with `git status` clean.
-
-**The platform fires its own inspection alongside ours, and a future pass should not be surprised.**
-`<indexDefaults></indexDefaults>` is an empty tag, so IntelliJ's *XML tag has empty body* appears
-next to the Solr finding. Two problems on that line is correct; only the second one is this plugin's.
-
-**The first attempt at this pass typed into a different application entirely.** Coordinates were
-computed from a screenshot and passed to `click at`, which sent the click somewhere other than the
-editor; focus moved to another app and the keystrokes followed it. Nothing in the demo was touched,
-but nothing in the sandbox was tested either, and the damage was outside this project.
-
-Two rules came out of it, and a scripted pass should not start without both:
-
-1. **Never click at computed coordinates.** Drive the menu bar by item name —
-   *Navigate → Line:Column…* places a caret exactly, with no pixel arithmetic anywhere.
-2. **Check the focused element, not the focused application.** Frontmost-app is not enough: opening
-   the Problems tool window moved keyboard focus to its search box, and the next edit was typed
-   there. The accessibility layer answers this directly — `AXFocusedUIElement` reads
-   *Editor for solrconfig.xml* when, and only when, it is safe to type.
-
-Both attempts also confirm what the suite says about itself: a check is worth nothing until a row
-records it, and this row records two out of the fourteen added at `2d393fc`.
-
-### 2026-08-15 — the completion checks, and one that asserted a thing that was never true
-
-Three pressed. Two green, and the third found a defect in this document.
-
-- **STR-1** — typing `<` on a blank line inside `<config>` offered Solr's vocabulary:
-  `requestHandler`, `query`, `cache`, `circuitBreaker`, `codecFactory`, `dataDir`,
-  `directoryFactory`, `expressible`, `featureVectorCache`, `HashDocSet`, `indexConfig`,
-  `indexReaderFactory` and on. **Most of those appear nowhere in the demo file**, which is what
-  separates a catalog from the sibling echo it replaced — an echo could only ever have offered the
-  five elements already written above the caret.
-- **STR-3** — narrowing that list to `nrt` leaves a fuzzy match on `minPrefixQueryTermLength` and
-  **no `nrtMode`**. The catalog demonstrably knows the element, since INSP-13 reports it from the
-  same resource minutes earlier; completion withholds it anyway, which is the whole of the check.
-
-**STR-5 claimed `name` and `class` are offered on a `<requestHandler>`. They are not, and never
-were.** The gesture returns *No suggestions*, first on an unclosed tag — where the failure could
-fairly be blamed on incomplete PSI — and then again on the complete, valid handler at line 24 with
-the file otherwise clean. The catalog settles it: no row carries `requestHandler` as a parent at all.
-
-`EditableSolrConfigAttributes.json` is the only source that describes attributes, and it covers
-seven paths — the four caches, `requestParsers`, `autoCommit` and `autoSoftCommit`. `name` and
-`class` come from `SolrConfig.plugins`' `REQUIRE_NAME` and `REQUIRE_CLASS`, which the generator does
-not read, exactly as it does not read `MULTI_OK`. Attribute completion works: pressed inside a
-`<filterCache>` it offers `autowarmCount`, `class`, `enabled`, `initialSize`, `maxRamMB`,
-`regenerator` and `size` — Solr's own seven.
-
-So the check has been rewritten to press where the data is, and a second one added for the silence,
-because that silence is a decision rather than an absence. **The check was written from a
-description of the feature rather than from the data behind it**, which is a failure mode a document
-of gestures is unusually prone to — a plausible sentence about what completion "should" offer
-survives review in a way a wrong assertion in code does not.
-
-*Restored from `git checkout -- demo/` rather than by undo.* The earlier note warning that scripted
-undo leaves the buffer mid-edit held again: unwinding this one left a stray `<requestHandler` on the
-line. Trust `git status`, not the undo count.
-
-### 2026-08-15 — auditing the unpressed checks against the data behind them
-
-STR-5 failed because it was written from a description of a feature rather than from the data the
-feature reads. That is a failure mode a document of gestures invites, so the twelve checks still
-unpressed were read against the generated catalogs and the demo fixture before any of them were
-pressed. **Five were wrong or unfixturable.** None of the five would have been caught by review;
-each needed the data.
-
-**Sound, and safe to press as written**
-
-- **STR-2** — the catalog keys `filterCache` to parent `query` and `dataDir` to the root, which is
-  exactly what the check reads. Its only gap is that the demo declares no `<query>`, so one has to be
-  typed; the check now says so.
-- **STR-4** — holds by construction: an unknown path has no children in the catalog, and the
-  descriptor is permissive by design.
-- **INSP-14** — `rows`, `pf2` and `pf3` are all in the parameter catalog, and `rwos` has **exactly
-  one** near miss in the whole of it, `rows`, at distance two. The check's *"Alt-Enter offers `rows`"*
-  is precisely right rather than approximately.
-- **INT-1 and INT-2** — the 2026-08-04 pass already recorded both intentions alive, including the
-  prefix one correctly withholding itself on `name`. Numbered checks now exist for what was observed
-  then.
-
-**Wrong, and rewritten before pressing**
-
-- **DIM-1** said *add* `indexed="true"` to the `name` field. It is already there — as it is on every
-  field in the demo, alongside `stored="true"` on most, and Solr defaults both to true. **The
-  untouched schema is already full of dimmed attributes**, so the gesture produced nothing that was
-  not there, and the baseline sections never said so. DIM-1 now observes what is there and DIM-3
-  changes it.
-- **DIM-4** wanted a `<dynamicField>` repeating a value its `<fieldType>` declares. The demo's `*_t`
-  is `text_general`, which declares no `omitNorms`. That half has no fixture and is recorded as
-  automated-only until the demo grows one.
-- **NAV-9** asserted Cmd+Click lands on the class. **The demo depends on `solr-solrj` alone**, and
-  `solr.SearchHandler` lives in `solr-core` — not on its classpath, so nothing can be landed on. The
-  check now presses what the demo can actually show, which is the more interesting half anyway: a
-  class the project does not carry resolves nowhere **and draws no warning for it**. The landing half
-  needs `solr-core` added to the demo first, and says so.
-- **NAV-10** inherited that, and separates cleanly once stated: navigation needs the class *in the
-  project*, documentation needs only the generated catalog, and the catalog does carry
-  `SearchHandler`. The check is now about documentation answering during indexing with no class on
-  the classpath at all — which is the regression it was written for.
-
-**The pattern in all three failures — STR-5, DIM-1, NAV-9 — is a check asserting a positive outcome
-the fixture cannot produce.** A gesture with a plausible expected outcome reads as correct forever
-until someone presses it, and the automated suites do not catch it because they build their own
-fixtures. Writing a check against the catalog row or the demo line it depends on is cheap; four of
-the five above were settled by one `awk` over a generated TSV.
-
-### 2026-08-15 — the audit's first prediction, confirmed
-
-Two checks, both green, and the interesting one is DIM-1 because the audit had already rewritten it.
-
-- **BASE-1** — seven problems in `managed-schema.xml`, of which **exactly two begin `Solr:`**: the
-  planted `discontinued` field type at :77 and the planted `manufacturer` copy rule at :92. The other
-  five are the platform's — `configsets` at :14 and four *American English uses…* on the demo's
-  British spelling. That is this section's own note, borne out to the number, and it is the argument
-  for counting `Solr:` rows in the tool window rather than underlines in the gutter.
-- **DIM-1** — `indexed="true"` and `stored="true"` render greyed across the field block, while
-  `stored="false"`, `multiValued="true"` and `required="true"` render at full strength. Nothing about
-  any of them reaches the Problems view.
-
-**DIM-1 passed without a single edit, which is the whole point of having audited it.** As written it
-asked for `indexed="true"` to be *added* to the `name` field, where it has always been — so the
-gesture would have changed nothing, the dim would have appeared anyway, and the check would have
-been recorded green while testing nothing at all. That is a worse outcome than a failure: a check
-that cannot fail reads exactly like one that passes.
-
-The negative half needs no separate gesture either. `stored="false"` sitting undimmed two lines
-below a dimmed `stored="true"` is DIM-3's claim already on screen, in the committed fixture, with the
-two states side by side.
-
-*The pass also cost one avoidable mistake.* `Cmd+Shift+O` was assumed to be Go to File; in this
-keymap it is not, and the file name was typed into the editor instead. The rule from the previous
-pass extends: drive **navigation** by menu item too, not just caret placement —
-*Navigate → File…* exists and does exactly what the shortcut was assumed to. Guessing a keystroke is
-the same class of error as guessing a coordinate.
-
-### 2026-08-16 — the check the audit missed, and the one row it turns on
-
-The 2026-08-15 audit read twelve unpressed checks against the data behind them and **INSP-15 was not
-among them.** It is the last INSP check written from a description of a feature and never read
-against a fixture, which is exactly the shape that produced STR-5. Read now, against the demo, the
-generated catalog and the rule itself. **Not pressed** — nothing below is evidence, only a gesture
-that can now produce the outcome it claims.
-
-- **The two lines the gesture names exist and say what it needs.** `managed-schema.xml:68` declares
-  `name` as `type="text_general" indexed="true"`, and `solrconfig.xml:28` is the `/select` handler's
-  `<str name="qf">name^3 description category</str>`.
-- **`qf` is a searching parameter and `^3` is not part of the name.** The parser maps `qf`, `pf`,
-  `pf2` and `pf3` to the search operation and splits a boost off the token before resolving it, so
-  the underline falls on `name` and stops at the caret. `bf` and `boost` are deliberately not in that
-  map, which is why nothing else in the file joins in.
-- **The row the check actually turns on is `solr.TextField`'s.** Searchable is `indexed` *or*
-  `docValues`, and the disjunction returns "don't know" — and reports nothing — unless both sides are
-  definite. `docValues` has no flat default; it is decided by the field type's class, and the
-  generated catalog carries `solr.TextField` with an **empty** traits column. Empty is a different
-  answer from absent: the class is known and carries no trait, so `docValues` resolves to a definite
-  false and the rule to a definite no. Had `text_general` named a class the catalog does not carry,
-  the edit would have underlined nothing and the check would have read as correct forever.
-
-**One claim in it was wrong and is corrected**: it called itself the only INSP check whose finding is
-invisible in Solr. The analyzer-chain ordering at INSP-7 is the other — every class exists, every
-attribute is legal, the core starts, and the filter never runs. Two, not one.
-
-**INSP-13 needed no audit and got a confirmation instead.** It was pressed on 2026-08-15, and the two
-sentences it quotes are literals in the generated element vocabulary, both keyed to parent `config`:
-`nrtMode` carries *The `<nrtMode>` config has been discontinued and NRT mode is always used by Solr…*
-and `indexDefaults` carries *…discontinued. Use `<indexConfig>` instead.* The parent key is also why
-the check's third half works — move the element inside `<acmeThing>` and no row matches it.
-
-> **Reading the entry below if bytecode is unfamiliar.** It talks about a "local variable" the
-> generator's scanner could not follow, and that is worth unpacking before the log itself does the
-> talking — this note is commentary, not part of the record. Solr's source reaches `<nrtMode>`
-> through a chain: it computes an `indexConfigPrefix` naming the `<indexConfig>` node, then calls
-> `.get("nrtMode")` on whatever that lookup returns — ordinary Java, no different in shape from
-> `String prefix = ...; node.get(prefix)`. A tool reading compiled bytecode instruction by
-> instruction can follow a chained call when its argument is a literal string sitting right there in
-> the instruction — `get("query")`, say. It cannot follow one whose argument is a **local
-> variable**: a value computed earlier, stored into a JVM local-variable slot, then loaded back out
-> several instructions later at the call site. Without reversing course to ask "what was stored in
-> that slot", a straight pass over the bytecode sees only the load, not where the value came from —
-> so `indexConfigPrefix` arrived at the call as an opaque value rather than a name, and the read
-> looked exactly like one with no parent at all. That is why the discontinued-element rule could
-> confidently underline `<nrtMode>` written directly under `<config>`, a position Solr never reads,
-> while staying silent on the same element under `<indexConfig>`, the one position that actually
-> stops a core starting.
-
-### 2026-08-16 — INSP-13's green was measured against the wrong position
-
-**The paragraph directly above is the defect, written down and not noticed.** "Both keyed to parent
-`config`" was true of the catalog and false of Solr. `SolrConfig` reads `<nrtMode>` and
-`<unlockOnStartup>` as `get(indexConfigPrefix).get("…")`, under `<indexConfig>`; only
-`<indexDefaults>`, `<mainIndex>` and `<jmx>` are read at the root. The generator's pass could follow
-a parent written as a literal but not one arriving through a local variable, recorded no parent for
-those two, and an absent parent already meant *top level* — so the catalog placed them under
-`<config>` and the rule inherited a confident claim about a position Solr ignores.
-
-**INSP-13 was written to match, and pressing it confirmed the check rather than the behaviour.** The
-underline appeared exactly where the check said it would, which is why nothing looked wrong. What the
-gesture could not show is the two things that follow from the same error: a `<nrtMode>` under
-`<config>` — inert to Solr — was reported, and one under `<indexConfig>`, which stops a core
-starting, was not.
-
-**Status: superseded, not re-pressed.** INSP-13 now asks for the underline under `<indexConfig>`, and
-INSP-13b pins the position that must stay clean. The 2026-08-15 green stands as a record of what was
-pressed and no longer stands as evidence about this rule. Both need a fresh sandbox press.
-
-The generator now follows the chain, and says [`UNPLACED`](../buildSrc/src/main/kotlin/org/apache/solr/ide/build/SolrConfigElements.kt)
-where it still cannot — an element whose position was never observed is no longer reported as a child
-of the root. **Eight further element names moved with the fix, and they are listed rather than counted** — a
-first draft of this paragraph said twelve, which is the same mistake as reading a status out of a
-number instead of out of the thing it counts. The list below is *measured*: the generator was reverted,
-the catalog regenerated, and the two resources diffed in full for both supported lines. That matters
-because the obvious way to check — comparing the children of `<config>` before and after — is blind to
-anything that moved between two non-root parents. Nothing did, and only a whole-catalog diff can say so:
-
-| Element | Now read under | Line |
-|---|---|---|
-| `HashDocSet`, `cache`, `maxWarmingSearchers`, `minPrefixQueryTermLength`, `slowQueryThresholdMillis`, `useColdSearcher` | `<query>` | both |
-| `featureVectorCache` | `<query>` | Solr 10 only |
-| `listener` | `<query>` **and** `<updateHandler>` — one name, two rows, because Solr reads it twice | both |
-
-`lib` and `luceneMatchVersion` were checked and did **not** move: they are read off the document root
-and belong at the top level, which is what `ROOT_FIELD` exists to establish.
-
-**Both halves have since been pressed, and the check for the second one already existed.** An earlier
-draft of this paragraph said a `<` typed inside `<query>` was "a gesture no check currently
-describes". That was wrong: **STR-2 describes exactly it**, and has since the section was written.
-Claiming a gap without reading the section it would sit in is the same error as reading a status out
-of the code — the answer was two screens up.
-
-STR-1 shows the elements leaving `<config>`; STR-2 shows them arriving under `<query>`. Both were
-pressed on 2026-08-16 and both are green — `filterCache` and its siblings offered inside `<query>`,
-`dataDir` absent from that list, and the eighteen offered there sharing almost nothing with what
-`<config>` offers. That second observation is the one that matters: everything else verifying this
-fix — the tests, the whole-catalog diff, STR-1 — only shows what *left* the root. Had the elements
-left without arriving, all of it would still have read green while the plugin was strictly worse than
-before.
-
-**`<indexConfig>` offers `deletionPolicy` and nothing else, and that is STR-3 seen from a third
-side.** The two elements this whole fix was about — `nrtMode` and `unlockOnStartup` — are *not*
-offered there, and must not be: `SolrElementCatalog.offerableChildrenOf` filters to elements Solr
-still accepts, and both carry a retirement notice. So the catalog knows exactly where Solr reads them,
-the inspection reports them where Solr reads them, and completion refuses to suggest them anywhere.
-Those are three different questions with three different right answers, and the instruction that sent
-someone to press this expected all three at that caret — a reminder that an expectation written from
-the fix rather than from the contract is as wrong as a check written from the plugin rather than from
-Solr.
-
-Two elements' worth of the known gap shows here too: `lockType`, `httpCaching` and `infoStream` sit in
-all four shipped configsets and in neither catalog, because `SolrConfig` does not read them. Nothing
-about this fix changed that, and a reader whose own file contains `<lockType>` will see it offered
-nowhere.
-
-**The standing lesson is the one this suite has now paid for twice.** A check written from the
-plugin's behaviour asserts that the plugin is self-consistent. Only a check written from *Solr's*
-behaviour can catch the plugin being confidently wrong, and the earlier note that this rule "asserts
-nothing of its own and quotes Solr instead" was true of the sentence and not of the position it was
-attached to.
-
-### 2026-09-26 — the server track, pressed for the first time
-
-Every server-track check had been written from the code and its fixture tests and none had been
-pressed. This pass pressed twelve of them in full and three in part, **and every one pressed behaved
-as written**. It was a screenshot pass first — the seven server-track captures had never been taken,
-though an earlier revision of this document said they had — so its scope follows the images rather
-than the section's order, and it is recorded as *not completed* for that reason alone.
-
-**Where it ran.** The plugin at `96453c0` (live-schema completion) on `f2bc630` (the code-track
-docs), in the Islands Light theme. Writes went to a throwaway SolrCloud 10.0.0 container holding a
-`books` collection; read-only checks also ran against a user's own SolrCloud 9.10.1 holding 61 TV
-shows. **The demo configset cannot be deployed**, and that is by design: its planted defects — a
-tokenizer class that does not exist, a field whose type nobody declares — stop a core starting. The
-drift checks therefore compared a deployable copy of it, created for the pass and removed after.
-SRV-20 and SRV-22 as written assume a collection built *from the demo configset*, which cannot exist;
-both need rewording to name a deployable one.
-
-**What was pressed, and what it showed:**
-
-- **SRV-1, SRV-3 (in part)** — the form, reached from the tool window's `+`, saved a connection with
-  a username and a password, and the row showed URL and username. Re-opened, the password field was
-  empty and read *A password is stored for this connection. Leave blank to keep it.* The second half
-  of SRV-3 — change the name, confirm the password survives — was not pressed.
-- **SRV-4** — on SolrCloud: `books` → `shard1` → `books_shard1_replica_n1 NRT · active · leader`.
-- **SRV-8, SRV-9** — *10 fields · 2 from dynamic patterns · 4 documents*; `author_s … ← *_s · 4 docs`
-  and `price_f pfloat · ← *_f` with no count. `_root_` read `(unstored field)` on the 9.10.1 server.
-- **SRV-12, SRV-13 (in part), SRV-14** — the template request ran through the `local` environment:
-  *8 documents matched in 39 ms, showing 1 to 3*, an aligned table, *Solr read the query as*, and each
-  document's explanation with Solr's indentation intact. The request named its own `fl`, so SRV-13's
-  hidden-fields line had nothing to hide and was not observed.
-- **SRV-16b** — completion in a JSON body offered the `books` collection's fields as
-  `books · local`, dynamic patterns in italics, including `subtitle`, which existed only on the
-  server because Apply had added it minutes earlier.
-- **SRV-19** — all three states at once, the summary naming both sides and *Resolved against Solr
-  10_0, from the connected server*. **The two definition columns truncate to the same text at their
-  default widths** — `type=text_general indexed=true stor…` in both — so a *Differs* row shows no
-  difference until the other columns are narrowed by hand. The check passes; a reader who does not
-  know to resize would not see it pass.
-- **SRV-25 (in part)** — *This plugin will not send this request.* first, the reason, then
-  `replace-field`. The reason's second sentence runs past the pane's right edge rather than wrapping.
-  Whether **Apply Additive Changes** was disabled was not confirmed from the screen.
-- **SRV-26, SRV-20** — the confirmation read *Send 1 additive change(s) to books on "local"?*, naming
-  the collection and the server; after it the view re-read the server by itself and said *books and
-  books agree, across 22 declarations*.
-- **SRV-28, SRV-29** — the dialog's title named the collection and the server, it opened on
-  `{"id": "example"}` reporting no problems, and `"categry"` produced the refusal with OK greyed.
-  Pressing OK sent nothing: Solr held no `example` document afterwards.
-
-**Found, and named by no check:**
-
-1. **The drift view reads the project's configsets once, when the tool window is built, and never
-   again.** `SolrDriftPanel.reloadConfigsets` has one caller, the constructor. So a configset added
-   after the window opened never appears — and worse, a Solr tool window restored open at startup is
-   built while the IDE is still indexing, when `SolrProjectConfigsets.all()` deliberately answers
-   empty, so its configset chooser reads *No …* and stays disabled until the IDE restarts. Reproduced
-   twice; the workaround used here was to close the tool window, restart, wait for indexing, then
-   open it. **This one is user-visible and belongs in a fix, not a note.** Fixed since: the list is
-   re-read when indexing ends and whenever the chooser opens, the chooser stays enabled while empty
-   so it can be opened, and a re-read keeps the chosen configset. SRV-19a presses it.
-2. **Neither long message wraps.** The drift pane's refusal reason runs off its right edge, and the
-   index dialog's validation reason stretches the whole dialog towards the screen's width. *Fixed
-   since: both wrap at words.*
-3. **The index dialog draws its error marker on the first line** — over the `"id"` key's opening
-   quote — rather than on the line that carries the typo. *Fixed since: the marker is the
-   platform's validation icon, drawn at the corner of whatever component the validation names; it
-   now names the reason, so the icon sits beside the sentence that explains it.*
-4. **"1 additive change(s)"** — the same class of wording `6750888` fixed for *1 documents*. *Fixed
-   since.* SRV-20 and SRV-22 now say that the configset they compare or upload must be deployable.
-
-### 2026-09-28 — the configset settings page, and the discovery that never reached the release
-
-Driven the same way as the server pass above, against `demo/` with a directory holding a lone
-`schema.xml` created for ACT-4 and deleted afterwards.
-
-- **ACT-5** — green on the first press. With recognition off, the *marked* directory went quiet too:
-  no underline, no dimming.
-- **ACT-3** — failed, then green. The row was written name, absolute path, provenance, so in a
-  checkout a few directories deep *detected* sat past the Settings dialog's right edge. The hint
-  under the list ran off the same edge. Re-pressed on the fix: `solr  detected  solr/conf`, and the
-  hint wraps.
-- **ACT-4** — failed, then green. Marking lit the file up without a restart and the menu then read
-  *Unmark Solr Configset Root*, as written. But the inlay hints ran one state behind in both
-  directions: none appeared on marking, and after unmarking, a file that was plain XML again still
-  showed the Solr hint it had while marked, until its tab was switched. The hints pass skips a file
-  whose PSI modification count has not moved, and a daemon restart does not move it. Re-pressed on
-  the fix: marking brings the warning, the dimming and the hint together, and unmarking takes all
-  three away together.
-
-**Found, and named by no check:** the Spring Boot discovery that #240 added crashed in the sandbox
-with `NoClassDefFoundError` on the Spring plugin's `SpringProfilesService`, so the connections page
-offered nothing. Every unit test had passed, because a test classpath flattens every jar and a real
-IDE gives the Spring plugin's `intellij.spring` module its own classloader. It was reverted out of
-0.2.0 rather than patched; the plan's Step 18 says what the next attempt must do. SRV-3a–3d went
-with it.
-
-The drift summary's *Solr 10_0*, recorded verbatim in the server pass above, is fixed to *10.0* in
-the same change, but was not re-pressed: it needs a server.
-
-### 2026-09-28 — the owner's pass, and what re-pressing its fixes found
-
-The owner pressed the suite from [the checklist](manual-test-checklist.md) against their own SolrCloud
-9.10.1, and reported by track. Each finding was fixed on its own branch, the branches combined, and
-the fix re-pressed in a sandbox built from that combination before anything here was written.
-
-- **F-keys did nothing** — not the plugin. A Mac sends F1–F12 as media keys unless fn is held, and the
-  sandbox's keymap was *IntelliJ IDEA Classic*, where F1 opens Help. The checklist and the user guide
-  now name every gesture by action too.
-- **An unknown type or attribute was not underlined** (BASE-1, INSP-2) — the reference inspections were
-  warnings, which the light schemes draw as a tinted background with no line. Now errors: re-pressed,
-  `type="discontinued"` carries a red wave and the file counts ❗2.
-- **Restated defaults were underlined** (DIM-1) — true in High Contrast, which draws the platform's
-  unused-code style with a wave. The first check of this claim covered only three schemes and found
-  nothing; re-pressing in the owner's own scheme found it. The dim now has a grey-only key of its own.
-- **Health read *GREEN*** (SRV-4) — now a coloured dot, with the word in the tooltip; re-pressed.
-- **The Drift tab looked broken** (SRV-19) — it was, twice. Opening the configset chooser threw on the
-  UI thread, so it never opened; and at the tool window's default width the toolbar wrapped under its
-  row and was not drawn, so *press Compare* had no Compare. Both fixed; re-pressed, Compare ran against
-  `shows` and the summary named *Solr 9.10, from the connected server*. **SRV-22** was pressed for the
-  first time against a live server: the confirmation named `solr`, `shows` and `solr-mcp-demo`, and
-  *No* uploaded nothing — the server still held `_default` alone.
-- **The test document held only `id`** (SRV-28) — it now opens on every field `shows` declares, and
-  reports no problems; re-pressed and cancelled, nothing indexed.
-- **`AND` was not coloured** (CODE-5) — it was painted in a key the schemes leave as string colour or
-  plain grey. Re-pressed in High Contrast and Islands Light: fields and `AND` in distinct colours.
-- **Completion did not open by itself, and offered what cannot be used** (CODE-6) — re-pressed: typing
-  `de` after `AND ` opened the list with `description` alone.
-- **The tool window's icon** — now the plugin's own sunburst; re-pressed.
-
-The fresh screenshots — entries 4, 19, 23, 27, 31 and the new 32 in [the catalog](screenshots.md) — were
-taken in this session, in Islands Light, after every re-press above.
-
-### 2026-10-20 — the query console, pressed for the first time
-
-**Where it ran.** The plugin at `d8bdf94`, the head of #266, in a sandbox started from that branch,
-against the demo's SolrCloud 10.0.0 with *Index the sample products* run. The owner pressed SRV-10a and
-SRV-32 to SRV-40 by the checklist and reported them green.
-
-**Solr's request log did not bear out every report, so five were pressed again.** It held two console
-requests and two from `.http` files, and nothing at all for SRV-35 in the console, `wt=xml`, `/nosuch`,
-the parser check or the facet run. SRV-35's query had been run from an `.http` file, where it arrived
-split — `q=name:"usb&cable"+%2Bcategory:electronics=` — which is the failure the console exists to
-remove, seen from the other side.
-
-**The redo was driven through the sandbox's own MCP server**, not accessibility scripting: enabled in
-the sandbox, it accepts an `inspection.kts` whose top level runs inside the IDE, and through the
-plugin's classloader that script set the tab's form, called the editor's own Execute, and read back the
-results panel. The form the owner was watching redrew with each step. Every request was then matched
-in Solr's log.
-
-- **SRV-35** — green. Solr echoed `q` as `name:"usb & cable" +category:electronics`, whole, and three
-  documents matched.
-- **SRV-36** — green in substance. `wt=xml`: no table, **Response** in front, XML. `dismax` as handler:
-  nothing sent, and the status names `handleSelect`. **`/nosuch` answered 405, not the 404 the check
-  said**: the console sends a form POST, and Jetty's default servlet answers a POST to a path no handler
-  serves with *Method Not Allowed*. The console reported it accurately — *Solr answered 405* and the page
-  under **Response** — so the check was rewritten, not the plugin.
-- **SRV-37** — green. With `qf=name^2` typed under dismax and the parser set back to *(handler
-  default)*, Solr received `q`, `indent`, `echoParams` and `rows` only. Its echo still listed
-  `defType=edismax` and `qf=name^3 description category` — the `/select` handler's own defaults, which
-  is exactly what leaving the choice alone is meant to keep.
-- **SRV-39** — green. *Count Values of category*, filled by the code the menu calls, sent `rows=0`,
-  `facet=true`, `facet.field=category`, and **Response** held `facet_counts`: books 4, electronics 3,
-  kitchen 3.
-
-**Two defects found that no check names**, each fixed on its own branch from `main`:
-
-- **A shard row read `active · 80000000-7fffffff`.** The hash range, which on a single-shard collection
-  is the whole ring. It moved to the row's tooltip, escaped — a background security review caught that
-  the first version put the server's text into tooltip HTML unescaped. #278.
-- **A `rows=0` answer was summarised as "10 documents matched in 45 ms, showing 1 to 0."** `rows=0` is
-  how *Count Values of* asks, so the console's own facet query produced it, and the HTTP Client's
-  summary shares the renderer. It now says *none returned*. #279.
+One row per pass, finished or not, oldest first. A pass is all-or-nothing: a partial pass is *not
+completed*, which is the same evidence as no pass for the checks it skipped.
+
+| Date | Commit | Scope | Result |
+|---|---|---|---|
+| 2026-07-30 | e4a35ac | full suite | not completed |
+| 2026-08-01 | a2e0bc5 | full suite | not completed |
+| 2026-08-03 | fab0922 | full suite as it then stood | passed |
+| 2026-08-04 | c924f43 | full suite as it then stood | **passed** — the last full pass |
+| 2026-08-06 | 88a9679 | 27 editor checks | not completed — all pressed green |
+| 2026-08-10 | 029fb18 | PRM-1–5, INSP-10–12 | not completed — green; INSP-11 and 12 rewritten |
+| 2026-08-15 | c95df07, 3c69baf | BASE-1, BASE-2, DIM-1, STR-1, STR-3, STR-5, INSP-13 | not completed — STR-5 rewritten and split; INSP-13 later superseded |
+| 2026-08-16 | 9a47fc1 | STR-1–3 | not completed — green |
+| 2026-09-26 | 96453c0 on f2bc630 | server track, 12 checks in full and 3 in part | not completed — green |
+| 2026-09-28 | 888e5f5 with #246 and #250 | owner's pass by the checklist, fixes re-pressed | not completed — nine findings fixed |
+| 2026-09-28 | 53d5592 and its fix | ACT-3–5 | not completed — green after fixes |
+| 2026-10-20 | d8bdf94 | SRV-10a, SRV-32–40 | not completed — green; SRV-36 rewritten |

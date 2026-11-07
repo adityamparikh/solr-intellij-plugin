@@ -318,8 +318,9 @@ so that provider must not claim dumb-awareness the way the rest do.
 ## Risks
 
 - **The largest risk is scope, and it is the one the plan already names.** Step 25 says this "should
-  be split when it starts". The `plan.md` beside this record is that split; the record is one
-  argument because the pieces share a dependency and a shape, not because it is one pull request.
+  be split when it starts". That split was a `plan.md` beside this record (last at b93b4c0:
+  `git show b93b4c0:docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md`); the record is one argument because the pieces share a dependency and a
+  shape, not because it is one pull request.
 - **Widening the descriptor gate touches a file that currently works.** The schema's descriptors are
   the reason attribute completion stopped guessing, and they are consumed by completion, by the
   platform's validation, and by the `runRemainingContributors` de-duplication in the vocabulary
@@ -346,7 +347,8 @@ so that provider must not claim dumb-awareness the way the rest do.
 
 **Step 25 in `specs/plans/0002-solr-intellij-plugin-plan.md`**, in the Editor track, after the
 catalog extension and therefore after Step 9. This record supplies the design Step 25 was written
-without; `plan.md` beside it supplies the split Step 25 asked for.
+without; the split Step 25 asked for was a `plan.md` beside it (last at b93b4c0:
+`git show b93b4c0:docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md`).
 
 Step 25's success criteria are unchanged and are the right ones. Shipped, this step also updates:
 

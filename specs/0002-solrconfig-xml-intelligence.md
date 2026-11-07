@@ -480,9 +480,8 @@ configset.
 
 - **Scope.** This is four capabilities across a generator, a descriptor, a completion contributor, a
   documentation provider, an inspection and a reference provider. The plan already says the step
-  should be split when it starts, and
-  [`plan.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md) beside the design
-  record is that split.
+  should be split when it starts, and a `plan.md` beside the design record was that split (last at
+  b93b4c0: `git show b93b4c0:docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md`).
 - **Widening the descriptor gate touches a file that currently works.** The schema's descriptors are
   the reason its attribute completion stopped guessing, and they feed completion, platform
   validation, and the vocabulary provider's de-duplication. A regression there is invisible in
@@ -528,7 +527,7 @@ configset.
 - [`specs/plans/0002-solr-intellij-plugin-plan.md`](plans/0002-solr-intellij-plugin-plan.md) — Step 25
   in the Editor track owns delivery status
 - [`docs/design/archive/2026-08-07-solrconfig-intelligence/design.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/design.md)
-  and its [`plan.md`](../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md)
+  and its `plan.md`, last at b93b4c0: `git show b93b4c0:docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md`
 - [`docs/design/archive/2026-08-07-solrconfig-catalog/design.md`](../docs/design/archive/2026-08-07-solrconfig-catalog/design.md)
   — the prerequisite
 - [`docs/design/archive/2026-08-04-declaration-targets/design.md`](../docs/design/archive/2026-08-04-declaration-targets/design.md)
