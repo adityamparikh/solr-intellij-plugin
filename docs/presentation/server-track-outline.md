@@ -3,8 +3,8 @@
 Act 4 is slides 44 to 55 of `solr-intellij-plugin.pptx`. Change a slide here and rebuild it there
 by hand. Every image is the [screenshot catalog](../screenshots.md)'s own file, entries 19 to 25, 30
 and 31, embedded byte for byte; where a slide shows part of one — S6, S9, S10 — the crop is made in
-the slide. No slide shows the tool window's right-click queries yet; S3 and S12 mention them. What
-the track ships is [the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md)'s to say.
+the slide. The tool window's right-click queries were pressed green on 2026-10-20 (`SRV-10a`), after
+the deck was built; S3 and S12 mention them, and no slide shows them yet. What the track ships is [the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md)'s to say.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it.
 Keep that shape. What changes for this act is where the claims come from: the editor track's claims
@@ -56,8 +56,8 @@ swallow the genuinely different one a malformed request produces.
 **Where a query starts.** Right-click a collection or core for *Query* and *Explain Scoring*, or a
 field for *Find Documents with* it and, where it can be counted, *Count Values of* it — each opens a ready-to-run request in a
 scratch file, addressed to the selected server. The tree already knows the collection and field names,
-so this needs no configset. Said in the slide's caption rather than shown: it has tests and has not yet
-been pressed in a sandbox (`SRV-10a`).
+so this needs no configset. Said in the slide's caption rather than shown: no capture exists yet,
+though `SRV-10a` was pressed green on 2026-10-20.
 
 **Screenshot.** `23-collections-topology.png` — a SolrCloud collection down to its leader replica,
 each level's health as a coloured dot, and the Solr mark on the tool-window stripe that opens it.
@@ -238,9 +238,9 @@ dialog prefilled with every field, and the line under the editor saying the docu
 ## S12 · What the track cost, and what it taught
 
 **What the recap claims, and what it does not.** Every screen on the ten slides before it was pressed
-against a real SolrCloud. The right-click queries were not, so the recap lists them in a block of their
-own — *added since that pass, tested, not yet pressed* — rather than in the pressed list. Move them
-across when `SRV-10a` has a pass recorded.
+against a real SolrCloud. The right-click queries were pressed later, green on 2026-10-20 (`SRV-10a`),
+so the recap's block for them — *added since that pass, tested, not yet pressed* — belongs in the
+pressed list now; move them across when the slide is next rebuilt.
 
 Three claims in the specification did not survive contact with a running Solr or a real IDE, and
 each was found by checking rather than by a bug report:

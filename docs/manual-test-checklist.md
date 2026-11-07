@@ -4,7 +4,7 @@
 > wants one line per check and will report back by ID.
 
 Each heading links to its section of [the manual test suite](manual-test-suite.md), which holds the
-full gesture, the reason, and the pass log.
+full gesture, the reason, and the pass log. When the two disagree the suite is right.
 
 ## Before you start
 
@@ -128,8 +128,8 @@ Undo after each. A finding is **underlined**; the fix is behind <kbd>⌥↩</kbd
 - [ ] **INSP-8** — `name_prefix` switched to `text_general`: the `text_prefix` declaration goes
   **dim**, not underlined.
 - [ ] **INSP-10** — `<str name="sort">text asc</str>`: flagged, saying what sorting needs.
-- [ ] **INSP-11** — `facet.field` → `category`: not flagged at 1.6 or 1.7. With
-  `docValues="false"` on `category`, flagged.
+- [ ] **INSP-11** — `facet.field` → `category`: not flagged at 1.6 or 1.7. At 1.7 with
+  `docValues="false"` on `category`, flagged; at 1.6, not.
 - [ ] **INSP-12** — In that state, `qf` → `category` is clean while `facet.field` is flagged.
 - [ ] **INSP-13** — `<indexConfig><nrtMode>`: Solr's own discontinued sentence. `<indexDefaults>`
   names `<indexConfig>`. Inside `<acmeThing>`: nothing.
@@ -243,7 +243,7 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
   nothing run; choosing it again reuses the tab.
 - [ ] **SRV-34** — Execute: request line, summary table, raw JSON under **Response**; the request line
   opens a `{{solrUrl}}` `.http` file that gives the same numbers.
-- [ ] **SRV-35** — A `q` holding `&` and `+` reaches Solr whole.
+- [ ] **SRV-35** — `q` `name:"usb & cable" +category:electronics` reaches Solr whole.
 - [ ] **SRV-36** — `wt=xml` shows raw XML; `/nosuch` shows *Solr answered 405*; `dismax` as handler
   sends nothing and names `handleSelect`.
 - [ ] **SRV-37** — dismax and edismax show their parameters; back at *(handler default)* neither

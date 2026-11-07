@@ -92,8 +92,10 @@ implementations beneath them — so they need the same pass with more roots.
 the resolved artifact rather than by recalling Solr's package layout. That settles the cheapest way
 this table could have been wrong.
 
-**This table should not be hand-written at all, and closing
-Q1 — the open question the solrconfig.xml split carried — is what showed why.** `SolrConfig` carries
+**This table should not be hand-written at all, and closing Q1 — where the element vocabulary comes
+from, an open question in the solrconfig.xml split plan — is what showed why.** (The plan was last at
+b93b4c0: `git show b93b4c0:docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md`.)
+`SolrConfig` carries
 `public static final List<SolrPluginInfo> plugins`, and each entry pairs the element `tag` with the
 `Class<?>` that tag's `class` attribute must implement — both plain constants in the static
 initializer. So the roots are declared by the same list Solr parses `solrconfig.xml` with, and reading

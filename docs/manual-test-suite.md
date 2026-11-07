@@ -25,7 +25,7 @@ what it reports, or features survive real indexing. Retire a check once automati
    restoring it.
 4. After each check that edits the demo, `git status demo/` should be clean. Trust that over the undo
    count, and restore with `git checkout -- demo/` when they disagree.
-5. Record the pass in the [pass log](#pass-log).
+5. Record the pass in the [pass log](#pass-log), with the commit you ran it at.
 
 **Screenshots (📸) are checkboxes too.** Each sits beside the check whose gesture produces it, names the
 file to save in `docs/images/`, and links to [the screenshot catalog](screenshots.md) for the framing.
@@ -187,7 +187,8 @@ Quick documentation is F1, ⌃J or hover.
       `<fieldType>`, `source` and `dest` on a `<copyField>`. Each explains itself; the two `copyField`
       ends read differently.
 - [ ] **DOC-9** — Hover `version` on `<schema>`: what the attribute decides anywhere, then what `1.6`
-      decides here — `docValues` off, `uninvertible` on. It flips under DOC-6's edit; check it then.
+      decides here — `docValues` off, `uninvertible` on. The general sentence appears once. It flips
+      under DOC-6's edit; check it then.
 - [ ] **DOC-10** — Hover an attribute the hand-written table does not describe — `maxShingleSize` on a
       `solr.ShingleFilterFactory`: owner, value type, default or required marker, guide link, and **no
       Does row**. *The table is silent by default; a row where none belongs is the failure.* A
@@ -234,9 +235,10 @@ Every check ends with **undo until [the baseline](#2-zero-false-positive-baselin
       `text` is marked, and the message names what sorting needs rather than blaming doc values. *`text`
       is `multiValued`; at 1.6 it is un-invertible, so a doc-values message would be false.*
 - [ ] **INSP-11** — Add `<arr name="facet.field"><str>category</str></arr>` to the same `defaults`:
-      nothing fires, at `version="1.6"` or `1.7`. Add `docValues="false"` to `category`: the
-      `facet.field` entry is marked. Undo both. *1.7 also gives `solr.StrField` doc values by default,
-      so a version flip cannot make a `string` unfacetable; only a declared absence can.*
+      nothing fires, at `version="1.6"` or `1.7`. Set `version="1.7"` and add `docValues="false"` to
+      `category`: the `facet.field` entry is marked; at 1.6 it is not, because `uninvertible` defaults
+      true below 1.7. Undo all three. *1.7 also gives `solr.StrField` doc values by default, so a
+      version flip alone cannot make a `string` unfacetable; only a declared absence can.*
 - [ ] **INSP-12** — In INSP-11's marked state, `<str name="qf">category</str>` stays clean while the
       `facet.field` is marked. *One field, searchable and unfacetable: the two inspections ask different
       questions.* Completion shows the same split — PRM-4's `sort` list withholds `text`.
@@ -395,7 +397,7 @@ SRV-8, SRV-9 and SRV-23 need `docker run -p 8983:8983 solr:10.0.0 solr-precreate
 - [ ] **SRV-4** — The **Solr** tool window opens on the right listing `Cores` → `books` (standalone) or
       `Collections` → shards → replicas (cloud). Its stripe icon is the plugin's grey sunburst in light
       and dark themes. On cloud, `books` and `shard1` start with a **green dot and no word `GREEN`**;
-      hovering shows `Health: GREEN`.
+      hovering shows `Health: GREEN`. A shard row shows no hash range; it is in the tooltip.
 - [ ] **SRV-5** — Stop Solr, Refresh: the failure appears **inline above the tree, once**, the tree
       empties, and there is no popup or stale topology.
 - [ ] **SRV-6** — Start Solr, Refresh: the banner clears and the tree repopulates. Leave it a few minutes:
@@ -452,7 +454,8 @@ SRV-8, SRV-9 and SRV-23 need `docker run -p 8983:8983 solr:10.0.0 solr-precreate
 
 Against the demo's `products`, with *Index the sample products* run. From SRV-33 on, Settings → Tools →
 **Solr Connections** → *Open queries from the Solr tool window in* is set to **Query console**; SRV-40
-sets it back.
+sets it back. Confirm each Execute in Solr's request log; a green read off the screen alone has been
+wrong here.
 
 - [ ] **SRV-32** — On a fresh sandbox the setting reads **HTTP Client (a scratch .http file)**, and
       *Query products* opens the scratch file as in SRV-10a. *The default must change nothing.*
@@ -464,20 +467,22 @@ sets it back.
       **Response** the JSON. Clicking the request line opens a scratch `.http` with
       `POST {{solrUrl}}/{{collection}}/select`, the form body and no host; run through `local`, it gives
       the same numbers.
-- [ ] **SRV-35** — Set `q` to `name:"usb & cable"` (any value with `&` and `+`) and execute: Solr receives
-      it whole — a real match count, not a 400. *This is why the console exists.*
+- [ ] **SRV-35** — Set `q` to `name:"usb & cable" +category:electronics` and execute: Solr receives it
+      whole — a real match count, not a 400. *This is why the console exists.*
 - [ ] **SRV-36** — `wt` **xml**: no table, **Response** in front with highlighted XML. Handler `/nosuch`:
       *Solr answered 405* and the error page — 405 because Jetty refuses a POST to an unserved path.
       Handler `dismax`: **nothing sent**, and the status names `handleSelect`.
 - [ ] **SRV-37** — `defType` starts at *(handler default)*. **dismax** shows `q.alt`, `qf` … `bf`, not
       `pf2`; **edismax** adds `uf` … `lowercaseOperators`. Type `name^2` in `qf`, return to *(handler
-      default)*, execute: no `qf` and no `defType` on the request line.
+      default)*, execute: no `qf` and no `defType` on the request line. Solr's echoed params still list
+      `/select`'s own `defType` and `qf` defaults; that is the handler default, not a failure.
 - [ ] **SRV-38** — In `fl`, type `na` and <kbd>⌃Space</kbd>: the collection's fields as
       `products · local`, plus `score`, `*`, `[docid]`. Type a letter in `sort` and let the popup open:
       fields, **with no request reaching Solr** (`docker compose -f demo/compose.yaml logs -f solr`).
 - [ ] **SRV-39** — Right-click `category` → *Find Documents with category*: the open tab holds `q`
       `category:*`, `fl` `id,category`. *Count Values of category*: `rows` `0` and three facet lines;
-      execute, and **Response** holds `facet_counts`.
+      execute, and **Response** holds `facet_counts`; **Results** reads *… none returned*, never
+      *showing 1 to 0*.
 - [ ] **SRV-40** — Remove the `local` connection with the tab open: the tab closes. Add it back, set the
       choice back to **HTTP Client**, and SRV-32's scratch file returns.
 
@@ -501,6 +506,8 @@ a copy with `custom_text`, `notes` and `legacy` removed; `demo/README.md` says w
       *Differs*, **with both definitions side by side**. The summary names the Solr line, e.g.
       *Solr 10.0*. The demo's `solr` against `products` shows all three unedited: `sku` *Not deployed*;
       `legacy` and `custom_text` *Differs*; `manufacturer`, `_version_` and `plong` *Only on server*.
+      Widen the two definition columns if a *Differs* row looks identical
+      ([known](user-guide.md#closing-a-difference-between-the-repository-and-a-server)).
 - [ ] **SRV-20** — Compare a deployable configset against a collection created from it: an empty table,
       and the summary says they agree **and across how many declarations**. *The count is all that
       distinguishes this from a comparison that never ran.*
@@ -560,9 +567,10 @@ visible.*
 - [ ] 📸 **`docs/images/27-code-query-colour.png`** — lines 37–39, `AND` uppercase, default light theme,
       caret out of frame; see [entry 27](screenshots.md).
 - [ ] **CODE-6** — Caret inside `addFilterQuery("`, **type `c`**: the list opens by itself with the
-      configset's fields starting `c`, each with type and configset — no `*_t` pattern, words or file
-      names. After `category:`, typing `b` opens nothing (a value). In `setFields("id,name,price")`, a
-      comma after `id` opens it again. An ordinary string elsewhere opens nothing.
+      configset's fields starting `c`, each with type and configset — no `*_t` or other dynamic
+      pattern, words or file names. After `category:`, typing `b` opens nothing (a value). In
+      `setFields("id,name,price")`, a comma after `id` opens it again. An ordinary string elsewhere
+      opens nothing.
 - [ ] **CODE-7** — <kbd>Ctrl-click</kbd> `category` in `findSolrBooks`: lands on `<field name="category">`
       in `solr/conf/managed-schema.xml`. *The Java file belongs to no configset.*
 - [ ] 📸 **`docs/images/28-code-navigate-to-schema.png`** — both files side by side via *Window → Editor
@@ -571,8 +579,8 @@ visible.*
       navigation must agree.*
 - [ ] **CODE-9** — A gutter icon beside `setQuery` in `findSolrBooks`, and beside nothing else.
 - [ ] **CODE-10** — Click it with a connection selected: the chooser opens **at the editor's top-right
-      corner** listing the server's collections; choosing one runs the query and renders the answer as
-      the console does.
+      corner**, not beside the icon, listing the server's collections; choosing one runs the query and
+      renders the answer as the console does.
 - [ ] 📸 **`docs/images/29-code-run-from-gutter.png`** — the chooser open, framed to hold the gutter
       icon; see [entry 29](screenshots.md).
 - [ ] **CODE-11** — Click it with no connection configured: it says so and sends nothing.
@@ -585,17 +593,17 @@ visible.*
 One row per pass, finished or not, oldest first. A pass is all-or-nothing: a partial pass is *not
 completed*, which is the same evidence as no pass for the checks it skipped.
 
-| Date | Scope | Result |
-|---|---|---|
-| 2026-07-30 | full suite | not completed |
-| 2026-08-01 | full suite | not completed |
-| 2026-08-03 | full suite as it then stood | passed |
-| 2026-08-04 | full suite as it then stood | **passed** — the last full pass |
-| 2026-08-06 | 27 editor checks | not completed — all pressed green |
-| 2026-08-10 | PRM-1–5, INSP-10–12 | not completed — green; INSP-11 and 12 rewritten |
-| 2026-08-15 | BASE-1, BASE-2, DIM-1, STR-1, STR-3, STR-5, INSP-13 | not completed — STR-5 rewritten and split; INSP-13 later superseded |
-| 2026-08-16 | STR-1–3 | not completed — green |
-| 2026-09-26 | server track, 12 checks in full and 3 in part | not completed — green |
-| 2026-09-28 | owner's pass by the checklist, fixes re-pressed | not completed — nine findings fixed |
-| 2026-09-28 | ACT-3–5 | not completed — green after fixes |
-| 2026-10-20 | SRV-10a, SRV-32–40 | not completed — green; SRV-36 rewritten |
+| Date | Commit | Scope | Result |
+|---|---|---|---|
+| 2026-07-30 | e4a35ac | full suite | not completed |
+| 2026-08-01 | a2e0bc5 | full suite | not completed |
+| 2026-08-03 | fab0922 | full suite as it then stood | passed |
+| 2026-08-04 | c924f43 | full suite as it then stood | **passed** — the last full pass |
+| 2026-08-06 | 88a9679 | 27 editor checks | not completed — all pressed green |
+| 2026-08-10 | 029fb18 | PRM-1–5, INSP-10–12 | not completed — green; INSP-11 and 12 rewritten |
+| 2026-08-15 | c95df07, 3c69baf | BASE-1, BASE-2, DIM-1, STR-1, STR-3, STR-5, INSP-13 | not completed — STR-5 rewritten and split; INSP-13 later superseded |
+| 2026-08-16 | 9a47fc1 | STR-1–3 | not completed — green |
+| 2026-09-26 | 96453c0 on f2bc630 | server track, 12 checks in full and 3 in part | not completed — green |
+| 2026-09-28 | 888e5f5 with #246 and #250 | owner's pass by the checklist, fixes re-pressed | not completed — nine findings fixed |
+| 2026-09-28 | 53d5592 and its fix | ACT-3–5 | not completed — green after fixes |
+| 2026-10-20 | d8bdf94 | SRV-10a, SRV-32–40 | not completed — green; SRV-36 rewritten |
