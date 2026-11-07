@@ -159,7 +159,7 @@ placement and readability of the rendered hint.*
       the schema does not declare) shows no hint at all.
 - [ ] 📸 **Capture `docs/images/01-hints-match-capability.png`** — the field block at lines
       66-77, all nine fields in one frame, no interaction.
-      [Catalog entry 1](screenshots.md#1-match-capability-hints--01-hints-match-capabilitypng).
+      [Catalog entry 1](screenshots.md#the-catalog).
 
 ## 4. Navigation and [Find Usages](glossary.md#find-usages) (NAV)
 
@@ -220,11 +220,11 @@ gesture, caret placement, the Find Usages tool window.*
       [the Find Usages check on a field type](#4-navigation-and-find-usages-nav) — the Find Usages
       tool window with its results, invoked from the `<fieldType name="text_general">`
       declaration, which is the gesture the demo now performs.
-      [Catalog entry 7](screenshots.md#7-find-usages-on-a-field-type--07-find-usages-field-typepng).
+      [Catalog entry 7](screenshots.md#the-catalog).
 - [ ] 📸 **Capture `docs/images/08-nav-solrconfig-field-reference.png`** at
       [the check that a solrconfig.xml parameter navigates into the schema](#4-navigation-and-find-usages-nav) —
       Cmd+hover `name` in `solrconfig.xml:28`, framing the navigation tooltip.
-      [Catalog entry 8](screenshots.md#8-navigation-from-solrconfigxml-into-the-schema--08-nav-solrconfig-field-referencepng).
+      [Catalog entry 8](screenshots.md#the-catalog).
 **The demo cannot exercise the landing half of this, and the reason is worth reading.** It depends on
 `solr-solrj` alone, while `solr.SearchHandler` is `org.apache.solr.handler.component.SearchHandler`
 in `solr-core` — not on the demo's classpath. Navigation needs the class *in the project*;
@@ -247,7 +247,7 @@ does carry `SearchHandler`. So the two answers differ here on purpose.
       caret on `words="stopwords.txt"` at `managed-schema.xml:34`, then **Quick Definition**. Check
       that navigation itself with Cmd+Click or Cmd+hover as usual, but do not publish the hover: its
       tooltip is an absolute path through your home directory.
-      [Catalog entry 9](screenshots.md#9-navigation-to-a-resource-file--09-nav-resource-filepng-optional).
+      [Catalog entry 9](screenshots.md#the-catalog).
 
 ## 4a. [Rename](glossary.md#rename-refactoring) (REN)
 
@@ -362,7 +362,7 @@ below.*
       `uninvertible` row**. **Check the catalog entry before shooting:** this one waits on
       the field-type-class resolution of `omitNorms` and `docValues`, and is stale on
       arrival if taken before that lands.
-      [Catalog entry 2](screenshots.md#2-quick-documentation-on-a-field--02-quick-doc-fieldpng).
+      [Catalog entry 2](screenshots.md#the-catalog).
       [The quick-documentation check on a class value](#5-quick-documentation-doc)'s
       `03-quick-doc-class.png` is current and needs nothing.
 
@@ -422,7 +422,7 @@ Every check here ends with **undo until
       [the dangling-copyField check](#6-inspections-and-quick-fixes-insp) makes, so the image
       needs no undo. Frame the underline and the open Alt-Enter menu, and dismiss it with Escape —
       every item in it rewrites the file.
-      [Catalog entry 4](screenshots.md#4-inspection-and-quick-fix--04-inspection-copyfield-quickfixpng).
+      [Catalog entry 4](screenshots.md#the-catalog).
 - [ ] **INSP-2** — Change a field's `type` to a bogus value: a red wavy underline, fix offers the
       declared types; applying one produces a file that parses clean.
 - [ ] **INSP-3** — Delete the `name` field entirely: its copy rule flags immediately,
@@ -552,7 +552,7 @@ the user meets it — ordering, summaries, what the platform mixes in.*
 - [ ] 📸 **Capture `docs/images/05-completion-field-properties.png`** — caret after
       `stored="true"` on line 70 and before the `/`, type a space, frame the summaries and
       the accepted values. Undo the space afterwards.
-      [Catalog entry 5](screenshots.md#5-completion-over-the-schemas-own-vocabulary--05-completion-field-propertiespng).
+      [Catalog entry 5](screenshots.md#the-catalog).
 
 ## 8. Completion — catalog-backed (CAT)
 
@@ -579,7 +579,7 @@ popup, against the demo configset's declared Solr line.*
       `luceneMatchVersion` and `preserveOriginal` — not `minGramSize` and `maxGramSize`,
       which the filter already declares and completion therefore omits. Same bytecode
       route, no fixture edit.
-      [Catalog entry 6](screenshots.md#6-catalog-backed-factory-attributes--06-completion-factory-attributespng).
+      [Catalog entry 6](screenshots.md#the-catalog).
 - [ ] **CAT-3** — `class=` on a `<requestHandler>` in `solrconfig.xml` offers
       `solr.SearchHandler` and `solr.UpdateRequestHandler`, and **does not** offer
       `solr.SchemaCodecFactory` or any field type. Repeat on the demo's

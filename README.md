@@ -207,7 +207,7 @@ because a matrix promising something the build does not is worse than no matrix.
 |---|---|
 | [Specification](specs/0002-solr-intellij-plugin.md) | What the plugin is for, how it is structured, and what it does |
 | [Implementation plan](specs/plans/0002-solr-intellij-plugin-plan.md) | Ordered steps, and which are done — the one file that owns status |
-| [Project orientation](docs/project-orientation.md) | A reader's map of where the project stands, pointing into the plan rather than restating it |
+| [Project orientation](docs/project-orientation.md) | The three surfaces and where to look next |
 | [User guide](docs/user-guide.md) | Every editor capability, organised by what you're trying to do, with the gesture and the outcome |
 | [Inspection catalog](docs/inspection-catalog.md) | Every registered inspection: what it reports, its severity, and what it deliberately stays silent about |
 | [Installing](docs/installing.md) | Getting it into your own IDE, and why it stays silent until your project depends on a Solr client |
@@ -220,7 +220,7 @@ because a matrix promising something the build does not is worse than no matrix.
 | [Solr configuration files](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written, and what the plugin covers |
 | [Platform mechanisms](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are, and what this plugin decided |
 | [Plugin development tutorial](docs/modern-intellij-plugin-development.md) | Building this kind of plugin from scratch, using this project as the worked example |
-| [FAQ](docs/faq.md) | Why quick documentation links rather than copies, and why it can't rely on a live sources-jar lookup |
+| [How quick documentation works](docs/faq.md) | What the popup generates, resolves live or keeps by hand, and why it links to the Reference Guide |
 | [CLAUDE.md](CLAUDE.md) | Repository orientation — build gates, architecture, conventions |
 
 ## Building from source
