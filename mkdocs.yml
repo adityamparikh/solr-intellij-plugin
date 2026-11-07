@@ -64,40 +64,41 @@ markdown_extensions:
 # Contributor pages link to specs and source outside docs/; the hook fixes the common cases and the
 # rest are reported rather than failing the build.
 validation:
+  nav: { omitted_files: warn, not_found: warn }
   links: { not_found: info, unrecognized_links: info }
   anchors: info
 
-# Grouped by what the reader is doing (Diátaxis): learning, doing a task, looking something up,
-# understanding why. Pages kept for whoever runs the project's own QA pass come last, so they stop
-# crowding the pages a plugin user or a new contributor came for.
+# Grouped by who is reading, then by what they are doing (Diátaxis). A plugin user's Next link
+# never lands in contributor material, and the QA pages come last.
 nav:
   - Home: index.md
-  - Tutorials:
+  - Using the plugin:
       - Quick start: quick-start.md
-      - Your first IntelliJ plugin: modern-intellij-plugin-development.md
-  - How-to guides:
       - Installing: installing.md
-      - For contributors:
+      - User guide: user-guide.md
+      - Inspection catalog: inspection-catalog.md
+      - Solr configuration files: solr-configuration-files.md
+      - Compatibility: compatibility.md
+      - How quick documentation works: faq.md
+      - Release notes: changelog.md
+  - Working on the plugin:
+      - Tutorial:
+          - Your first IntelliJ plugin: modern-intellij-plugin-development.md
+      - How-to guides:
+          - Contributing: contributing.md
           - Adding an editor feature: how-to/add-an-editor-feature.md
           - Extending the field model: how-to/extend-the-field-model.md
           - Testing and the build gates: how-to/testing-and-the-build-gates.md
           - Releasing: how-to/releasing.md
-  - Reference:
-      - User guide: user-guide.md
-      - Inspection catalog: inspection-catalog.md
-      - Solr configuration files: solr-configuration-files.md
-      - Glossary: glossary.md
-      - Compatibility: compatibility.md
-      - Extension points: extension-points.md
-      - API reference: api-reference.md
-      - Release notes: changelog.md
-  - Explanation:
-      - Project orientation: project-orientation.md
-      - Platform mechanisms: platform-mechanisms.md
-      - Code organization: code-organization.md
-      - How quick documentation works: faq.md
+      - Reference:
+          - Glossary: glossary.md
+          - Extension points: extension-points.md
+          - API reference: api-reference.md
+      - Explanation:
+          - Project orientation: project-orientation.md
+          - Platform mechanisms: platform-mechanisms.md
+          - Code organization: code-organization.md
   - Maintainers:
-      - Contributing: contributing.md
       - Manual test suite: manual-test-suite.md
       - Manual test checklist: manual-test-checklist.md
       - Screenshot catalog: screenshots.md
