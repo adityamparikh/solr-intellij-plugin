@@ -1,9 +1,9 @@
 # Extension points
 
-Everything this plugin contributes to the IDE is registered in one file,
-[`plugin.xml`](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/src/main/resources/META-INF/plugin.xml).
-This page is the map from *a thing you see in the IDE* to *the class that provides it*, so you can
-find where to start reading. The classes themselves are in the [API reference](api-reference.md).
+What the plugin registers in
+[`plugin.xml`](https://github.com/adityamparikh/solr-intellij-plugin/blob/main/src/main/resources/META-INF/plugin.xml),
+from what you see in the IDE to the class that provides it. The classes are in the
+[API reference](api-reference.md).
 
 ## What the plugin depends on
 
@@ -17,8 +17,8 @@ find where to start reading. The classes themselves are in the [API reference](a
 
 ### Inspections
 
-Twelve `localInspection` registrations. What each one reports, its registered severity, and what it
-stays silent about is in the [inspection catalog](inspection-catalog.md).
+Each is a `localInspection`. What each reports, its severity, and what it stays silent about is in
+the [inspection catalog](inspection-catalog.md).
 
 | Inspection | Applies to |
 |---|---|
@@ -34,6 +34,13 @@ stays silent about is in the [inspection catalog](inspection-catalog.md).
 | `SolrUnknownAttributeInspection` | Either file |
 | `SolrInvalidAttributeValueInspection` | Either file |
 | `SolrUnknownCodeFieldInspection` | Java and Kotlin using SolrJ |
+
+### Intentions
+
+| Registration | Class | What it gives you |
+|---|---|---|
+| `intentionAction` | `SolrAddExactCompanionIntention`, `SolrAddPrefixCompanionIntention` | Add an exact-match or prefix-capable companion field to a tokenised field |
+| `intentionAction` | `SolrRemoveRestatedAttributeIntention` | Remove an attribute that restates Solr's default |
 
 ### Completion
 
@@ -81,16 +88,11 @@ stays silent about is in the [inspection catalog](inspection-catalog.md).
 | `httpClient.responseCustomPresentation` | `SolrQueryResponsePresentation` | The readable summary of a Solr response |
 | `action` | `SolrMarkConfigsetRootAction` | *Mark Directory as Solr Configset Root* |
 
-## The rule every registration follows
+## Dumb mode
 
-Every contribution declares itself **dumb-aware**, which is a promise about data sources: almost
-nothing here reads an index, because a configset is text. The one thing that does, class navigation
-through `JavaPsiFacade`, must both decline the declaration and guard with `DumbService`.
-
-The mechanism differs by extension point: inspections and completion override `isDumbAware()`, while
-documentation and inlay providers implement the `DumbAware` marker interface. The
-[platform mechanisms](platform-mechanisms.md) page explains what dumb mode is and what this plugin
-decided about it.
+Every registration is dumb-aware;
+[platform mechanisms](platform-mechanisms.md#dumb-mode-and-dumbaware) explains what that promises
+and the one contribution that reads an index.
 
 ## Adding one
 

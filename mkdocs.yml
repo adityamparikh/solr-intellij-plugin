@@ -73,7 +73,7 @@ nav:
       - User guide: user-guide.md
       - Inspection catalog: inspection-catalog.md
       - Compatibility: compatibility.md
-      - FAQ: faq.md
+      - How quick documentation works: faq.md
       - Release notes: changelog.md
   - Reference:
       - Solr configuration files: solr-configuration-files.md

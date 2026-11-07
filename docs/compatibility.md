@@ -1,14 +1,5 @@
 # Compatibility
 
-What this plugin runs in, what it understands, and how each of those is decided.
-
-**This page is written from the build rather than beside it.** Every version below is declared in one
-place in `build.gradle.kts` or `gradle.properties`, named in the table's last column — a matrix
-promising something the build does not is worse than no matrix, because it is believed.
-**`SolrCompatibilityPageTest` holds the two together**: the build hands it every value named below,
-and the descriptor it actually writes, and the test fails if this page says anything else. Change a
-declaration and this page in the same commit, or the build will not pass.
-
 ## Plugin 0.2.0
 
 | What | Supported | Declared in |
@@ -18,52 +9,32 @@ declaration and this page in the same commit, or the build will not pass.
 | Apache Solr | **9.10.1** and **10.0.0** | `supportedSolrLines` |
 | Build toolchain | JDK 21 | `jvmToolchain(21)` |
 
-### IntelliJ IDEA only, and that is a decision rather than an omission
+### IntelliJ IDEA only
 
-The plugin declares a hard dependency on `com.intellij.modules.java`, because resolving the class a
-`class` attribute names goes through Java PSI. IDEA has been a single unified distribution since
-2025.3 and bundles Java, so the dependency is satisfied wherever the plugin runs — but it does mean
-the plugin does not install in PyCharm, WebStorm or the other IDEs.
+The plugin depends on `com.intellij.modules.java`, because resolving the class a `class` attribute
+names goes through Java PSI. IDEA bundles Java, so the dependency is always met there, but the plugin
+does not install in PyCharm, WebStorm or the other IDEs.
 
-An earlier revision took that dependency *optionally*, so the plugin would load in an IDE without Java
-and simply lack class navigation. Nothing verified that arrangement and nothing needed to; it was
-removed rather than left as a claim.
+### An open upper bound
 
-### "2026.2 and later" is a claim about the past, not the future
+The descriptor sets `since-build="262"` with no upper bound, so the plugin declares itself compatible
+with every IDE build from 2026.2 on. Only the build in the table is verified, by the Plugin Verifier
+on every pull request; a later IDE that breaks the plugin will do so without this page changing. The
+open bound avoids shipping a release for every platform bump.
 
-The descriptor sets `since-build="262"` with **no upper bound**, so the plugin declares itself
-compatible with every IDE build from 2026.2 onward. Nothing can verify a build that has not shipped:
-the Plugin Verifier runs against `IU-262.8665.258` in CI on every pull request, and that is the extent
-of what "verified" means here. A later IDE that breaks the plugin will do so without this matrix
-changing, which is what the open upper bound trades away for not having to ship a release per platform
-bump.
+### Solr lines
 
-### The two Solr lines are the ones Apache still maintains
+The plugin supports the Solr release lines Apache has not declared end-of-life, and drops a line in
+the release after Solr declares it. The exact releases matter because the class, parameter and
+element catalogs are generated from those artifacts. The inspections run over Solr's `_default` and
+`sample_techproducts_configs` configsets from both lines and must report nothing, except the
+unused-field-type inspection, which rightly reports the types those configsets ship unused.
 
-The policy is upstream's rather than this project's: the plugin supports the release lines Apache Solr
-has not declared end-of-life, and drops a line in the release after Solr declares it. The exact
-releases matter because the plugin's class, parameter and element catalogs are **generated from those
-artifacts** — a fact shown in a popup came from the jar named here, not from a table someone typed.
+A connected server's version affects only the drift view, which resolves each side's defaults against
+the server's line and names it in the summary. The editor never contacts a server, so it answers from
+the configset alone.
 
-Both are exercised on every build: the catalogs are generated per line, and every inspection runs over
-the `_default` and `sample_techproducts_configs` configsets **from both lines** and must report
-nothing.
+### Changing any of this
 
-### What a server's version affects, and what it does not
-
-**One thing reads it: the drift view.** A collection reports the Solr it runs, and the comparison
-resolves each side's defaults against that line, and the summary under the table names the line and
-says it came from the connected server. A field type that exists on one line and not the other is a difference the
-versions explain, which is why the summary names it.
-
-**The editor never sees it.** Nothing on the editor path contacts a server, so inspections,
-completion and quick documentation answer from the configset alone, whatever a connected server
-happens to run.
-
-## Changing any of this
-
-Adding or dropping a Solr line is one edit to `supportedSolrLines`; the catalogs regenerate and the
-tests that pin them will name whatever else needs to follow. Moving to a newer platform is one edit to
-`targetIdeVersion` and one to `verifiedIdeBuilds`, and both belong in the same commit — the second is
-what the Verifier checks, and a matrix promising a build the Verifier never checked is the failure
-this page exists to prevent.
+Each value is declared once in `build.gradle.kts`, and `SolrCompatibilityPageTest` fails the build
+until this page matches; see [contributing](contributing.md#things-that-will-bite-you).
