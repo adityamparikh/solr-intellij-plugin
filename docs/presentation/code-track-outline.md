@@ -1,28 +1,10 @@
 # Act 5 — the Code track: a speaker's outline
 
-> **Who this is for.** Someone building the code-track slides in PowerPoint or Keynote. This is
-> content and structure, not a deck — `solr-intellij-plugin.pptx` is a designed artifact with
-> embedded screenshots, and new slides need building by hand in the same template.
->
-> **What is already in the deck.** All of it, as Act 5 — slides 56 to 62: a divider, five deep dives
-> (C2, C2a, C4, C5 and C6, each with its screenshot), and a recap carrying C8. The three sections with
-> no screenshot of their own are folded into those five rather than dropped: C1's failure is C2's
-> *without it*, C3's single implementation is C2's *mechanism*, and C7's sanctioned dependency is C6's.
-> The closing slide says three surfaces. C4 embeds `28-code-navigate-to-schema.png` itself and crops
-> it in the slide, from the tabs down to the lines that matter, because the full split is illegible at
-> slide size — the file in the deck stays the catalog's, so a reshoot replaces it in one place.
->
-> **Screenshots.** All five exist — `26-code-field-warning.png`, `27-code-query-colour.png`,
-> `28-code-navigate-to-schema.png` and `29-code-run-from-gutter.png`, entries 26 to 29 of
-> [the screenshot catalog](../screenshots.md), and `32-code-completion-popup.png`. 27 and 32 were shot
-> on 2026-09-28 on the final 0.2.0 build, in the default light theme; the rest against a real Solr
-> rather than a fixture, outside a verification pass. The catalog says what each must show, so
-> re-shoot from there rather than re-framing by eye.
->
-> **Status.** Release 0.2.0 ships this track complete for plain Java and Kotlin with SolrJ: field
-> checks, completion, navigation, query colouring and running a query from the gutter. Framework
-> support is the next release — Spring Boot first, in IntelliJ IDEA Ultimate only, then Quarkus,
-> Micronaut, MicroProfile and Apache Camel.
+Act 5 is slides 56 to 62 of `solr-intellij-plugin.pptx`. Change a slide here and rebuild it there
+by hand; every image is the [screenshot catalog](../screenshots.md)'s own file, entries 26 to 29 and
+32, and C4 crops `28-code-navigate-to-schema.png` in the slide rather than in the file. C1, C3 and
+C7 have no slide of their own: they fold into C2 and C6. What the track ships is
+[the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md)'s to say.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it,
 and the Server act keeps that shape while carrying more in words because its claims are mostly about
@@ -188,8 +170,8 @@ other, and the only party that disagreed was the platform, which nothing in the 
 And a field name scanner where `-` was both a separator and a legal name character, so a hyphenated
 field was reported undeclared; Solr settled it in one query.
 
-**The close.** Three surfaces, all shipping in 0.2.0: the files you edit, the server you talk to, and
-the code that names fields. One model underneath, and one question asked five ways — the check,
-completion, navigation, colour and the gutter run — *does this field exist?* What the code track
-cannot yet see is a client a framework builds for you, from configuration rather than a constructor
-call; that is the next release.
+**The close.** Three surfaces: the files you edit, the server you talk to, and the code that names
+fields. One model underneath, and one question asked five ways — the check, completion, navigation,
+colour and the gutter run — *does this field exist?* What the code track cannot yet see is a client a
+framework builds for you, from configuration rather than a constructor call;
+[the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md) says when that comes.

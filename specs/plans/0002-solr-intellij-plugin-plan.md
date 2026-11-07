@@ -920,7 +920,7 @@ It is written as one step because the pieces share a dependency and a shape, not
 
 [The design record](../../docs/design/archive/2026-08-07-solrconfig-intelligence/design.md) supplies the design this step
 was written without, [`specs/0002-solrconfig-xml-intelligence.md`](../0002-solrconfig-xml-intelligence.md) specifies the
-requirements, and [the plan beside the design](../../docs/design/archive/2026-08-07-solrconfig-intelligence/plan.md) is
+requirements, and a plan beside the design, now in git history, was
 the split this step asked for: five pull requests, of which only the first is startable today.
 
 **Nothing here is startable until the groundwork lands, and that is a property of the dependencies rather than of the

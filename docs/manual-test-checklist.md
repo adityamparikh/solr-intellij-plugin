@@ -2,27 +2,31 @@
 
 > **Who this is for.** Someone pressing every shipped feature in a sandbox IDE in one sitting, who
 > wants one line per check and will report back by ID.
-> **Read first:** [the manual test suite](manual-test-suite.md), which owns each check's full
-> gesture, its reasoning, and the pass log. This page is its quick form, and when the two
-> disagree the suite is right.
+
+Each heading links to its section of [the manual test suite](manual-test-suite.md), which holds the
+full gesture, the reason, and the pass log.
 
 ## Before you start
 
 - **Launch the sandbox** with `./gradlew runIde`. It opens `demo/`.
-- **License it**, or the server checks fail silently. Use Help → Register, or copy `idea.key` into
-  the sandbox's config. Unlicensed, the HTTP Client inserts and highlights requests, but **Run does
-  nothing** — no error, no dialog. The top bar reading *Unlock Ultimate* is the tell.
+- **License it**, or the server checks fail silently. The sandbox keeps its own config and inherits
+  no licence; use Help → Register, or copy `idea.key` into the sandbox's config. Unlicensed, the HTTP
+  Client inserts and highlights requests, but **Run does nothing** — no error, no dialog, nothing in
+  `idea.log` — so SRV-11 to SRV-18 fail as if the plugin were broken. The top bar reading *Unlock
+  Ultimate* is the tell.
 - **Function keys on a Mac.** The shortcuts below are IntelliJ's defaults, and a Mac sends F1–F12 as
   media keys unless **fn** is held. Hold fn, or use the action by name: <kbd>⇧⇧</kbd> (Search
-  Everywhere) → *Quick Documentation*, *Find Usages*, *Rename*. Hovering also opens quick
-  documentation.
+  Everywhere) → *Quick Documentation*, *Find Usages*, *Rename*. On the legacy *Mac OS X* keymap F1
+  opens Help; use <kbd>⌃J</kbd> or hover. [The user guide](user-guide.md#function-keys-on-a-mac) has
+  the detail.
 - **The server checks need a Solr**, and the ones that write need a collection you can spare.
   `docker compose -f demo/compose.yaml up -d` starts the demo's, with a `products` collection that
   already drifts from `solr/conf` one row of each kind; *Index the sample products* in `queries.http`
   fills it. SRV-8, SRV-9 and SRV-23 want `docker run -p 8983:8983 solr:10.0.0 solr-precreate books`
   instead, with the demo's stopped. Never point the writing checks — SRV-22, 24, 26 and 28–31 — at a
   collection you care about.
-- **Close the sandbox, never kill it.** A hard kill can disable the plugin at the next start.
+- **Close the sandbox, never kill it.** A hard kill can disable the plugin at the next start, and
+  loses unsaved workspace state such as the HTTP Client's selected environment.
 - **Every edit ends in Undo**, so the demo is back at its baseline for the next check.
 
 **Reporting:** the ID, pass or fail, and one line of what you saw when it failed. A screenshot
@@ -194,7 +198,7 @@ Undo after each. A finding is **underlined**; the fix is behind <kbd>⌥↩</kbd
 
 The sandbox must be licensed; see [Before you start](#before-you-start).
 
-### [Connections and the tool window](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+### [Connections and the tool window](manual-test-suite.md#connections-and-the-tool-window)
 - [ ] **SRV-1** — Settings → Tools → **Solr Connections**: `+` opens a form, saving adds a row.
 - [ ] **SRV-2** — A URL with no scheme is refused, naming the field; a path other than `/solr` is
   accepted.
@@ -213,7 +217,7 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
 - [ ] **SRV-10a** — Right-clicking a collection or field offers queries it can answer; choosing one
   opens a scratch `.http` request that runs only when you press run, and holds no password.
 
-### [Queries in the HTTP Client](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+### [Queries in the HTTP Client](manual-test-suite.md#queries-in-the-http-client)
 - [ ] **SRV-11** — In an `.http` file, *Add Request* → **Solr** offers five requests with proper
   labels.
 - [ ] **SRV-12** — With `http-client.env.json`'s `local` environment chosen, a request runs, and
@@ -232,7 +236,7 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
   `"query"`.
 - [ ] **SRV-18** — Another JSON file offers no Solr fields.
 
-### [The query console](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+### [The query console](manual-test-suite.md#the-query-console)
 - [ ] **SRV-32** — *Open queries in* defaults to **HTTP Client**; *Query products* still opens a
   scratch `.http` file.
 - [ ] **SRV-33** — Set it to **Query console**: *Query products* opens **Query: products**, filled in,
@@ -249,9 +253,12 @@ The sandbox must be licensed; see [Before you start](#before-you-start).
 - [ ] **SRV-39** — *Find Documents with* and *Count Values of* `category` refill the open tab.
 - [ ] **SRV-40** — Removing the connection closes the tab; set the choice back to **HTTP Client**.
 
-### [Drift, upload and apply](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+### [Drift, upload and apply](manual-test-suite.md#drift-upload-and-apply)
 The writing checks go to a collection you can spare.
-- [ ] **SRV-19a** — Restarted with the Drift tab open, its configset list fills once indexing ends.
+- [ ] **SRV-19a** — Restarted with the Drift tab open, its configset list fills once indexing ends,
+  offers a copied configset, and opens on a mouse click.
+- [ ] **SRV-19b** — The **Collection** chooser lists the server's collections, each *built from
+  configset …*; a typed name survives; with the server down it lists nothing and raises no error.
 - [ ] **SRV-19** — Compare shows *Not deployed*, *Only on server* and *Differs* with **both**
   definitions, and the summary names the Solr line, e.g. *Solr 10.0*.
 - [ ] **SRV-20** — Against a collection made from the configset: an empty table, *agree across N
@@ -268,7 +275,7 @@ The writing checks go to a collection you can spare.
   row goes, and the summary counts agreement.
 - [ ] **SRV-27** — With only *Differs* rows, Apply is disabled.
 
-### [Indexing a test document](manual-test-suite.md#13-connections-and-the-collections-tool-window-srv)
+### [Indexing a test document](manual-test-suite.md#indexing-a-test-document)
 - [ ] **SRV-28** — **Index a Test Document** names the collection and server in its title, and
   opens on a document that reports no problems.
 - [ ] **SRV-29** — A misspelt field is reported, and OK is refused.

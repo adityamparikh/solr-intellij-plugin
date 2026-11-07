@@ -1,29 +1,16 @@
 # Acts 1 to 3 — the opening, the editor features and the codebase: a speaker's outline
 
-> **Who this is for.** Someone changing the first three acts of `solr-intellij-plugin.pptx`. Unlike
-> the [server](server-track-outline.md) and [code](code-track-outline.md) outlines, which were written
-> before their acts were built, this one starts from a deck that already existed: it records the
-> slides added or restated for release 0.2.0, and the claims the rest of those acts must keep true.
-> Change a slide here and rebuild the slide there; the two are kept in step by hand.
->
-> **What is in the deck.** Slides 1 to 43: the title and framing, Act 1's eighteen feature deep dives
-> with two annotated companions (slides 3 to 24), Act 2's platform mechanisms (25 to 33), and Act 3's
-> code layout with three sequence diagrams side by side (34 to 43). Every screenshot is embedded as the
-> catalog file itself, from [the screenshot catalog](../screenshots.md).
+Slides 1 to 43 of `solr-intellij-plugin.pptx`: the opening, Act 1's feature deep dives, Act 2's
+platform mechanisms and Act 3's code layout. Change a slide here and rebuild it there by hand; every
+image is the [screenshot catalog](../screenshots.md)'s own file.
 
 ---
 
-## O1 · Where it stands — release 0.2.0
+## O1 · Where it stands
 
-**Claim.** Release 0.2.0, published as *Solr Support*, ships all three tracks for plain Java and
-Kotlin with SolrJ: the editor over configsets; the server track complete — connections, the collections
-tool window, queries in the IDE's HTTP Client or from a right-click in that tool window, the drift view
-with upload, reload and additive apply, and indexing a test document; and the code track complete —
-field checks, completion, navigation, query colouring and running a query from the gutter.
-
-**What is next, said as plainly.** Framework support is the next release: Spring Boot first, in
-IntelliJ IDEA Ultimate only, then Quarkus, Micronaut, MicroProfile and Apache Camel — applications
-whose Solr client comes from configuration rather than a constructor call.
+**Claim.** What ships and what is next, stated from
+[the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md) when the deck is built — never from
+this file.
 
 **Where it appears.** Slide 2, under the three surfaces, and again on the closing slide, so the scope
 is stated at both ends. The plugin is *Solr Support*; the project it supports is still Apache Solr.
@@ -96,11 +83,9 @@ inspection".
   shipped configsets. The code track's check is a twelfth registration and stays a warning.
 - **The tree.** `model/` holds schema, vocabulary and query; `server/` is seven packages — connection,
   transport, reading, topology, query, drift, indexing; `code/` is six — solrj, inspection,
-  completion, navigation, highlighting, run. 145 `.kt` files under `org.apache.solr.ide`, counted
-  on 2026-10-20 (slide 36).
-- **The tests.** 59 of 156 test files are plain JUnit 4 — more than a third — against 93 that extend a
-  platform base class; the other four are shared fixtures. Counted on 2026-10-20 by partitioning every
-  file on whether it extends a platform test case or imports `org.junit.Test`, which do not overlap.
-  Slides 32 and 37 both quote it, so change both together.
+  completion, navigation, highlighting, run. Slide 36 quotes a file count; recount before changing it.
+- **The tests.** More than a third of the test files are plain JUnit 4, against the rest extending a
+  platform base class or being shared fixtures. Slides 32 and 37 both quote the count; recount by
+  whether a file extends a platform test case or imports `org.junit.Test`, and change both together.
 - **The boundary.** `SolrServerBoundaryContractTest` allowlists one consumer outside `server/`:
   `code.run`, the gutter action, which runs when a user presses it.

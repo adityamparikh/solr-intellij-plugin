@@ -1,29 +1,10 @@
 # Act 4 — the Server track: a speaker's outline
 
-> **Who this is for.** Someone building the server-track slides in PowerPoint or Keynote. This is
-> content and structure, not a deck — the existing `solr-intellij-plugin.pptx` is a designed
-> artifact with embedded screenshots, and new slides need building by hand in the same template.
->
-> **What is already in the deck.** All of it, as Act 4 — slides 44 to 55: a divider carrying S1's
-> framing, one deep dive per slide from S2 to S11 in the deck's own four-part layout, and a recap
-> carrying S12. Every screenshot is embedded as the catalog file itself, byte for byte, so a reshoot
-> replaces one file rather than a crop someone has to remake. Where a slide shows part of a capture,
-> the crop is PowerPoint's own, made in the slide: S6 crops `25-query-and-results.png` to the answer
-> while S5 shows it whole, S9 shows `20-drift-refused-payload.png` as two slices with the empty band
-> between table and payload cut out, and S10 stacks a slice of each `21-drift-apply-*` frame. Change a
-> slide here and rebuild the slide there; the two are kept in step by hand.
->
-> **Screenshots.** All of them exist — entries 19 to 25, 30 and 31 of
-> [the screenshot catalog](../screenshots.md). Most were shot during the 2026-09-26
-> [manual pass](../manual-test-suite.md#pass-log) against a SolrCloud 10.0.0 container; 19, 23 and 31
-> were reshot on 2026-09-28 against a real SolrCloud 9.10.1 on the final 0.2.0 build, in the light
-> theme. Each slide below names its file; the catalog says what each must show, so re-shoot from there
-> rather than re-framing by eye.
->
-> **Status.** Release 0.2.0 ships this track complete: connections, the collections tool window,
-> queries in the IDE's HTTP Client, the drift view with upload, reload and additive apply, and indexing
-> a test document. The tool window's right-click queries arrived after the sandbox pass these slides
-> come from; S3 and S12 mention them, and no slide shows them until they are pressed and captured.
+Act 4 is slides 44 to 55 of `solr-intellij-plugin.pptx`. Change a slide here and rebuild it there
+by hand. Every image is the [screenshot catalog](../screenshots.md)'s own file, entries 19 to 25, 30
+and 31, embedded byte for byte; where a slide shows part of one — S6, S9, S10 — the crop is made in
+the slide. No slide shows the tool window's right-click queries yet; S3 and S12 mention them. What
+the track ships is [the plan](../../specs/plans/0002-solr-intellij-plugin-plan.md)'s to say.
 
 The Editor act works because each slide makes **one claim** and shows **one screenshot** proving it.
 Keep that shape. What changes for this act is where the claims come from: the editor track's claims

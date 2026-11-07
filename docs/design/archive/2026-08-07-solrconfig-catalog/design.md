@@ -93,7 +93,7 @@ the resolved artifact rather than by recalling Solr's package layout. That settl
 this table could have been wrong.
 
 **This table should not be hand-written at all, and closing
-[Q1](../2026-08-07-solrconfig-intelligence/plan.md) is what showed why.** `SolrConfig` carries
+Q1 — the open question the solrconfig.xml split carried — is what showed why.** `SolrConfig` carries
 `public static final List<SolrPluginInfo> plugins`, and each entry pairs the element `tag` with the
 `Class<?>` that tag's `class` attribute must implement — both plain constants in the static
 initializer. So the roots are declared by the same list Solr parses `solrconfig.xml` with, and reading

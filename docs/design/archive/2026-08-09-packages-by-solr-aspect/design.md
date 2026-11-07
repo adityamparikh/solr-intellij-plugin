@@ -1,8 +1,6 @@
-    # Packages by Solr aspect: making the tree say which file a change is about
+# Packages by Solr aspect: making the tree say which file a change is about
 
-Counts and line numbers below are taken from `main` at 73f4508. Two pull requests in flight add files
-to this tree; both land inside the structure proposed here without changing its shape, which is noted
-where it matters rather than folded into the counts.
+Counts and line numbers below are as of when this was written, and have since moved.
 
 ## Problem
 
