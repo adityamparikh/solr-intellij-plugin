@@ -15,7 +15,7 @@ kotlin = "2.4.21"
 changelog = "2.5.0"
 kover = "0.9.11"
 sonarqube = "7.5.0.8588"
-dokka = "2.2.0"
+dokka = "2.3.0"
 testcontainers = "1.21.4"
 # Formatting: Google style, for Kotlin through ktfmt and for the demo's Java through
 # google-java-format. Both formatters are versioned here rather than left to Spotless's defaults, so
