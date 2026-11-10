@@ -5,8 +5,8 @@
   from. It stands for the server's side of the story, which is why it lives beside the demo
   project rather than in it, where the plugin would read it as a second configset of the project.
 
-  It started as a copy of demo/solr/conf and differs from it on purpose, so the drift view has one
-  row of each kind to show when it compares the two:
+  It started as a copy of demo/solr/conf and differs from it on purpose, so the drift view shows every
+  kind of row (Not deployed, Differs, Only on server) when it compares the two:
 
     sku is absent                              Not deployed, the one row Apply sends
     legacy is a string                         Differs; the repository names a type nobody declares
