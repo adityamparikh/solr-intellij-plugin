@@ -21,7 +21,7 @@ behind a link. Read the relevant one before designing anything.
 | [`docs/presentation/`](docs/presentation/) | Speaker outlines per act; the `.pptx` is built by hand from them |
 | [`docs/platform-mechanisms.md`](docs/platform-mechanisms.md) | Dumb mode and model caching — what they are and what this plugin decided |
 | [`docs/solr-configuration-files.md`](docs/solr-configuration-files.md) | Which Solr config is hand-edited vs API-written |
-| [`docs/faq.md`](docs/faq.md) | Why quick documentation links to the Reference Guide rather than copying it, and why version resolution can't lean on a live sources-jar lookup |
+| [`docs/faq.md`](docs/faq.md) | How quick documentation works: why it links to the Reference Guide rather than copying it, why per line and not per project, and why version resolution can't lean on a live sources-jar lookup |
 | [`specs/0002-solr-intellij-plugin.md`](specs/0002-solr-intellij-plugin.md) | **Intent.** What the plugin is for. Read before designing a feature |
 | [`specs/plans/0002-solr-intellij-plugin-plan.md`](specs/plans/0002-solr-intellij-plugin-plan.md) | **Status and order.** The only file that owns what is built |
 | [`docs/design/`](docs/design/README.md) | Per-feature design records: backlog write-ups not yet in the plan (`pending/`), and shipped ones kept for history (`archive/`) |
@@ -33,7 +33,7 @@ behind a link. Read the relevant one before designing anything.
 ./gradlew check            # tests + coverage floor + documentation gate + formatting
 ./gradlew spotlessApply    # Google-style formatting for every Kotlin, Gradle and demo Java file
 ./gradlew test --tests "*.SolrConfigsetDetectorTest"                          # one test class
-./gradlew test --tests "*.SolrConfigsetDetectorTest.testSchemaUnderConfDirIsRecognized"  # one test
+./gradlew test --tests "*.SolrConfigsetDetectorTest.testClassicSchemaBesideSolrConfigIsRecognized"  # one test
 ./gradlew runIde           # sandbox IDE with the plugin installed, opening demo/
 ./gradlew buildPlugin      # distributable ZIP in build/distributions/
 ./gradlew verifyPlugin     # IntelliJ Plugin Verifier + plugin structure checks
@@ -50,7 +50,7 @@ resolves Solr artifacts for every supported line to generate the class catalog, 
 infer status from the API reference, the specification, or the code. Position changes every step and
 orientation does not, so a copy goes stale while the plan stays correct.
 
-## Two build gates that will bite you
+## Three build gates that will bite you
 
 **Documentation coverage.** Dokka runs with `reportUndocumented` and `failOnWarning`, and
 `dokkaGenerate` is a dependency of `check`. Any public class, function or property in
@@ -70,15 +70,18 @@ reference-style links (`[text][ref]`) do not work there; use inline `[text](url)
 
 ## Rules no build gate enforces
 
-**Every contribution declares itself dumb-aware, and that is a promise about data sources.** Almost
-nothing here reads an index — a configset is text. The one thing that does, class navigation through
-`JavaPsiFacade`, must **both** decline the declaration **and** guard with `DumbService`. An earlier
-revision of this rule said *or*, and that is how a defect shipped: declining keeps a contribution out
-of the paths that consult the flag, while its `resolve` is still called directly by anything walking
-references at a caret — unguarded, it throws during indexing and takes the whole quick-documentation
-popup with it, including what needed no index. Note the mechanism differs by extension point:
-inspections and completion override `isDumbAware()`, documentation and inlay providers implement the
-`DumbAware` marker interface. `SolrDumbModeContractTest` is what holds this to more than a promise.
+**Every contribution declares itself dumb-aware, and that is a promise about data sources.** A
+configset is text, so almost nothing here reads an index. What does is listed in
+[`docs/platform-mechanisms.md`](docs/platform-mechanisms.md): class navigation through
+`JavaPsiFacade`, the project's configset lookup through the filename index, and the Java and Kotlin
+field checks and completion built on it. A contribution that reads an index must **both** decline the
+declaration **and** guard with `DumbService`. An earlier revision of this rule said *or*, and that is
+how a defect shipped: declining keeps a contribution out of the paths that consult the flag, while its
+`resolve` is still called directly by anything walking references at a caret — unguarded, it throws
+during indexing and takes the whole quick-documentation popup with it. The mechanism differs by
+extension point: inspections and completion override `isDumbAware()`, documentation and inlay
+providers implement the `DumbAware` marker interface. `SolrDumbModeContractTest` is what holds this
+to more than a promise.
 
 **Nothing in the `org.apache.solr.ide.model` tree imports an IntelliJ type.** That is what lets a
 third of the suite be plain JUnit 4 with no fixture. Inside it, `model.schema` is what a field *is*
