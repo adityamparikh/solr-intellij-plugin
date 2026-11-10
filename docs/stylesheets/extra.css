@@ -7,3 +7,10 @@
 /* Material scopes its #only-light/#only-dark rules to <img>, so video needs its own. */
 [data-md-color-scheme="default"] video[src$="#only-dark"],
 [data-md-color-scheme="slate"] video[src$="#only-light"] { display: none; }
+
+/* The home page's four "Start here" cards: two by two, not three and an orphan. */
+@media screen and (min-width: 45em) {
+  .md-typeset .grid.cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
