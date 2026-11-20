@@ -20,7 +20,7 @@ testcontainers = "1.21.4"
 # Formatting: Google style, for Kotlin through ktfmt and for the demo's Java through
 # google-java-format. Both formatters are versioned here rather than left to Spotless's defaults, so
 # a Spotless bump cannot reformat the tree on its own.
-spotless = "8.10.4"
+spotless = "8.11.0"
 ktfmt = "0.64"
 # Held at 1.36.1: Spotless 8.10.4 cannot drive 1.37.0, which fails every file with a bare
 # InvocationTargetException. Raise it with the Spotless that supports it.
